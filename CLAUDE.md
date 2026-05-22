@@ -6,6 +6,8 @@
 
 DingTalk 国际版帮助中心，对外域名 `help.dingtalk.io`，由 [Mintlify](https://mintlify.com) Hobby 版 SaaS 托管。三语文档站（英文 / 中文 / 日文），纯 MDX 内容 + 单文件 `docs.json` 配置，无本地 build pipeline。
 
+**多产品架构**：每个语言下用顶部水平 tabs 切换产品（Overview / AI Table / DingTalk Docs / ...），URL 形如 `/<product>/<slug>`（en）或 `/zh/<product>/<slug>`、`/ja/<product>/<slug>`。
+
 ## 常用命令
 
 ```bash
@@ -26,7 +28,7 @@ git push origin main
 
 | Skill | 用途 |
 |---|---|
-| `/docs-add-page <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation |
+| `/docs-add-page <product> <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation；`<product>` 为产品 slug（`overview` / `aitable` / `docs` 等） |
 | `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译占位（不机翻） |
 | `/docs-preview` | 后台启 mint dev + 死链检查 + playwright 三语首页截图 |
 
@@ -38,6 +40,8 @@ git push origin main
 - **触发构建**：push 到 GitHub default 分支（`main`）→ Mintlify GitHub App 监听 → 平台侧自动构建。
 - **配置入口**：单文件 `docs.json`（[schema](https://mintlify.com/docs.json)），管 navigation / colors / appearance / SEO / 字体 / logo。
 - **三语镜像**：英文在仓库根，`zh/` 与 `ja/` 完全镜像同名同结构。`docs.json` 的 `navigation.languages` 数组按语言分块。
+- **多产品 tabs**：每个语言块下 `tabs[]` 数组按位置匹配（en[0] = zh[0] = ja[0] = Overview，依此类推）；新增产品要三语同步追加。
+- **按语言 navbar / footer**：`navbar` 按当前语言指向对应地区官网（en→.io / zh→.com / ja→.co.jp）；`footer` 三语均列全 3 个地区作为兜底。
 - **自定义域名**：`help.dingtalk.io` 通过 DNS CNAME 指向 `cname.mintlify.builders`，TLS 由 Mintlify 自动签发。
 
 ## 目录结构
@@ -45,22 +49,28 @@ git push origin main
 ```
 .
 ├── docs.json              站点配置（colors / languages / navigation / SEO）
-├── index.mdx              英文首页
-├── quickstart.mdx         英文快速开始
-├── guides/                英文指南目录
+├── favicon.ico            站点 favicon（品牌资产）
+├── index.mdx              Overview tab — 英文首页
+├── quickstart.mdx         Overview tab — 英文快速开始
+├── guides/                Overview tab — 英文指南目录
 │   └── overview.mdx
+├── aitable/               AI Table tab — 英文产品文档
+│   └── index.mdx
+├── docs/                  DingTalk Docs tab — 英文产品文档
+│   └── index.mdx
 ├── zh/                    中文镜像（结构同根）
 │   ├── index.mdx
 │   ├── quickstart.mdx
-│   └── guides/overview.mdx
+│   ├── guides/overview.mdx
+│   ├── aitable/index.mdx
+│   └── docs/index.mdx
 ├── ja/                    日文镜像（结构同根）
 │   ├── index.mdx
 │   ├── quickstart.mdx
-│   └── guides/overview.mdx
-├── logo/
-│   ├── light.svg          浅色模式 logo
-│   └── dark.svg           深色模式 logo
-├── favicon.svg
+│   ├── guides/overview.mdx
+│   ├── aitable/index.mdx
+│   └── docs/index.mdx
+├── logo/                  本地 logo 兜底目录（当前用远程 alicdn SVG）
 ├── .claude/commands/      项目级 skill 定义
 ├── .gitignore
 ├── README.md              面向贡献者的说明
@@ -73,7 +83,7 @@ git push origin main
 - **MDX**：Markdown + React 组件混写，文件扩展名 `.mdx`，必须带 frontmatter（`title` + `description`）
 - **JSON 配置**：`docs.json` 必带 `$schema` 字段（编辑器自动校验）
 - **字体**：PingFang SC（中日韩友好）
-- **主题**：`theme: "maple"`，品牌色 `#007fff`，appearance 默认跟随系统
+- **主题**：`theme: "maple"`，品牌色 `#0066ff`（与 logo `#06F` 一致），appearance 默认跟随系统
 - **包管理 / build 工具**：**无**（不依赖 Node 项目结构；mint CLI 自带运行时）
 
 ### 可用 MDX 组件（Mintlify 内置）
@@ -134,13 +144,16 @@ git push origin main
 
 ### 命名约定
 - **slug 路径段**：`kebab-case`，**保持英文**（三语共享同一路径，前缀靠 `/zh/...` `/ja/...`）
+- **product slug**：`aitable` / `docs` 等，全英文 kebab-case；与 tab 显示名解耦（tab 名可按语言翻译，slug 永远英文）
 - **group 标题**：按各语言自然翻译（`Guides` / `指南` / `ガイド`）
+- **tab 标题**：产品名保持英文（`AI Table` / `DingTalk Docs` 品牌名不译）；通用名按语言翻译（`Overview` / `总览` / `概要`）
 - **文件名**：与 slug 末段一致
 - **frontmatter title**：各语言版本是自然翻译（区别于 slug）
 
 ### 链接
 - 内部链接用**相对路径**：`/guides/messaging`，不写 `https://help.dingtalk.io/guides/messaging`
 - 跨语言不互链（让用户用顶部语言切换器）
+- **跨产品不互链**：尊重产品边界，让用户用顶部 tab 切换；产品间共用概念抽到 Overview tab
 - 外链加 `target="_blank"`：MDX 默认 `[label](url)` 即可
 
 ### 死链
@@ -159,7 +172,8 @@ git push origin main
 提交前每条逐项 check：
 
 - [ ] 三语都有同名同结构的 mdx（en 根 / zh/ / ja/）
-- [ ] `docs.json` 三个 language 块 navigation 同步更新（groups 同序、pages 路径加对应前缀）
+- [ ] `docs.json` 三个 language 块 navigation 同步更新（tabs 按位置匹配、groups 同序、pages 路径加对应前缀）
+- [ ] 新页落在正确的 product tab 下（slug 路径段第一级与 `<product>` 一致）
 - [ ] `mint broken-links` 通过
 - [ ] 无硬编码敏感信息
 - [ ] 外链可访问且为正式 URL
