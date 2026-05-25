@@ -1,0 +1,134 @@
+---
+title: "Why must I follow these format requirements before sync?"
+description: "When establishing a sync relationship between DingTalk Spreadsheet and AI Table, the system enforces a set of format constraints on the first row and first column. These aren't there to raise the bar..."
+---
+
+When establishing a sync relationship between **DingTalk Spreadsheet** and **AI Table**, the system enforces a set of format constraints on the first row and first column. These aren't there to raise the bar — they exist to **guarantee data accuracy, stability, and traceability across long-term, repeated syncs**.
+
+Below, from a design-principles and real-use perspective, is why these constraints are necessary.
+
+---
+## What sync really is: not "copying a sheet" but "establishing a field-and-record mapping"
+
+Many users think of sync as:
+
+> "Copy the spreadsheet's contents over to AI Table"
+
+But at the system level, sync actually means:
+
+> **Build a long-term stable mapping between every column and every row**
+
+- Spreadsheet **first row** → AI Table **fields (columns)**
+- Spreadsheet **first column** → AI Table **record index (unique identity per row)**
+
+Once the sync relationship is established, every subsequent sync uses this mapping to decide:
+
+- Which data belongs to **the same field**
+- Which data belongs to **the same record**
+- Whether to insert, update, or delete
+
+So the **first row and first column act as "structural anchors", not ordinary data**.
+
+---
+## Why the first row must meet these constraints
+
+### 1. The first row becomes AI Table's field names
+
+After sync, the spreadsheet's first row directly becomes AI Table's field names.
+
+AI Table fields have these properties:
+
+- Field names can't be entirely empty
+- Once a field participates in sync, the name shouldn't change frequently
+
+If the first row has any of these issues:
+
+- Empty fields
+- Duplicate fields
+- Modified or deleted after sync
+
+The system can't tell:
+
+- Which column corresponds to the original field
+- Whether it's a "field rename" or "delete + recreate"
+
+The end result:
+
+- Data is written to the wrong field
+- Original fields are seen as deleted, new fields as inserted
+- Dashboards, automations, formulas that depend on fields break
+
+That's why the system requires the **first row to be well-formed before sync, and stable after sync**.
+
+---
+## Why the first column must meet these constraints
+
+### 1. The first column is the "record index" — used to identify each record
+
+In AI Table, every row needs a **stable unique identity** that answers a core question:
+
+> "Is the data being synced this time the same record as last time?"
+
+That identity is the **first-column data** used at sync time.
+
+So the first column must:
+
+- Be unique (otherwise multiple records get treated as one)
+- Stay un-deletable and un-modified after sync (otherwise record identity is lost)
+
+### 2. Why can't I use "row number" as the index?
+
+Spreadsheet row numbers (1, 2, 3…) are essentially **position information**, not **record identity**:
+
+- Inserting a row, deleting a row, or sorting changes all row numbers
+- The same business record can have different row numbers at different times
+
+If you used row number as the index:
+
+- The system would mistake "different records" for "the same one"
+- Or treat "the same record" as "different data"
+- Data would be overwritten incorrectly, updated out of place, with no immediate error
+
+So the system requires the index to come from the **actual values in the first column** — not the dynamic row number.
+
+---
+## Why shouldn't I modify the first row / first column after sync?
+
+Once the sync relationship is established:
+
+- First-row field names = AI Table's field identifiers
+- First-column data = unique identity of each AI Table record
+
+If after sync you:
+
+- Modify first-row field names
+- Delete or modify first-column content
+
+The system treats it as:
+
+- The original field / record was deleted
+- A new field / record was created
+
+This can cause:
+
+- Existing data can't be updated correctly anymore
+- Dashboards, automations, linked-relationships break
+- Sync fails with error messages
+
+So **after the sync relationship is established, treat the first row and first column as "structural fields", not regular editable content**.
+
+---
+## What these constraints really solve: not "this single sync" — but "long-term use"
+
+The goal of these rules isn't to gate whether one sync succeeds — it's to avoid these long-term risks:
+
+- Data drifts and breaks across repeated syncs
+- Manually added data gets overwritten or lost
+- Linked relationships and automation rules constantly break
+- You can't tell where a data change actually came from
+
+By imposing clear constraints on the first row and first column, the system can guarantee:
+
+- Every sync has clear, traceable semantics
+- Data stays consistent across multiple updates
+- AI Table can reliably support analytics, collaboration, and automation
