@@ -1,0 +1,567 @@
+---
+title: "Huayun"
+description: "Before you start, confirm you have the following:"
+---
+
+## Prep
+
+Before you start, confirm:
+
+| \# | Requirement | Description |
+| --- | --- | --- |
+| 1 | Huayun **Professional** or above | **Custom API** capability enabled (basic edition doesn't support backend code) |
+| 2 | Huayun **system admin** account | Needed to open **System management → System integration** for credentials |
+| 3 | AI Table access | To create the data source in AI Table |
+
+> Note: the first 4 steps (Prep ~ Deploy backend code) all run in the **Huayun backend**; only the last step (Configure the data source in AI Table) is done in **AI Table**. Open both browser windows side-by-side.
+
+---
+## Get the Huayun EngineCode and Secret
+
+EngineCode and Secret act as Huayun's **access tokens** — AI Table uses them to call Huayun data APIs.
+
+### Open System management
+
+After signing in to the Huayun backend:
+
+1. Click your **avatar** in the top-right.
+2. From the dropdown, pick **System management**.
+
+![System management entry](/aitable/data-connectors/data-connectors-overview/huayun/images/S1-系统管理入口_YxRdWe9_pL.png)
+
+### Find EngineCode and Secret
+
+In System management, click **System integration** in the left menu — the **Company info** card on the right shows the **EngineCode** and **Secret**.
+
+![System integration - EngineCode](/aitable/data-connectors/data-connectors-overview/huayun/images/S2-系统集成-EngineCode_aDym7gE7gm.png)
+
+> Copy tip: hover over the EngineCode and Secret fields — a copy button appears. Copy each and save them safely; **don't share with anyone unrelated**.
+
+> Security note: Secret is a high-sensitivity credential. If you click **Reset**, the old Secret expires immediately, and any AI Table data sources already configured must be re-entered.
+
+---
+## Get the App code (AppCode)
+
+AppCode tells AI Table **which Huayun app to sync**.
+
+### Enter the target app
+
+On the Huayun backend home, click the target app to enter its main page.
+
+### Open app settings
+
+On the app main page, click **App settings** at the **bottom** of the left sidebar.
+
+![App home - App settings entry](/aitable/data-connectors/data-connectors-overview/huayun/images/获取AppCode1_MxAND39mlU.png)
+
+> Alternative: if you're comfortable with the URL bar, the segment **after `/application/` in the app home URL is the AppCode** (red box above) — copy it directly.
+
+### Copy the App code
+
+In App settings → **Basic info** tab, you'll see the **App code** field — copy and save it.
+
+![App settings - App code](/aitable/data-connectors/data-connectors-overview/huayun/images/S4-应用配置-应用编码_AolgC-YSym.png)
+
+> Don't confuse them: **App name** is the human-readable name, **App code** is the string AI Table needs.
+
+---
+## Deploy the backend code (core step)
+
+> This step lets AI Table read field metadata from Huayun forms. Huayun's standard API doesn't expose a **field definition** endpoint, so you need to deploy a piece of **custom interface** code in the Huayun backend (**already written for you — copy and paste**).
+
+### Open form designer
+
+In the target app, **pick any form** (we recommend a simple one that won't be modified often, as the **carrier form**) and click **Design form** in the top-right of the form page.
+
+![Design form entry](/aitable/data-connectors/data-connectors-overview/huayun/images/S5-设计表单按钮_Hpa3yT70Bx.png)
+
+> Pick any form: the backend code doesn't affect that form's business logic — you're just **borrowing** its entry to deploy the code.
+
+### Switch to the **Backend code** tab
+
+After entering form design, the top-left defaults to the **Visual designer** tab. Switch to **Backend code**.
+
+![Backend code tab](/aitable/data-connectors/data-connectors-overview/huayun/images/S6-后端代码Tab_vSDKaeKQ3o.png)
+
+### Paste the full code
+
+In the editor, **keep the default class code**, then **below the default code** paste the full snippet below.
+
+> Note: Huayun backend code doesn't support `using` / `import` statements — all system types must use full namespaces. The code below is already prepared accordingly — **don't add or remove any using statements**.
+
+```c# 
+// ========================================
+// AI Table data source connector - custom interface
+// Supported ActionName values:
+//   1. GetAppList    - get all app list (NodeType=190)
+//   2. GetFormList   - get the form list under a given app (NodeType IN 200,210)
+//   3. GetFieldMeta  - get form field metadata (code → name → type, including linked-form info)
+//   4. GetUserInfo        - bulk query user details (Name/Mobile/Position/Email etc.)
+//   5. GetBizObjectNames  - bulk query the Name field of a business table by ObjectId (for linked-field reverse lookup of readable names)
+// 
+// Usage: paste this code in the "Backend code" of any form, below the default class code, then save.
+// ========================================
+
+public class FieldMetaController: H3.SmartForm.RestApiController
+{
+    public FieldMetaController(H3.SmartForm.RestApiRequest request): base(request) { }
+
+    protected override void OnInvoke(string actionName, H3.SmartForm.RestApiResponse response)
+    {
+        try
+        {
+            if(actionName == "GetAppList")
+            {
+                HandleGetAppList(response);
+            }
+            else if(actionName == "GetFormList")
+            {
+                HandleGetFormList(response);
+            }
+            else if(actionName == "GetFieldMeta")
+            {
+                HandleGetFieldMeta(response);
+            }
+            else if(actionName == "GetUserInfo")
+            {
+                HandleGetUserInfo(response);
+            }
+            else if(actionName == "GetBizObjectNames")
+            {
+                HandleGetBizObjectNames(response);
+            }
+            else
+            {
+                response.ReturnData.Add("result", "error");
+                response.ReturnData.Add("message", "Unknown actionName: " + actionName + ". Supported: GetAppList, GetFormList, GetFieldMeta, GetUserInfo");
+            }
+        }
+        catch(System.Exception ex)
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "Interface error: " + ex.Message);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // GetAppList - get all app list (NodeType=190)
+    // -------------------------------------------------------------------------
+    private void HandleGetAppList(H3.SmartForm.RestApiResponse response)
+    {
+        string sql = "SELECT ObjectId, DisplayName, Code FROM H_FunctionNode WHERE NodeType = 190 ORDER BY DisplayName";
+        System.Data.DataTable dt = this.Request.Engine.Query.QueryTable(sql, null);
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> appList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > appInfo
+                = new System.Collections.Generic.Dictionary<string, string>();
+                appInfo.Add("objectId", row["ObjectId"] + "");
+                appInfo.Add("displayName", row["DisplayName"] + "");
+                appInfo.Add("appCode", row["Code"] + "");
+                appList.Add(appInfo);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("totalCount", appList.Count);
+        response.ReturnData.Add("apps", appList);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetFormList - get the form list under a given app (NodeType IN 200,210)
+    // Supports the TargetAppCode parameter: Invoke routing uses AppCode, business queries use TargetAppCode
+    // Backwards compatible: if TargetAppCode is missing, falls back to AppCode
+    // -------------------------------------------------------------------------
+    private void HandleGetFormList(H3.SmartForm.RestApiResponse response)
+    {
+        // Prefer TargetAppCode for the business-query target app code
+        string appCode = this.Request.GetValue<string>("TargetAppCode", "");
+        if(string.IsNullOrEmpty(appCode))
+        {
+            appCode = this.Request.GetValue<string>("AppCode", "");
+        }
+        if(string.IsNullOrEmpty(appCode))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "TargetAppCode or AppCode cannot be empty");
+            return;
+        }
+
+        // NodeType=200 standard form, NodeType=210 process form
+        string sql = "SELECT ObjectId, DisplayName, Code, AppCode FROM H_FunctionNode WHERE AppCode = '" + appCode + "' AND NodeType IN (200, 210) ORDER BY NodeType, DisplayName";
+        System.Data.DataTable dt = this.Request.Engine.Query.QueryTable(sql, null);
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> formList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > formInfo
+                = new System.Collections.Generic.Dictionary<string, string>();
+                formInfo.Add("objectId", row["ObjectId"] + "");
+                formInfo.Add("displayName", row["DisplayName"] + "");
+                formInfo.Add("code", row["Code"] + "");
+                formInfo.Add("appCode", row["AppCode"] + "");
+                formList.Add(formInfo);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("totalCount", formList.Count);
+        response.ReturnData.Add("forms", formList);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetFieldMeta - get form field metadata
+    // Enhancement: when field type is Association/AssociationArray, also returns the linked-form code
+    // -------------------------------------------------------------------------
+    private void HandleGetFieldMeta(H3.SmartForm.RestApiResponse response)
+    {
+        string schemaCode = this.Request.GetValue<string>("SchemaCode", "");
+        if(string.IsNullOrEmpty(schemaCode))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "SchemaCode cannot be empty");
+            return;
+        }
+
+        // Get the form's Schema definition
+        H3.DataModel.BizObjectSchema schema =
+            this.Request.Engine.BizObjectManager.GetPublishedSchema(schemaCode);
+
+        if(schema == null)
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "Form not found: " + schemaCode);
+            return;
+        }
+
+        // Iterate all field properties
+        H3.DataModel.PropertySchema[] properties = schema.Properties;
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> fieldList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        foreach(H3.DataModel.PropertySchema prop in properties)
+        {
+            System.Collections.Generic.Dictionary < string, string > fieldInfo
+            = new System.Collections.Generic.Dictionary<string, string>();
+            fieldInfo.Add("code", prop.Name);                        // control code, e.g. F0000001
+            fieldInfo.Add("displayName", prop.DisplayName);          // control name, e.g. Order ID
+            fieldInfo.Add("dataType", prop.DataType + "");           // data type, e.g. ShortString, DateTime
+            // While iterating properties to build fieldInfo, additionally check the linked form
+            string dt = prop.DataType + "";
+            if(dt == "Association" || dt == "AssociationArray")
+            {
+                string assocCode = "";
+                try
+                {
+                    assocCode = prop.AssociationSchemaCode;
+                }
+                catch(System.Exception) { }
+                if(assocCode == null) { assocCode = ""; }
+                fieldInfo.Add("associationSchemaCode", assocCode);
+
+                string childCode = "";
+                try
+                {
+                    if(prop.ChildSchema != null)
+                    {
+                        childCode = prop.ChildSchema.SchemaCode;
+                    }
+                }
+                catch(System.Exception) { }
+                if(childCode == null) { childCode = ""; }
+                fieldInfo.Add("childSchemaCode", childCode);
+            }
+            fieldList.Add(fieldInfo);
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("schemaCode", schemaCode);
+        response.ReturnData.Add("totalCount", fieldList.Count);
+        response.ReturnData.Add("fields", fieldList);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetUserInfo - bulk query user details
+    // Input: UserIds (comma-separated ObjectId list)
+    // Returns: user list with Name, Mobile, Position, Email, EmployeeNumber, DingId, State
+    // -------------------------------------------------------------------------
+    private void HandleGetUserInfo(H3.SmartForm.RestApiResponse response)
+    {
+        string userIds = this.Request.GetValue<string>("UserIds", "");
+        if(string.IsNullOrEmpty(userIds))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "UserIds cannot be empty");
+            return;
+        }
+
+        // Split and build IN clause
+        // Anti-injection: strip single quotes + length limit (UUID standard length 36 chars)
+        // Note: Huayun QueryTable doesn't support parameterized queries — string concat only
+        string[] idArray = userIds.Split(',');
+        System.Collections.Generic.List < string > safeIds = new System.Collections.Generic.List<string>();
+        foreach(string rawId in idArray)
+        {
+            string trimmedId = rawId.Trim();
+            if(!string.IsNullOrEmpty(trimmedId) && trimmedId.Length <= 40)
+            {
+                safeIds.Add("'" + trimmedId.Replace("'", "") + "'");
+            }
+        }
+
+        if(safeIds.Count == 0)
+        {
+            response.ReturnData.Add("result", "success");
+            response.ReturnData.Add("totalCount", 0);
+            response.ReturnData.Add("users", new System.Collections.Generic.List<object>());
+            return;
+        }
+
+        string inClause = string.Join(",", safeIds.ToArray());
+        string sql = "SELECT ObjectId, Name, Mobile, Position, Email, EmployeeNumber, DingId, State, ParentId FROM H_User WHERE ObjectId IN (" + inClause + ")";
+        System.Data.DataTable dt = this.Request.Engine.Query.QueryTable(sql, null);
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> userList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > userInfo
+                = new System.Collections.Generic.Dictionary<string, string>();
+                userInfo.Add("objectId", row["ObjectId"] + "");
+                userInfo.Add("name", row["Name"] + "");
+                userInfo.Add("mobile", row["Mobile"] + "");
+                userInfo.Add("position", row["Position"] + "");
+                userInfo.Add("email", row["Email"] + "");
+                userInfo.Add("employeeNumber", row["EmployeeNumber"] + "");
+                userInfo.Add("dingId", row["DingId"] + "");
+                userInfo.Add("state", row["State"] + "");
+                userInfo.Add("parentId", row["ParentId"] + "");
+                userList.Add(userInfo);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("totalCount", userList.Count);
+        response.ReturnData.Add("users", userList);
+    }
+    // -------------------------------------------------------------------------
+    // GetBizObjectNames - bulk query the Name field of a business table by ObjectId
+    // Input:
+    //   - SchemaCode (required): business form code (e.g. D146656stuu9sfosulmfmahjf)
+    //   - ObjectIds  (required): comma-separated ObjectId list, max 200 per call
+    // Returns: { result, schemaCode, totalCount, names: [{objectId, name}, ...] }
+    //
+    // Use case: when the AI Table connector syncs main-table data and finds linked-field values are ObjectIds,
+    //           call this interface to bulk reverse-lookup the linked table's Name field, so AI Table shows readable linked names.
+    //
+    // Implementation notes:
+    //   - The business table physical name follows the pattern i_<SchemaCode> (source: Huayun official SQL interface docs)
+    //   - Anti-injection: ObjectId length capped at 40 + single-quote stripping; SchemaCode restricted to alphanumeric
+    //   - Same as GetUserInfo, uses QueryTable; Huayun doesn't support parameterized queries — string concat only
+    // -------------------------------------------------------------------------
+    private void HandleGetBizObjectNames(H3.SmartForm.RestApiResponse response)
+    {
+        string schemaCode = this.Request.GetValue<string>("SchemaCode", "");
+        string objectIds = this.Request.GetValue<string>("ObjectIds", "");
+
+        if(string.IsNullOrEmpty(schemaCode))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "SchemaCode cannot be empty");
+            return;
+        }
+        if(string.IsNullOrEmpty(objectIds))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "ObjectIds cannot be empty");
+            return;
+        }
+
+        // SchemaCode anti-injection: only alphanumeric (business-table schemaCode looks like D146656xxx, all alphanumeric)
+        bool schemaCodeValid = true;
+        foreach(char c in schemaCode)
+        {
+            if(!char.IsLetterOrDigit(c)) { schemaCodeValid = false; break; }
+        }
+        if(!schemaCodeValid || schemaCode.Length > 64)
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "SchemaCode is invalid; only alphanumeric allowed");
+            return;
+        }
+
+        // Split and build IN clause (same pattern as GetUserInfo: length ≤ 40 + strip single quotes)
+        string[] idArray = objectIds.Split(',');
+        System.Collections.Generic.List < string > safeIds = new System.Collections.Generic.List<string>();
+        foreach(string rawId in idArray)
+        {
+            string trimmedId = rawId.Trim();
+            if(!string.IsNullOrEmpty(trimmedId) && trimmedId.Length <= 40)
+            {
+                safeIds.Add("'" + trimmedId.Replace("'", "") + "'");
+            }
+            // Cap at 200 per call to avoid an overly long IN clause
+            if(safeIds.Count >= 200) { break; }
+        }
+
+        if(safeIds.Count == 0)
+        {
+            response.ReturnData.Add("result", "success");
+            response.ReturnData.Add("schemaCode", schemaCode);
+            response.ReturnData.Add("totalCount", 0);
+            response.ReturnData.Add("names", new System.Collections.Generic.List<object>());
+            return;
+        }
+
+        string inClause = string.Join(",", safeIds.ToArray());
+        string tableName = "i_" + schemaCode;
+        string sql = "SELECT ObjectId, Name FROM " + tableName + " WHERE ObjectId IN (" + inClause + ")";
+
+        System.Data.DataTable dt = null;
+        try
+        {
+            dt = this.Request.Engine.Query.QueryTable(sql, null);
+        }
+        catch(System.Exception ex)
+        {
+            // Table not found or SQL error: return a clear error code so the caller can fall back to serial single-row queries
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("errorCode", "SQL_FAILED");
+            response.ReturnData.Add("message", "Query failed (table-name pattern may not match): " + ex.Message);
+            return;
+        }
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> nameList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > item
+                = new System.Collections.Generic.Dictionary<string, string>();
+                item.Add("objectId", row["ObjectId"] + "");
+                item.Add("name", row["Name"] + "");
+                nameList.Add(item);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("schemaCode", schemaCode);
+        response.ReturnData.Add("totalCount", nameList.Count);
+        response.ReturnData.Add("names", nameList);
+    }
+}
+
+```
+
+
+### Save to take effect
+
+After pasting, click **Save** in the top-right and wait for the **Saved** prompt — that means the code is live.
+
+![Saved successfully](/aitable/data-connectors/data-connectors-overview/huayun/images/S7-保存成功_7KmQz7-33u.png)
+
+> Acceptance: a green **Saved** Toast at the top means deployment succeeded — no restart or extra publish needed.
+
+---
+## Configure the data source in AI Table
+
+After completing the 4 steps above, you've prepared all the **credentials + AppCode + backend interface** in the Huayun backend. Now go back to AI Table and connect the data source.
+
+### Create a Huayun data source
+
+In AI Table, click **+ New data source → pick or search Huayun** to open the Huayun data source config dialog.
+
+> Top tip: the **View full guide** link at the top of the dialog points to this doc — easy reference any time.
+
+![Search Huayun](/aitable/data-connectors/data-connectors-overview/huayun/images/image_G0WUXtxmbK.png)
+
+![Huayun config dialog](/aitable/data-connectors/data-connectors-overview/huayun/images/image_u_QOB2l843.png)
+
+### Link the Huayun account
+
+First time: click the **Linked account** dropdown → **New account**, opening the **Account edit** dialog:
+
+1. **Account name**: a recognizable name (e.g. **Huayun-Production**).
+2. **EngineCode**: paste [the EngineCode from earlier](#vg9CseQ4UQE3E7J53FMJZ8 "EngineCode from earlier").
+3. **EngineSecret**: paste [the Secret from earlier](#vg9CseQ4UQE3E7J53FMJZ8 "Secret from earlier").
+4. Click **Test connection** → on **Connection successful**, save.
+
+![Link account](/aitable/data-connectors/data-connectors-overview/huayun/images/image_9rL53dVrtX.png)
+
+> The same account can be reused across multiple data sources — no need to re-create it for each one.
+
+### Pick the app and form
+
+Once the account is linked, return to the main dialog:
+
+1. **App code (AppCode)**: paste [the AppCode of the app where you deployed the backend code](#jdQAZkzc6zpNowqvJYjnAm "the AppCode where the backend code was deployed").
+2. Click **Load apps**.
+
+![](/aitable/data-connectors/data-connectors-overview/huayun/images/image_IruprpriFt.png)
+
+1. **App list**: the dropdown auto-loads all apps the account can access.
+2. **Form**: pick the target form to sync (not the form **carrying the backend code** — the one you actually want data from).
+3. Configure sync options and click **Confirm**.
+
+After success, AI Table starts the first sync automatically; subsequent syncs run incrementally on your configured cadence.
+
+---
+## FAQ
+
+#### Q: What if "Test connection" fails?
+
+A:
+
+- Check whether EngineCode and Secret are copied in full (no leading/trailing spaces).
+- Check whether the Huayun account is disabled or no longer has **Custom API** permission.
+- If you recently clicked **Reset Secret**, go back to [Find EngineCode and Secret](#vg9CseQ4UQE3E7J53FMJZ8 "Find EngineCode and Secret") and copy the latest Secret.
+
+#### Q: AppCode is filled in but the form dropdown is empty — what now?
+
+A:
+
+- Check whether the AppCode is correct (it's the app code, not the app name).
+- Check whether the [backend code](#3EV2jtg6Hyrfz4sB6d4Kmj "backend code") was **saved** (top Toast prompt).
+- Check whether the backend code was pasted **below the default class code** (not replacing the default code).
+
+#### Q: Can multiple AI Table data sources share the same backend code?
+
+A: Yes. The backend code is enterprise-shared in Huayun — once deployed in any app/form, it's effective everywhere. **Deploy once in any app and any form**, then other data sources just configure EngineCode + a different AppCode.
+
+#### Q: Will the Huayun backend code be overwritten or lost when the app is published?
+
+A: No. The backend code is persisted alongside the form in Huayun. Unless you actively clear or delete the form, the code stays in effect.
+
+#### Q: How do sync frequency and incremental logic work?
+
+A:
+
+- The default schedule follows AI Table's unified scheduling policy (see the AI Table data source management page).
+- Incremental sync is based on the Huayun-recorded `ModifiedTime` field — only records changed since the last sync are pulled.
+
+---
+## Appendix
+
+### Related links
+
+- [Huayun OpenAPI overview](https://help.h3yun.com/contents/1005/1631.html "Huayun OpenAPI overview")
+- [Huayun custom interface examples](https://help.h3yun.com/contents/1014/1640.html "Huayun custom interface examples")
+- [Huayun API quick reference (Apifox)](https://h3yun-pro-doc-openapi.apifox.cn/ "Huayun API quick reference (Apifox)")
+
+### Feedback and support
+
+If you hit issues this doc doesn't cover, share feedback inside AI Table or contact the data source connector team.
