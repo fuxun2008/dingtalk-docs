@@ -83,7 +83,8 @@ git push origin main
 - **MDX**：Markdown + React 组件混写，文件扩展名 `.mdx`，必须带 frontmatter（`title` + `description`）
 - **JSON 配置**：`docs.json` 必带 `$schema` 字段（编辑器自动校验）
 - **字体**：PingFang SC（中日韩友好）
-- **主题**：`theme: "maple"`，品牌色 `#0066ff`（与 logo `#06F` 一致），appearance 默认跟随系统
+- **主题**：`theme: "mint"`，品牌色 `#0066ff`（与 logo `#06F` 一致），appearance 默认跟随系统
+- **LLM 投喂入口**：docs.json 顶层 `contextual.options` 已开 8 个（copy / view / chatgpt / claude / perplexity / mcp / cursor / vscode），每页右上区会出现 contextual 按钮组
 - **包管理 / build 工具**：**无**（不依赖 Node 项目结构；mint CLI 自带运行时）
 
 ### 可用 MDX 组件（Mintlify 内置）
