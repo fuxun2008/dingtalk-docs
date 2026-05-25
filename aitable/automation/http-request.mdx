@@ -1,0 +1,153 @@
+---
+title: "Send HTTP requests via automation"
+description: "Send HTTP requests is a core action in AI Table automation — push data to a URL to trigger external APIs or data exchange. Pair AI Table fields and intermediate workflow results with third-party platforms; the response can feed downstream steps."
+---
+
+# 1 What it does
+
+**Send HTTP request** is a core action in AI Table automation: push data to a URL to trigger external APIs or data exchange. AI Table fields and intermediate workflow results plug straight into the request, and the response feeds downstream steps — the whole thing forms a closed-loop automation.
+
+Hit a URL, integrate with third-party systems, e.g.:
+
+- Sync data to internal systems — push to ERP / CRM, no manual handoff.
+- Scraping — build a crawler, fetch web content, extract data.
+- Integrate third-party services — payments, SMS, geolocation.
+
+# 2 Notes
+
+## 2.1 HTTP method
+
+Pick a method (required). The method tells the server what operation you want.
+
+|         |                                                                                          |
+| ------- | ---------------------------------------------------------------------------------------- |
+| Method | Description |
+| GET     | **Fetch from server.** Returns the resource at the URL. Use for read / lookup. |
+| POST    | **Submit data to the server (form, file upload).** Body carries the payload. Typically creates or modifies. |
+| PUT     | **Replace a resource.** Send the full new payload — used for full updates. |
+| PATCH   | Partially update a resource. |
+| OPTIONS | Discover supported methods. |
+| DELETE  | Delete a resource. |
+
+## 2.2 Parameters
+
+### 2.2.1 GET
+
+| Type | Param | Description |
+| ---- | ------ | ----------- |
+| In | Request URL | Includes path + query string (e.g. `https://api.example.com/data?param1=value1`). |
+| In | Query | Key-value pairs in the URL (e.g. `?page=1&limit=10`). |
+| In | Headers | Optional — auth (e.g. `Authorization: Bearer token`). |
+| Out | Response body | Returned data (JSON / XML / text). |
+
+### 2.2.2 POST / PUT / PATCH / DELETE
+
+| Type | Param | Description |
+| ---- | ------ | ----------- |
+| In | Request URL | Path + optional query (e.g. `https://api.example.com/resource/123`). |
+| In | Query | Optional — key-value pairs in the URL (e.g. `?action=update`). |
+| In | Headers | Content type (e.g. `Content-Type: application/json`) and auth. |
+| In | Body | Must match the type set in the Content-Type header. |
+| Out | Response body | Returned data (JSON / XML / text). |
+| Out | Return value (only when response is JSON) | If the response is JSON, extract fields for downstream use (e.g. `{"id": 123, "status": "success"}`). |
+
+📌 About APISecret
+
+If your target system signs requests, fill in `apiSecret` and the system will receive these signed headers:
+
+- x-ddpaas-signature-timestamp: \<signing timestamp>
+- x-ddpaas-signature: \<signature>
+
+Where \<signature> = calcSignature(apiSecret, \<signing timestamp>) and `apiSecret` is the signing key registered upfront.
+
+Your system should compute the signature this way and check it matches — to reject unauthorized calls:
+
+```java 
+public static String calcSignature(String apiSecret, long ts) {
+    try {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec key = new SecretKeySpec(apiSecret.getBytes(), "HmacSHA256");
+        mac.init(key);
+        return Base64.getEncoder()
+            .encodeToString(mac.doFinal(Long.toString(ts).getBytes()));
+    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+        log.error("sign api secret failed", e);
+    }
+}
+```
+
+
+### 2.2.3 Define the response (output)
+
+- The HTTP response is passed downstream. The response format determines how downstream steps parse and reference these params.
+
+  ![](/aitable/automation/http-request/images/image_eX3xpHE1HA.png)
+- **JSON** — downstream steps parse the response as structured JSON. Fill in a sample response so downstream can reference fields.
+
+  ![](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/QvjnAAbRLb5ynXo5/img/6504e7f8-4085-45b9-9df5-315b38466d17.png)
+- **Text** — downstream references the whole response as text.
+
+  ![](/aitable/automation/http-request/images/image_qs1WwX4nna.png)
+- **None** — downstream cannot reference the response.
+
+  ![](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/QvjnAAbRLb5ynXo5/img/92b43d17-cb77-4387-908a-f9c085443af0.png)
+
+# 3 FAQ
+
+## 3.1 FAQ
+
+- Q: HTTP failure rules
+  - status code ≠ 200
+  - System exceptions, e.g. timeout.
+    ![](https://alidocs.dingtalk.com/core/api/resources/img/5eecdaf48460cde504de3b9e47e52bd8d1d5101b618320c219d28d1dd67f039915575e05a9d9575b39e8703ac5556d0ddeef526ad995f180e3467893156b9e1545d9a70219869bd29fc1567e33b287ea724220056927e30a38d07168ac0cfd52?docKey=eLbnj86494oNOaNY)
+- Q: What causes HTTP request timeouts?
+
+  A: Causes — network latency, slow server response, firewall / proxy restrictions, DNS issues, or server overload.
+- Q: Can the AI Table automation HTTP request use a fixed IP for IP-allow-listing?
+
+  A: Yes. Most platforms allow outbound IP allow-lists or fixed IP binding via the platform admin or API gateway. IP ranges: 203.119.128.0/17, 59.82.0.0/16, 140.205.0.0/16, 106.11.0.0/16
+- Q: Can I append query params directly in the URL?
+
+  A: Yes — `?key1=value1&key2=value2` works for GET, and for some POST too (server-dependent).
+- Q: Why does an HTTP request fail to parse correctly? How do I verify it?
+
+   A: Causes:
+  - Bad request format (e.g. JSON syntax errors).
+  - Encoding issues (e.g. wrong `Content-Type`).
+  - Server endpoint changed or version mismatched.
+  - Missing required headers (e.g. auth token).
+    Verification:
+  - Replay the same request manually with Postman / curl.
+  - Check the status code (4xx = client, 5xx = server).
+  - Enable debug logging or capture with Wireshark.
+- Q: What does a JSON-compliant HTTP response look like?
+
+  A:
+  - Structural rules:
+    - Must be a valid JSON object (`{}`) or array (`[]`).
+    - Field names quoted with double quotes (`"key"`).
+    - Supported types: string, number, boolean, object, array, `null`.
+  - Common conventions: status code (`"code"`), message (`"message"`), data (`"data"`).
+- Q: Max number of key-value params in an HTTP request?
+
+  A:
+  - No hard limit, but bounded by:
+    - URL length (recommended < 2048 chars).
+    - Server parser limits (some servers cap param count).
+    - Performance (avoid redundant params).
+- Q: Can I reference array data from the HTTP response in downstream steps?
+
+  A: Yes — loop over it, or compose fields when sending messages.
+- Q: When using a group's custom bot to send messages, the open-platform sample code doesn't work as-is — what could be wrong?
+
+  A:
+  - Common issues:
+    1. Wrong webhook URL — placeholder not replaced with the actual generated URL or token.
+    2. Permission missing — bot not in the target group, or not authorized.
+    3. Format mismatch — body doesn't match API spec (e.g. wrong `Content-Type`).
+    4. Signature failed — missing or wrong signature (timestamp / secret not computed).
+    5. Network blocked — firewall or proxy blocking.
+  - Fixes:
+    - Double-check placeholders in the sample code (e.g. `{token}`).
+    - Use a debug tool to inspect headers, body, and response.
+    - Check the open-platform docs or contact support.
