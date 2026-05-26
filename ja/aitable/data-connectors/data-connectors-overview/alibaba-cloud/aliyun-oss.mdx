@@ -1,0 +1,173 @@
+---
+title: "Alibaba Cloud Object Storage Service（OSS）データを同期する"
+description: "AI テーブルでは Alibaba Cloud Object Storage Service（OSS）データソースコネクタを通じて、Alibaba Cloud アカウント配下の OSS ストレージスペース情報を AI テーブルへ同期し、一元管理と分析を実現できます。"
+---
+
+AI テーブルでは **Alibaba Cloud Object Storage Service（OSS）データソースコネクタ** を通じて、Alibaba Cloud アカウント配下の OSS ストレージスペース情報を AI テーブルへ同期し、一元管理と分析を実現できます。
+
+本ドキュメントでは以下の手順を案内します。
+
+- Alibaba Cloud コンソールへのログイン
+- AccessKey ID と AccessKey Secret の取得
+- AI テーブルで Alibaba Cloud OSS データソースを作成
+- パラメータとフィールドを設定し、データ同期を完了
+
+## 一、利用前の準備
+
+開始前に、以下の条件を満たしていることをご確認ください。
+
+- **Alibaba Cloud アカウント** を有効化済みであること
+- アカウント配下で **Object Storage Service OSS** を有効化済みであること
+- 現在のアカウントが OSS リソースの **読み取り専用以上の権限** を保有していること
+- AI テーブルの利用権限を保有していること
+
+> ⚠️ メインアカウントのキーを使用することは避け、**RAM サブアカウント** + AccessKey によるデータ接続を推奨します。
+
+## 二、Alibaba Cloud AccessKey の取得
+
+AI テーブルは AccessKey を介して Alibaba Cloud OSS API を呼び出すため、Alibaba Cloud コンソールでキー情報を作成・取得する必要があります。
+
+### 1. Alibaba Cloud コンソールへログイン
+
+1. Alibaba Cloud 公式サイトを開く：[https://www.aliyun.com](https://www.aliyun.com "https://www.aliyun.com")
+2. 右上の **ログイン** をクリック
+3. Alibaba Cloud アカウントでログインを完了
+
+### 2. AccessKey の作成 / 取得
+
+#### 方式一：RAM ユーザーを使用（推奨）
+
+1. Alibaba Cloud コンソールにログイン後、**Resource Access Management（RAM）** に入る
+2. 左メニューで **ユーザー** を選択
+3. 新規作成または既存の RAM ユーザーを選択
+4. 当該ユーザーへ権限を付与（最低でも OSS 読み取り権限、例：`AliyunOSSReadOnlyAccess` を含める）
+5. **認証管理** に入る
+6. AccessKey を作成
+7. 以下の情報をコピーして保存
+   - **AccessKey ID**
+   - **AccessKey Secret**
+
+> ⚠️ AccessKey Secret は作成時のみ表示されます。必ず適切に保管してください。
+
+#### 方式二：アカウントの既存 AccessKey を使用
+
+すでに AccessKey を作成済みの場合、**RAM → ユーザー → AccessKey 管理** で AccessKey ID を確認し、Secret を再作成できます。
+
+## 三、AI テーブルで Alibaba Cloud OSS データソースを作成
+
+### 1. データコネクタへ移動
+
+1. AI テーブルを開く
+2. 左下の **データコネクタ** をクリック
+3. 検索ボックスに「Alibaba Cloud」と入力
+4. **Alibaba Cloud Object Storage** を選択
+
+![](/ja/aitable/data-connectors/data-connectors-overview/alibaba-cloud/aliyun-oss/images/image_1dbdOiHyK_.png)
+
+### 2. データソース選択
+
+現在サポートされているデータソースタイプは以下の通りです。
+
+- **Alibaba Cloud Object Storage スペースリスト**
+
+  現在のアカウント配下のすべての OSS Bucket（ストレージスペース）の基本情報を同期します。
+
+選択を確定したら、次のステップへ進みます。
+
+## 四、アカウント設定
+
+「アカウント設定」のステップで、Alibaba Cloud アカウント情報を関連付けます。
+
+![](/ja/aitable/data-connectors/data-connectors-overview/alibaba-cloud/aliyun-oss/images/image_uZd7WvRBz1.png)
+
+### 入力項目の説明
+
+| フィールド            | 説明                                |
+| ---------------- | --------------------------------- |
+| アカウント名           | カスタム名称。AI テーブルで複数の Alibaba Cloud アカウントを区別するために使用 |
+| AccessKey ID     | Alibaba Cloud コンソールから取得した AccessKey ID     |
+| AccessKey Secret | Alibaba Cloud コンソールから取得した AccessKey Secret |
+
+入力完了後、確認をクリックします。
+
+🔒 AI テーブルはキー情報を暗号化して保存し、データ同期呼び出しのみに使用します。
+
+## 五、パラメータ設定の説明
+
+### 1. リージョン（必須）
+
+OSS サービスのリージョン範囲を指定します。
+
+- 例：`cn-hangzhou`、`cn-shanghai`
+- 当該リージョンが OSS API のアクセスノードを決定します
+
+> OSS Bucket が複数のリージョンに分散している場合は、それぞれデータソースを作成してください。
+
+### 2. プレフィックス（任意）
+
+指定した命名規則の Bucket をフィルタするために使用します。
+
+- 空欄：アカウント配下のすべての Bucket を同期
+- プレフィックス入力：当該プレフィックスで始まる名称の Bucket のみを同期
+
+例：
+
+- `prod-`：`prod-xxx` の Bucket のみを同期
+- `test/`：指定パス配下のリソースを同期（サポート時）
+
+## 六、フィールド設定の説明
+
+AI テーブルへ同期するフィールド情報を選択できます。
+
+| フィールド名           | 説明              |
+| ---------------- | --------------- |
+| 名称               | OSS Bucket 名    |
+| OSS 専用 Region ID | Bucket の実際のリージョン |
+| Alibaba Cloud 共通 Region ID  | Alibaba Cloud 統一リージョン識別子 |
+| 外部アクセスドメイン       | Bucket のパブリックアクセスアドレス |
+| 内部アクセスドメイン       | Bucket のプライベートアクセスアドレス |
+| Bucket ストレージタイプ  | 標準ストレージ / 低頻度アクセスなど   |
+| Bucket 作成日時      | Bucket の作成日時      |
+| 備考               | 予約拡張フィールド          |
+
+以下の操作が可能です。
+
+- **全選択** にチェックを入れすべてのフィールドを同期
+- または業務上必要なフィールドのみを選択
+
+## 七、同期設定
+
+### 同期方式の説明
+
+- **同期オフ**（デフォルト）：
+
+  データは作成時または手動更新時のみ更新
+- **同期オン**：
+
+  設定した頻度に従って OSS データを自動同期
+
+> データの変更頻度や利用シナリオに応じて有効化を選択できます。
+
+## 八、作成完了とデータの確認
+
+1. 右下の **作成** をクリック
+2. システムが OSS データを取得開始
+3. 同期完了後、AI テーブル上で OSS ストレージスペースリストを確認可能
+4. データはフィルタリング、分析、他のテーブルとの関連付けに利用可能
+
+## 九、よくある質問
+
+#### Q1：AccessKey 入力後に権限なしと表示される場合
+
+- RAM ユーザーに OSS 関連権限が付与されているか確認してください
+- 最低でも OSS 読み取り権限を含めることを推奨します
+
+#### Q2：一部の Bucket が同期されないのはなぜですか
+
+- 「リージョン」が一致しているか確認してください
+- プレフィックスフィルタ条件が設定されていないか確認してください
+
+#### Q3：AccessKey が漏洩することはありますか
+
+- AI テーブルはキーを暗号化して保存します
+- 現在のデータソース呼び出しのみに使用され、外部に公開されません
