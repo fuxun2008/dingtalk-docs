@@ -1,0 +1,142 @@
+---
+title: "Trigger automation via webhook"
+description: "Webhooks let systems push data to each other — when something happens upstream, you receive the data instantly. The webhook URL is a delivery address that ensures data lands without polling."
+---
+
+## 1 What it does
+
+Webhooks let systems push data to each other — **when something you care about happens upstream, data lands automatically**. The webhook URL is the delivery address that ensures data arrives in time.
+
+- Note: webhooks are an advanced developer feature — work with a developer to set them up.
+
+> ⚠️ Keep your webhook URL private — never publish it on external sites. Leakage could flood your org with malicious traffic, exhausting developer resources and putting the org at risk.
+
+## 2 Use cases
+
+By setting up a webhook, you can "subscribe" to updates from a system or app:
+
+- **Internal system data sync** — set up webhooks in ERP, CRM, etc. to sync data between systems without manual handoff.
+- **Website content updates** — set up webhooks on watched sites; new content notifies you instead of you reloading the page.
+- **Monitoring and alerts** — set up webhooks in a monitor or alert platform for real-time health insight and faster incident response.
+
+## 3 How to use
+
+### 3.1 Set trigger keywords
+
+The flow only fires when received data contains a keyword. Click **Add keyword** to add up to 10 — any one match triggers the flow.
+
+![](/aitable/automation/webhook-trigger/images/image_Ez_J4dNV7X.png)
+
+### 3.2 Set the parameter format
+
+When data lands from the upstream system, params pass downstream. **Format determines how downstream steps parse and reference these params.**
+
+![](/aitable/automation/webhook-trigger/images/image_HI7ieNrmK3.png)
+
+#### 3.2.1 Format = JSON
+
+Downstream steps parse params as structured JSON. **Fill in a sample payload** so subsequent steps can reference structured data.
+
+![](/aitable/automation/webhook-trigger/images/image_Tnr5rt0KgQ.png)
+
+#### 3.2.2 Format = Text
+
+Downstream you reference the whole param block as text. (Special case: if the params match the [DingTalk bot message structure](https://open.dingtalk.com/document/orgapp/custom-bot-send-message-type#66407430cd5xr "DingTalk bot message structure"), in **Send message to this group** you can switch **Source** to **Source-data parsing** and the params auto-render as a message body.)
+
+![](/aitable/automation/webhook-trigger/images/image_FfnYS7XREW.png)
+
+#### 3.2.3 Format = None
+
+Downstream cannot reference these params.
+
+![](/aitable/automation/webhook-trigger/images/image_kK3JekG5DN.png)
+
+Webhook parameter details below.
+
+### 3.3 Configure the webhook URL
+
+Click **Copy** and paste the URL into the upstream system. (Each automation has its own webhook URL — **keep it private; leakage can flood your org with malicious traffic and exhaust developer resources**.)
+
+![](/aitable/automation/webhook-trigger/images/image_oONWLSNMze.png)
+
+### 3.4 Send an HTTP request
+
+A request triggers the automation.
+
+| Parameter | Value | Example |
+| --- | --- | --- |
+| Method | POST | \- |
+| URL | The webhook URL from the trigger | [https://connector.dingtalk.io/webhook/flow/xxxxx](https://connector.dingtalk.io/webhook/flow/xxxxx "https://connector.dingtalk.io/webhook/flow/xxxxx") |
+| Body | JSON — must contain the trigger keyword to fire | \{  "key": "value"  \} |
+
+## 4 Headers and example
+
+| **Name**       | **Type** | **Required** | **Description**                                                                                                                                                                                                                                                                              |
+| -------------- | -------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization | string   | No           | Credential check (Bearer token) — pass via the Authorization header. Format (case-sensitive):  --header 'Authorization: Bearer \\[real Bearer token]'  Single quotes are part of the actual header. Brackets are placeholders only — do not type them. The header key is fixed as `Authorization`; the value has fixed prefix `Bearer`.  Note the required space between `Bearer` and the actual token. |
+| Client-Token  | string   | No           | Idempotency. Header key is fixed as `Client-Token`; value is user-generated, typically a UUID.  Empty value = a new request. Non-empty = idempotent update — within 3 hours, the same value triggers only once. |
+
+Bearer token example (brackets are placeholders — do not type them):
+
+```bash 
+curl --location --request POST '[real webhook URL]' \
+--header 'Authorization: Bearer [real Bearer token]' \
+--header 'Content-Type: application/json' \
+--data-raw '{[real request body]}'
+```
+
+
+## 5 Request body
+
+Set per your needs — must be valid JSON.
+
+## 6 Response and example
+
+Non-zero `code` in the response means failure.
+
+When `code` is non-zero, look up the message in the error-code table below to debug.
+
+Successful response:
+
+```json 
+{
+"msg": "",
+"data": { },
+"code": 0
+}
+```
+
+
+Error response:
+
+```json 
+{
+"data": { },
+"code": 800004509,
+"msg": "webhook trigger workflow is disabled"
+}
+```
+
+
+## 7 Error codes
+
+When a webhook trigger errors, check the response from the sender side and look up the code below.
+
+| **Code**  | **Message**                             | **Cause**                                                                                                                                                      | **Fix**                              |
+| --------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 800005649 | Credential check failed                  | Credential check is on, but the credential in the request doesn't match the one configured in the automation. | Re-check and re-enter the credential. |
+| 800005650 | IP not in the allow-list — please check  | IP allow-list is on, and the sender IP is not on the list. | Add the IP to the allow-list, or send from an allow-listed IP. |
+| 800005647 | Request body too large — please reduce   | The webhook request body exceeds 4 MB. | Reduce the body size. |
+| 800005646 | HTTP node calls itself, causing a loop — change the HTTP node URL | The trigger is "When webhook fires" and the action is "Send HTTP request" with the HTTP URL set to the same webhook URL — causing a loop. | Change the URL in **Send HTTP request** so it differs from the webhook URL. |
+| 800005652 | Too many requests — try again later      | The webhook receive frequency exceeded the limit and got throttled.  -   Per AI Table: 50 req/s.  -   Per single automation: 5 req/s.  -   Automations without credential check (Bearer token): 1 req/s. | Try again later. |
+| 800006003 | Body doesn't match JSON spec — please fix and retry | Usually happens when "set output by sending a request" is used and the body has invalid JSON. | Re-check and fix the JSON. |
+
+## 8 Use it in practice
+
+1. As a F\&B admin, you want **internal goods data synced to a DingTalk group**. In **Sample params**, manually fill the upstream payload (new product name, spec, tea base, ingredients). In **Send message to this group**, customize the body and use `+` to **reference these params** — fresh product details land in the group right away.
+
+![](/aitable/automation/webhook-trigger/images/image_YJFzGHtTtz.png)
+
+2. **If you've used "Custom bot" in a chat group before** and the upstream params match the [DingTalk bot message structure](https://open.dingtalk.com/document/orgapp/custom-bot-send-message-type#66407430cd5xr "DingTalk bot message structure"), in **Send message to this group** switch **Source** to **Source-data parsing** and pick the webhook node's "On data received" output as the source — the params **auto-render as the message body and send**.
+
+![](/aitable/automation/webhook-trigger/images/image_J6aXR4lWc6.png)
