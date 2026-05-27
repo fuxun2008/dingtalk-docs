@@ -20,14 +20,13 @@ mint login           # one-time, enables local search
 | Path | Purpose |
 |---|---|
 | `docs.json` | 站点配置：colors / languages / navigation（含 tabs / navbar / footer）/ SEO |
-| `index.mdx`、`quickstart.mdx`、`guides/` | Overview tab — 英文内容（默认语言） |
-| `aitable/` | AI Table tab — 英文产品文档 |
-| `docs/` | DingTalk Docs tab — 英文产品文档 |
-| `zh/` | 中文镜像（与英文同名同结构，含 `aitable/`、`docs/`） |
-| `ja/` | 日文镜像（与英文同名同结构，含 `aitable/`、`docs/`） |
+| `aitable/` | AI Table tab — 英文产品文档（首发唯一 tab） |
+| `zh/aitable/` | 中文镜像（与英文同名同结构） |
+| `ja/aitable/` | 日文镜像（与英文同名同结构） |
 | `favicon.ico` | 网站图标 |
-| `logo/` | 本地 logo 兜底目录（当前用远程 alicdn SVG） |
+| `logo/` | 本地 logo（light / dark） |
 | `.claude/commands/` | 项目级 Claude Code skill |
+| `.claude/import/` | 导入资产记录（缺图清单 / 死链白名单） |
 
 每新增一页都要在 **3 处 mdx + `docs.json` 3 个 language 块的对应 tab → group** 同步维护。
 
@@ -39,11 +38,10 @@ mint login           # one-time, enables local search
 
 ```
 /docs-add-page <product> <slug> <group>
-# 例 1（Overview tab）：/docs-add-page overview guides/messaging Guides
-# 例 2（AI Table tab）：/docs-add-page aitable quick-start Introduction
+# 例：/docs-add-page aitable quick-start Introduction
 ```
 
-`<product>` 是产品 slug：`overview`（默认 tab，无路径前缀）/ `aitable` / `docs` / 未来新增的产品。
+`<product>` 是产品 slug：当前仅 `aitable`，未来按需扩展。
 skill 会自动生成对应路径下的 `<slug>.mdx`、`zh/.../`、`ja/.../`，并在 `docs.json` 三个 language 块 → 对应 tab → 对应 group 下追加 page 路径，最后跑 `mint broken-links`。
 
 手动操作时，每添加 1 页 = 4 处改动：3 个 mdx 文件 + `docs.json` 3 处 navigation（定位到正确的 tab → group）。
