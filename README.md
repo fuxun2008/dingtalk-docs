@@ -78,15 +78,3 @@ skill 会以英文母版为模板，在 `zh/` 与 `ja/` 同路径生成翻译占
 Push 到 `main` → Mintlify GitHub App 监听 → 平台侧自动构建 → live at https://help.dingtalk.io。
 
 仪表盘：https://dashboard.mintlify.com
-
-### 自定义域名 DNS（一次性配置）
-
-在域名服务商（如阿里云 / Cloudflare）添加以下记录：
-
-| Type | Host | Value |
-|---|---|---|
-| CNAME | `help` | `cname.mintlify.builders` |
-| TXT | `_acme-challenge.help` | _（Mintlify Dashboard 提供）_ |
-| TXT | `_cf-custom-hostname.help` | _（Mintlify Dashboard 提供）_ |
-
-完整流程：登录 Dashboard → Settings → Custom Domain → 按页面提示获取 TXT 值。
