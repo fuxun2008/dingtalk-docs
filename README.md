@@ -71,6 +71,18 @@ skill 会以英文母版为模板，在 `zh/` 与 `ja/` 同路径生成翻译占
 - 用 `/commit-flow` skill 自动完成 lint → 暂存 → 生成 message → 提交
 - 暂存用精确 add，**不用** `git add .`
 
+### 面向运营的校对工具
+
+非技术同学校对英文翻译时，不必直接改 mdx，用本地双栏工具即可：
+
+```bash
+cd tools/review
+pnpm install        # 首次
+pnpm dev            # http://localhost:5173
+```
+
+中（参考）+ 英（编辑）双栏对照，双击英文段落 inline 改，ALT+S 写回文件。详见 [`tools/review/README.md`](./tools/review/README.md)。
+
 ## Deployment
 
 ### 自动部署
