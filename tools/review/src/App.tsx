@@ -7,6 +7,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { BlockPane } from './components/BlockPane';
 import { FrontmatterCard } from './components/FrontmatterCard';
 import { SaveBar } from './components/SaveBar';
+import { AlignmentPanel } from './components/AlignmentPanel';
 
 export default function App() {
   const nav = useNavigation();
@@ -70,6 +71,9 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="nav-pane">
+        <div className="nav-pane-toolbar">
+          <AlignmentPanel currentSlug={page.slug} onNavigate={page.navigate} />
+        </div>
         {nav.loading && <div className="nav-pane-placeholder">加载导航中…</div>}
         {nav.error && <div className="nav-pane-placeholder error">{nav.error}</div>}
         {!nav.loading && !nav.error && (

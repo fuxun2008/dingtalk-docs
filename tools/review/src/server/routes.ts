@@ -3,7 +3,7 @@ import { parseAITableNav } from './nav-parse';
 import { readMdx, resolveMdxPath, writeMdxAtomic } from './fs-safe';
 import { parseMdxBlocks, validateMdxSyntax } from './mdx-parse';
 import { parseFrontmatter } from '../shared/frontmatter';
-import type { FrontmatterMeta, Lang, PageBundle, PageContent } from '../shared/types';
+import type { FrontmatterMeta, Lang, NavNode, PageBundle, PageContent } from '../shared/types';
 
 const VALID_LANGS: Lang[] = ['en', 'zh', 'ja'];
 
@@ -76,6 +76,67 @@ export async function handleGetPage(
     json(res, bundle);
   } catch (err) {
     fail(res, 404, err instanceof Error ? err.message : 'page not found');
+  }
+}
+
+interface AlignmentItem {
+  slug: string;
+  titleEn?: string;
+  titleZh?: string;
+  zhCount: number;
+  enCount: number;
+  diff: number;
+  error?: string;
+}
+
+function collectNavMeta(tree: NavNode[]): { slugs: string[]; titles: Map<string, { titleEn?: string; titleZh?: string; missing?: boolean }> } {
+  const slugs: string[] = [];
+  const titles = new Map<string, { titleEn?: string; titleZh?: string; missing?: boolean }>();
+  const walk = (nodes: NavNode[]): void => {
+    for (const n of nodes) {
+      if (n.type === 'page') {
+        slugs.push(n.slug);
+        titles.set(n.slug, { titleEn: n.titleEn, titleZh: n.titleZh, missing: n.missing });
+      } else {
+        walk(n.children);
+      }
+    }
+  };
+  walk(tree);
+  return { slugs, titles };
+}
+
+export async function handleAlignment(repoRoot: string, res: ServerResponse): Promise<void> {
+  try {
+    const tree = parseAITableNav(repoRoot);
+    const { slugs, titles } = collectNavMeta(tree);
+    const items: AlignmentItem[] = [];
+    for (const slug of slugs) {
+      const meta = titles.get(slug) ?? {};
+      if (meta.missing) {
+        items.push({ slug, titleEn: meta.titleEn, titleZh: meta.titleZh, zhCount: 0, enCount: 0, diff: 0, error: 'en mdx 缺失' });
+        continue;
+      }
+      try {
+        const enCount = parseMdxBlocks(readMdx(repoRoot, 'en', slug)).length;
+        const zhCount = parseMdxBlocks(readMdx(repoRoot, 'zh', slug)).length;
+        items.push({ slug, titleEn: meta.titleEn, titleZh: meta.titleZh, zhCount, enCount, diff: zhCount - enCount });
+      } catch (err) {
+        items.push({
+          slug,
+          titleEn: meta.titleEn,
+          titleZh: meta.titleZh,
+          zhCount: 0,
+          enCount: 0,
+          diff: 0,
+          error: err instanceof Error ? err.message : 'parse failed',
+        });
+      }
+    }
+    const mismatches = items.filter((i) => i.diff !== 0 || i.error);
+    json(res, { total: items.length, mismatchCount: mismatches.length, mismatches });
+  } catch (err) {
+    fail(res, 500, err instanceof Error ? err.message : 'alignment scan failed');
   }
 }
 
