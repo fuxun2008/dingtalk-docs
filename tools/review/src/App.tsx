@@ -185,6 +185,7 @@ function PaneContent({ page, side, hoveredIndex, onHover, registerRef }: PaneCon
         hoveredIndex={hoveredIndex}
         onHoverBlock={onHover}
         onCommitBlock={side === 'en' ? page.markDirty : undefined}
+        onRestoreBlock={side === 'en' ? page.unmarkDirty : undefined}
         registerBlockRef={registerRef}
       />
     </>

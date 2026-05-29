@@ -4,6 +4,7 @@ interface InlineEditorProps {
   initialValue: string;
   onCommit: (newValue: string) => void;
   onCancel: () => void;
+  onDelete?: () => void;
 }
 
 interface WrapAction {
@@ -26,8 +27,9 @@ function autosize(el: HTMLTextAreaElement): void {
   el.style.height = `${el.scrollHeight}px`;
 }
 
-export function InlineEditor({ initialValue, onCommit, onCancel }: InlineEditorProps) {
+export function InlineEditor({ initialValue, onCommit, onCancel, onDelete }: InlineEditorProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const suppressBlurRef = useRef(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -54,10 +56,20 @@ export function InlineEditor({ initialValue, onCommit, onCancel }: InlineEditorP
   };
 
   const onBlur = () => {
+    if (suppressBlurRef.current) {
+      suppressBlurRef.current = false;
+      return;
+    }
     if (!ref.current) return;
     const next = ref.current.value;
     if (next === initialValue) onCancel();
     else onCommit(next);
+  };
+
+  const handleDelete = () => {
+    if (!onDelete) return;
+    suppressBlurRef.current = true;
+    onDelete();
   };
 
   const wrap = (action: WrapAction) => {
@@ -94,6 +106,19 @@ export function InlineEditor({ initialValue, onCommit, onCancel }: InlineEditorP
           </button>
         ))}
         <span className="inline-editor-hint">ESC 取消 · ⌘/Ctrl+Enter 确认 · 失焦自动保留</span>
+        {onDelete && (
+          <button
+            type="button"
+            className="inline-editor-tool inline-editor-tool-danger"
+            title="整块删除（标记后可撤销，保存才真正写回）"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleDelete();
+            }}
+          >
+            删除整块
+          </button>
+        )}
       </div>
       <textarea
         ref={ref}
