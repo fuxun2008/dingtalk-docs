@@ -13,7 +13,7 @@
 打开「终端」（Spotlight 搜 Terminal），粘贴以下命令并回车：
 
 ```bash
-curl -fsSL https://gitlab.alibaba-inc.com/dingding/dingtalk-docs/-/raw/master/tools/review/install.sh | bash
+curl -fsSL https://gitlab.alibaba-inc.com/dingding/dingtalk-docs/-/raw/main/tools/review/install.sh | bash
 ```
 
 首次约需 **5–15 分钟**（含下载工具、克隆仓库、安装依赖），脚本会自动：

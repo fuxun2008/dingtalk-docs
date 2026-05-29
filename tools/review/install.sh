@@ -2,7 +2,7 @@
 # DingTalk 文档校对工具 — macOS 一键安装脚本
 #
 # 用法（运营同学）：
-#   curl -fsSL https://gitlab.alibaba-inc.com/dingding/dingtalk-docs/-/raw/master/tools/review/install.sh | bash
+#   curl -fsSL https://gitlab.alibaba-inc.com/dingding/dingtalk-docs/-/raw/main/tools/review/install.sh | bash
 #
 # 说明：脚本会自动检测并按需安装 Xcode CLT、Homebrew、Node.js、pnpm、配置 SSH key、克隆仓库、装依赖、启动服务。
 # 已安装的步骤会自动跳过（幂等）。全程除一次 GitLab 贴 SSH 公钥外无需手动操作。
@@ -210,7 +210,7 @@ else
   ok "已克隆到 ${REPO_DIR}"
 fi
 
-# 兼容：tools/review 当前位于 feat/docs 分支，合并到 master 后此段自动短路
+# 兼容：tools/review 当前位于 feat/docs 分支，合并到 main 后此段自动短路
 if [[ ! -d "${REPO_DIR}/tools/review" ]]; then
   warn "当前分支未找到 tools/review，切换到 feat/docs…"
   cd "${REPO_DIR}"
