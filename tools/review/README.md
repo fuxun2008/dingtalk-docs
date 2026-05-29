@@ -6,33 +6,48 @@
 
 ---
 
-## 给运营的 3 步上手
+## 给运营：零基础一键安装（推荐）
 
-### 1. 首次准备（每人一次）
+**适用：Mac 电脑，没装过 git / Node.js 也没关系。**
+
+打开「终端」（Spotlight 搜 Terminal），粘贴以下命令并回车：
 
 ```bash
-# 1. 装 git（已装跳过）
-# 2. 装 Node.js 18+ 与 pnpm（已装跳过）
-npm i -g pnpm
-
-# 3. clone 仓库
-git clone git@github.com:fuxun2008/dingtalk-docs.git
-cd dingtalk-docs/tools/review
-
-# 4. 装依赖（约 30 秒）
-pnpm install
+curl -fsSL https://gitlab.alibaba-inc.com/dingding/dingtalk-docs/-/raw/master/tools/review/install.sh | bash
 ```
 
-### 2. 每次启动
+首次约需 **5–15 分钟**（含下载工具、克隆仓库、安装依赖），脚本会自动：
+
+1. 检测并安装 Xcode CLT、Homebrew、Node.js、pnpm
+2. 生成 SSH 密钥并打开 GitLab 等你贴一次公钥（**唯一手动步骤**）
+3. 克隆仓库到 `~/dingtalk-docs`
+4. 安装依赖并启动校对工具，浏览器自动打开 `http://localhost:5173`
+5. 在桌面创建「启动校对工具.command」快捷方式
+
+**以后启动**：双击桌面上的 **启动校对工具.command** 即可。
+
+---
+
+## 进阶：手动安装（已熟悉终端的同学）
 
 ```bash
-cd dingtalk-docs/tools/review
+# 1. 装 Node.js 18+ 与 pnpm（已装跳过）
+brew install node && corepack enable && corepack prepare pnpm@latest --activate
+
+# 2. clone 仓库
+git clone git@gitlab.alibaba-inc.com:dingding/dingtalk-docs.git ~/dingtalk-docs
+cd ~/dingtalk-docs/tools/review
+
+# 3. 装依赖并启动
+pnpm install
 pnpm dev
 ```
 
 浏览器自动打开 `http://localhost:5173`，看到三栏界面即就绪。
 
-### 3. 日常校对流程
+---
+
+## 日常校对流程
 
 1. 左侧菜单挑一篇文档 → 中（参考）+ 英（编辑）同时加载
 2. 看到不顺的英文段落 → **双击**进入编辑器
@@ -40,10 +55,10 @@ pnpm dev
 4. 按 **ALT+S**（或右上「保存」按钮）写回磁盘
 5. 改下一段，或按 **↑/↓** 切换上下一篇
 
-### 提交给作者
+## 提交给作者
 
 ```bash
-cd dingtalk-docs
+cd ~/dingtalk-docs
 git diff                 # 看自己改了什么
 git add aitable/...mdx   # 加进暂存（按文件 add，不要 git add .）
 git commit -m "docs: 优化某某章节英文表述。to #82317048"
