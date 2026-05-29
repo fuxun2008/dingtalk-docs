@@ -58,7 +58,12 @@ export function applyEdits({ content, blocks, frontmatter, dirty }: ApplyEditsIn
       skipped.push(key);
       continue;
     }
-    edits.push({ start: block.startOffset, end: block.endOffset, replacement: value, key });
+    let end = block.endOffset;
+    if (value === '') {
+      // 整块删除：连同尾部所有空行一并吃掉，避免留下空行隔离
+      while (end < content.length && content[end] === '\n') end++;
+    }
+    edits.push({ start: block.startOffset, end, replacement: value, key });
     appliedBlockIds.push(key);
   }
 

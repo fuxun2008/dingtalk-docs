@@ -13,6 +13,7 @@ interface BlockPaneProps {
   hoveredIndex: number | null;
   onHoverBlock: (index: number | null) => void;
   onCommitBlock?: (blockId: string, newRaw: string) => void;
+  onRestoreBlock?: (blockId: string) => void;
   registerBlockRef?: (index: number, el: HTMLDivElement | null) => void;
 }
 
@@ -36,6 +37,7 @@ export function BlockPane({
   hoveredIndex,
   onHoverBlock,
   onCommitBlock,
+  onRestoreBlock,
   registerBlockRef,
 }: BlockPaneProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,6 +63,11 @@ export function BlockPane({
               if (newRaw !== block.raw) onCommitBlock?.(block.id, newRaw);
             }}
             onCancel={() => setEditingId(null)}
+            onDelete={onCommitBlock ? () => {
+              setEditingId(null);
+              onCommitBlock(block.id, '');
+            } : undefined}
+            onRestore={onRestoreBlock ? () => onRestoreBlock(block.id) : undefined}
             registerBlockRef={registerBlockRef}
           />
         );
@@ -81,6 +88,8 @@ interface BlockItemProps {
   onEnterEdit?: (blockId: string) => void;
   onCommit: (newRaw: string) => void;
   onCancel: () => void;
+  onDelete?: () => void;
+  onRestore?: () => void;
   registerBlockRef?: (index: number, el: HTMLDivElement | null) => void;
 }
 
@@ -96,15 +105,19 @@ function BlockItem({
   onEnterEdit,
   onCommit,
   onCancel,
+  onDelete,
+  onRestore,
   registerBlockRef,
 }: BlockItemProps) {
   const editableHere = block.editable && side === 'en';
+  const isDeleted = editableHere && isDirty && currentRaw === '';
   const classes = [
     'block-item',
     `block-item-${side}`,
     isHovered ? 'is-hovered' : '',
     isDirty ? 'is-dirty' : '',
     isEditing ? 'is-editing' : '',
+    isDeleted ? 'is-deleted' : '',
     block.editable ? 'is-editable' : 'is-locked',
   ]
     .filter(Boolean)
@@ -118,15 +131,32 @@ function BlockItem({
       data-block-id={block.id}
       onMouseEnter={() => onHover(index)}
       onMouseLeave={() => onHover(null)}
-      onDoubleClick={editableHere && onEnterEdit && !isEditing ? () => onEnterEdit(block.id) : undefined}
-      title={editableHere && !isEditing ? '双击编辑' : undefined}
+      onDoubleClick={editableHere && onEnterEdit && !isEditing && !isDeleted ? () => onEnterEdit(block.id) : undefined}
+      title={editableHere && !isEditing && !isDeleted ? '双击编辑' : undefined}
     >
       {isEditing ? (
-        <InlineEditor initialValue={currentRaw} onCommit={onCommit} onCancel={onCancel} />
+        <InlineEditor initialValue={currentRaw} onCommit={onCommit} onCancel={onCancel} onDelete={onDelete} />
+      ) : isDeleted ? (
+        <DeletedPlaceholder block={block} onRestore={onRestore} />
       ) : block.editable ? (
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentRaw}</ReactMarkdown>
       ) : (
         <ReadonlyContent block={block} />
+      )}
+    </div>
+  );
+}
+
+function DeletedPlaceholder({ block, onRestore }: { block: Block; onRestore?: () => void }) {
+  const preview = block.raw.split('\n')[0].slice(0, 80);
+  return (
+    <div className="deleted-placeholder">
+      <div className="deleted-placeholder-tag">已标记删除 · 保存后写回</div>
+      <div className="deleted-placeholder-preview" title={block.raw}>{preview}</div>
+      {onRestore && (
+        <button type="button" className="deleted-placeholder-restore" onClick={onRestore}>
+          撤销
+        </button>
       )}
     </div>
   );

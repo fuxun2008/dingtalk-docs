@@ -14,6 +14,7 @@ interface PageState {
   saveError: string | null;
   navigate: (target: string) => void;
   markDirty: (blockId: string, newRaw: string) => void;
+  unmarkDirty: (blockId: string) => void;
   clearDirty: () => void;
   confirmDiscard: () => void;
   confirmSave: () => Promise<void>;
@@ -119,6 +120,15 @@ export function usePageState(): PageState {
     });
   }, []);
 
+  const unmarkDirty = useCallback((blockId: string) => {
+    setDirty((prev) => {
+      if (!prev.has(blockId)) return prev;
+      const next = new Map(prev);
+      next.delete(blockId);
+      return next;
+    });
+  }, []);
+
   const clearDirty = useCallback(() => setDirty(new Map()), []);
 
   const confirmDiscard = useCallback(() => {
@@ -188,6 +198,7 @@ export function usePageState(): PageState {
     saveError,
     navigate,
     markDirty,
+    unmarkDirty,
     clearDirty,
     confirmDiscard,
     confirmSave,
