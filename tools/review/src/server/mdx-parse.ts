@@ -29,11 +29,20 @@ function mapType(astType: string): BlockType {
 interface AstNode {
   type: string;
   depth?: number;
+  value?: string;
+  children?: AstNode[];
   position?: { start: { offset?: number }; end: { offset?: number } };
 }
 
 interface AstRoot {
   children: AstNode[];
+}
+
+function isImageOnlyParagraph(node: AstNode): boolean {
+  if (node.type !== 'paragraph' || !node.children?.length) return false;
+  return node.children.every(
+    (c) => c.type === 'image' || (c.type === 'text' && /^\s*$/.test(c.value ?? '')),
+  );
 }
 
 export function parseMdxBlocks(content: string): Block[] {
@@ -51,13 +60,14 @@ export function parseMdxBlocks(content: string): Block[] {
     const end = node.position?.end?.offset;
     if (start === undefined || end === undefined) continue;
     const type = mapType(node.type);
+    const imageOnly = type === 'paragraph' && isImageOnlyParagraph(node);
     blocks.push({
       id: nanoid(8),
       type,
       raw: content.slice(start, end),
       startOffset: start,
       endOffset: end,
-      editable: EDITABLE_TYPES.has(type),
+      editable: EDITABLE_TYPES.has(type) && !imageOnly,
       depth: type === 'heading' ? node.depth : undefined,
     });
   }

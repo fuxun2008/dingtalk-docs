@@ -162,7 +162,42 @@ function DeletedPlaceholder({ block, onRestore }: { block: Block; onRestore?: ()
   );
 }
 
+const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
+const VIDEO_TAG_RE = /^<video\s+([^>]*?)\/?\s*>(?:\s*<\/video>)?\s*$/i;
+const IMG_TAG_RE = /^<img\s+([^>]*?)\/?\s*>\s*$/i;
+
 function ReadonlyContent({ block }: { block: Block }) {
+  const trimmed = block.raw.trim();
+
+  if (block.type === 'paragraph' && IMAGE_ONLY_RE.test(trimmed)) {
+    return (
+      <div className="readonly-content readonly-content-media">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.raw}</ReactMarkdown>
+      </div>
+    );
+  }
+
+  if (block.type === 'mdxJsxFlow') {
+    const videoMatch = trimmed.match(VIDEO_TAG_RE);
+    if (videoMatch) {
+      return (
+        <div
+          className="readonly-content readonly-content-media"
+          dangerouslySetInnerHTML={{ __html: `<video ${videoMatch[1]}></video>` }}
+        />
+      );
+    }
+    const imgMatch = trimmed.match(IMG_TAG_RE);
+    if (imgMatch) {
+      return (
+        <div
+          className="readonly-content readonly-content-media"
+          dangerouslySetInnerHTML={{ __html: `<img ${imgMatch[1]}/>` }}
+        />
+      );
+    }
+  }
+
   const label = READONLY_LABEL[block.type] ?? block.type;
   const preview = block.raw.length > 400 ? block.raw.slice(0, 400) + '…' : block.raw;
   return (
