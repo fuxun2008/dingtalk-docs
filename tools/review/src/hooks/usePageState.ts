@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { nanoid } from 'nanoid';
 import type { PageBundle } from '../shared/types';
-import { applyEdits } from '../lib/apply-edits';
+import { applyEdits, type PendingInsert } from '../lib/apply-edits';
 
 interface PageState {
   slug: string | null;
@@ -8,13 +9,17 @@ interface PageState {
   loading: boolean;
   error: string | null;
   dirty: Map<string, string>;
+  inserts: Map<string, PendingInsert>;
   isDirty: boolean;
+  dirtyCount: number;
   pendingTarget: string | null;
   saving: boolean;
   saveError: string | null;
   navigate: (target: string) => void;
   markDirty: (blockId: string, newRaw: string) => void;
   unmarkDirty: (blockId: string) => void;
+  insertBlock: (afterBlockId: string, raw: string) => string;
+  removeInsert: (insertId: string) => void;
   clearDirty: () => void;
   confirmDiscard: () => void;
   confirmSave: () => Promise<void>;
@@ -48,6 +53,8 @@ export function usePageState(): PageState {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState<Map<string, string>>(new Map());
+  const [inserts, setInserts] = useState<Map<string, PendingInsert>>(new Map());
+  const insertSeqRef = useRef(0);
   const [pendingTarget, setPendingTarget] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -60,6 +67,7 @@ export function usePageState(): PageState {
       setBundle(data);
       setSlug(target);
       setDirty(new Map());
+      setInserts(new Map());
       writeHashSlug(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'load failed');
@@ -73,11 +81,13 @@ export function usePageState(): PageState {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const dirtyCount = dirty.size + inserts.size;
+
   useEffect(() => {
     const onHashChange = () => {
       const next = readHashSlug();
       if (next && next !== slug) {
-        if (dirty.size > 0) {
+        if (dirtyCount > 0) {
           setPendingTarget(next);
           writeHashSlug(slug ?? '');
         } else {
@@ -87,29 +97,29 @@ export function usePageState(): PageState {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, [slug, dirty.size, loadPage]);
+  }, [slug, dirtyCount, loadPage]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (dirty.size > 0) {
+      if (dirtyCount > 0) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [dirty.size]);
+  }, [dirtyCount]);
 
   const navigate = useCallback(
     (target: string) => {
       if (target === slug) return;
-      if (dirty.size === 0) {
+      if (dirtyCount === 0) {
         loadPage(target);
       } else {
         setPendingTarget(target);
       }
     },
-    [slug, dirty.size, loadPage],
+    [slug, dirtyCount, loadPage],
   );
 
   const markDirty = useCallback((blockId: string, newRaw: string) => {
@@ -129,18 +139,43 @@ export function usePageState(): PageState {
     });
   }, []);
 
-  const clearDirty = useCallback(() => setDirty(new Map()), []);
+  const insertBlock = useCallback((afterBlockId: string, raw: string): string => {
+    const id = `__insert_${nanoid(8)}`;
+    insertSeqRef.current += 1;
+    const seq = insertSeqRef.current;
+    setInserts((prev) => {
+      const next = new Map(prev);
+      next.set(id, { afterBlockId, raw, seq });
+      return next;
+    });
+    return id;
+  }, []);
+
+  const removeInsert = useCallback((insertId: string) => {
+    setInserts((prev) => {
+      if (!prev.has(insertId)) return prev;
+      const next = new Map(prev);
+      next.delete(insertId);
+      return next;
+    });
+  }, []);
+
+  const clearDirty = useCallback(() => {
+    setDirty(new Map());
+    setInserts(new Map());
+  }, []);
 
   const confirmDiscard = useCallback(() => {
     if (!pendingTarget) return;
     const target = pendingTarget;
     setPendingTarget(null);
     setDirty(new Map());
+    setInserts(new Map());
     loadPage(target);
   }, [pendingTarget, loadPage]);
 
   const save = useCallback(async (): Promise<boolean> => {
-    if (!slug || !bundle || dirty.size === 0) return true;
+    if (!slug || !bundle || dirtyCount === 0) return true;
     setSaving(true);
     setSaveError(null);
     try {
@@ -150,6 +185,7 @@ export function usePageState(): PageState {
         blocks: en.blocks,
         frontmatter: en.frontmatter,
         dirty,
+        inserts,
       });
       if (skipped.length > 0) throw new Error(`无法定位的修改：${skipped.join(', ')}`);
       const r = await fetch('/api/page', {
@@ -162,6 +198,7 @@ export function usePageState(): PageState {
       const fresh = await fetchPage(slug);
       setBundle(fresh);
       setDirty(new Map());
+      setInserts(new Map());
       return true;
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'save failed');
@@ -169,7 +206,7 @@ export function usePageState(): PageState {
     } finally {
       setSaving(false);
     }
-  }, [slug, bundle, dirty]);
+  }, [slug, bundle, dirty, inserts, dirtyCount]);
 
   const confirmSave = useCallback(async () => {
     if (!pendingTarget) return;
@@ -192,13 +229,17 @@ export function usePageState(): PageState {
     loading,
     error,
     dirty,
-    isDirty: dirty.size > 0,
+    inserts,
+    isDirty: dirtyCount > 0,
+    dirtyCount,
     pendingTarget,
     saving,
     saveError,
     navigate,
     markDirty,
     unmarkDirty,
+    insertBlock,
+    removeInsert,
     clearDirty,
     confirmDiscard,
     confirmSave,
