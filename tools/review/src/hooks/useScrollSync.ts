@@ -8,6 +8,8 @@ interface UseScrollSyncOptions {
   leftBlocks: RefObject<RefMap>;
   rightBlocks: RefObject<RefMap>;
   enabled: boolean;
+  alignLeftToRight?: (leftIndex: number) => number | null;
+  alignRightToLeft?: (rightIndex: number) => number | null;
 }
 
 function findTopVisibleIndex(container: HTMLDivElement, blocks: RefMap): { index: number; offset: number } | null {
@@ -24,9 +26,23 @@ function findTopVisibleIndex(container: HTMLDivElement, blocks: RefMap): { index
   return best;
 }
 
-export function useScrollSync({ leftBody, rightBody, leftBlocks, rightBlocks, enabled }: UseScrollSyncOptions) {
+export function useScrollSync({
+  leftBody,
+  rightBody,
+  leftBlocks,
+  rightBlocks,
+  enabled,
+  alignLeftToRight,
+  alignRightToLeft,
+}: UseScrollSyncOptions) {
   const lock = useRef<'left' | 'right' | null>(null);
   const releaseTimer = useRef<number | null>(null);
+  const alignerRef = useRef<{
+    l2r?: (i: number) => number | null;
+    r2l?: (i: number) => number | null;
+  }>({});
+  alignerRef.current.l2r = alignLeftToRight;
+  alignerRef.current.r2l = alignRightToLeft;
 
   useEffect(() => {
     if (!enabled) return;
@@ -51,7 +67,10 @@ export function useScrollSync({ leftBody, rightBody, leftBlocks, rightBlocks, en
 
       const top = findTopVisibleIndex(source, sourceBlocks);
       if (!top) return;
-      const targetEl = targetBlocks.get(top.index);
+      const aligner = from === 'left' ? alignerRef.current.l2r : alignerRef.current.r2l;
+      const targetIdx = aligner ? aligner(top.index) : top.index;
+      if (targetIdx === null) return;
+      const targetEl = targetBlocks.get(targetIdx);
       if (!targetEl) return;
 
       const targetCurrentTop = targetEl.getBoundingClientRect().top - target.getBoundingClientRect().top;

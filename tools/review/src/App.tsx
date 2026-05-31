@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigation } from './hooks/useNavigation';
 import { usePageState } from './hooks/usePageState';
 import { useScrollSync } from './hooks/useScrollSync';
@@ -9,17 +9,59 @@ import { FrontmatterCard } from './components/FrontmatterCard';
 import { SaveBar } from './components/SaveBar';
 import { AlignmentPanel } from './components/AlignmentPanel';
 import { InsertBlockDialog, type InsertKind } from './components/InsertBlockDialog';
+import { computeAlignment, type BlockAlignment } from './lib/align-blocks';
 
 interface InsertDialogState {
   kind: InsertKind;
   afterBlockId: string;
 }
 
+type Side = 'zh' | 'en';
+
+interface HoverState {
+  side: Side;
+  index: number;
+}
+
+const EMPTY_ALIGNMENT: BlockAlignment = { zhToEn: new Map(), enToZh: new Map() };
+
+function peerIndex(alignment: BlockAlignment, hovered: HoverState, side: Side): number | null {
+  if (hovered.side === side) return hovered.index;
+  const map = side === 'en' ? alignment.zhToEn : alignment.enToZh;
+  return map.get(hovered.index) ?? null;
+}
+
 export default function App() {
   const nav = useNavigation();
   const page = usePageState();
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<HoverState | null>(null);
   const [insertDialog, setInsertDialog] = useState<InsertDialogState | null>(null);
+
+  const alignment = useMemo<BlockAlignment>(() => {
+    if (!page.bundle) return EMPTY_ALIGNMENT;
+    return computeAlignment(page.bundle.zh.blocks, page.bundle.en.blocks);
+  }, [page.bundle]);
+
+  const zhHoverIndex = hovered ? peerIndex(alignment, hovered, 'zh') : null;
+  const enHoverIndex = hovered ? peerIndex(alignment, hovered, 'en') : null;
+
+  const onHoverZh = useCallback(
+    (idx: number | null) => setHovered(idx === null ? null : { side: 'zh', index: idx }),
+    [],
+  );
+  const onHoverEn = useCallback(
+    (idx: number | null) => setHovered(idx === null ? null : { side: 'en', index: idx }),
+    [],
+  );
+
+  const alignLeftToRight = useCallback(
+    (i: number) => alignment.zhToEn.get(i) ?? null,
+    [alignment],
+  );
+  const alignRightToLeft = useCallback(
+    (i: number) => alignment.enToZh.get(i) ?? null,
+    [alignment],
+  );
 
   const openInsertDialog = (kind: InsertKind, afterBlockId: string) => {
     setInsertDialog({ kind, afterBlockId });
@@ -42,12 +84,14 @@ export default function App() {
     leftBlocks: zhRefs,
     rightBlocks: enRefs,
     enabled: !!page.bundle,
+    alignLeftToRight,
+    alignRightToLeft,
   });
 
   useEffect(() => {
     zhRefs.current.clear();
     enRefs.current.clear();
-    setHoveredIndex(null);
+    setHovered(null);
     if (zhBodyRef.current) zhBodyRef.current.scrollTop = 0;
     if (enBodyRef.current) enBodyRef.current.scrollTop = 0;
   }, [page.slug]);
@@ -112,8 +156,8 @@ export default function App() {
           <PaneContent
             page={page}
             side="zh"
-            hoveredIndex={hoveredIndex}
-            onHover={setHoveredIndex}
+            hoveredIndex={zhHoverIndex}
+            onHover={onHoverZh}
             registerRef={registerZhRef}
           />
         </PaneShell>
@@ -133,8 +177,8 @@ export default function App() {
           <PaneContent
             page={page}
             side="en"
-            hoveredIndex={hoveredIndex}
-            onHover={setHoveredIndex}
+            hoveredIndex={enHoverIndex}
+            onHover={onHoverEn}
             registerRef={registerEnRef}
             onOpenInsertDialog={openInsertDialog}
           />
