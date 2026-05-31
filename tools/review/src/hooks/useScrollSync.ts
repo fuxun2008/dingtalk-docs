@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 type RefMap = Map<number, HTMLDivElement>;
 
@@ -10,6 +10,10 @@ interface UseScrollSyncOptions {
   enabled: boolean;
   alignLeftToRight?: (leftIndex: number) => number | null;
   alignRightToLeft?: (rightIndex: number) => number | null;
+}
+
+export interface ScrollSyncControls {
+  suspendSync: (side: 'left' | 'right', ms?: number) => void;
 }
 
 function findTopVisibleIndex(container: HTMLDivElement, blocks: RefMap): { index: number; offset: number } | null {
@@ -34,7 +38,7 @@ export function useScrollSync({
   enabled,
   alignLeftToRight,
   alignRightToLeft,
-}: UseScrollSyncOptions) {
+}: UseScrollSyncOptions): ScrollSyncControls {
   const lock = useRef<'left' | 'right' | null>(null);
   const releaseTimer = useRef<number | null>(null);
   const alignerRef = useRef<{
@@ -43,6 +47,15 @@ export function useScrollSync({
   }>({});
   alignerRef.current.l2r = alignLeftToRight;
   alignerRef.current.r2l = alignRightToLeft;
+
+  const suspendSync = useCallback((side: 'left' | 'right', ms: number = 500) => {
+    lock.current = side;
+    if (releaseTimer.current !== null) window.clearTimeout(releaseTimer.current);
+    releaseTimer.current = window.setTimeout(() => {
+      lock.current = null;
+      releaseTimer.current = null;
+    }, ms);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -99,4 +112,6 @@ export function useScrollSync({
       if (releaseTimer.current !== null) window.clearTimeout(releaseTimer.current);
     };
   }, [enabled, leftBody, rightBody, leftBlocks, rightBlocks]);
+
+  return { suspendSync };
 }
