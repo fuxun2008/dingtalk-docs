@@ -8,11 +8,28 @@ import { BlockPane } from './components/BlockPane';
 import { FrontmatterCard } from './components/FrontmatterCard';
 import { SaveBar } from './components/SaveBar';
 import { AlignmentPanel } from './components/AlignmentPanel';
+import { InsertBlockDialog, type InsertKind } from './components/InsertBlockDialog';
+
+interface InsertDialogState {
+  kind: InsertKind;
+  afterBlockId: string;
+}
 
 export default function App() {
   const nav = useNavigation();
   const page = usePageState();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [insertDialog, setInsertDialog] = useState<InsertDialogState | null>(null);
+
+  const openInsertDialog = (kind: InsertKind, afterBlockId: string) => {
+    setInsertDialog({ kind, afterBlockId });
+  };
+  const handleInsertSubmit = (raw: string) => {
+    if (!insertDialog) return;
+    page.insertBlock(insertDialog.afterBlockId, raw);
+    setInsertDialog(null);
+  };
+  const closeInsertDialog = () => setInsertDialog(null);
 
   const zhBodyRef = useRef<HTMLDivElement>(null);
   const enBodyRef = useRef<HTMLDivElement>(null);
@@ -106,7 +123,7 @@ export default function App() {
           bodyRef={enBodyRef}
           headerExtra={
             <SaveBar
-              dirtyCount={page.dirty.size}
+              dirtyCount={page.dirtyCount}
               saving={page.saving}
               error={page.saveError}
               onSave={() => { page.save(); }}
@@ -119,17 +136,25 @@ export default function App() {
             hoveredIndex={hoveredIndex}
             onHover={setHoveredIndex}
             registerRef={registerEnRef}
+            onOpenInsertDialog={openInsertDialog}
           />
         </PaneShell>
       </main>
 
       <ConfirmDialog
         open={!!page.pendingTarget}
-        title={`当前页有 ${page.dirty.size} 处未保存修改`}
+        title={`当前页有 ${page.dirtyCount} 处未保存修改`}
         message={`切换到「${page.pendingTarget ?? ''}」前，请选择如何处理这些修改。`}
         onSave={page.confirmSave}
         onDiscard={page.confirmDiscard}
         onCancel={page.cancelNavigate}
+      />
+
+      <InsertBlockDialog
+        open={!!insertDialog}
+        kind={insertDialog?.kind ?? 'image'}
+        onSubmit={handleInsertSubmit}
+        onCancel={closeInsertDialog}
       />
     </div>
   );
@@ -163,9 +188,10 @@ interface PaneContentProps {
   hoveredIndex: number | null;
   onHover: (index: number | null) => void;
   registerRef: (index: number, el: HTMLDivElement | null) => void;
+  onOpenInsertDialog?: (kind: InsertKind, afterBlockId: string) => void;
 }
 
-function PaneContent({ page, side, hoveredIndex, onHover, registerRef }: PaneContentProps) {
+function PaneContent({ page, side, hoveredIndex, onHover, registerRef, onOpenInsertDialog }: PaneContentProps) {
   if (page.loading) return <div className="pane-placeholder">加载中…</div>;
   if (page.error) return <div className="pane-placeholder error">{page.error}</div>;
   if (!page.slug || !page.bundle) return <div className="pane-placeholder">从左侧选择文件开始校对</div>;
@@ -182,10 +208,13 @@ function PaneContent({ page, side, hoveredIndex, onHover, registerRef }: PaneCon
         blocks={content.blocks}
         side={side}
         dirty={page.dirty}
+        inserts={side === 'en' ? page.inserts : undefined}
         hoveredIndex={hoveredIndex}
         onHoverBlock={onHover}
         onCommitBlock={side === 'en' ? page.markDirty : undefined}
         onRestoreBlock={side === 'en' ? page.unmarkDirty : undefined}
+        onOpenInsertDialog={side === 'en' ? onOpenInsertDialog : undefined}
+        onRemoveInsert={side === 'en' ? page.removeInsert : undefined}
         registerBlockRef={registerRef}
       />
     </>
