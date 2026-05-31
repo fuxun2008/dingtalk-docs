@@ -1,0 +1,163 @@
+import type { Block, BlockType } from '../shared/types';
+
+export interface BlockAlignment {
+  zhToEn: Map<number, number>;
+  enToZh: Map<number, number>;
+}
+
+const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
+const VIDEO_TAG_RE = /^<video\b/i;
+const IMG_TAG_RE = /^<img\b/i;
+
+const SKIP_FOR_ALIGN: Set<BlockType> = new Set(['frontmatter']);
+
+function isMediaBlock(block: Block): boolean {
+  const trimmed = block.raw.trim();
+  if (block.type === 'paragraph') return IMAGE_ONLY_RE.test(trimmed);
+  if (block.type === 'mdxJsxFlow') return VIDEO_TAG_RE.test(trimmed) || IMG_TAG_RE.test(trimmed);
+  return false;
+}
+
+interface IndexedBlock {
+  index: number;
+  block: Block;
+}
+
+interface HeadingEntry {
+  index: number;
+  depth: number;
+}
+
+function pickAlignable(blocks: Block[]): IndexedBlock[] {
+  const result: IndexedBlock[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    if (SKIP_FOR_ALIGN.has(b.type)) continue;
+    if (isMediaBlock(b)) continue;
+    result.push({ index: i, block: b });
+  }
+  return result;
+}
+
+function extractHeadings(items: IndexedBlock[]): HeadingEntry[] {
+  const out: HeadingEntry[] = [];
+  for (const it of items) {
+    if (it.block.type === 'heading') {
+      out.push({ index: it.index, depth: it.block.depth ?? 0 });
+    }
+  }
+  return out;
+}
+
+function depthsEqual(a: HeadingEntry[], b: HeadingEntry[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i].depth !== b[i].depth) return false;
+  return true;
+}
+
+// Standard LCS over depth equality; returns pairs of indices into the input arrays.
+function lcsHeadingPairs(zh: HeadingEntry[], en: HeadingEntry[]): Array<[number, number]> {
+  const m = zh.length;
+  const n = en.length;
+  if (m === 0 || n === 0) return [];
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = zh[i - 1].depth === en[j - 1].depth
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  const pairs: Array<[number, number]> = [];
+  let i = m;
+  let j = n;
+  while (i > 0 && j > 0) {
+    if (zh[i - 1].depth === en[j - 1].depth) {
+      pairs.push([i - 1, j - 1]);
+      i--; j--;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+  return pairs.reverse();
+}
+
+function pairHeadings(zh: HeadingEntry[], en: HeadingEntry[]): Array<[HeadingEntry, HeadingEntry]> {
+  if (depthsEqual(zh, en)) {
+    return zh.map((z, i) => [z, en[i]] as [HeadingEntry, HeadingEntry]);
+  }
+  return lcsHeadingPairs(zh, en).map(([zi, ei]) => [zh[zi], en[ei]] as [HeadingEntry, HeadingEntry]);
+}
+
+// Pair non-heading items inside [zhStart, zhEnd) × [enStart, enEnd) by order; shorter side wins.
+function pairSection(
+  zhItems: IndexedBlock[],
+  enItems: IndexedBlock[],
+  zhStart: number,
+  zhEnd: number,
+  enStart: number,
+  enEnd: number,
+  out: Array<[number, number]>,
+): void {
+  const zhSlice: IndexedBlock[] = [];
+  for (let i = zhStart; i < zhEnd; i++) {
+    if (zhItems[i].block.type !== 'heading') zhSlice.push(zhItems[i]);
+  }
+  const enSlice: IndexedBlock[] = [];
+  for (let j = enStart; j < enEnd; j++) {
+    if (enItems[j].block.type !== 'heading') enSlice.push(enItems[j]);
+  }
+  const len = Math.min(zhSlice.length, enSlice.length);
+  for (let k = 0; k < len; k++) {
+    out.push([zhSlice[k].index, enSlice[k].index]);
+  }
+}
+
+export function computeAlignment(zhBlocks: Block[], enBlocks: Block[]): BlockAlignment {
+  const zhToEn = new Map<number, number>();
+  const enToZh = new Map<number, number>();
+
+  const zhItems = pickAlignable(zhBlocks);
+  const enItems = pickAlignable(enBlocks);
+  if (zhItems.length === 0 || enItems.length === 0) return { zhToEn, enToZh };
+
+  const zhHeadings = extractHeadings(zhItems);
+  const enHeadings = extractHeadings(enItems);
+  const headingPairs = pairHeadings(zhHeadings, enHeadings);
+
+  const pairs: Array<[number, number]> = [];
+
+  // Build section ranges over the items arrays using matched headings as anchors.
+  // Anchor positions are item-array indices.
+  const findItemIdx = (items: IndexedBlock[], originalIndex: number): number => {
+    for (let i = 0; i < items.length; i++) if (items[i].index === originalIndex) return i;
+    return -1;
+  };
+
+  let prevZhAnchor = -1;
+  let prevEnAnchor = -1;
+  for (const [zh, en] of headingPairs) {
+    const zhAnchorIdx = findItemIdx(zhItems, zh.index);
+    const enAnchorIdx = findItemIdx(enItems, en.index);
+    if (zhAnchorIdx < 0 || enAnchorIdx < 0) continue;
+
+    // Section before this anchor pair.
+    pairSection(zhItems, enItems, prevZhAnchor + 1, zhAnchorIdx, prevEnAnchor + 1, enAnchorIdx, pairs);
+    // The heading itself.
+    pairs.push([zh.index, en.index]);
+
+    prevZhAnchor = zhAnchorIdx;
+    prevEnAnchor = enAnchorIdx;
+  }
+
+  // Tail section after the last matched pair.
+  pairSection(zhItems, enItems, prevZhAnchor + 1, zhItems.length, prevEnAnchor + 1, enItems.length, pairs);
+
+  for (const [zi, ei] of pairs) {
+    zhToEn.set(zi, ei);
+    enToZh.set(ei, zi);
+  }
+  return { zhToEn, enToZh };
+}
