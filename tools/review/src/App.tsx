@@ -78,7 +78,7 @@ export default function App() {
   const zhRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const enRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  useScrollSync({
+  const { suspendSync } = useScrollSync({
     leftBody: zhBodyRef,
     rightBody: enBodyRef,
     leftBlocks: zhRefs,
@@ -87,6 +87,32 @@ export default function App() {
     alignLeftToRight,
     alignRightToLeft,
   });
+
+  useEffect(() => {
+    if (!hovered) return;
+    const handle = window.setTimeout(() => {
+      const srcSide: Side = hovered.side;
+      const peerSide: Side = srcSide === 'zh' ? 'en' : 'zh';
+      const peerIdx = peerIndex(alignment, hovered, peerSide);
+      if (peerIdx === null) return;
+      const srcRefs = srcSide === 'zh' ? zhRefs : enRefs;
+      const peerRefs = peerSide === 'zh' ? zhRefs : enRefs;
+      const srcBody = srcSide === 'zh' ? zhBodyRef : enBodyRef;
+      const peerBody = peerSide === 'zh' ? zhBodyRef : enBodyRef;
+      const srcEl = srcRefs.current.get(hovered.index);
+      const peerEl = peerRefs.current.get(peerIdx);
+      const srcBodyEl = srcBody.current;
+      const peerBodyEl = peerBody.current;
+      if (!srcEl || !peerEl || !srcBodyEl || !peerBodyEl) return;
+      const srcTop = srcEl.getBoundingClientRect().top - srcBodyEl.getBoundingClientRect().top;
+      const peerTop = peerEl.getBoundingClientRect().top - peerBodyEl.getBoundingClientRect().top;
+      const delta = peerTop - srcTop;
+      if (Math.abs(delta) < 8) return;
+      suspendSync(peerSide === 'zh' ? 'left' : 'right', 500);
+      peerBodyEl.scrollTo({ top: peerBodyEl.scrollTop + delta, behavior: 'smooth' });
+    }, 150);
+    return () => window.clearTimeout(handle);
+  }, [hovered, alignment, suspendSync]);
 
   useEffect(() => {
     zhRefs.current.clear();
