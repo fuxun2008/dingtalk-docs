@@ -53,6 +53,17 @@ const READONLY_LABEL: Partial<Record<BlockType, string>> = {
 
 const SKIP_TYPES: Set<BlockType> = new Set(['frontmatter']);
 
+const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
+const VIDEO_TAG_RE = /^<video\s+([^>]*?)\/?\s*>(?:\s*<\/video>)?\s*$/i;
+const IMG_TAG_RE = /^<img\s+([^>]*?)\/?\s*>\s*$/i;
+
+function isMediaBlock(block: Block): boolean {
+  const trimmed = block.raw.trim();
+  if (block.type === 'paragraph') return IMAGE_ONLY_RE.test(trimmed);
+  if (block.type === 'mdxJsxFlow') return VIDEO_TAG_RE.test(trimmed) || IMG_TAG_RE.test(trimmed);
+  return false;
+}
+
 export function BlockPane({
   blocks,
   side,
@@ -153,7 +164,9 @@ function BlockItem({
   registerBlockRef,
 }: BlockItemProps) {
   const editableHere = block.editable && side === 'en';
-  const isDeleted = editableHere && isDirty && currentRaw === '';
+  const isMedia = isMediaBlock(block);
+  const mediaDeletable = side === 'en' && !block.editable && isMedia && !!onDelete;
+  const isDeleted = (editableHere || mediaDeletable) && isDirty && currentRaw === '';
   const classes = [
     'block-item',
     `block-item-${side}`,
@@ -184,7 +197,7 @@ function BlockItem({
       ) : block.editable ? (
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentRaw}</ReactMarkdown>
       ) : (
-        <ReadonlyContent block={block} />
+        <ReadonlyContent block={block} onDelete={mediaDeletable ? onDelete : undefined} />
       )}
     </div>
   );
@@ -205,17 +218,28 @@ function DeletedPlaceholder({ block, onRestore }: { block: Block; onRestore?: ()
   );
 }
 
-const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
-const VIDEO_TAG_RE = /^<video\s+([^>]*?)\/?\s*>(?:\s*<\/video>)?\s*$/i;
-const IMG_TAG_RE = /^<img\s+([^>]*?)\/?\s*>\s*$/i;
+function MediaDeleteButton({ onDelete, label }: { onDelete: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      className="readonly-content-delete"
+      onClick={onDelete}
+      title={label}
+      aria-label={label}
+    >
+      删除
+    </button>
+  );
+}
 
-function ReadonlyContent({ block }: { block: Block }) {
+function ReadonlyContent({ block, onDelete }: { block: Block; onDelete?: () => void }) {
   const trimmed = block.raw.trim();
 
   if (block.type === 'paragraph' && IMAGE_ONLY_RE.test(trimmed)) {
     return (
       <div className="readonly-content readonly-content-media">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.raw}</ReactMarkdown>
+        {onDelete && <MediaDeleteButton onDelete={onDelete} label="删除此图片" />}
       </div>
     );
   }
@@ -224,19 +248,19 @@ function ReadonlyContent({ block }: { block: Block }) {
     const videoMatch = trimmed.match(VIDEO_TAG_RE);
     if (videoMatch) {
       return (
-        <div
-          className="readonly-content readonly-content-media"
-          dangerouslySetInnerHTML={{ __html: `<video ${videoMatch[1]}></video>` }}
-        />
+        <div className="readonly-content readonly-content-media">
+          <div dangerouslySetInnerHTML={{ __html: `<video ${videoMatch[1]}></video>` }} />
+          {onDelete && <MediaDeleteButton onDelete={onDelete} label="删除此视频" />}
+        </div>
       );
     }
     const imgMatch = trimmed.match(IMG_TAG_RE);
     if (imgMatch) {
       return (
-        <div
-          className="readonly-content readonly-content-media"
-          dangerouslySetInnerHTML={{ __html: `<img ${imgMatch[1]}/>` }}
-        />
+        <div className="readonly-content readonly-content-media">
+          <div dangerouslySetInnerHTML={{ __html: `<img ${imgMatch[1]}/>` }} />
+          {onDelete && <MediaDeleteButton onDelete={onDelete} label="删除此图片" />}
+        </div>
       );
     }
   }
