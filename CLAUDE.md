@@ -75,16 +75,23 @@ git push origin main
 │   ├── quickstart.mdx
 │   ├── guides/overview.mdx
 │   ├── aitable/...
-│   └── docs/...           占位 mdx：frontmatter + TODO 注释；本次 PR 未在 docs.json 加 ja 块
-├── scripts/               导入与翻译脚本（import_archive.py / translate_chapter_api.py / glossary_sync.py 等）
-│   ├── glossary/          翻译词库分层
-│   │   ├── import/        语言同学的官方词库 csv 源（.numbers 已 gitignore）
-│   │   ├── official/      规范化后的 zh-en / zh-ja / conflicts json
-│   │   ├── local-supplements.md   官方未覆盖的 AI Table 专项术语 + 风格指南
-│   │   ├── zh-en.json     最终消费产物（official + 本地补充合并）
+│   └── docs/...           15 个 group 同 en（2026-06-02 已全量翻译；docs.json 已注册 ja `ドキュメント` tab）
+├── scripts/               导入 / 翻译 / 词库 / 一次性工具脚本
+│   ├── import_archive.py            历史归档 docx 批量导入
+│   ├── translate_chapter_api.py     单篇 mdx 翻译（早期版，按章节）
+│   ├── translate_mdx_batch.py       【批量翻译核心】zh/<root>/ → <root>/(en) 或 ja/<root>/(ja)；走 `claude -p --bare` 子进程，词库强约束 + 图视频剥离 + 断点续跑；详见 memory `project_docs_translation_batch1`
+│   ├── register_ja_docs_navigation.py  一次性脚本：把 zh `文档` tab 镜像为 ja `ドキュメント` tab 注入 docs.json（含 60+ 条中→日 group 名映射表）
+│   ├── glossary_sync.py             词库合并器（official + local-supplements → zh-en.json / zh-ja.json）
+│   ├── glossary/                    翻译词库分层
+│   │   ├── import/                  语言同学的官方词库 csv 源（.numbers 已 gitignore）
+│   │   ├── official/                规范化后的 zh-en / zh-ja / conflicts json
+│   │   ├── local-supplements.md     官方未覆盖的 AI Table / DingTalk Docs 专项术语 + 风格指南
+│   │   ├── zh-en.json               最终消费产物（official + 本地补充合并）
 │   │   ├── zh-ja.json
 │   │   └── merge-report.md
-│   └── output/import/     导入产物：slug-map / link-map / nav-fragment-{group}.json / report-{group}.md
+│   └── output/
+│       ├── import/                  导入产物：slug-map / link-map / nav-fragment-{group}.json / report-{group}.md
+│       └── translate_docs/<lang>/   翻译批次产物：report.json / report.md（每篇 elapsed / token / cost / hit_terms）
 ├── logo/                  本地 logo 兜底目录（当前用远程 alicdn SVG）
 ├── .claude/commands/      项目级 skill 定义
 ├── .gitignore
