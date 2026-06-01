@@ -104,6 +104,78 @@
 | 企业版 | Business plan | Businessプラン | |
 | 旗舰版 | Enterprise plan | Enterpriseプラン | |
 
+## DingTalk Docs 专项术语（产品名 / 子品牌）
+
+| 中文 | 英文 | 日文 | 备注 |
+|---|---|---|---|
+| 钉钉文档 | DingTalk Docs | DingTalk Docs | 文档子产品的品牌名；不译为 ドキュメント |
+| 钉钉表格 | DingTalk Spreadsheet | DingTalk Spreadsheet | 表格子产品的品牌名 |
+| 钉钉脑图 / 智能脑图 / 思维导图 | DingTalk Mind | DingTalk Mind | 脑图子产品 |
+| 钉钉白板 / 智能白板 | DingTalk Whiteboard | DingTalk Whiteboard | 白板子产品 |
+| 知识库 | Knowledge Base | ナレッジベース | |
+| 群知识库 | Group Knowledge Base | グループナレッジベース | |
+| 知识小组 | Knowledge Group | ナレッジグループ | |
+| 模板中心 | Template Center | テンプレートセンター | |
+| 文档 AI / 文档AI | Doc AI | ドキュメント AI | DingTalk Docs 内置 AI 能力 |
+| 在线文档 | Online document | オンラインドキュメント | 通用功能名 |
+| 团队协作 | Team collaboration | チームコラボレーション | |
+| 协作 | Collaboration | コラボレーション | |
+| 协作者 | Collaborator | コラボレーター | |
+
+## DingTalk Docs 文档结构 / 导航
+
+| 中文 | 英文 | 日文 | 备注 |
+|---|---|---|---|
+| 新手指南 | Getting started | はじめに | |
+| 快速上手 | Quickstart | クイックスタート | |
+| 功能更新 | Release notes | リリースノート | |
+| 管理员指引 | Admin guide | 管理者ガイド | |
+| 客户案例 | Customer stories | 導入事例 | 日文按业界惯用译法 |
+| 最佳实践 | Best practices | ベストプラクティス | |
+| 进阶玩法 | Advanced | 高度な使い方 | |
+
+## DingTalk Docs 编辑 / 协作功能
+
+| 中文 | 英文 | 日文 | 备注 |
+|---|---|---|---|
+| 评论 | Comment | コメント | |
+| 划词评论 | Inline comment | インラインコメント | |
+| 版本历史 / 文档历史 | Version history | バージョン履歴 | |
+| 版本恢复 | Restore version | バージョンを復元 | |
+| 锁定段落 | Lock paragraph | 段落をロック | |
+| 目录 | Table of contents | 目次 | |
+| 大纲 | Outline | アウトライン | |
+| 子页面 | Subpage | サブページ | |
+| 实时编辑 | Real-time editing | リアルタイム編集 | |
+| 离线编辑 | Offline editing | オフライン編集 | |
+| 多人协作 | Multi-user collaboration | 複数ユーザーでのコラボレーション | |
+
+## DingTalk Spreadsheet 专项
+
+| 中文 | 英文 | 日文 | 备注 |
+|---|---|---|---|
+| 工作表 | Sheet | シート | |
+| 工作簿 | Workbook | ワークブック | |
+| 单元格 | Cell | セル | |
+| 行 | Row | 行 | |
+| 列 | Column | 列 | |
+| 公式 | Formula | 数式 | |
+| 函数 | Function | 関数 | |
+| 数据透视表 | Pivot table | ピボットテーブル | |
+| 条件格式 | Conditional formatting | 条件付き書式 | |
+| 数据验证 | Data validation | データ検証 | |
+| 冻结窗格 | Freeze panes | ウィンドウ枠の固定 | |
+
+## DingTalk Docs 导入 / 导出
+
+| 中文 | 英文 | 日文 | 备注 |
+|---|---|---|---|
+| 导出为 PDF | Export to PDF | PDFにエクスポート | |
+| 导出为 Word | Export to Word | Wordにエクスポート | |
+| 导出为图片 | Export as image | 画像としてエクスポート | |
+| 打印 | Print | 印刷 | |
+| 模板 | Template | テンプレート | 通用 |
+
 ---
 
 ## 风格指南（被翻译 skill 引用）
