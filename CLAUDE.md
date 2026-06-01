@@ -29,8 +29,11 @@ git push origin main
 | Skill | 用途 |
 |---|---|
 | `/docs-add-page <product> <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation；`<product>` 为产品 slug（`overview` / `aitable` / `docs` 等） |
-| `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译占位（不机翻） |
+| `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译，自动注入项目词库作为术语强约束 |
+| `/docs-glossary-sync` | 把语言同学维护的官方词库 csv 合并进项目（`import/*.csv` → `official/*.json` → 最终 `zh-en.json` / `zh-ja.json`） |
 | `/docs-preview` | 后台启 mint dev + 死链检查 + playwright 三语首页截图 |
+| `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
+| `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
 
 全局 skill：`/commit-flow`（提交）、`/memory-scan`（记忆扫描）、`/pr`（创建 PR）等。
 
@@ -73,7 +76,14 @@ git push origin main
 │   ├── guides/overview.mdx
 │   ├── aitable/...
 │   └── docs/...           占位 mdx：frontmatter + TODO 注释；本次 PR 未在 docs.json 加 ja 块
-├── scripts/               导入与翻译脚本（import_archive.py / translate_chapter_api.py 等）
+├── scripts/               导入与翻译脚本（import_archive.py / translate_chapter_api.py / glossary_sync.py 等）
+│   ├── glossary/          翻译词库分层
+│   │   ├── import/        语言同学的官方词库 csv 源（.numbers 已 gitignore）
+│   │   ├── official/      规范化后的 zh-en / zh-ja / conflicts json
+│   │   ├── local-supplements.md   官方未覆盖的 AI Table 专项术语 + 风格指南
+│   │   ├── zh-en.json     最终消费产物（official + 本地补充合并）
+│   │   ├── zh-ja.json
+│   │   └── merge-report.md
 │   └── output/import/     导入产物：slug-map / link-map / nav-fragment-{group}.json / report-{group}.md
 ├── logo/                  本地 logo 兜底目录（当前用远程 alicdn SVG）
 ├── .claude/commands/      项目级 skill 定义
