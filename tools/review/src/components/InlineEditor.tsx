@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 interface InlineEditorProps {
   initialValue: string;
@@ -28,20 +28,29 @@ function autosize(el: HTMLTextAreaElement): void {
 }
 
 export function InlineEditor({ initialValue, onCommit, onCancel, onDelete }: InlineEditorProps) {
+  const [value, setValue] = useState(initialValue);
   const ref = useRef<HTMLTextAreaElement>(null);
   const suppressBlurRef = useRef(false);
+  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    autosize(el);
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
   }, []);
 
-  const onInput = () => {
-    if (ref.current) autosize(ref.current);
-  };
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    autosize(el);
+    if (pendingSelectionRef.current) {
+      const { start, end } = pendingSelectionRef.current;
+      pendingSelectionRef.current = null;
+      el.focus();
+      el.setSelectionRange(start, end);
+    }
+  }, [value]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
@@ -51,7 +60,7 @@ export function InlineEditor({ initialValue, onCommit, onCancel, onDelete }: Inl
     }
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      onCommit(ref.current?.value ?? '');
+      onCommit(value);
     }
   };
 
@@ -60,10 +69,8 @@ export function InlineEditor({ initialValue, onCommit, onCancel, onDelete }: Inl
       suppressBlurRef.current = false;
       return;
     }
-    if (!ref.current) return;
-    const next = ref.current.value;
-    if (next === initialValue) onCancel();
-    else onCommit(next);
+    if (value === initialValue) onCancel();
+    else onCommit(value);
   };
 
   const handleDelete = () => {
@@ -77,15 +84,13 @@ export function InlineEditor({ initialValue, onCommit, onCancel, onDelete }: Inl
     if (!el) return;
     const start = el.selectionStart ?? 0;
     const end = el.selectionEnd ?? start;
-    const selected = el.value.slice(start, end) || action.placeholder;
+    const selected = value.slice(start, end) || action.placeholder;
     const replacement = `${action.prefix}${selected}${action.suffix}`;
-    const next = el.value.slice(0, start) + replacement + el.value.slice(end);
-    el.value = next;
+    const next = value.slice(0, start) + replacement + value.slice(end);
     const cursorStart = start + action.prefix.length;
     const cursorEnd = cursorStart + selected.length;
-    el.setSelectionRange(cursorStart, cursorEnd);
-    autosize(el);
-    el.focus();
+    pendingSelectionRef.current = { start: cursorStart, end: cursorEnd };
+    setValue(next);
   };
 
   return (
@@ -123,8 +128,8 @@ export function InlineEditor({ initialValue, onCommit, onCancel, onDelete }: Inl
       <textarea
         ref={ref}
         className="inline-editor-textarea"
-        defaultValue={initialValue}
-        onInput={onInput}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
         onBlur={onBlur}
         spellCheck={false}
