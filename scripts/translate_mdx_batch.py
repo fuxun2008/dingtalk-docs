@@ -83,8 +83,8 @@ STYLE_JA = """風格指南（日文）：
 # 工具：占位检测、命中术语、sanitize
 # ---------------------------------------------------------------------------
 
-PLACEHOLDER_RE_TITLE = re.compile(r"^title:\s*[\"']?.*TODO translate", re.MULTILINE)
-PLACEHOLDER_RE_BODY = re.compile(r"\{/\*\s*TODO:\s*Translate from", re.IGNORECASE)
+PLACEHOLDER_RE_TITLE = re.compile(r"^title:\s*[\"']?.*(?:TODO translate|TODO 翻訳|TODO 翻译)", re.MULTILINE)
+PLACEHOLDER_RE_BODY = re.compile(r"\{/\*\s*TODO:?\s*(?:Translate from|.*?から翻訳|.*?翻译自)", re.IGNORECASE)
 
 
 def is_placeholder(text: str) -> bool:
