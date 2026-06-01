@@ -56,20 +56,25 @@ git push origin main
 │   └── overview.mdx
 ├── aitable/               AI Table tab — 英文产品文档
 │   └── index.mdx
-├── docs/                  DingTalk Docs tab — 英文产品文档
-│   └── index.mdx
-├── zh/                    中文镜像（结构同根）
+├── docs/                  Docs tab — 英文产品文档（15 个 group：getting-started / quickstart /
+│   │                      release-notes / admin-guide / doc-ai / customer-stories / best-practices /
+│   │                      advanced / dingtalk-docs / sheets / mind / whiteboard / knowledge-base /
+│   │                      knowledge-group / templates）
+│   └── ...                每 group 下含 index.mdx + N 篇 mdx；部分含 3 层嵌套 group（doc-ai / sheets / mind 等）
+├── zh/                    中文镜像（结构同根，zh/docs/* 实文）
 │   ├── index.mdx
 │   ├── quickstart.mdx
 │   ├── guides/overview.mdx
-│   ├── aitable/index.mdx
-│   └── docs/index.mdx
-├── ja/                    日文镜像（结构同根）
+│   ├── aitable/...
+│   └── docs/...           15 个 group 同 en，路径完全镜像
+├── ja/                    日文镜像（结构同根，ja/docs/* 为占位 mdx，待翻译）
 │   ├── index.mdx
 │   ├── quickstart.mdx
 │   ├── guides/overview.mdx
-│   ├── aitable/index.mdx
-│   └── docs/index.mdx
+│   ├── aitable/...
+│   └── docs/...           占位 mdx：frontmatter + TODO 注释；本次 PR 未在 docs.json 加 ja 块
+├── scripts/               导入与翻译脚本（import_archive.py / translate_chapter_api.py 等）
+│   └── output/import/     导入产物：slug-map / link-map / nav-fragment-{group}.json / report-{group}.md
 ├── logo/                  本地 logo 兜底目录（当前用远程 alicdn SVG）
 ├── .claude/commands/      项目级 skill 定义
 ├── .gitignore
