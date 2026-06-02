@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
-MDX 质量审计：扫所有 mdx，检出 4 类问题并按需修复。
+MDX 质量审计：扫所有 mdx，检出多类问题并按需修复。
 
-模式：
+通用模式（全仓）：
 A. `++text++` 下划线语法（Mintlify 不支持）→ 剥 `++`，保留内层；若内层是 `**…**` 且内侧紧贴空格，挤出来
 B. `** text**` 粗体空白破坏（仅 LEADING-space 安全检测；TRAILING-space 会跟相邻粗体打架）→ 修
 C. `[label](https:xxx)` 形态废 URL（协议后跟纯字母≤8 字符，无 `//`）→ 去链留文案
 D. `[https://...full-url...](url)` label 含完整 URL → 仅报告，人审
+E. 空 `<Note>` 块（`<Note>---</Note>` / `<Note></Note>` / 跨行空 Note）→ 整段删除
+
+定向模式（仅 release-notes/）：钉钉编辑器导出 mdx 时把 `<Note>` 拆碎，icon/标题被强制分行
+F. `release-notes/` 下 `<Note>` 与 `</Note>` 标签行整段剥离（保留内部 markdown）
+G. `release-notes/index.mdx` 4 空格缩进续行修正（钉钉编辑器把日期小标题缩进成上一段续行）
 
 CLI:
   python3 scripts/audit_mdx_quality.py                   # dry-run，全部 mdx
@@ -52,6 +57,25 @@ RE_BAD_URL_PLACEHOLDER = re.compile(r'\[([^\]]*)\]\((https?:[a-zA-Z0-9_]{1,12})\
 
 # D: label 含完整 URL（仅报告，不修）—— label 长度 ≥ 20 且以 https?:// 开头
 RE_URL_AS_LABEL = re.compile(r'\[(https?://[^\]]{20,})\]\(([^)]+)\)')
+
+# E: 空 Note 块。跨行匹配 `<Note>` 后只含空白/水平分隔线/空 li 的 `</Note>`。
+#    覆盖 3 种钉钉编辑器导出残骸：
+#      <Note></Note>            （单行空）
+#      <Note>\n</Note>          （仅换行）
+#      <Note>\n---\n</Note>     （仅水平分隔线）
+#    匹配时把前置换行一起吃掉,避免修复后留空行堆叠。
+RE_EMPTY_NOTE = re.compile(r'\n?<Note>\s*(?:-{3,}\s*)?</Note>\n?', re.S)
+
+# F: release-notes 专项 —— 整行 `<Note>` / `</Note>` 标签独占一行,直接剥（保留内层 markdown）。
+#    钉钉编辑器把每条 release item 错误地用 `<Note>` 包成碎片,导致 icon 在外、title 在内。
+#    剥后变成普通段落 + `---` 分隔,语义不变,视觉连贯。
+RE_NOTE_OPEN_LINE = re.compile(r'^[ \t]*<Note>[ \t]*\r?\n', re.M)
+RE_NOTE_CLOSE_LINE = re.compile(r'^[ \t]*</Note>[ \t]*\r?\n', re.M)
+
+# G: release-notes/index.mdx 专项 —— 4 空格缩进续行修正。
+#    钉钉编辑器把日期小标题 `    **2024.06 ...**` 缩进成上一个列表项续行,
+#    解析器吃掉了它的章节地位。任意以 4 个空格开头的非空行,统一夺为 0 缩进。
+RE_FOUR_SPACE_INDENT = re.compile(r'^    (?!\s)', re.M)
 
 
 def find_broken_bold_pairs(line: str) -> list[tuple[int, int, str]]:
@@ -101,6 +125,37 @@ def fix_underline(s: str) -> str:
 def fix_bad_url_placeholder(s: str) -> str:
     """[label](https:xxx) → label；label 为空时返回空串（让后续段落自然收尾）。"""
     return RE_BAD_URL_PLACEHOLDER.sub(lambda m: m.group(1), s)
+
+
+def fix_empty_note(s: str) -> str:
+    """删除空 Note 块（含纯 `---` 的）。"""
+    return RE_EMPTY_NOTE.sub("\n", s)
+
+
+def fix_strip_note_tags(s: str) -> str:
+    """剥 `<Note>` / `</Note>` 整行标签（仅 release-notes 用）。"""
+    s = RE_NOTE_OPEN_LINE.sub("", s)
+    s = RE_NOTE_CLOSE_LINE.sub("", s)
+    return s
+
+
+def fix_four_space_indent(s: str) -> str:
+    """4 空格缩进行 → 0 缩进（仅 release-notes/index.mdx 用）。"""
+    return RE_FOUR_SPACE_INDENT.sub("", s)
+
+
+def is_release_notes(rel_path: str) -> bool:
+    """`docs/release-notes/`、`zh/docs/release-notes/`、`ja/docs/release-notes/` 全覆盖。"""
+    parts = Path(rel_path).parts
+    if "release-notes" not in parts:
+        return False
+    # 必须出现在 docs/ 下,避免误命中其他目录的同名
+    return "docs" in parts
+
+
+def is_release_notes_index(rel_path: str) -> bool:
+    p = Path(rel_path)
+    return is_release_notes(rel_path) and p.name == "index.mdx"
 
 
 # ---------------------------------------------------------------------------
@@ -181,11 +236,53 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
             context=src[max(0, m.start()-30):min(len(src), m.end()+30)].replace("\n", "\\n"),
         ))
 
-    # 修复（按 fix 顺序：A → B → C；D 不动）
+    # E: 空 Note 块（全仓）
+    for m in RE_EMPTY_NOTE.finditer(src):
+        before = m.group(0).strip("\n")
+        issues.append(Issue(
+            file=rel, line=find_line(src, m.start()), pattern="empty_note",
+            before=before.replace("\n", "\\n"),
+            after="（整段删除）",
+            context=src[max(0, m.start()-30):min(len(src), m.end()+30)].replace("\n", "\\n"),
+        ))
+
+    # F: Note 标签剥除（仅 release-notes/）
+    if is_release_notes(rel):
+        for m in RE_NOTE_OPEN_LINE.finditer(src):
+            issues.append(Issue(
+                file=rel, line=find_line(src, m.start()), pattern="strip_note_open",
+                before="<Note>", after="（整行删除）",
+                context=src[max(0, m.start()-30):min(len(src), m.end()+30)].replace("\n", "\\n"),
+            ))
+        for m in RE_NOTE_CLOSE_LINE.finditer(src):
+            issues.append(Issue(
+                file=rel, line=find_line(src, m.start()), pattern="strip_note_close",
+                before="</Note>", after="（整行删除）",
+                context=src[max(0, m.start()-30):min(len(src), m.end()+30)].replace("\n", "\\n"),
+            ))
+
+    # G: 4 空格缩进矫正（仅 release-notes/index.mdx）
+    if is_release_notes_index(rel):
+        for m in RE_FOUR_SPACE_INDENT.finditer(src):
+            line_no = find_line(src, m.start())
+            # 取该行内容做 context
+            line_text = src.splitlines()[line_no - 1] if line_no - 1 < len(src.splitlines()) else ""
+            issues.append(Issue(
+                file=rel, line=line_no, pattern="four_space_indent",
+                before=f"    {line_text[4:][:50]}", after=line_text[4:][:50],
+                context=line_text[:80],
+            ))
+
+    # 修复（按 fix 顺序：A → B → C → E → F → G；D 不动）
     fixed = src
     fixed = fix_underline(fixed)
     fixed = fix_bold_whitespace(fixed)
     fixed = fix_bad_url_placeholder(fixed)
+    fixed = fix_empty_note(fixed)
+    if is_release_notes(rel):
+        fixed = fix_strip_note_tags(fixed)
+    if is_release_notes_index(rel):
+        fixed = fix_four_space_indent(fixed)
 
     has_changes = fixed != src and any(i.pattern != "url_as_label" for i in issues)
     return issues, (fixed if has_changes else None)
@@ -231,6 +328,10 @@ PATTERN_LABEL = {
     "bold_whitespace": "B. `** text**` 粗体空白（修空格）",
     "bad_url_placeholder": "C. `[label](https:xxx)` 废 URL（去链留文）",
     "url_as_label": "D. label 含完整 URL（仅报告，人审）",
+    "empty_note": "E. 空 `<Note>` 块（整段删）",
+    "strip_note_open": "F1. release-notes `<Note>` 标签行（剥）",
+    "strip_note_close": "F2. release-notes `</Note>` 标签行（剥）",
+    "four_space_indent": "G. release-notes/index 4 空格缩进（夺为 0）",
 }
 
 
