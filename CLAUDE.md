@@ -35,6 +35,7 @@ git push origin main
 | `/docs-preview` | 后台启 mint dev + 死链检查 + playwright 三语首页截图 |
 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
 | `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
+| `/docs-audit-mdx` | MDX 语法审计（`++text++` / 破碎粗体 / 废占位 URL）+ 钉钉外链死链探针（og:title SSR 检测）；两阶段 dry-run → `--apply` |
 
 全局 skill：`/commit-flow`（提交）、`/memory-scan`（记忆扫描）、`/pr`（创建 PR）等。
 
