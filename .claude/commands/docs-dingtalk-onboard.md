@@ -24,6 +24,8 @@
 
 ### 阶段 1 — 导入归档（zh 侧建模）
 
+> 如果还没有归档目录（`--archive` 传不出来），**先跑 [[docs-import-archive]]** 拉钉钉文档原始 mdx，产物路径作为本阶段 `--archive` 参数。
+
 只在 `--archive` 有传或 `zh/<slug>/` 不存在时跑；否则直接进阶段 2。
 
 ```bash
@@ -211,7 +213,7 @@ mint broken-links
 
 9b. ja navigation 注册可参考 `scripts/register_ja_docs_navigation.py` 模板（含 60+ 条中→日 group 名映射），但**每个产品的 group 名翻译是 product-specific 的**——本 skill 不机器做，提示用户给 group 中→日翻译表。
 
-9c. 视觉验收：
+9c. 视觉验收：调用 [[docs-preview]] 子 skill：
 
 ```bash
 /docs-preview
@@ -261,10 +263,12 @@ docs.dingtalk.io 是 SPA，body 是 JS 渲染壳，HTTP 探针只能拿到静态
 
 ## 与其他 skill 的协作
 
+- `/docs-import-archive` — 阶段 1 上游：从钉钉文档站拉原始 mdx 归档
 - `/docs-audit-mdx` — 阶段 6（syntax）+ 阶段 8d（死链探针）的子 skill
 - `/docs-translate-batch` — 阶段 7 的子 skill
 - `/docs-glossary-sync` — 阶段 7 之前如果有词库更新，先跑本 skill 让翻译用上最新术语
 - `/docs-prune-orphan-images` — 阶段 5/6 大规模删章节后，清孤儿本地图（如有本地图引用）
+- `/docs-nav-edit` — 阶段 9a `docs.json` 三语 navigation 注册的实际工具（add-product / add-group / verify）
 - `/docs-preview` — 阶段 9c 视觉验收
 - `/commit-flow` — 每阶段通过后用户授权提交（aoneId `82317048`）
 

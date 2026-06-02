@@ -36,6 +36,9 @@ git push origin main
 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
 | `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
 | `/docs-audit-mdx` | MDX 语法审计（`++text++` / 破碎粗体 / 废占位 URL）+ 钉钉外链死链探针（og:title SSR 检测）；两阶段 dry-run → `--apply` |
+| `/docs-dingtalk-onboard <product-slug> [--archive <path>]` | 9 阶段钉钉文档子产品导入流水线（编排者，串 13 主脚本 + 7 lint + 5 子 skill），新接入产品入口 |
+| `/docs-import-archive [--input <path>]` | 阶段 0：钉钉文档归档自动下载（5 脚本编排，含人工扫码 / 抓端点提示），产物供 onboard 阶段 1 消费 |
+| `/docs-nav-edit <action> <product>` | `docs.json` 三语 navigation 安全编辑（actions：`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
 
 全局 skill：`/commit-flow`（提交）、`/memory-scan`（记忆扫描）、`/pr`（创建 PR）等。
 
