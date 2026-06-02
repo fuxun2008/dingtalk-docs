@@ -29,8 +29,16 @@ git push origin main
 | Skill | 用途 |
 |---|---|
 | `/docs-add-page <product> <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation；`<product>` 为产品 slug（`overview` / `aitable` / `docs` 等） |
-| `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译占位（不机翻） |
+| `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译，自动注入项目词库作为术语强约束 |
+| `/docs-translate-batch <root>` | 整个产品目录 zh → en/ja 批量翻译（词库强约束 + 图视频剥离 + 链接前缀修正 + 死链验证 + ja navigation 提示）；349 篇基准 ~$25/lang/30min |
+| `/docs-glossary-sync` | 把语言同学维护的官方词库 csv 合并进项目（`import/*.csv` → `official/*.json` → 最终 `zh-en.json` / `zh-ja.json`） |
 | `/docs-preview` | 后台启 mint dev + 死链检查 + playwright 三语首页截图 |
+| `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
+| `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
+| `/docs-audit-mdx` | MDX 语法审计（`++text++` / 破碎粗体 / 废占位 URL）+ 钉钉外链死链探针（og:title SSR 检测）；两阶段 dry-run → `--apply` |
+| `/docs-dingtalk-onboard <product-slug> [--archive <path>]` | 9 阶段钉钉文档子产品导入流水线（编排者，串 13 主脚本 + 7 lint + 5 子 skill），新接入产品入口 |
+| `/docs-import-archive [--input <path>]` | 阶段 0：钉钉文档归档自动下载（5 脚本编排，含人工扫码 / 抓端点提示），产物供 onboard 阶段 1 消费 |
+| `/docs-nav-edit <action> <product>` | `docs.json` 三语 navigation 安全编辑（actions：`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
 
 全局 skill：`/commit-flow`（提交）、`/memory-scan`（记忆扫描）、`/pr`（创建 PR）等。
 
@@ -56,20 +64,39 @@ git push origin main
 │   └── overview.mdx
 ├── aitable/               AI Table tab — 英文产品文档
 │   └── index.mdx
-├── docs/                  DingTalk Docs tab — 英文产品文档
-│   └── index.mdx
-├── zh/                    中文镜像（结构同根）
+├── docs/                  Docs tab — 英文产品文档（15 个 group：getting-started / quickstart /
+│   │                      release-notes / admin-guide / doc-ai / customer-stories / best-practices /
+│   │                      advanced / dingtalk-docs / sheets / mind / whiteboard / knowledge-base /
+│   │                      knowledge-group / templates）
+│   └── ...                每 group 下含 index.mdx + N 篇 mdx；部分含 3 层嵌套 group（doc-ai / sheets / mind 等）
+├── zh/                    中文镜像（结构同根，zh/docs/* 实文）
 │   ├── index.mdx
 │   ├── quickstart.mdx
 │   ├── guides/overview.mdx
-│   ├── aitable/index.mdx
-│   └── docs/index.mdx
-├── ja/                    日文镜像（结构同根）
+│   ├── aitable/...
+│   └── docs/...           15 个 group 同 en，路径完全镜像
+├── ja/                    日文镜像（结构同根，ja/docs/* 为占位 mdx，待翻译）
 │   ├── index.mdx
 │   ├── quickstart.mdx
 │   ├── guides/overview.mdx
-│   ├── aitable/index.mdx
-│   └── docs/index.mdx
+│   ├── aitable/...
+│   └── docs/...           15 个 group 同 en（2026-06-02 已全量翻译；docs.json 已注册 ja `ドキュメント` tab）
+├── scripts/               导入 / 翻译 / 词库 / 一次性工具脚本
+│   ├── import_archive.py            历史归档 docx 批量导入
+│   ├── translate_chapter_api.py     单篇 mdx 翻译（早期版，按章节）
+│   ├── translate_mdx_batch.py       【批量翻译核心】zh/<root>/ → <root>/(en) 或 ja/<root>/(ja)；走 `claude -p --bare` 子进程，词库强约束 + 图视频剥离 + 断点续跑；详见 memory `project_docs_translation_batch1`
+│   ├── register_ja_docs_navigation.py  一次性脚本：把 zh `文档` tab 镜像为 ja `ドキュメント` tab 注入 docs.json（含 60+ 条中→日 group 名映射表）
+│   ├── glossary_sync.py             词库合并器（official + local-supplements → zh-en.json / zh-ja.json）
+│   ├── glossary/                    翻译词库分层
+│   │   ├── import/                  语言同学的官方词库 csv 源（.numbers 已 gitignore）
+│   │   ├── official/                规范化后的 zh-en / zh-ja / conflicts json
+│   │   ├── local-supplements.md     官方未覆盖的 AI Table / DingTalk Docs 专项术语 + 风格指南
+│   │   ├── zh-en.json               最终消费产物（official + 本地补充合并）
+│   │   ├── zh-ja.json
+│   │   └── merge-report.md
+│   └── output/
+│       ├── import/                  导入产物：slug-map / link-map / nav-fragment-{group}.json / report-{group}.md
+│       └── translate_docs/<lang>/   翻译批次产物：report.json / report.md（每篇 elapsed / token / cost / hit_terms）
 ├── logo/                  本地 logo 兜底目录（当前用远程 alicdn SVG）
 ├── .claude/commands/      项目级 skill 定义
 ├── .gitignore
