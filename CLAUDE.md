@@ -30,6 +30,7 @@ git push origin main
 |---|---|
 | `/docs-add-page <product> <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation；`<product>` 为产品 slug（`overview` / `aitable` / `docs` 等） |
 | `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译，自动注入项目词库作为术语强约束 |
+| `/docs-translate-batch <root>` | 整个产品目录 zh → en/ja 批量翻译（词库强约束 + 图视频剥离 + 链接前缀修正 + 死链验证 + ja navigation 提示）；349 篇基准 ~$25/lang/30min |
 | `/docs-glossary-sync` | 把语言同学维护的官方词库 csv 合并进项目（`import/*.csv` → `official/*.json` → 最终 `zh-en.json` / `zh-ja.json`） |
 | `/docs-preview` | 后台启 mint dev + 死链检查 + playwright 三语首页截图 |
 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
