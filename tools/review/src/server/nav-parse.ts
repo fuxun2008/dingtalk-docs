@@ -23,12 +23,14 @@ interface DocsJson {
   navigation?: { languages?: DocsJsonLanguage[] };
 }
 
-const AITABLE_TAB_NAMES = ['AI Table', 'AI 表格', 'AI テーブル'];
+const AITABLE_TAB_NAMES = new Set(['AI Table', 'AI 表格', 'AI テーブル']);
 
-function findAITableTab(docs: DocsJson, lang: string): DocsJsonTab | null {
-  const langBlock = docs.navigation?.languages?.find((l) => l.language === lang);
-  if (!langBlock?.tabs) return null;
-  return langBlock.tabs.find((t) => AITABLE_TAB_NAMES.includes(t.tab)) ?? null;
+function findLanguageBlock(docs: DocsJson, lang: string): DocsJsonLanguage | null {
+  return docs.navigation?.languages?.find((l) => l.language === lang) ?? null;
+}
+
+function aitableTabs(lang: DocsJsonLanguage | null): DocsJsonTab[] {
+  return (lang?.tabs ?? []).filter((t) => AITABLE_TAB_NAMES.has(t.tab));
 }
 
 function readPageTitle(repoRoot: string, lang: 'en' | 'zh', slug: string): string | undefined {
@@ -75,11 +77,21 @@ function walkPages(
   });
 }
 
-export function parseAITableNav(repoRoot: string): NavNode[] {
+export function parseNavigation(repoRoot: string): NavNode[] {
   const docsPath = join(repoRoot, 'docs.json');
   const docs: DocsJson = JSON.parse(readFileSync(docsPath, 'utf8'));
-  const enTab = findAITableTab(docs, 'en');
-  if (!enTab) throw new Error('AI Table tab not found in docs.json (en)');
-  const zhTab = findAITableTab(docs, 'zh');
-  return walkPages(repoRoot, enTab.groups ?? [], zhTab?.groups ?? []);
+  const enLang = findLanguageBlock(docs, 'en');
+  const enTabs = aitableTabs(enLang);
+  if (!enTabs.length) throw new Error('AI Table tab not found in docs.json (en)');
+  const zhTabs = aitableTabs(findLanguageBlock(docs, 'zh'));
+
+  return enTabs.map((enTab, i): NavNode => {
+    const zhTab = zhTabs[i];
+    return {
+      type: 'group',
+      titleEn: enTab.tab,
+      titleZh: zhTab?.tab,
+      children: walkPages(repoRoot, enTab.groups ?? [], zhTab?.groups ?? []),
+    };
+  });
 }
