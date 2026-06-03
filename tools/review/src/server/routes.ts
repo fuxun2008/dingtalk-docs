@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { parseAITableNav } from './nav-parse';
+import { parseNavigation } from './nav-parse';
 import { readMdx, resolveMdxPath, writeMdxAtomic } from './fs-safe';
 import { parseMdxBlocks, validateMdxSyntax } from './mdx-parse';
 import { parseFrontmatter } from '../shared/frontmatter';
@@ -52,7 +52,7 @@ function buildPageContent(repoRoot: string, lang: Lang, slug: string, content: s
 
 export async function handleNav(repoRoot: string, res: ServerResponse): Promise<void> {
   try {
-    json(res, { tree: parseAITableNav(repoRoot) });
+    json(res, { tree: parseNavigation(repoRoot) });
   } catch (err) {
     fail(res, 500, err instanceof Error ? err.message : 'nav parse failed');
   }
@@ -108,7 +108,7 @@ function collectNavMeta(tree: NavNode[]): { slugs: string[]; titles: Map<string,
 
 export async function handleAlignment(repoRoot: string, res: ServerResponse): Promise<void> {
   try {
-    const tree = parseAITableNav(repoRoot);
+    const tree = parseNavigation(repoRoot);
     const { slugs, titles } = collectNavMeta(tree);
     const items: AlignmentItem[] = [];
     for (const slug of slugs) {

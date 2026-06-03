@@ -146,6 +146,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [nav.flatPages, page]);
 
+  useEffect(() => {
+    const onFocus = () => {
+      if (page.isDirty || page.saving || !page.slug) return;
+      page.reload();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [page]);
+
   const registerZhRef = (index: number, el: HTMLDivElement | null) => {
     if (el) zhRefs.current.set(index, el);
     else zhRefs.current.delete(index);
@@ -160,6 +169,16 @@ export default function App() {
       <aside className="nav-pane">
         <div className="nav-pane-toolbar">
           <AlignmentPanel currentSlug={page.slug} onNavigate={page.navigate} />
+          <button
+            type="button"
+            className="nav-reload-button"
+            onClick={() => { nav.reload(); }}
+            disabled={nav.loading}
+            title="重新读取磁盘上的 docs.json 与 mdx（切分支或拉取后用）"
+          >
+            <span aria-hidden="true">↻</span>
+            <span>刷新</span>
+          </button>
         </div>
         {nav.loading && <div className="nav-pane-placeholder">加载导航中…</div>}
         {nav.error && <div className="nav-pane-placeholder error">{nav.error}</div>}

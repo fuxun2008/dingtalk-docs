@@ -2,20 +2,24 @@ import { readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { join, normalize, sep } from 'node:path';
 import type { Lang } from '../shared/types';
 
-const ALLOWED_PREFIXES: Record<Lang, string> = {
-  en: 'aitable/',
-  zh: 'zh/aitable/',
-  ja: 'ja/aitable/',
-};
+const PRODUCT_PREFIXES = ['aitable', 'docs'] as const;
+
+const SLUG_PATTERN = new RegExp(`^(?:${PRODUCT_PREFIXES.join('|')})/[a-z0-9._\\-/]+$`, 'i');
+
+function allowedFsPrefix(lang: Lang, productPrefix: string): string {
+  const rel = lang === 'en' ? `${productPrefix}/` : `${lang}/${productPrefix}/`;
+  return rel.replace(/\//g, sep);
+}
 
 export function resolveMdxPath(repoRoot: string, lang: Lang, slug: string): string {
-  if (!/^aitable\/[a-z0-9._\-/]+$/i.test(slug)) {
+  if (!SLUG_PATTERN.test(slug)) {
     throw new Error(`invalid slug: ${slug}`);
   }
   if (slug.includes('..')) throw new Error(`slug contains parent traversal: ${slug}`);
 
+  const productPrefix = slug.split('/', 1)[0];
   const relative = (lang === 'en' ? slug : `${lang}/${slug}`) + '.mdx';
-  const expectedPrefix = ALLOWED_PREFIXES[lang].replace(/\//g, sep);
+  const expectedPrefix = allowedFsPrefix(lang, productPrefix);
   const normalized = normalize(relative);
   if (!normalized.startsWith(expectedPrefix)) {
     throw new Error(`path escapes whitelist: ${normalized}`);
