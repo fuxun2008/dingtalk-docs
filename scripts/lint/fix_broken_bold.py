@@ -16,8 +16,9 @@ fix_broken_bold.py
 的空格问题不属于残骸清理范围。需迭代多轮处理 3+ 段连续 `**A****B****C**`。
 
 用法:
-  python3 scripts/lint/fix_broken_bold.py             # dry-run
-  python3 scripts/lint/fix_broken_bold.py --apply     # 实际写回
+  python3 scripts/lint/fix_broken_bold.py                       # dry-run，默认 zh
+  python3 scripts/lint/fix_broken_bold.py --lang ja --apply     # 切换 ja 并写回
+  python3 scripts/lint/fix_broken_bold.py --lang en --apply     # en（仓库根，排除 zh/ja/archive/scripts）
 """
 from __future__ import annotations
 
@@ -26,7 +27,8 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2] / "zh"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+EN_EXCLUDE_TOP = {"zh", "ja", "archive", "scripts", "node_modules", ".git", ".claude", "images"}
 
 # `****` 出现在非首尾位置时即为破碎粗体。但要避免误伤代码块。
 # 简单粗暴：行级处理，排除以 ``` 围栏的代码块。
@@ -63,24 +65,38 @@ def process(path: Path, apply: bool) -> int:
     return n
 
 
+def iter_mdx_files(lang: str):
+    """根据 lang 返回需处理的 mdx 列表。en 走仓库根但排除 zh/ja/archive/scripts。"""
+    if lang in ("zh", "ja"):
+        yield from sorted((REPO_ROOT / lang).rglob("*.mdx"))
+        return
+    # en
+    for p in sorted(REPO_ROOT.rglob("*.mdx")):
+        rel_parts = p.relative_to(REPO_ROOT).parts
+        if rel_parts and rel_parts[0] in EN_EXCLUDE_TOP:
+            continue
+        yield p
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--lang", choices=["zh", "ja", "en"], default="zh")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
 
     total_files = 0
     total_hits = 0
-    for p in sorted(ROOT.rglob("*.mdx")):
+    for p in iter_mdx_files(args.lang):
         n = process(p, args.apply)
         if n:
             total_files += 1
             total_hits += n
-            rel = p.relative_to(ROOT.parent)
+            rel = p.relative_to(REPO_ROOT)
             print(f"  {rel}  ({n} hits)")
 
     print()
     mode = "APPLIED" if args.apply else "DRY-RUN"
-    print(f"[{mode}] {total_files} files, {total_hits} **** broken-bold collapsed")
+    print(f"[{mode}] lang={args.lang} {total_files} files, {total_hits} **** broken-bold collapsed")
     return 0
 
 
