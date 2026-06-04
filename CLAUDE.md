@@ -40,7 +40,18 @@ git push origin main
 | `/docs-import-archive [--input <path>]` | 阶段 0：钉钉文档归档自动下载（5 脚本编排，含人工扫码 / 抓端点提示），产物供 onboard 阶段 1 消费 |
 | `/docs-nav-edit <action> <product>` | `docs.json` 三语 navigation 安全编辑（actions：`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
 
-全局 skill：`/commit-flow`（提交）、`/memory-scan`（记忆扫描）、`/pr`（创建 PR）等。
+通用 skill（项目级，与 docs-* 同目录，**无需依赖个人 `~/.claude/commands/`**）：
+
+| Skill | 用途 |
+|---|---|
+| `/commit-flow` | 标准提交流程（lint → 分析 diff → 自动带 aoneId → commit） |
+| `/code-review` | 本地变更或 GitHub PR 代码审查 |
+| `/pr` | 从当前分支创建 GitHub PR（含 summary + test plan 模板） |
+| `/plan` | 实现前先出方案（等用户确认再 code） |
+| `/build-fix` | 增量检测 + 修复 build / type 错误 |
+| `/refactor-clean` | 安全清除死代码 |
+| `/security-scan` | 扫密钥 / 漏洞 / 不安全模式 |
+| `/memory-scan` | 主动扫一遍可入 memory 的事实并询问 |
 
 ## 架构设计
 
