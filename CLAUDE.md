@@ -24,23 +24,35 @@ mint login
 git push origin main
 ```
 
-项目级 skill（仅本目录可用）：
+文档专用 skill（12 个，按流水线顺序）：
 
-| Skill | 用途 |
-|---|---|
-| `/docs-add-page <product> <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation；`<product>` 为产品 slug（`overview` / `aitable` / `docs` 等） |
-| `/docs-translate <english-mdx-path>` | 以英文母版生成 zh / ja 翻译，自动注入项目词库作为术语强约束 |
-| `/docs-translate-batch <root>` | 整个产品目录 zh → en/ja 批量翻译（词库强约束 + 图视频剥离 + 链接前缀修正 + 死链验证 + ja navigation 提示）；349 篇基准 ~$25/lang/30min |
-| `/docs-glossary-sync` | 把语言同学维护的官方词库 csv 合并进项目（`import/*.csv` → `official/*.json` → 最终 `zh-en.json` / `zh-ja.json`） |
-| `/docs-preview` | 后台启 mint dev + 死链检查 + playwright 三语首页截图 |
-| `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
-| `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
-| `/docs-audit-mdx` | MDX 语法审计（`++text++` / 破碎粗体 / 废占位 URL）+ 钉钉外链死链探针（og:title SSR 检测）；两阶段 dry-run → `--apply` |
-| `/docs-dingtalk-onboard <product-slug> [--archive <path>]` | 9 阶段钉钉文档子产品导入流水线（编排者，串 13 主脚本 + 7 lint + 5 子 skill），新接入产品入口 |
-| `/docs-import-archive [--input <path>]` | 阶段 0：钉钉文档归档自动下载（5 脚本编排，含人工扫码 / 抓端点提示），产物供 onboard 阶段 1 消费 |
-| `/docs-nav-edit <action> <product>` | `docs.json` 三语 navigation 安全编辑（actions：`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
+| # | Skill | 用途 |
+|---|---|---|
+| 1 | `/docs-dingtalk-onboard <product-slug> [--archive <path>]` | **主入口**：9 阶段钉钉文档子产品导入流水线（编排者，串 13 主脚本 + 7 lint + 5 子 skill） |
+| 2 | `/docs-import-archive [--input <path>]` | 阶段 0：钉钉文档归档自动下载（5 脚本编排，含人工扫码 / 抓端点提示），产物供 onboard 阶段 1 消费 |
+| 3 | `/docs-add-page <product> <slug> <group>` | 三语镜像建页 + 同步 `docs.json` 三处 navigation；`<product>` 为产品 slug（`overview` / `aitable` / `docs` 等） |
+| 4 | `/docs-translate <english-mdx-path>` | 单文件翻译：以英文母版生成 zh / ja，自动注入项目词库作为术语强约束 |
+| 5 | `/docs-translate-batch <root>` | 阶段 7：产品目录 zh → en/ja 批量翻译（词库强约束 + 图视频剥离 + 链接前缀修正 + 死链验证 + ja nav 提示）；349 篇基准 ~$25/lang/30min |
+| 6 | `/docs-translate-polish <slug> --lang <en\|ja>` | 阶段 7-bis：en/ja 翻译润色（10 项 review checklist 强约束 + 词库注入 + 断点续跑） |
+| 7 | `/docs-glossary-sync` | 翻译词库同步：把语言同学维护的官方词库 csv 合并进项目（`import/*.csv` → `official/*.json` → 最终 `zh-en.json` / `zh-ja.json`） |
+| 8 | `/docs-audit-mdx` | 阶段 6 / 8d：MDX 语法审计（`++text++` / 破碎粗体 / 废占位 URL）+ 钉钉外链死链探针（og:title SSR 检测）；两阶段 dry-run → `--apply` |
+| 9 | `/docs-nav-edit <action> <product>` | 阶段 9：`docs.json` 三语 navigation 安全编辑（`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
+| 10 | `/docs-preview` | 阶段 9 验收：后台启 mint dev + 死链检查 + playwright 三语首页截图 |
+| 11 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
+| 12 | `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
 
-全局 skill：`/commit-flow`（提交）、`/memory-scan`（记忆扫描）、`/pr`（创建 PR）等。
+通用 skill（8 个，项目级，与 docs-* 同目录，**无需依赖个人 `~/.claude/commands/`**）：
+
+| # | Skill | 用途 |
+|---|---|---|
+| 1 | `/commit-flow` | 标准提交流程（lint → 分析 diff → 自动带 aoneId → commit） |
+| 2 | `/code-review` | 本地变更或 GitHub PR 代码审查 |
+| 3 | `/pr` | 从当前分支创建 GitHub PR（含 summary + test plan 模板） |
+| 4 | `/plan` | 实现前先出方案（等用户确认再 code） |
+| 5 | `/build-fix` | 增量检测 + 修复 build / type 错误 |
+| 6 | `/refactor-clean` | 安全清除死代码 |
+| 7 | `/security-scan` | 扫密钥 / 漏洞 / 不安全模式 |
+| 8 | `/memory-scan` | 主动扫一遍可入 memory 的事实并询问 |
 
 ## 架构设计
 
