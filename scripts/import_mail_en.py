@@ -64,8 +64,7 @@ GROUPS: list[tuple[str, list[tuple[int, str]]]] = [
         (10, 'add-labels-to-emails'),
         (11, 'forward-an-email-to-chat-with-one-click'),
         (12, 'set-up-new-email-notifications'),
-        (13, 'create-a-mail-calendar-event'),
-        (14, 'export-a-mail-calendar'),
+        # 编号 13 (create-a-mail-calendar-event) / 14 (export-a-mail-calendar) 已剔除
     ]),
     ('Contacts', [
         (15, 'add-contacts'),

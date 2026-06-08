@@ -1,9 +1,9 @@
 # Mail EN Import Report
 
-- 成功: **24 / 24**
+- 成功: **22 / 24**
 - 缺失: 0
 - slug 不匹配: 0
-- NBSP 清洗: 2280（mdx 残留 0）
+- NBSP 清洗: 2173（mdx 残留 0）
 
 ## 全表
 | # | group | slug | title | desc_len | nbsp_cleaned | size |
@@ -20,8 +20,6 @@
 | 10 | Settings | `add-labels-to-emails` | Add Labels to Emails | 86 | 56 | 424 |
 | 11 | Settings | `forward-an-email-to-chat-with-one-click` | Forward an Email to Chat with One Click | 160 | 156 | 1215 |
 | 12 | Settings | `set-up-new-email-notifications` | Set Up New Email Notifications | 11 | 137 | 918 |
-| 13 | Settings | `create-a-mail-calendar-event` | Create a Mail Calendar Event | 94 | 57 | 534 |
-| 14 | Settings | `export-a-mail-calendar` | Export a Mail Calendar | 67 | 50 | 630 |
 | 15 | Contacts | `add-contacts` | Add Contacts | 136 | 28 | 707 |
 | 16 | Contacts | `create-a-contact-group` | Create a Contact Group | 160 | 39 | 640 |
 | 17 | Contacts | `import-or-export-contacts` | Import or Export Contacts | 160 | 41 | 666 |
