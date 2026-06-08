@@ -302,10 +302,14 @@ async def export_markdown(page: Page, entry: dict) -> bytes:
     await scope.locator(more_sel).first.click(timeout=MENU_PROBE_TIMEOUT_MS)
 
     # Step 2: hover「下载到本地」展开级联子菜单（不是 click，因为右侧有 ▶ 表示 hover 触发）
+    # scope 优先（more button 与子菜单同 frame），page 兜底。
+    # 反序的代价：page 兜底 12s timeout 期间子菜单已因鼠标离开而关闭，frame fallback 必失败。
     await page.wait_for_timeout(300)
-    export_sel = await try_hover_one(page, EXPORT_MENU_SELECTORS, MENU_PROBE_TIMEOUT_MS)
-    if not export_sel and scope is not page:
+    export_sel = None
+    if scope is not page:
         export_sel = await try_hover_one(scope, EXPORT_MENU_SELECTORS, MENU_PROBE_TIMEOUT_MS)
+    if not export_sel:
+        export_sel = await try_hover_one(page, EXPORT_MENU_SELECTORS, MENU_PROBE_TIMEOUT_MS)
     if not export_sel:
         cands = await dump_menu_candidates(page)
         # 失败时存截图便于诊断
@@ -320,21 +324,38 @@ async def export_markdown(page: Page, entry: dict) -> bytes:
             extra = f' [截图失败; more 选择器: {more_sel}]'
         raise RuntimeError(f'未找到「下载到本地」入口{extra}；当前菜单项 dump: {json.dumps(cands[:30], ensure_ascii=False)}')
 
-    # Step 3: click「Markdown(.md)」并等待 download 事件
-    await page.wait_for_timeout(400)  # 等子菜单弹出动画
+    # Step 3: 定位「Markdown(.md)」（scope 优先，page 兜底），再 hover+click 一气呵成
+    await page.wait_for_timeout(500)  # 等子菜单弹出动画
+    md_loc = None
+    md_sel = None
+    scopes_try = ([scope] if scope is not page else []) + [page]
+    for s in scopes_try:
+        for sel in MARKDOWN_OPTION_SELECTORS:
+            try:
+                loc = s.locator(sel).first
+                await loc.wait_for(state='visible', timeout=MENU_PROBE_TIMEOUT_MS)
+                md_loc = loc
+                md_sel = sel
+                break
+            except Exception:
+                continue
+        if md_loc:
+            break
+    if not md_loc:
+        cands = await dump_menu_candidates(page)
+        # 子菜单里没有 Markdown 文本 → 此文档类型不支持 md 导出（AI 表格 / 多维表格）
+        has_md_text = any('markdown' in (c.get('text') or '').lower() for c in cands)
+        if not has_md_text:
+            raise MarkdownNotSupportedError(
+                f'子菜单中无 Markdown 选项（疑似 AI 表格/多维表格类型）'
+            )
+        raise RuntimeError(f'未找到「Markdown(.md)」选项；当前菜单项 dump: {json.dumps(cands[:30], ensure_ascii=False)}')
+
     async with page.expect_download(timeout=DOWNLOAD_TIMEOUT_MS) as dl_info:
-        md_sel = await try_click_one(page, MARKDOWN_OPTION_SELECTORS, MENU_PROBE_TIMEOUT_MS)
-        if not md_sel and scope is not page:
-            md_sel = await try_click_one(scope, MARKDOWN_OPTION_SELECTORS, MENU_PROBE_TIMEOUT_MS)
-        if not md_sel:
-            cands = await dump_menu_candidates(page)
-            # 子菜单里没有 Markdown 文本 → 此文档类型不支持 md 导出（AI 表格 / 多维表格）
-            has_md_text = any('markdown' in (c.get('text') or '').lower() for c in cands)
-            if not has_md_text:
-                raise MarkdownNotSupportedError(
-                    f'子菜单中无 Markdown 选项（疑似 AI 表格/多维表格类型）'
-                )
-            raise RuntimeError(f'未找到「Markdown(.md)」选项；当前菜单项 dump: {json.dumps(cands[:30], ensure_ascii=False)}')
+        # hover → 100ms → click：保持鼠标在子菜单内，避免子菜单在 click 前关闭
+        await md_loc.hover()
+        await page.wait_for_timeout(100)
+        await md_loc.click()
     download: Download = await dl_info.value
 
     # 把下载流读到临时文件再读出 bytes
@@ -457,7 +478,8 @@ async def main(args) -> int:
         ctx: BrowserContext = await browser.new_context(
             storage_state=str(STATE_PATH),
             viewport={'width': 1440, 'height': 900},
-            locale='zh-CN',
+            locale=args.locale,
+            extra_http_headers={'Accept-Language': f'{args.locale},en;q=0.9'},
             accept_downloads=True,
         )
 
@@ -505,6 +527,7 @@ def parse_args():
     ap.add_argument('--skip', type=int, default=0, help='跳过前 N 条 pending（调试时绕过文件夹节点）')
     ap.add_argument('--headed', action='store_true', help='显示浏览器（默认 headless）')
     ap.add_argument('--retry-failed', action='store_true', help='把 failed/permanent_failed 重置为 pending 后跑')
+    ap.add_argument('--locale', default='zh-CN', help='浏览器 locale（默认 zh-CN；EN 文档抓取用 en-US）')
     return ap.parse_args()
 
 

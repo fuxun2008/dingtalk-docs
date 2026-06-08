@@ -12,8 +12,26 @@
 
 ## 参数
 
+### 模式 A：.url 包输入（既有）
+
 - `--input <path>`（默认 `~/Downloads/<date>_DingTalk_Docs/<产品>.url/`）：钉钉文档导出的 `.url` 快捷方式目录，结构 `<group>/<page>.url`
 - `--output <path>`（默认 `~/Downloads/dingtalk-docs-archive/`）：下载目标目录
+
+### 模式 B：hub URL 输入（2026-06-07+）
+
+适用：团队已把一个产品所有文档收进一个 hub 节点（如 DingTalk Mail）；不需要预先导出 `.url` 包。
+
+- `--hub-url <url>`（必填）：hub 节点 URL，如 `https://alidocs.dingtalk.com/i/nodes/<id>`
+- `--lang <locale>`（默认 `en-US`）：目标语言，同时驱动浏览器 locale + URL `?lang=` 参数 + UI 切换
+- `--output-dir <path>`（默认 `~/Downloads/<date>_DingTalk_<product>/`）：下载产物根目录，**baked 进每条 manifest entry 的 output_path**
+- 与模式 A 关键差异：
+  - 步骤 1 跑 `crawl_hub.py` 替代 `build_manifest.py`
+  - **步骤 3 整步跳过** — `download.py` 是 UI 驱动（`page.expect_download` + 点 Markdown 菜单），不消费 endpoint.json
+  - 步骤 4 必须加 `--locale <lang>`（避免 download.py 用默认 zh-CN 把 EN 文档抓成中文）
+  - 步骤 5 必须加 `--expect-lang en`（兜底 EN 切换失败）
+
+### 通用参数
+
 - `--from-step <N>`（可选）：从第 N 步开始（断点续跑；前置已通过手动验证时用）
 - `--to-step <N>`（可选）：只跑到第 N 步就停
 - `--force-redownload`（可选）：忽略 manifest 状态全量重下（如端点变更后产物需要刷新）
@@ -38,20 +56,37 @@ test -d "<input-path>" || echo "[err] 输入目录不存在，先把钉钉文档
 
 任意失败 → 停下报具体怎么修。
 
-### 步骤 1 — 扫 `.url` 生成 manifest（纯自动）
+### 步骤 1 — 生成 manifest
+
+#### 模式 A — 扫 `.url`（纯自动）
 
 ```bash
 python3 build_manifest.py
 ```
 
-读 `<input-path>` 下所有 `.url`，生成 `manifest.json`（每条 `{ group, title, url, status: "pending" }`）。
+读 `<input-path>` 下所有 `.url`，生成 `manifest.json`（13 字段：`rel_path / title / category / node_id / id_kind / url / source_url_file / output_path / status / attempts / error / downloaded_at / size_bytes`）。
+
+#### 模式 B — 爬 hub（hub URL 输入；含 EN 抽样校验）
+
+```bash
+python3 crawl_hub.py \
+  --hub-url 'https://alidocs.dingtalk.com/i/nodes/<id>' \
+  --lang en-US \
+  --output-dir ~/Downloads/$(date +%F)_DingTalk_<product>/
+```
+
+流程：登录态加载 → 打开 hub（含 `?lang=en_US`）→ 多阶段切 EN（context locale → UI 切换 → 人工兜底）→ 展开所有 `aria-expanded=false` 节点 → 抽 `a[href*="/i/nodes/"]` → 抽样 3 个叶子校验 CJK < 5% → 写 manifest（13 字段，2 级 cap，3+ 级 group 把深路径压进 title）。
+
+**EN 切换失败的退出码**：`exit 2`（停下报错，不写 manifest）；抽样失败：`exit 3`。
 
 **验证**：
 ```bash
-python3 -c "import json; m=json.load(open('manifest.json')); print(f'total: {len(m)}, groups: {len(set(x[\"group\"] for x in m))}')"
+python3 -c "import json; m=json.load(open('manifest.json')); print(f'total: {len(m)}, categories: {len(set(x[\"category\"] for x in m))}')"
+# 模式 B 抽查英文标题：
+jq '.[0:5] | .[] | {title, category, url}' manifest.json
 ```
 
-**通过条件**：total > 0 + groups 数对得上输入目录 group 数。
+**通过条件**：total > 0 + categories 数对得上预期。模式 B 额外：抽样标题确实是英文。
 
 ### 步骤 2 — 浏览器扫码登录（**人工**）
 
@@ -73,7 +108,9 @@ test -f storage_state.json && du -h storage_state.json    # 一般 300-500 KB
 
 **安全提示**：`storage_state.json` 含登录 cookie，**绝对不能提交**（已 gitignore，但跑前 `git check-ignore storage_state.json` 兜底）。
 
-### 步骤 3 — 抓导出 API 端点（**人工**）
+### 步骤 3 — 抓导出 API 端点（**人工**；模式 B 跳过）
+
+> **模式 B 整步跳过**：`download.py` 是 UI 驱动（`page.expect_download` + 模拟点击「更多 → 下载到本地 → Markdown(.md)」），不消费 `endpoint.json`。该文件只是历史诊断产物。
 
 ```bash
 python3 discover_endpoint.py
@@ -95,14 +132,19 @@ test -f endpoint.json && python3 -c "import json; e=json.load(open('endpoint.jso
 **陷阱**：
 - 端点是**产品 specific** 的（不同产品归档可能用不同导出 API），新产品第一次跑必须重做
 - 登录态过期（cookie 7 天）→ 回步骤 2
+- 模式 B 这一步**不要跑**，浪费时间且产物不被消费
 
 ### 步骤 4 — 批量下载（纯自动，10-50 min）
 
 ```bash
+# 模式 A（中文）
 python3 download.py
+
+# 模式 B（英文，必须加 --locale）
+python3 download.py --locale en-US
 ```
 
-按 manifest 顺序逐条调步骤 3 抓到的 endpoint，限速 1-2s/篇，每篇下载完立即写 manifest 状态（断点续传基础）。中断后重跑只处理 `pending` / `failed` 条目（除非 `--force-redownload`）。
+UI 驱动：每篇开新 page → 模拟点击「更多 → 下载到本地 → Markdown(.md)」→ 抓 download 事件 → 落盘到 `entry['output_path']`。限速 1-2s/篇，每篇下载完立即写 manifest 状态（断点续传基础）。中断后重跑只处理 `pending` / `failed` 条目（除非 `--force-redownload`）。
 
 **进度监控**：脚本边跑边打印 `[N/Total] <title> ... ok|failed`。可用 `Monitor` 跟踪：
 
@@ -117,14 +159,19 @@ tail -f download.log | grep --line-buffered -E 'ok|failed|error'
 ### 步骤 5 — 校验产物（纯自动）
 
 ```bash
+# 模式 A
 python3 verify.py
+
+# 模式 B（英文，加 --expect-lang 兜底 EN 切换失败）
+python3 verify.py --expect-lang en
 ```
 
-检查 4 项：
+检查 5 项：
 1. 数量 = manifest total
-2. 无空 md（< 100 bytes 报警）
-3. 无登录页污染（md 含 `dingtalk-passport` / `login` 等关键字报警）
+2. 无空 md（< 200 bytes 报警）
+3. 无登录页污染（md 含 `请登录` / `login-form` 等关键字报警）
 4. H1 与 manifest title 一致（不一致报告，不强制失败）
+5. （`--expect-lang en` 时）正文 CJK 比例 > 20% 报警（兜底 EN 切换失败的页）
 
 **通过条件**：4 项全 pass，或失败条目 ≤ 5%（少量失败可手工补）。
 
