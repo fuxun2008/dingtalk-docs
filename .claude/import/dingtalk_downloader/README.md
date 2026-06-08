@@ -11,12 +11,22 @@ cd /Users/yanxin/www/dingtalk-docs/.claude/import/dingtalk_downloader
 pip install -r requirements.txt
 playwright install chromium
 
-# 跑全流程
+# 模式 A：跑全流程（.url 包输入）
 python build_manifest.py        # 1. 扫描 .url → manifest.json
 python auth_bootstrap.py        # 2. 浏览器扫码登录，保存 storage_state.json
-python discover_endpoint.py     # 3. 抓包探测导出 API
+python discover_endpoint.py     # 3. 抓包探测导出 API（仅诊断，download.py 不消费）
 python download.py              # 4. 批量下载（10-50 分钟，可断点续传）
 python verify.py                # 5. 校验产物
+
+# 模式 B：跑全流程（hub URL 输入，含 EN 抽样校验）
+python auth_bootstrap.py        # 1. 浏览器扫码登录
+python crawl_hub.py \
+    --hub-url 'https://alidocs.dingtalk.com/i/nodes/<hub-id>' \
+    --lang en-US \
+    --output-dir ~/Downloads/$(date +%F)_DingTalk_<product>/   # 2. 爬 hub → manifest.json
+# 步骤 3 跳过（UI 驱动模式不需要 endpoint.json）
+python download.py --locale en-US                              # 4. 批量下载
+python verify.py --expect-lang en                              # 5. 校验产物（含 CJK 兜底）
 ```
 
 ## 输入 / 输出
@@ -29,11 +39,12 @@ python verify.py                # 5. 校验产物
 | 文件 | 用途 | 可提交 |
 |---|---|---|
 | `requirements.txt` | Python 依赖 | ✅ |
-| `build_manifest.py` | 扫 .url 生成 manifest | ✅ |
+| `build_manifest.py` | 模式 A：扫 .url 生成 manifest | ✅ |
+| `crawl_hub.py` | 模式 B：爬 hub URL 生成 manifest（含 EN 抽样校验） | ✅ |
 | `auth_bootstrap.py` | 登录态获取 | ✅ |
-| `discover_endpoint.py` | 导出 API 探测 | ✅ |
-| `download.py` | 批量下载主循环 | ✅ |
-| `verify.py` | 产物校验 | ✅ |
+| `discover_endpoint.py` | 导出 API 探测（仅模式 A 诊断） | ✅ |
+| `download.py` | 批量下载主循环（UI 驱动，支持 `--locale`） | ✅ |
+| `verify.py` | 产物校验（支持 `--expect-lang`） | ✅ |
 | `manifest.json` | 下载清单 + 状态 | ❌ 不提交 |
 | `endpoint.json` | 探测到的 API 端点 | ❌ 不提交（含内部 URL） |
 | `storage_state.json` | 浏览器登录态（含 cookie） | ❌ **绝对不提交** |

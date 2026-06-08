@@ -2,16 +2,19 @@
 """下载产物校验。
 
 用法:
-    python3 verify.py
+    python3 verify.py                       # 基础校验
+    python3 verify.py --expect-lang en      # 额外校验：CJK 字符 > 20% 报警（兜底 EN 切换失败）
 
 检查:
   1. 数量：manifest entries vs 实际 .md 文件
   2. 空文件 / 过小文件（< 200 bytes）
   3. 登录页污染（含"请登录"/"扫码登录"等关键词）
   4. H1 一致性（首行 # title 是否与 manifest.title 高度相似）
-  5. 输出 verify_report.md
+  5. (可选) 语言一致性：--expect-lang {zh|en|ja}，正文 CJK 比例不匹配时报警
+  6. 输出 verify_report.md
 """
 from __future__ import annotations
+import argparse
 import json
 import re
 import sys
@@ -19,12 +22,14 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 MANIFEST_PATH = HERE / 'manifest.json'
-DEST_ROOT = Path.home() / 'Downloads' / 'dingtalk-docs-archive'
-REPORT_PATH = DEST_ROOT / 'verify_report.md'
+DEFAULT_DEST_ROOT = Path.home() / 'Downloads' / 'dingtalk-docs-archive'
 
 MIN_BYTES = 200
 LOGIN_KEYWORDS = ('请登录', '扫码登录', 'login-form', 'dt-login', 'Please log in', '账号登录')
 H1_RE = re.compile(r'^\s*#\s+(.+?)\s*$', re.MULTILINE)
+CJK_RE = re.compile(r'[぀-ヿ㐀-䶿一-鿿豈-﫿]')
+EN_MAX_CJK_RATIO = 0.20   # EN 模式下正文 CJK 占比超过 20% 即告警
+LANG_SAMPLE_CHARS = 500
 
 
 def normalize(s: str) -> str:
@@ -32,7 +37,7 @@ def normalize(s: str) -> str:
     return re.sub(r'[\s\W_]+', '', s).lower()
 
 
-def check_one(entry: dict) -> dict:
+def check_one(entry: dict, expect_lang: str | None = None) -> dict:
     """返回 issues 列表 + 元数据。"""
     out_path = Path(entry['output_path'])
     result = {
@@ -42,6 +47,7 @@ def check_one(entry: dict) -> dict:
         'size_bytes': 0,
         'h1': None,
         'h1_match': None,
+        'cjk_ratio': None,
         'issues': [],
     }
 
@@ -63,6 +69,14 @@ def check_one(entry: dict) -> dict:
 
     if any(k in text for k in LOGIN_KEYWORDS):
         result['issues'].append('contains_login_keywords')
+
+    # 语言一致性（仅 expect_lang=en 时启用：正文 CJK 比例不应过高）
+    if expect_lang == 'en':
+        sample = text[:LANG_SAMPLE_CHARS]
+        ratio = len(CJK_RE.findall(sample)) / max(len(sample), 1)
+        result['cjk_ratio'] = ratio
+        if ratio > EN_MAX_CJK_RATIO:
+            result['issues'].append(f'lang_mismatch_en (CJK ratio={ratio:.1%})')
 
     m = H1_RE.search(text)
     if m:
@@ -92,13 +106,25 @@ def check_one(entry: dict) -> dict:
     return result
 
 
-def main() -> int:
+def main(args: argparse.Namespace) -> int:
     if not MANIFEST_PATH.exists():
         print(f'❌ {MANIFEST_PATH} 不存在', file=sys.stderr)
         return 1
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding='utf-8'))
-    results = [check_one(e) for e in manifest]
+    results = [check_one(e, expect_lang=args.expect_lang) for e in manifest]
+
+    # 报告路径：从 manifest 的 output_path 推导根目录（兼容 crawl_hub 的自定义 output-dir）
+    import os
+    output_dirs = [str(Path(e['output_path']).parent) for e in manifest]
+    if output_dirs:
+        try:
+            dest_root = Path(os.path.commonpath(output_dirs))
+        except ValueError:
+            dest_root = DEFAULT_DEST_ROOT
+    else:
+        dest_root = DEFAULT_DEST_ROOT
+    report_path = dest_root / 'verify_report.md'
 
     total = len(results)
     files_present = sum(1 for r in results if r['file_exists'])
@@ -113,9 +139,11 @@ def main() -> int:
         by_status[s] = by_status.get(s, 0) + 1
 
     # 写报告
-    DEST_ROOT.mkdir(parents=True, exist_ok=True)
+    dest_root.mkdir(parents=True, exist_ok=True)
     lines = []
     lines.append('# Verify Report\n')
+    if args.expect_lang:
+        lines.append(f'- 预期语言: **{args.expect_lang}** (CJK 阈值 {EN_MAX_CJK_RATIO:.0%})')
     lines.append(f'- manifest 总数: **{total}**')
     lines.append(f'- 实际文件存在: **{files_present}**')
     lines.append(f'- 完全健康（无 issue）: **{healthy}**')
@@ -152,20 +180,33 @@ def main() -> int:
                 lines.append(f'- ... 还有 {len(samples) - 10} 条')
             lines.append('')
 
-    REPORT_PATH.write_text('\n'.join(lines), encoding='utf-8')
+    report_path.write_text('\n'.join(lines), encoding='utf-8')
 
     # 终端汇总
     print('=' * 60)
+    if args.expect_lang:
+        print(f'预期语言: {args.expect_lang}')
     print(f'总数: {total}')
     print(f'文件存在: {files_present}')
     print(f'完全健康: {healthy}')
     print(f'有 issue: {len(with_issues)}')
     print(f'缺失: {len(missing)}')
     print('=' * 60)
-    print(f'报告: {REPORT_PATH}')
+    print(f'报告: {report_path}')
 
     return 0 if not missing and not with_issues else 1
 
 
+def parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description='下载产物校验')
+    ap.add_argument(
+        '--expect-lang',
+        choices=['zh', 'en', 'ja'],
+        default=None,
+        help='预期语言；当为 en 时正文 CJK 比例 > 20%% 会报警（兜底 EN 切换失败）',
+    )
+    return ap.parse_args()
+
+
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(parse_args()))
