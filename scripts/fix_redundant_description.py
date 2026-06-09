@@ -49,8 +49,31 @@ def _extract(match: re.Match | None) -> str | None:
     return next((g for g in match.groups() if g is not None), None)
 
 
+_JUNK_STRIP_RE = re.compile(r"[\s*\-_=.,!?;:，。！？；：·…]+")
+
+
+def _is_junk_description(desc: str) -> bool:
+    """Detect descriptions extracted from non-prose source (table rows, fragments, etc.)."""
+    s = desc.strip()
+    if not s:
+        return True
+    # Contains a pipe — almost certainly a stray GFM table row, e.g. "| | |"
+    if "|" in s:
+        return True
+    # After stripping punctuation/whitespace, fewer than 5 meaningful chars
+    cleaned = _JUNK_STRIP_RE.sub("", s)
+    if len(cleaned) < 5:
+        return True
+    return False
+
+
 def process_mdx(text: str) -> tuple[str, bool]:
-    """Return (new_text, removed?) — removed=True when description was stripped."""
+    """Return (new_text, removed?) — removed=True when description was stripped.
+
+    Removes the description line when either:
+      1) title.strip() == description.strip() (Mintlify subtitle duplicates H1)
+      2) description is "junk" (table fragment, too-short, all-punctuation)
+    """
     if not text.startswith("---\n"):
         return text, False
     end = text.find("\n---\n", 4)
@@ -64,7 +87,9 @@ def process_mdx(text: str) -> tuple[str, bool]:
     desc = _extract(desc_m)
     if title is None or desc is None:
         return text, False
-    if title.strip() != desc.strip():
+    same = title.strip() == desc.strip()
+    junk = _is_junk_description(desc)
+    if not (same or junk):
         return text, False
 
     # Drop the description line in-place (preserve trailing blank lines outside fm)
