@@ -424,12 +424,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             <h2>{t.pop_title}</h2>
             <p>{t.pop_sub}</p>
           </div>
-          <a href="#" className="dt-home-more">
-            {t.pop_more}{" "}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M5 12h14m-6-6 6 6-6 6" />
-            </svg>
-          </a>
+          <a href="#" className="dt-home-more">{t.pop_more}</a>
         </div>
         <div className="dt-home-art-grid">
           {arts.map((a, i) => (
@@ -532,11 +527,6 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
 
   return (
     <div className="dt-home">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: "#navbar{display:none!important}",
-        }}
-      />
       {renderHeader()}
       {renderHero()}
       {renderCategoryGrid()}
