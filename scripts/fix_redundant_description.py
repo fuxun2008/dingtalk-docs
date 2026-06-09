@@ -50,10 +50,15 @@ def _extract(match: re.Match | None) -> str | None:
 
 
 _JUNK_STRIP_RE = re.compile(r"[\s*\-_=.,!?;:，。！？；：·…]+")
+# description starting with a list marker → mdxify grabbed a list item, not prose
+_LIST_NUM_START_RE = re.compile(r"^\d+[.)、]\s")
+_LIST_BULLET_START_RE = re.compile(r"^[-*+]\s")
+# description starting with CJK closing punctuation → first sentence got truncated
+_CJK_PUNCT_START_RE = re.compile(r"^[，。：；！？、》】）]")
 
 
 def _is_junk_description(desc: str) -> bool:
-    """Detect descriptions extracted from non-prose source (table rows, fragments, etc.)."""
+    """Detect descriptions extracted from non-prose source (table rows, list items, fragments)."""
     s = desc.strip()
     if not s:
         return True
@@ -63,6 +68,12 @@ def _is_junk_description(desc: str) -> bool:
     # After stripping punctuation/whitespace, fewer than 5 meaningful chars
     cleaned = _JUNK_STRIP_RE.sub("", s)
     if len(cleaned) < 5:
+        return True
+    # Starts with a list marker — mdxify grabbed a list item, not a prose paragraph
+    if _LIST_NUM_START_RE.match(s) or _LIST_BULLET_START_RE.match(s):
+        return True
+    # Starts with CJK closing punctuation — sentence was truncated mid-flow
+    if _CJK_PUNCT_START_RE.match(s):
         return True
     return False
 
