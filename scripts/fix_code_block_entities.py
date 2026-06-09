@@ -96,13 +96,61 @@ def detect_language(code: str) -> str:
     ):
         return "python"
 
-    # Shell / Bash
-    if re.search(r"^\s*#!.*\b(bash|sh)\b", code, re.M) or re.search(
-        r"^\s*(curl\s|npm\s|pip\s+install|apt-get\s|yarn\s|wget\s|export\s+[A-Z])",
-        code,
-        re.M,
+    # Shell / Bash — now also catches multi-line curl with -X / -H / -d, and common cli tools
+    if (
+        re.search(r"^\s*#!.*\b(bash|sh|zsh)\b", code, re.M)
+        or re.search(
+            r"^\s*(curl\s|npm\s|pip\s+install|apt-get\s|yarn\s|wget\s|export\s+[A-Z_]|brew\s|cd\s+|mkdir\s|rm\s|mvn\s|gradle\s|docker\s|kubectl\s)",
+            code,
+            re.M,
+        )
+        or re.search(r"\bcurl\s+.*?(-X\s+|-H\s+|-d\s+|--data|--header)", code)
     ):
         return "bash"
+
+    # HTTP request line: `GET /path HTTP/1.1` or just `METHOD https://...`
+    if re.search(r"^\s*(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+\S+\s+HTTP/", code, re.M):
+        return "http"
+
+    # Go — package main / func declaration / Alibaba Cloud SDK import style
+    if (
+        re.search(r"^\s*package\s+(main|\w+)\s*$", code, re.M)
+        and re.search(r"^\s*(import\s*\(|func\s+\w)", code, re.M)
+    ) or re.search(r"\b(fmt\.Println|fmt\.Printf|fmt\.Sprintf)\b", code):
+        return "go"
+
+    # C / C++ — #include <foo.h> or std:: or ::operator
+    if re.search(r"^\s*#include\s*[<\"][\w/.]+[>\"]", code, re.M) or "std::" in code:
+        return "cpp"
+
+    # PHP — must have explicit signature, not just `$var` (which appears in shell)
+    if (
+        re.search(r"<\?php", code)
+        or re.search(r"""\binclude(_once)?\s+['"][^'"]*\.php['"]""", code)
+        or re.search(r"\becho\s+['\"]", code)
+    ):
+        return "php"
+
+    # JavaScript / Node.js — function/=>/const/let/var/require/module.exports
+    if re.search(
+        r"\b(function\s+\w+\s*\(|const\s+\w+\s*=|let\s+\w+\s*=|=>\s*[\{\(]|console\.log\(|require\s*\(\s*['\"]|module\.exports)\b",
+        code,
+    ):
+        return "javascript"
+
+    # HTML — opening tag of structural elements
+    if re.search(r"<(html|head|body|script\b|div\s+class=|meta\s+|link\s+rel=)", code, re.I):
+        return "html"
+
+    # YAML — `key: value` lines without leading `{` (last-resort, very specific)
+    # Require: 3+ lines matching `key: value` AND no `;` / `=` (avoid mistaking
+    # other key-value formats like params docs).
+    if (
+        not first_char in "{["
+        and not re.search(r"[;=]", code)
+        and len(re.findall(r"^\s*[a-zA-Z_][\w-]*:\s+\S", code, re.M)) >= 3
+    ):
+        return "yaml"
 
     # HTTP URL line as a one-off (the Webhook example) — falls under text or http
     if re.match(r"^\s*https?://", code) and len(code.splitlines()) <= 2:
@@ -139,8 +187,12 @@ def build_info_string(lang: str, other_meta: list[str], add_lines: bool) -> str:
     return " ".join(parts)
 
 
-def process_mdx(text: str) -> tuple[str, dict]:
-    """Walk lines; rewrite fenced blocks; return (new_text, stats)."""
+def process_mdx(text: str, retag_text: bool = False) -> tuple[str, dict]:
+    """Walk lines; rewrite fenced blocks; return (new_text, stats).
+
+    When `retag_text=True`, fences whose existing lang is literally `text` are
+    re-detected (useful after improving detect_language heuristics).
+    """
     lines = text.splitlines(keepends=False)
     out: list[str] = []
     stats = {
@@ -176,16 +228,19 @@ def process_mdx(text: str) -> tuple[str, dict]:
                 # closing fence — rebuild open-fence info string
                 stats["fences"] += 1
                 lang_existing, meta_existing = parse_info_string(fence_info_original)
-                if lang_existing:
-                    stats["fences_with_existing_lang"] += 1
-                    lang = lang_existing
-                else:
+                should_redetect = (not lang_existing) or (retag_text and lang_existing == "text")
+                if should_redetect:
                     # Detect language from the DECODED body so e.g. `<dependency>` is
                     # recognized as xml even though source had `&lt;dependency>`.
                     decoded_body = "\n".join(reverse_escape(l) for l in fence_body_lines)
                     lang = detect_language(decoded_body)
                     if lang:
                         stats["lang_added"][lang] += 1
+                    if retag_text and lang_existing == "text" and lang != "text":
+                        stats.setdefault("retagged_text", Counter())[lang] += 1
+                else:
+                    stats["fences_with_existing_lang"] += 1
+                    lang = lang_existing
 
                 add_lines = len(fence_body_lines) >= LINES_MIN_THRESHOLD
                 if add_lines:
@@ -311,9 +366,11 @@ def cmd_preview(args) -> int:
         print(f"ERROR: no mdx under {ZH_OPEN_DIR}", file=sys.stderr)
         return 2
     records: list[dict] = []
+    retag_total: Counter[str] = Counter()
     for fp in files:
         text = fp.read_text(encoding="utf-8")
-        new_text, stats = process_mdx(text)
+        new_text, stats = process_mdx(text, retag_text=args.retag_text)
+        retag_total.update(stats.get("retagged_text", {}))
         records.append({
             "path": str(fp.relative_to(REPO)),
             "any_change": new_text != text,
@@ -328,6 +385,8 @@ def cmd_preview(args) -> int:
     total_e = sum(r["entities_decoded"] for r in records)
     print(f"  files with change: {changed} / {len(files)}")
     print(f"  entities decoded:  {total_e}")
+    if args.retag_text and retag_total:
+        print(f"  retagged text →: {dict(retag_total)}")
     return 0
 
 
@@ -337,10 +396,12 @@ def cmd_apply(args) -> int:
         print(f"ERROR: no mdx under {ZH_OPEN_DIR}", file=sys.stderr)
         return 2
     records: list[dict] = []
+    retag_total: Counter[str] = Counter()
     written = 0
     for fp in files:
         text = fp.read_text(encoding="utf-8")
-        new_text, stats = process_mdx(text)
+        new_text, stats = process_mdx(text, retag_text=args.retag_text)
+        retag_total.update(stats.get("retagged_text", {}))
         if new_text != text:
             fp.write_text(new_text, encoding="utf-8")
             written += 1
@@ -359,6 +420,8 @@ def cmd_apply(args) -> int:
     )
     p = write_report(records)
     print(f"apply done. wrote {written} mdx files.")
+    if args.retag_text and retag_total:
+        print(f"  retagged text →: {dict(retag_total)}")
     print(f"  changes.json → {OUT_DIR / 'fix_entities_changes.json'}")
     print(f"  report.md    → {p}")
     return 0
@@ -376,8 +439,14 @@ def cmd_report(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
     sp = p.add_subparsers(dest="cmd", required=True)
-    sp.add_parser("preview", help="dry-run, write preview.md").set_defaults(func=cmd_preview)
-    sp.add_parser("apply", help="rewrite mdx + write changes.json + report.md").set_defaults(func=cmd_apply)
+    pv = sp.add_parser("preview", help="dry-run, write preview.md")
+    pv.add_argument("--retag-text", action="store_true",
+                    help="re-detect language for fences currently tagged as `text`")
+    pv.set_defaults(func=cmd_preview)
+    ap = sp.add_parser("apply", help="rewrite mdx + write changes.json + report.md")
+    ap.add_argument("--retag-text", action="store_true",
+                    help="re-detect language for fences currently tagged as `text`")
+    ap.set_defaults(func=cmd_apply)
     sp.add_parser("report", help="print last apply report").set_defaults(func=cmd_report)
     return p
 
