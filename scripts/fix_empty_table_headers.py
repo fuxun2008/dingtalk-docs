@@ -46,11 +46,38 @@ SEPARATOR_RE = re.compile(r"^\s*\|(?:\s*:?-+:?\s*\|)+\s*$")
 # Table data row: starts and ends with `|`
 TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
 
-# Real header signature: a table row that contains bold markdown `**...**` in
-# at least one cell. This is the marker markdownify uses for the actual title
-# row when the source HTML lacked <th>. We only promote rows matching this —
-# never promote arbitrary first-data rows.
+# Real header signature: a table row that LOOKS like a header rather than data.
+# Two paths to qualify:
+#   1) High-confidence: contains bold markdown `**...**` (markdownify's marker)
+#   2) Heuristic: every cell is short (≤ 12 chars) and contains no sentence-end
+#      punctuation (。；！？), no quotes, no comma `，`, no parentheses content.
+#      Header words are typically `参数`/`说明`/`字段`/`类型`/`描述`/`名称`/`格式`
+#      etc.; data rows almost always exceed 12 chars or contain `。`/`，`.
 BOLD_TITLE_RE = re.compile(r"\*\*[^*]+\*\*")
+# Forbidden chars inside any header cell — presence signals data row, not header
+HEADER_CELL_FORBIDDEN = re.compile(r"[。；！？，\"'()（）]")
+
+
+def _looks_like_header_row(line: str) -> bool:
+    """Heuristic: every | …| cell is short and free of data-row punctuation."""
+    raw = line.strip()
+    if not (raw.startswith("|") and raw.endswith("|")):
+        return False
+    # Split cells, drop the empty outer parts
+    cells = [c.strip().lstrip("*").rstrip("*").strip() for c in raw.strip("|").split("|")]
+    if not cells or not any(cells):
+        return False
+    for c in cells:
+        # Strip inline-code markers so `参数` and `\`参数\`` both qualify
+        c_clean = c.strip("`").strip()
+        if len(c_clean) > 12:
+            return False
+        if HEADER_CELL_FORBIDDEN.search(c_clean):
+            return False
+        # Skip pure-numeric / IP-like cells (1.1.1.1, 1.0.0, 8080)
+        if re.fullmatch(r"[\d.:/\-]+", c_clean):
+            return False
+    return True
 
 
 def process_mdx(text: str) -> tuple[str, int]:
@@ -69,7 +96,7 @@ def process_mdx(text: str) -> tuple[str, int]:
             and SEPARATOR_RE.match(lines[i + 1])
             and TABLE_ROW_RE.match(lines[i + 2])
             and not EMPTY_HEADER_RE.match(lines[i + 2])  # data row must have content
-            and BOLD_TITLE_RE.search(lines[i + 2])        # real title is bolded
+            and (BOLD_TITLE_RE.search(lines[i + 2]) or _looks_like_header_row(lines[i + 2]))
         ):
             # Drop line[i] (empty header); swap line[i+1] (sep) and line[i+2] (real title)
             out.append(lines[i + 2])  # real title promoted to header
