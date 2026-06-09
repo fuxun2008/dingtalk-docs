@@ -116,7 +116,7 @@ _INTERNAL_LINK_RE = re.compile(r"\]\(/document/([a-z][a-z0-9_-]*)/([^)\s#?]+)(?:
 # We don't preserve `<Note>` etc. because crawl_open_platform produces pure markdown
 # (markdownify already converted HTML to text); preserving tag-like `<` would let
 # patterns like `Map<String, Array>` or `< 10ms` break the MDX parser.
-_FENCE_RE_LINE = re.compile(r"^```")
+_FENCE_RE_LINE = re.compile(r"^(\s*)```")
 # We escape ALL `<` outside fenced code. Mintlify's MDX rejects even autolinks
 # `<https://...>` in some contexts (table cells, certain prose positions), so
 # preserving them isn't worth the build failures. Users can use `[url](url)`.
@@ -152,13 +152,19 @@ def mdx_safe_escape(body: str) -> tuple[str, int]:
     """
     count = 0
     out_lines: list[str] = []
-    in_fence = False
+    fence_indent: int | None = None  # None = outside fence; int = leading-space count of open fence
     for line in body.splitlines():
-        if _FENCE_RE_LINE.match(line):
-            in_fence = not in_fence
+        m = _FENCE_RE_LINE.match(line)
+        if m is not None:
+            indent = len(m.group(1))
+            if fence_indent is None:
+                fence_indent = indent  # entering fence
+            elif indent == fence_indent:
+                fence_indent = None  # closing fence (matching indent)
+            # else: ``` at a different indent inside fence — treat as code, not close
             out_lines.append(line)
             continue
-        if in_fence:
+        if fence_indent is not None:
             out_lines.append(line)
             continue
         # GFM table rows: force-escape the whole line (inline code in cells is
