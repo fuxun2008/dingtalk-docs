@@ -79,6 +79,53 @@ STYLE_JA = """風格指南（日文）：
 - 功能更新用：新機能 / 改善 / 修正 / 廃止"""
 
 
+# 开放平台 (Open Platform / OpenAPI) 专属铁律 — 仅 root=open 注入
+# 对标 Google API Docs / Microsoft Learn 的开发者文档质量
+OPEN_PLATFORM_RULES = """开放平台 (Open Platform / OpenAPI) 专属铁律 — 违反任意一条则译文无效：
+
+【强制术语 — 覆盖词库】
+A. 「机器人」译为 **Bot**（单数 / 英文）/ **ボット**（日文），**绝对不译为 Robot/ロボット**。
+   - 适用：所有 DingTalk 聊天机器人 / chatbot 语境
+   - 即便词库给出 Bots（复数），单实体场景一律改 Bot；列表 / 数组场景才用 bots
+   - 复合词：DingTalk Bot / Group bot / Custom bot / Stream-mode bot
+B. 「应用」一致译为 **App**（不要 Application）
+C. 「企业内部应用」→ **Internal app**；「第三方应用」→ **Third-party app**；「服务端 API」→ **Server API**
+
+【API 契约 — 严格保持原样不译】
+D. HTTP 动词 / 状态码 / Header 名 / Content-Type 完全不译：
+   POST / GET / PUT / DELETE / PATCH / 200 OK / 401 Unauthorized / Authorization / Content-Type / application/json
+E. JSON 字段名 / 路径参数名 / 查询参数名 **完全不译**（这些是面向程序的契约）：
+   corpId / userid / unionid / client_id / client_secret / access_token / refresh_token / grant_type
+   / authorization_code / request_id / dept_id / role_id / agent_id / nonce / timestamp / signature
+   即使中文上下文叫"用户 ID"，但当它作为 JSON 字段或表格里的"参数名"列出时，保持 `userid` 原样
+F. API 端点 URL 与路径占位符不译：
+   https://api.dingtalk.io/v1.0/oauth2/{corpId}/token 中 {corpId} 保持
+G. 错误码字符串不译（如 InvalidParameter.AccessToken / NotAuthorized / ServiceUnavailable）；
+   错误消息中的自然语言文本才译（如 "参数错误：accessToken 已过期" → "Invalid parameter: access token has expired"）
+H. 代码示例 ```code``` 块内容完全不动；代码块的 title="x" 中的 x 不译；
+   代码中的注释 `// ...` `# ...` 可译，但变量名 / 函数名 / SDK 方法名不译
+   （`// 获取访问令牌` → `// Get the access token`；但 `getAccessToken()` 保持）
+
+【Heading 大小写 — 体现专业性】
+I. 英文 Heading（# / ## / ### 等）一律 **Sentence case + 专有名词大写**：
+   ✅ "Get the access token of an internal app"
+   ❌ "Get The Access Token Of An Internal App"  （Title Case 错）
+   ❌ "get the access token of an internal app"  （首字母必须大写）
+   专有名词强制大写：DingTalk / API / SDK / URL / HTTP / OAuth / JSON / Webhook / JSAPI / H5 / SaaS / SSO / QR
+   品牌词强制大小写：DingTalk / DingTalk Bot / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind
+J. 日文标题：体言止め或动词原形结句；API 类专有词前后留半角空格（access token を取得する）
+
+【动作导向语气 — 开发者文档标准】
+K. 英文：祈使句 + 主动语态 — "Click..." / "Call..." / "Send a request to..." / "Configure the webhook"
+   避免：You can click... / It is possible to... / You should... / It is recommended that you...
+L. 日文：敬体 + 简洁 — 「〜します」「〜してください」「〜を呼び出します」
+   避免：「〜することができます」滥用、「〜することをお勧めします」冗长
+
+【表格列头惯用】
+M. 英文：Name / Type / Required / Example / Description（不写 "Required or not"）
+N. 日文：名前 / タイプ / 必須 / 例 / 説明"""
+
+
 # ---------------------------------------------------------------------------
 # 工具：占位检测、命中术语、sanitize
 # ---------------------------------------------------------------------------
@@ -166,10 +213,14 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
     )
 
 
-def build_system_prompt(lang: str) -> str:
+def build_system_prompt(lang: str, root: str = "") -> str:
     style = STYLE_EN if lang == "en" else STYLE_JA
     target = "英文（American English）" if lang == "en" else "日文（敬体 です・ます）"
-    return f"{SYSTEM_RULES}\n\n{style}\n\n本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。"
+    sections = [SYSTEM_RULES, style]
+    if root == "open":
+        sections.append(OPEN_PLATFORM_RULES)
+    sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
+    return "\n\n".join(sections)
 
 
 # ---------------------------------------------------------------------------
@@ -377,7 +428,7 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
     glossary = load_glossary(args.lang)
-    system_prompt = build_system_prompt(args.lang)
+    system_prompt = build_system_prompt(args.lang, args.root)
     sem = asyncio.Semaphore(args.concurrency)
 
     tasks = gather_tasks(args.root, args.lang, args.only)
