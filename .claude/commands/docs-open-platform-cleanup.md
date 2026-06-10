@@ -1,8 +1,8 @@
 # 开放平台开发者文档批量清洗
 
-> 子 skill：开放平台（zh/open/）开发者文档导入后特异性瑕疵批量修复。与 [[docs-audit-mdx]] 互补——后者侧重通用 MDX 渲染瑕疵（`++text++` / 破碎粗体 / 死链），本 skill 专治钉钉开放平台 API 文档形态的 7 类残留。
+> 子 skill：开放平台（zh/open/）开发者文档导入后特异性瑕疵批量修复。与 [[docs-audit-mdx]] 互补——后者侧重通用 MDX 渲染瑕疵（`++text++` / 破碎粗体 / 死链），本 skill 专治钉钉开放平台 API 文档形态的 8 类残留。
 
-已在 zh/open/ 416 篇上沉淀验证（2026-06-10，6 commit / 382 篇 / 7 类全清）。
+已在 zh/open/ 416 篇上沉淀验证（2026-06-10，7 commit / 411 篇 / 8 类全清）。
 
 ## 适用场景
 
@@ -18,7 +18,7 @@
 - `--only <类号>`：限定单类，如 `--only E`、`--only A,B,C`
 - `--skip <类号>`：跳过某类，如 `--skip H`（H 误报多，可手工后做）
 
-## 7 类瑕疵速查 + 治理策略
+## 8 类瑕疵速查 + 治理策略
 
 ### A —"支持与帮助"段 + 钉钉社区二维码外站图（必删）
 
@@ -153,6 +153,24 @@ grep -rEn '\*\*[。，、：；！？\.\,\!\?]+\*\*' zh/open/
 
 **⚠️ 误报陷阱**：grep 会把 `**类型一**：**用户**` 中的 `**：**` 当命中（实际是两个合法粗体边界），用 PCRE 加 negative lookbehind/lookahead 仍不能完全排除。**必须肉眼判断后再 Edit**。
 
+### I — frontmatter `description` ↔ 正文首段重复（**脚本自动**）
+
+```bash
+python3 scripts/lint/strip_dup_first_para.py --root zh/open    # dry-run 出报告
+```
+
+钉钉文档导出器对部分页签把"描述段落"既塞进 frontmatter `description`（mintlify 用作 SEO meta + 标题下副标题）又原样保留在正文首段，导致页面顶部「标题 → 副标题 → 首段」连读两遍同一句话。
+
+zh/open 416 篇命中 29 篇（~7%），主要分布 `development/` + `dingstart/`。
+
+**⚠️ 归一化陷阱**：脚本归一化时必须把 `_` 和 `\_` 都丢掉再比较，否则会漏 `jsapi_ticket` ↔ `jsapi\ticket`、`media_id` ↔ `media\id` 这类「正文有下划线 / description 被导出器转义」的边界。
+
+**边界**：三例引导句类（`data-structure.mdx` "AI 表格中包含如下基本结构：" / `documentation-faq.mdx` "有两种方式..." / `upload-files-to-the-knowledge-base.mdx` "在知识库...3 个步骤："）被删后 H2 标题直接接列表/Steps，mintlify 渲染正常——不算瑕疵。
+
+```bash
+python3 scripts/lint/strip_dup_first_para.py --root zh/open --apply
+```
+
 ## 执行流程（5 步）
 
 ### 步骤 1 — 全库扫描，给出 7 类命中数报告
@@ -165,6 +183,7 @@ echo "D \\_: $(grep -rl '\\\\_' zh/open/ | wc -l)"
 echo "E lines: $(grep -rEl '^\`\`\`[a-z]+ lines' zh/open/ | wc -l)"
 echo "G 空表头: $(grep -rEl '^\|( *\|)+ *\$' zh/open/ | wc -l)"
 echo "H 空粗体: $(grep -rEln '\*\*[。，、：；！？.,!?]+\*\*' zh/open/ | wc -l) (含误报)"
+echo "I desc 重复: $(python3 scripts/lint/strip_dup_first_para.py --root zh/open 2>/dev/null | grep -c '^  - ')"
 ```
 
 不传 `--apply` 时停在此步出报告。
@@ -185,6 +204,7 @@ echo "H 空粗体: $(grep -rEln '\*\*[。，、：；！？.,!?]+\*\*' zh/open/ 
 | F | 上下文判断 | 每篇 Edit 改语言名 | 一篇篇 |
 | G | 单点重排 | 每篇 Edit 删空头 + 调换顺序 | 分批 10-15 一波 |
 | H | 误报多 | 每篇 Read 肉眼判断 + Edit | 慢做 |
+| I | 安全（脚本归一化已验证） | `scripts/lint/strip_dup_first_para.py --apply` | 一次性 |
 
 ### 步骤 4 — 每批 commit
 
@@ -206,6 +226,7 @@ grep -rln "&lt;\|&gt;\|&amp;\|&quot;" zh/open/ | wc -l
 grep -rln '\\_' zh/open/ | wc -l
 grep -rEln '^```[a-z]+ lines' zh/open/ | wc -l
 grep -rEln '^\|( *\|)+ *$' zh/open/ | wc -l
+python3 scripts/lint/strip_dup_first_para.py --root zh/open | grep -c '^  - '
 
 # mintlify MDX 解析无错（关键，B/C 阶段最易引入）
 mint broken-links 2>&1 | grep -E "Syntax error|Unable to parse"
@@ -232,10 +253,11 @@ mint broken-links 2>&1 | grep -E "^zh/open/"
 
 ## 历史战果（基准）
 
-- **2026-06-10 zh/open 批次 1**：6 commit / 382 篇独立修复 / 7 类全清
+- **2026-06-10 zh/open 批次 1**：7 commit / 411 篇独立修复 / 8 类全清
   - Batch 1 P0：10 篇用户列名 + 1 篇 "支持与帮助"
   - Batch 2 H+G：52 篇空表头 + 空粗体
   - Batch 3 D：169 篇 `\_` 全量还原
   - Batch 3 B-URL：158 篇 URL 实体包反引号
   - Batch 3 B+C 杂项：65 篇 JSON cell / Java 泛型
   - Batch 4 E：347 篇 ` lines` 后缀脚本清（2492 行）
+  - Batch 4 F：29 篇 I 类 `description` ↔ 首段重复（`scripts/lint/strip_dup_first_para.py`）
