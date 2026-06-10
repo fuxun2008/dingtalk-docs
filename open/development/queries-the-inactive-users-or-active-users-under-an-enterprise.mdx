@@ -1,0 +1,153 @@
+---
+title: "Get the list of employees who did not sign in to DingTalk"
+---
+
+Call this API to query the list of employees in your organization who did not sign in to DingTalk on a specified date.
+
+## API call description
+
+- Call the API after 9:00 AM to get the data of the previous day.
+- This API only returns the list of employees who did not sign in to DingTalk within the past month.
+
+## Request
+
+| **Basic information** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/inactive/user/v2/get |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app |
+| Required permissions | permission-qyapi_liveness_base-Permission to access organization activity data |
+
+### Query parameter
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| access_token | String | Yes | 6d1bxxxx | The app credential used to call this API. Obtain it by calling the API for getting the access_token of an internal app. |
+
+### Request body
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| is_active | Boolean | Yes | false | Whether the user is active:   - **false**: Not signed in - **true**: Signed in |
+| dept_ids | String | No | 1,2,3 | The department ID list. Obtain it by calling [Get the department list](/open/development/user-management-acquires-the-list-departments). If left empty, the entire organization is queried. |
+| offset | Number | Yes | 1 | Supports pagination. Takes effect only when set together with the size parameter. This parameter indicates the offset, starting from 0. |
+| size | Number | Yes | 100 | Supports pagination. Takes effect only when set together with the offset parameter. This parameter indicates the page size. The maximum value is 100. |
+| query_date | String | Yes | 20200101 | The query date. The format is yyyyMMdd. |
+
+### Request example
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/inactive/user/v2/get" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=2146ca78-23af-4580-9335-883348ff9a54' \
+-d 'dept_ids=%5C%222%2C3%2C4%5C%22' \
+-d 'is_active=false' \
+-d 'offset=0' \
+-d 'query_date=20200101' \
+-d 'size=100'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/inactive/user/v2/get");
+OapiInactiveUserV2GetRequest req = new OapiInactiveUserV2GetRequest();
+req.setIsActive(false);
+req.setDeptIds("1,2,3");
+req.setOffset(0L);
+req.setSize(100L);
+req.setQueryDate("20200101");
+OapiInactiveUserV2GetResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiInactiveUserV2GetRequest("https://oapi.dingtalk.io/topapi/inactive/user/v2/get")
+
+req.is_active=false
+req.dept_ids=""2,3,4""
+req.offset=0
+req.size=100
+req.query_date="20200101"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiInactiveUserV2GetRequest;
+$req->setIsActive("false");
+$req->setDeptIds("\"2,3,4\"");
+$req->setOffset("0");
+$req->setSize("100");
+$req->setQueryDate("20200101");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/inactive/user/v2/get");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/inactive/user/v2/get");
+OapiInactiveUserV2GetRequest req = new OapiInactiveUserV2GetRequest();
+req.IsActive = false;
+req.DeptIds = "\"2,3,4\"";
+req.Offset = 0L;
+req.Size = 100L;
+req.QueryDate = "20200101";
+OapiInactiveUserV2GetResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| result | PageVo |  | The returned result. |
+| next_cursor | Number | 1000 | The offset of the next page. |
+| list | String[] | ["user123","user456"] | The list of users who did not sign in. |
+| has_more | Boolean | false | Whether more data is available. |
+| errmsg | String | ok | The return code description. |
+| errcode | Number | 0 | The return code. |
+| request_id | String | o565d47xy9cz | The request ID. |
+
+### Response body example
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "has_more": false,
+    "list": [
+      "011250026469774889",
+      "0260470242730556"
+    ]
+  },
+  "request_id": "o565d47xy9cz"
+}
+```
+
+### Error codes
+
+If an error occurs when calling this API, refer to the [Global error codes](/open/development/server-api-error-codes-1) document to find a solution based on the error message.
+
+| Error code (errcode) | Error message (errmsg) | Solution |
+| --- | --- | --- |
+| 400002 | Invalid parameter | Check whether the required parameters meet the requirements. |
+| 40069 | Invalid size | Check the page size. |
+| 40068 | Invalid offset | Adjust the offset. |
+| 400002 | Invalid parameter format | Check the format of the input parameters. |
+| -1 | System busy | Try again later. |

@@ -1,0 +1,446 @@
+---
+title: "Block element data structure"
+description: "An online document is a tree composed of multiple block elements. Different types of BlockElement can nest different types of elements inside. For example, a Callout block can nest any BlockElement, but a Paragraph block can only nest InlineElement."
+---
+
+An online document is a tree composed of multiple block elements. Different types of BlockElement can nest different types of elements inside. For example, a Callout block can nest any `BlockElement`, but a Paragraph block can only nest InlineElement.
+
+The data structure of a single block element is as follows:
+
+```json
+{
+  "blockType": enum(BlockType),             // Block element type. See the `BlockType` enum at the bottom of this document.
+  /**
+   * The following are all supported Block types, such as Heading and Paragraph.
+   * Each Block type has its own property.
+  */
+  "blockquote": Object(Callout),
+  "callout": Object(Callout),
+  "columns": Object(Columns),
+  "heading": Object(Heading),
+  "paragraph": Object(Paragraph),
+  "orderedList": Object(OrderedList)
+  "unorderedList": Object(UnorderedList),
+  "table": Object(Table),
+  // Each Block type has its own supported BlockChildren. See the `children` description under each Block type.
+
+  "children": BlockChildren[ ],
+
+}
+```
+
+## Block element data structure
+
+An online document is a tree structure composed of multiple **block elements**. Different types of block elements support different types of nested child elements:
+
+- The `children` of `callout` and `columns` must be a **BlockElement array**.
+- The `children` of `paragraph`, `heading`, `orderedList`, `unorderedList`, and `blockquote` must be an **InlineElement array**.
+- `table` does not currently support specifying `children`.
+
+### BlockType enum
+
+| Enum value | Description |
+| --- | --- |
+| paragraph | Paragraph block. |
+| heading | Heading block. |
+| blockquote | Quote block. |
+| callout | Callout block. |
+| columns | Columns block. |
+| orderedList | Numbered list block. |
+| unorderedList | Bulleted list block. |
+| table | Spreadsheet block. |
+| tableRow | Table row block (child of a table block). |
+| tableCell | Table cell block (child of a table block). |
+
+> Unsupported element types uniformly return `Undefined`.
+
+### Paragraph
+
+```json
+{
+  "blockType": "paragraph",
+  "paragraph": {
+    "text": "Paragraph text content",
+    "indent": { "left": 32 },
+    "folded": false
+  },
+  "children": [InlineElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| text | string | No | Text content of the paragraph. |
+| indent | object(Indent) | No | Indent value. `left` must be an integer greater than 0. |
+| folded | boolean | No | Whether to fold the paragraph (folds block elements with an indent value greater than the current paragraph). |
+
+- `children`: **InlineElement array**.
+- The `paragraph` object **cannot be omitted**. When the content is empty, pass `{}`.
+
+### Heading
+
+```json
+{
+  "blockType": "heading",
+  "heading": {
+    "level": 1,
+    "text": "Level 1 heading"
+  },
+  "children": [InlineElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| text | string | No | Text content of the heading. |
+| level | integer(enum) | No | Heading level. Value range: `1` to `6`. 1 indicates a level 1 heading. |
+
+- `children`: **InlineElement array**.
+
+### Quote
+
+```json
+{
+  "blockType": "blockquote",
+  "blockquote": {
+    "text": "Quoted content",
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| text | string | No | Text inside the quote. |
+| indent | object(Indent) | No | Specific indent value. |
+
+- `children`: **InlineElement array**.
+
+### Callout block
+
+```json
+{
+  "blockType": "callout",
+  "callout": {
+    "sticker": "灯泡",
+    "showstk": true,
+    "color": "#333333",
+    "border": "#FFD700",
+    "bgcolor": "#FFF9C4"
+  },
+  "children": [BlockElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| sticker | string(enum Emoji) | No | Emoji code. See [Emoji enum values](/open/development/enumeration-values-of-emojis). |
+| showstk | boolean | No | Whether to display the emoji. |
+| color | string | No | Text color. |
+| border | string | No | Border color. |
+| bgcolor | string | No | Background color. |
+
+- `children`: **BlockElement array** (InlineElement is not allowed).
+
+### Columns
+
+```json
+{
+  "blockType": "columns",
+  "columns": {
+    "size": 2,
+    "noFill": false
+  },
+  "children": [BlockElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| size | number | No | Number of columns. |
+| noFill | boolean | No | Whether to automatically fill the background color. |
+
+- `children`: **BlockElement array** (InlineElement is not allowed).
+
+### Numbered list
+
+```json
+{
+  "blockType": "orderedList",
+  "orderedList": {
+    "list": {
+      "listId": "list-001",
+      "level": 0,
+      "listStyleType": "decimal",
+      "listStyle": {
+        "format": "decimal",
+        "text": "%1.",
+        "align": "left"
+      },
+      "symbolStyle": {
+        "bold": false
+      }
+    },
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| list | object(ListObject) | Yes | Specific attributes of the numbered list. See [ListObject](#e6621bc176irg). |
+| indent | object(Indent) | No | Indent value. `left` must be an integer greater than 0. |
+
+- `children`: **InlineElement array**.
+
+### Bulleted list
+
+```json
+{
+  "blockType": "unorderedList",
+  "unorderedList": {
+    "list": {
+      "listId": "list-002",
+      "level": 0,
+      "listStyleType": "disc",
+      "listStyle": {
+        "format": "disc",
+        "text": "%1",
+        "align": "left"
+      },
+      "symbolStyle": {
+        "bold": false
+      }
+    },
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| list | object(ListObject) | Yes | Specific attributes of the bulleted list. See [ListObject](#e6621bc176irg). |
+| indent | object(Indent) | No | Indent value. `left` must be an integer greater than 0. |
+
+- `children`: **InlineElement array**.
+
+### Spreadsheet
+
+```json
+{
+  "blockType": "table",
+  "table": {
+    "rolSize": 3,
+    "colSize": 4,
+    "cells": [
+      ["Row1-Col1", "Row1-Col2", "Row1-Col3", "Row1-Col4"],
+      ["Row2-Col1", "Row2-Col2", "Row2-Col3", "Row2-Col4"],
+      ["Row3-Col1", "Row3-Col2", "Row3-Col3", "Row3-Col4"]
+    ]
+  }
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| rolSize | number | Yes | Number of rows. |
+| colSize | number | Yes | Number of columns. |
+| cells | String[][] | No | Cell text content. A two-dimensional String array. |
+
+- `children`: **Not supported**. Specifying children is not currently allowed.
+
+## InlineElement data structure
+
+Inline elements are used in the `children` of text-based block elements (paragraphs, headings, lists, and so on).
+
+### InlineType enum
+
+| Enum value | Description |
+| --- | --- |
+| text | Text. |
+| sticker | Emoji. |
+| image | Image. |
+| link | Link. |
+
+### Text
+
+```json
+{
+  "text": "Bold red text",
+  "sz": 16,
+  "color": "red",
+  "highlight": "yellow",
+  "bold": true,
+  "italic": false,
+  "stike": false,
+  "underline": false,
+  "fonts": "monospace"
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| text | string | Yes | Text content. |
+| sz | number | No | Font size (default unit: px). |
+| color | string | No | Text color. |
+| highlight | string | No | Highlight background color. |
+| bold | boolean | No | Whether to apply bold. |
+| italic | boolean | No | Whether to apply italic. |
+| stike | boolean | No | Whether to apply strikethrough. |
+| underline | boolean | No | Whether to apply underline. |
+| fonts | string(enum Fonts) | No | Font. Enum values:   - **monospace**: monospace font - **STSong**: STSong - **Microsoft YaHei**: Microsoft YaHei - **FangSong_GB2312**: FangSong GB2312 - **Helvetica**: Helvetica - **Helvetica Neue**: Helvetica Neue - **Consolas**: Consolas - **宋体**: SimSun - **Impact**: Impact - **sanrif**: sanrif - **Calibri**: Calibri |
+
+### Emoji
+
+```json
+{
+  "elementType": "sticker",
+  "properties": {
+    "code": "大笑"
+  }
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| code | string(enum Emoji) | Yes | Emoji code. See [Emoji enum values](/open/development/enumeration-values-of-emojis). |
+
+### Image
+
+```json
+{
+  "elementType": "image",
+  "properties": {
+    "src": "https://example.com/image.jpg"
+  }
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| src | string | No | Image resource URL. |
+
+### Link
+
+```json
+{
+  "elementType": "link",
+  "properties": {
+    "href": "https://example.com"
+  },
+  "children": [
+    { "text": "Click to open the link" }
+  ]
+}
+```
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| href | string | No | Link URL. |
+
+- `children`: **Text array**. When inserting a link, `children` must be specified and contain at least one text node whose `text` is not empty.
+
+## Common data structures
+
+### Indent
+
+| Field name | Type | Required | Description | Example |
+| --- | --- | --- | --- | --- |
+| left | number | No | Specific indent value. Must be an integer greater than 0, otherwise an error is returned. | `32` |
+
+---
+
+### ListObject
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| listId | string | No | ID of the current list. When inserting a multi-level numbered list, ensure that `listId` is consistent across the same group of multi-level lists, otherwise the display will be incorrect. |
+| level | number | Yes | List tier (starting from 0). |
+| listStyleType | string | Yes | List style type. |
+| listStyle | object(ListStyle) | Yes | Specific list style. See [ListStyle](#bad921c2ebc3h). |
+| symbolStyle | object(SymbolStyle) | No | Style of the list symbol. See [SymbolStyle](#b16d5427cbutg). |
+
+---
+
+### ListStyle
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| format | string | Yes | Bullet list format. |
+| text | string | Yes | Text. |
+| align | string | Yes | Alignment, such as `left`, `center`, or `right`. |
+
+---
+
+### SymbolStyle
+
+| Field name | Type | Required | Description |
+| --- | --- | --- | --- |
+| sz | number | No | Font size of the bullet list symbol. |
+| shd | string | No | Background color of the bullet list symbol. |
+| fonts | string | No | Font format of the bullet list symbol. |
+| color | string | No | Font color of the bullet list symbol. |
+| bold | boolean | No | Whether to apply bold. |
+| strike | boolean | No | Whether to display strikethrough. |
+| italic | boolean | No | Whether to display italic. |
+
+---
+
+## Emoji enum values (complete list of emoji codes)
+
+The following enum values can be used for `callout.sticker` and the inline emoji element `sticker.properties.code`.
+
+| Emoji | Emoji | Emoji | Emoji |
+| --- | --- | --- | --- |
+| `优先级: 1` | `优先级: 2` | `优先级: 3` | `优先级: 4` |
+| `优先级: 5` | `优先级: 6` | `优先级: 7` | `进度: 未开始` |
+| `进度: 20%` | `进度: 40%` | `进度: 50%` | `进度: 70%` |
+| `进度: 90%` | `进度: 已完成` | `微笑` | `憨笑` |
+| `大笑` | `加油` | `色` | `偷笑` |
+| `跳舞` | `捂脸哭` | `笑哭` | `流泪` |
+| `疑问` | `傻笑` | `流鼻血` | `狗子` |
+| `赞` | `OK` | `抱拳` | `向上` |
+| `向下` | `向左` | `向右` | `资料` |
+| `本子` | `笔记本` | `折线图` | `柱状图` |
+| `羽毛笔` | `钢笔` | `警告` | `问号` |
+| `禁止` | `禁行` | `锁` | `气泡` |
+| `沙漏` | `公文包` | `火箭` | `火` |
+| `奖牌` | `灯泡` | `钉子` | `旗子` |
+| `茶` | `休假` | `气球` | `锦鲤` |
+| `咖啡` | `奶茶` | `调色板` | `感谢` |
+| `打招呼` | `666` | `握手` | `胜利` |
+| `一点点` | `鼓掌` | `送花花` | `比心` |
+| `加一` | `100分` | `KPI` | `对勾` |
+| `爱心` | `可爱` | `发呆` | `老板` |
+| `害羞` | `闭嘴` | `睡` | `大哭` |
+| `尴尬` | `调皮` | `惊讶` | `流汗` |
+| `广播` | `自信` | `你强` | `怒吼` |
+| `惊愕` | `快哭了` | `无聊` | `吐` |
+| `算账` | `晕` | `摸摸` | `飞吻` |
+| `鄙视` | `嘘` | `思考` | `亲亲` |
+| `感冒` | `对不起` | `再见` | `投降` |
+| `哼` | `欠扁` | `坏笑` | `拜托` |
+| `可怜` | `舒服` | `爱意` | `财迷` |
+| `迷惑` | `PK` | `委屈` | `灵感` |
+| `天使` | `鬼脸` | `凄凉` | `郁闷` |
+| `吃瓜` | `嘿嘿` | `抠鼻` | `呲牙` |
+| `彩虹` | `耶` | `捂眼睛` | `推眼镜` |
+| `暗中观察` | `开心` | `惊喜` | `回头` |
+| `发怒` | `忍者` | `衰` | `脑暴` |
+| `冷笑` | `黑眼圈` | `恭喜` | `费解` |
+| `收到` | `炸弹` | `白眼` | `一团乱麻` |
+| `无奈` | `敲打` | `专注` | `忙疯了` |
+| `鞠躬` | `摊手` | `抱抱` | `举手` |
+| `跪了` | `猫咪` | `二哈` | `三多` |
+| `承让` | `撒花` | `邮件` | `文档` |
+| `演示` | `表格` | `生日快乐` | `心碎` |
+| `红包` | `嘴唇` | `鲜花` | `残花` |
+| `干杯` | `出差` | `时间` | `福` |
+| `月饼` | `礼物` | `幼苗` | `烟花` |
+| `灯笼` | `爆竹` | `鸡腿` | `高铁` |
+| `三连` | `OKR` | `Done` |  |
+
+---

@@ -1,0 +1,156 @@
+---
+title: "Knowledge Base member management"
+---
+
+In the day-to-day operation of an organization Knowledge Base, as team collaboration needs evolve, admins often need to flexibly adjust access permissions—for example, adding new employees to the Knowledge Base when they onboard, adjusting user roles, or revoking access after employees leave. The Knowledge Base member management APIs let you perform these operations programmatically and automate Knowledge Base permission management.
+
+## Use cases
+
+Choose the appropriate flow based on the scenarios below:
+
+- **Scenario 1**: When a new employee onboards, an external collaborator joins, or a department/group needs to access the Knowledge Base, the admin can use this flow to batch-add members and assign roles.
+- **Scenario 2**: When a member is promoted to admin, or you need to restrict a member's operations, use this flow to change their role.
+- **Scenario 3**: When a member leaves, a project ends, or you need to revoke access for a specific user or department, use this flow to remove them from the Knowledge Base.
+- **Scenario 4**: When the organization wants to make a Knowledge Base (such as company policies or product manuals) accessible to all employees without adding members one by one.
+- **Scenario 5**: Used when you need to audit Knowledge Base permissions, troubleshoot permission issues, or confirm members' current roles before bulk operations.
+
+## Permission overview
+
+### Permission roles (roleId)
+
+| roleId | Role name | Capabilities |
+| --- | --- | --- |
+| **OWNER** | Owner | The highest permission. Read, write, manage members, and transfer the Knowledge Base. |
+| **MANAGER** | Admin | Read, write, and manage members (transfer not included). |
+| **EDITOR** | Editor | View, edit, and upload content. |
+| **DOWNLOADER** | View and download | View and download content. |
+| **READER** | View only | View content only; download not allowed. |
+
+> **Note**: The **OWNER** role cannot be added or removed via the API. The Knowledge Base creator is the owner by default.
+
+### Member types (members.type)
+
+| type value | Description | members.id meaning |
+| --- | --- | --- |
+| **USER** | User | Employee userId |
+| **DEPT** | Department | Department deptId. corpId must be passed at the same time. |
+| **CONVERSATION** | Group chat | DingTalk group chatId |
+| **ORG** | All employees in the organization | Organization corpId. Only **EDITOR**, **DOWNLOADER**, and **READER** roles are supported. |
+
+---
+
+## Scenario 1: Grant Knowledge Base access to new members
+
+1. Call the [Get Knowledge Base list](/open/development/get-knowledge-base-list) API and read the `rootNodeId` field from the response. This is the `dentryUuid` of the Knowledge Base root node.
+2. Get the member ID:
+
+   - To add a **user**: Call the [Query user details](/open/development/query-user-details) API to get the `userId`, or use [Get the list of department userIds](/open/development/query-the-list-of-department-userids) to retrieve them in bulk.
+   - To add a **department**: Call the [Get department list](/open/development/user-management-acquires-the-list-departments) API to get the `deptId`.
+   - To add a **group chat**: Use the group's `chatId`.
+3. Call the [Add permissions](/open/development/add-permissions-file) API and choose the appropriate role based on your business needs (for example, **EDITOR** for collaborative editing, **READER** for read-only access) to add members to the Knowledge Base.
+
+   > **Tips**: A single request supports up to 30 members. Split into multiple calls if you exceed this limit.
+
+   ```http lines
+   POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={operator unionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "EDITOR",
+     "members": [
+       { "type": "USER", "id": "employee userId" },
+       { "type": "DEPT", "id": "department deptId", "corpId": "organization corpId" }
+     ]
+   }
+   ```
+
+## Scenario 2: Adjust a member's role in the Knowledge Base
+
+1. To confirm a member's current role, first call the [Get permission list](/open/development/get-permission-list) API.
+2. Call the [Modify permissions](/open/development/modify-permissions-file) API and specify the member and target role to change the role.
+
+   > **Note**: A member can hold only one role in the same Knowledge Base. After the change, the old role is automatically replaced.
+
+   ```http lines
+   PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={operator unionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "MANAGER",
+     "members": [
+       { "type": "USER", "id": "employee userId" }
+     ]
+   }
+   ```
+
+## Scenario 3: Revoke a member's Knowledge Base access
+
+1. Confirm the role currently held by the member. Call the [Get permission list](/open/development/get-permission-list) API to retrieve the member's current role (`roleId`). The role specified for removal must match the actual role held.
+2. Call the [Delete permissions](/open/development/delete-permissions-file) API.
+
+   > **Note**: The `roleId` must match the role actually held by the member; otherwise, the operation is invalid. The **OWNER** role cannot be removed.
+
+   ```http lines
+   POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId={operator unionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "EDITOR",
+     "members": [
+       { "type": "USER", "id": "employee userId" }
+     ]
+   }
+   ```
+
+## Scenario 4: Make the Knowledge Base accessible to all employees
+
+Call the [Add permissions](/open/development/add-permissions-file) API, set the member type to **ORG**, and specify the corresponding public role.
+
+> **Note**: After **ORG** authorization, all employees in the organization can access the Knowledge Base with the specified role. **ORG** type members do not appear in the member list query results. To revoke access for all employees, call the remove API in the same way and pass **ORG** as the `type`.
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={operator unionId} HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    { "type": "ORG" }
+  ]
+}
+```
+
+## Scenario 5: Query the current member list of a Knowledge Base
+
+Call the [Get permission list](/open/development/get-permission-list) API. Filtering by role and pagination are supported.
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/query?unionId={operator unionId} HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+Content-Type: application/json
+
+{
+  "option": {
+    "maxResults": 30,
+    "filterRoleIds": ["MANAGER", "EDITOR"]
+  }
+}
+```
+
+Each record in the response contains the member's type, ID, name, and role. If `nextToken` is not empty, more data is available. Pass `nextToken` in the next request to continue retrieving results.
+
+## Notes
+
+- The operator must have **OWNER** or **MANAGER** permissions on the Knowledge Base; otherwise, the API returns an insufficient permissions error.
+- The **OWNER** role cannot be added or removed via the API. The Knowledge Base creator is the owner by default.
+- When removing a member, the `roleId` must match the role actually held by the member; otherwise, the operation is invalid.
+- A single request supports up to 30 members in the `members` list. Split into multiple calls if you exceed this limit.

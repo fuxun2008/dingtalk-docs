@@ -1,0 +1,156 @@
+---
+title: "Send group chat messages with a group template bot"
+---
+
+To send group chat messages using a group template bot, follow the steps in this document.
+
+## Define the requirements
+
+Before development, review the following overview. This document explains how to use a group template bot to send group chat messages through the group assistant message API. To get started quickly, run the sample demo provided in the Quickstart section. This gives you a hands-on experience with the group template bot.
+
+## Prerequisites
+
+1. Complete the process of creating a group template bot.
+2. Complete the [API permission application](/open/development/add-api-permission) for the OpenAPI. Apply for the `DingTalk group message management permission`.
+3. Prepare the development environment:
+
+   - Java: JDK 1.8 or later installed
+   - Java: Maven 3 installed
+
+## Quickstart
+
+1. Download the [group-template-robot-group-message-quick-start](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20240221/oqqnlh/group-template-robot-group-message-quick-start.zip) sample demo.
+2. Replace the parameters in the main method of groupTemplateRobotGroupMessage:
+
+   | Configuration item | Description |
+   | --- | --- |
+   | GROUP_TEMPLATE_ID | Sign in to the Developer Backend, click **Open Capabilities** > **Scenario Group** > **Group Template**, and copy the ID. |
+   | ROBOT_CODE | Sign in to the Developer Backend, click **Open Capabilities** > **Scenario Group** > **Group Template** > **Target group template**. Copy the bot ID. If the group template is not associated with a bot, refer to associating a group template bot with a group template. |
+   | OWNER_USER_ID | The userId of the user. For details, see [User UserId](/open/dingstart/basic-concepts-beta). |
+   | CLIENT_ID | The Client ID of the app. For details, see [Client ID](/open/dingstart/basic-concepts-beta). |
+   | CLIENT_SECRET | The Client Secret of the app. For details, see [Client Secret](/open/dingstart/basic-concepts-beta). |
+3. Run the main method. You will receive the message sent by the bot in the group.
+
+## Procedure
+
+1. Add the dependencies to the `pom.xml` file of the project.
+
+   ```xml lines
+   <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>dingtalk</artifactId>
+               <version>2.0.76</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>fastjson</artifactId>
+               <version>1.2.68</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Create the main method and run it.
+
+   ```java lines
+   import com.alibaba.fastjson.JSON;
+   import com.alibaba.fastjson.JSONObject;
+   import com.aliyun.dingtalkoauth2_1_0.Client;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
+   import com.aliyun.teaopenapi.models.Config;
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiImChatScencegroupMessageSendV2Request;
+   import com.dingtalk.api.request.OapiImChatScenegroupCreateRequest;
+   import com.dingtalk.api.response.OapiImChatScencegroupMessageSendV2Response;
+   import com.dingtalk.api.response.OapiImChatScenegroupCreateResponse;
+   import com.taobao.api.ApiException;
+
+   public class groupTemplateRobotGroupMessage {
+
+       // Group template id
+       public static final String GROUP_TEMPLATE_ID = "<your group template id >";
+
+       // Group template bot id
+       public static final String ROBOT_CODE = "<your group robot id>";
+
+       // Group owner userId
+       public static final String OWNER_USER_ID= "<owner userId>";
+
+       // App client id
+       public static final String CLIENT_ID= "<your app client id>";
+
+       // App client secret
+       public static final String CLIENT_SECRET= "< your app client secret>";
+
+       /**
+        * Send group template bot messages
+        * @param args
+        */
+       public static void main(String[] args) {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/im/chat/scencegroup/message/send_v2");
+           OapiImChatScencegroupMessageSendV2Request req = new OapiImChatScencegroupMessageSendV2Request();
+           req.setTargetOpenConversationId(CreateGroup());
+           req.setMsgTemplateId("inner_app_template_markdown");
+           JSONObject jsonObject = new JSONObject().fluentPut("title","测试").fluentPut("markdown_content", "# 测试内容 \n > 测试");
+           req.setMsgParamMap(JSON.toJSONString(jsonObject));
+           req.setRobotCode(ROBOT_CODE);
+           OapiImChatScencegroupMessageSendV2Response rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+       }
+
+       /**
+        * Get the group OpenConversationId
+        * @return
+        */
+       public static String CreateGroup() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/im/chat/scenegroup/create");
+           OapiImChatScenegroupCreateRequest req = new OapiImChatScenegroupCreateRequest();
+           req.setTitle("群模板机器人测试群");
+           req.setTemplateId(GROUP_TEMPLATE_ID);
+           req.setOwnerUserId(OWNER_USER_ID);
+           OapiImChatScenegroupCreateResponse rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               return rsp.getResult().getOpenConversationId();
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+
+       }
+
+       public static String accessToken(){
+           GetAccessTokenRequest getAccessTokenRequest = new GetAccessTokenRequest();
+           getAccessTokenRequest.setAppKey(CLIENT_ID);
+           getAccessTokenRequest.setAppSecret(CLIENT_SECRET);
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           try {
+               Client client = new Client(config);
+               GetAccessTokenResponse accessToken = client.getAccessToken(getAccessTokenRequest);
+               return accessToken.getBody().getAccessToken();
+           } catch (Exception e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   A group chat is automatically created, and you can see the message sent by the group template bot in the group.
+
+## Related documents
+
+- Send group assistant messages

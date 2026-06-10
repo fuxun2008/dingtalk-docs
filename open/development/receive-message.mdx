@@ -1,0 +1,250 @@
+---
+title: "Receive messages"
+---
+
+When a user @mentions a group bot or sends a direct message to the bot, DingTalk forwards the message content to the bot developer's HTTPS service endpoint. This topic describes the message receiving protocol of the bot.
+
+## HTTP header parameters
+
+```json
+{
+  "Content-Type": "application/json; charset=utf-8",
+  "timestamp": "1577262236757",
+  "sign":"xxxxxxxxxx"
+}
+```
+
+| **Parameter** | **Description** |
+| --- | --- |
+| timestamp | The timestamp when the message was sent, in milliseconds. |
+| sign | The signature value. |
+
+Developers must verify the timestamp and sign in the header to determine whether the request is a legitimate request from DingTalk. This prevents malicious parties from impersonating DingTalk to call the developer's HTTPS service and send data. The verification logic is as follows:
+
+- If the timestamp differs from the current system timestamp by more than 1 hour, the request is considered invalid.
+- If the sign does not match the value calculated by the developer, the request is considered invalid.
+
+Only when both timestamp and sign are verified successfully can the request be considered a legitimate request from DingTalk.
+
+### How to calculate the sign
+
+Use the timestamp from the header + "\n" + the bot's appSecret as the string to sign. Calculate the signature using the HmacSHA256 algorithm, then Base64-encode the result to obtain the final signature value.
+
+Sample signature calculation code (Java)
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Base64;
+
+public class Test {
+    public static void main(String[] args) throws Exception {
+        Long timestamp = 1577262236757L;
+        String appSecret = "this is a secret";
+        String stringToSign = timestamp + "\n" + appSecret;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(appSecret.getBytes("UTF-8"), "HmacSHA256"));
+        byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+        String sign = new String(Base64.encodeBase64(signData));
+        System.out.println(sign);
+    }
+}
+```
+
+## HTTP Body
+
+```json
+{
+    "conversationId": "xxx",
+    "atUsers": [
+        {
+            "dingtalkId": "xxx",
+            "staffId":"xxx",
+            "unionId":"edxxx34"
+        }
+    ],
+    "chatbotCorpId": "dinge8a565xxxx",
+    "chatbotUserId": "$:LWCP_v1:$Cxxxxx",
+    "msgId": "msg0xxxxx",
+    "senderNick": "杨xx",
+    "isAdmin": true,
+    "senderStaffId": "user123",
+    "sessionWebhookExpiredTime": 1613635652738,
+    "createAt": 1613630252678,
+    "senderCorpId": "dinge8a565xxxx",
+    "conversationType": "2",
+    "senderId": "$:LWCP_v1:$Ff09GIxxxxx",
+    "conversationTitle": "机器人测试-TEST",
+    "isInAtList": true,
+    "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=xxxxx",
+    "text": {
+        "content": " 你好"
+    },
+    "msgtype": "text"
+}
+```
+
+### Parameter description
+
+| **Parameter** | **Required** | **Type** | **Description** |
+| --- | --- | --- | --- |
+| msgtype | Yes | String | The message type. |
+| content | Yes | String | The message text. |
+| msgId | Yes | String | The encrypted message ID. |
+| createAt | Yes | String | The message timestamp, in milliseconds. |
+| conversationType | Yes | String | **1**: Direct Message  **2**: Group Chat |
+| conversationId | Yes | String | The chat ID. |
+| conversationTitle | No | String | The chat title. Returned only for group chats. |
+| senderId | Yes | String | The encrypted sender ID.  **Note**  Use senderStaffId as the sender's user ID value. |
+| senderNick | Yes | String | The sender's name. |
+| senderCorpId | No | String | The organization ID of the sender's current group in an internal group. |
+| sessionWebhook | Yes | String | The Webhook URL of the current chat. |
+| sessionWebhookExpiredTime | Yes | Long | The expiration time of the current chat's Webhook URL. |
+| isAdmin | No | boolean | Indicates whether the sender is an Admin.  **Note**  Takes effect after the bot is published. |
+| chatbotCorpId | No | String | The encrypted organization ID where the bot resides. |
+| isInAtList | No | boolean | Indicates whether the user is in the @ list. |
+| senderStaffId | No | String | The user ID of the member who @mentioned the bot in an internal group.  **Note**  This field is returned only after the bot is published to the production version. |
+| senderUnionId | No | String | The unionId of the sender. |
+| chatbotUserId | Yes | String | The encrypted bot ID. |
+| atUsers | No | Array | Information about the @mentioned users.   - **dingtalkId**: The encrypted ID of the @mentioned user. - **staffId**: The userId of the @mentioned user. This field is empty for external users in external chats. - **unionId**: The unionid of the @mentioned user. |
+
+## Supported message types for receiving
+
+Bots currently support receiving text, voice, image, file, video, and rich text messages. The following tables explain the fields for each type of message that the bot receives. Apart from the message type and message body fields, all other parameter fields are the same as in the table above.
+
+### Important
+
+- In a group chat: when group members @mention the bot, the bot **does not support** receiving voice, file, or video types.
+- In a person-to-person chat: the bot **does not support** receiving voice, file, or video types.
+- In a person-to-bot chat: the bot **supports** receiving voice, file, and video types.
+
+### Text message
+
+```json
+{
+  "msgtype": "text",
+  "text": {
+    "content": "你好"
+  }
+}
+```
+
+### Parameter description:
+
+| **Parameter** | **Type** | **Description** |
+| --- | --- | --- |
+| msgtype | String | The message type:   - **text**: Text message |
+| content | String | The text message content. |
+
+### Voice message
+
+```json
+{
+  "msgtype": "audio",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/+m+Nn***********geqPd7xpJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "recognition": "钉钉，让进步发生"
+  }
+}
+```
+
+### Parameter description:
+
+| **Parameter** | **Type** | **Description** |
+| --- | --- | --- |
+| msgtype | String | The message type:   - **audio**: Voice message |
+| downloadCode | String | The download code of the voice file. Use it to retrieve the binary voice file by calling the Server API [Download the file content received by the bot](/open/development/download-the-file-content-of-the-robot-receiving-message) to obtain a temporary download URL. |
+| recognition | String | The text result of Speech-to-Text recognition. |
+| duration | Long | The duration of the voice, in milliseconds. |
+
+### Image message
+
+```json
+{
+  "msgtype": "picture",
+  "content": {
+    "downloadCode": "mIofN681YE3f/+m+**********8rs4RGdQAwyVs3B75N7boKf8ep0FBB122u9YY/novFAM9BQrirm4/+avZaCV+6nnZ0Zk="
+  }
+}
+```
+
+### Parameter description:
+
+| **Parameter** | **Type** | **Description** |
+| --- | --- | --- |
+| msgtype | String | The message type:   - picture: Image message |
+| downloadCode | String | The download code of the image file. Use it to retrieve the binary image file by calling the Server API [Download the file content received by the bot](/open/development/download-the-file-content-of-the-robot-receiving-message) to obtain a temporary download URL. |
+
+### Video message
+
+```json
+{
+  "msgtype": "video",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/****************OAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "videoType": "mp4"
+  }
+}
+```
+
+### Parameter description:
+
+| **Parameter** | **Type** | **Description** |
+| --- | --- | --- |
+| msgtype | String | The message type:   - **video**: Video message |
+| downloadCode | String | The download code of the video file. Use it to retrieve the binary video file by calling the Server API [Download the file content received by the bot](/open/development/download-the-file-content-of-the-robot-receiving-message) to obtain a temporary download URL. |
+| videoType | String | The video File Type. |
+| duration | Long | The duration of the video, in milliseconds. |
+
+### File message
+
+```json
+{
+  "msgtype": "file",
+  "content": {
+    "downloadCode": "mIofN681YE3f*************pJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "fileName": "钉钉让进步发生.pdf"
+  }
+}
+```
+
+### Parameter description:
+
+| **Parameter** | **Type** | **Description** |
+| --- | --- | --- |
+| msgtype | String | The message type:   - **video**: File message |
+| downloadCode | String | The download code of the file. Use it to retrieve the binary file by calling the Server API [Download the file content received by the bot](/open/development/download-the-file-content-of-the-robot-receiving-message) to obtain a temporary download URL. |
+| fileName | String | The file name. |
+
+### Rich text message
+
+```json
+{
+  "msgtype": "richText",
+  "content": {
+    "richText": [
+      {
+        "text": "你好"
+      },
+      {
+        "downloadCode": "mIofN681YE3f*************JkVBG2vhj4Q9TsmsNCHy0Phdd2tn/t6XxjaB6U8oEst1JVnFR2QRaLqsGyuWPhEvzhIDEpfQYEvexbwdKCCpMOVnYYbn1aMT/n3JFgb4i64X3TFXxXCdaH1+NLRM/B6kGWxJPR/egKS8syvGzaZpzVI+hHQbCjLOO/FYLor2Q==",
+        "type": "picture"
+      }
+    ]
+  }
+}
+```
+
+### Parameter description:
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| msgtype | String | Yes | The message type:   - **richText**: Rich Text |
+| content | Object | Yes | The message content. |
+| richText | Array | Yes | The Rich Text list.  **Note**  The message list can contain:   - **text:** Text message - **picture**: Image message |
+
+## HTTP response format
+
+Developers can choose to reply with a message based on their business needs. The following five [message types](/open/development/robot-message-type) are currently supported: text, markdown, overall-jump actionCard, standalone-jump actionCard, and feedCard.

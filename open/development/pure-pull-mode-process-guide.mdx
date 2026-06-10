@@ -1,0 +1,94 @@
+---
+title: "Implement pure pull mode for pinned cards"
+---
+
+## Expected results
+
+- Pure pull mode for pinned cards
+
+  Each time a Chat is opened, the callbackUrl set by the developer is invoked to fetch private Data and Update it to the Card.
+
+- Pure pull mode for Card messages
+
+  Each time a Chat is opened to pull messages, the callbackUrl set by the developer is invoked to fetch private Data and Update it to the Card.
+
+## Integration flow overview
+
+Step 4: Update the Card Content.
+
+### 1. Create a pinned Card Template
+
+<Note>
+For details about how to configure the Card Template Content, see the document about creating a message Template.
+</Note>
+
+### Notes
+
+- Use interactive cards to enable Interaction between users and cards. For details, see the document about using interactive cards.
+- Pure pull mode can only pull Data corresponding to private variables defined in the interactive Card message Template.
+
+You can set private variables in the Card Template editor.
+
+In the Card Template editor, combine different components to meet your business needs. After the Card is built, click **Save** or **Publish** to make it available.
+
+To use pure pull mode for cards, Call the API to register the Card callback URL and obtain the parameter **callbackRouteKey**.
+
+<Note>
+Set the parameter **pullStrategy** to **true** to turn On pure pull mode for the Card.
+</Note>
+
+## Step 4: Update the Card Content
+
+<Note>
+Each time a User opens a Chat, the callbackUrl set by the developer is invoked to fetch Data corresponding to private variables. Data corresponding to non-private variables cannot be obtained through pure pull mode.
+</Note>
+
+### 1. Pull private Data
+
+When a User opens a Chat, the action is sent to the HTTP address registered by the developer as an HTTP POST request to pull private Data. The request body is passed to the developer with contentType="application/json" and contains the following parameters.
+
+<Note>
+The content field includes the non-private Data of the Card.
+</Note>
+
+```json
+{
+    "corpId": "dingXXXXXX",
+    "outTrackId": "XXXXXX",
+    "userId": "XXXXXX",
+    "content": "{\"cardData\":{\"cardParamMap\":{\"xxx\":\"xxx\"}}}",
+    ...
+}
+```
+
+### 2. Synchronously Update the private Card Data
+
+In pure pull mode, if you need to synchronously Update the private Data of the Card, return the latest private Card Data in the response to the callback request. This ensures that the User always sees the latest private Data each time the Card is displayed. The format of the returned Card Data is as follows.
+
+<Note>
+You do not need to return Data corresponding to non-private variables. Even if returned, the non-private Data on the Card will not be updated.
+</Note>
+
+```json
+{
+ "outTrackId": "XXXXXX(用于更新卡片的唯一ID)",
+ "cardOptions": {
+  "updatePrivateDataByKey": true/false,
+ },
+ "userPrivateData": {
+  "cardParamMap": {
+   "key1": "value1",
+   "key2": "value2",
+   "变量N": "变量值N"
+  },
+  "cardMediaIdParamMap": {
+   "image1": "mediaIdXXXXX1",
+   "image2": "mediaIdXXXXX2"
+  }
+ }
+}
+```
+
+### 3. Result of pure pull mode for pinned cards
+
+Each time the Chat is opened, the Card appears as shown below.

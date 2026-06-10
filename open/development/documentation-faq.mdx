@@ -1,0 +1,401 @@
+---
+title: "FAQs"
+description: "There are two ways to write Markdown content into a document:"
+---
+
+## Write content
+
+### How to write Markdown content into a DingTalk Docs document?
+
+- **Option 1: Insert content (append without affecting existing content)**
+
+  Call the [Insert content](/open/development/api-insertcontent) API to insert Markdown content at a specified location in the document:
+
+  ```bash lines
+  curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{documentId}/content?operatorId={operatorId}' \
+  --header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": {
+      "type": "markdown",
+      "content": "# 一级标题\n\n这是一段正文内容。"
+    }
+  }'
+  ```
+- **Option 2: Overwrite the document (clear and rewrite)**
+
+  Call the [Overwrite document (App authorization)](/open/development/api-doc-updatecontent) API to overwrite the entire document content in Markdown format:
+
+  ```bash lines
+  curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/overwriteContent?operatorId={operatorId}' \
+  --header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "# 文档标题\n\n正文内容。",
+    "dataType": "markdown"
+  }'
+  ```
+
+  Overwriting **clears** all existing content in the document. This is a destructive action, so use it with caution. To append content only, use the Insert content API instead.
+
+## Block element operations
+
+### How to insert a paragraph with content
+
+Call the [Insert block element](/open/development/api-docinsertblocks) API to insert a paragraph block into the document, and use the `children` field to specify the inline elements within the paragraph:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{dentryUuid}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "paragraph",
+    "paragraph": {},
+    "children": [
+      {
+        "text": "这是一段加粗的红色文字",
+        "bold": true,
+        "color": "#FF5733"
+      },
+      {
+        "elementType": "sticker",
+        "properties": { "code": "大笑" }
+      }
+    ]
+  }
+}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "result": {
+    "data": {
+      "paragraph": { "text": "这是一段加粗的红色文字" },
+      "blockType": "paragraph",
+      "index": 0,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+The `paragraph` object cannot be omitted. Even if the paragraph has no special attributes, pass an empty object `{}`.
+
+### How to insert a block element at a specific location (not at the end)
+
+When calling the [Insert block element](/open/development/api-docinsertblocks) API, specify the target location with `blockId` or `index`, and use the `where` parameter to control whether to insert before or after the target:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "paragraph",
+    "paragraph": {}
+  },
+  "blockId": "lc4si5p3n84zwqxxx",
+  "where": "before"
+}'
+```
+
+| Parameter | Description |
+| --- | --- |
+| `blockId` | The unique identifier of the target block. The new block is inserted before or after this block. |
+| `index` | When `blockId` is not provided, the `index`-th top-level block in the document is used as the target location (starting from 0). |
+| `where` | `"before"` inserts before the target location; `"after"` inserts after it (default: `"after"`). |
+
+### How to insert a heading
+
+Call the [Insert block element](/open/development/api-docinsertblocks) API. Set `blockType` to `heading` and use `level` in the `heading` object to specify the heading level (1–6):
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "heading",
+    "heading": {
+      "level": 2,
+      "text": "这是一个二级标题"
+    }
+  }
+}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "success": true
+}
+```
+
+Mapping between `heading.level` and heading levels:
+
+| level | Heading |
+| --- | --- |
+| `1` | Heading 1 (H1) |
+| `2` | Heading 2 (H2) |
+| `3` | Heading 3 (H3) |
+| `4` | Heading 4 (H4) |
+| `5` | Heading 5 (H5) |
+| `6` | Heading 6 (H6) |
+
+### How to insert a Quote block
+
+Call the [Insert block element](/open/development/api-docinsertblocks) API. Set `blockType` to `blockquote` and pass the quote content in the `blockquote` object:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "blockquote",
+    "blockquote": {
+      "text": "这是一段引用内容"
+    }
+  }
+}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "blockquote",
+      "index": 4,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+### How to insert a Highlight block with a nested paragraph
+
+The `children` of a Highlight block must be an array of `BlockElement`. When calling the [Insert block element](/open/development/api-docinsertblocks) API, pass the child paragraph in `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "callout",
+    "callout": {
+      "sticker": "灯泡",
+      "showstk": true,
+      "bgcolor": "#FFF9C4",
+      "border": "#FFD700"
+    },
+    "children": [
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "这是高亮块内的段落内容" }
+      }
+    ]
+  }
+}'
+```
+
+Different block element types accept different `children` types. The `children` of a paragraph block can only be inline elements, while the `children` of a Highlight block can only be block elements.
+
+### How to insert columns
+
+Call the [Insert block element](/open/development/api-docinsertblocks) API. Set `blockType` to `columns`, use `columns.size` to specify the number of columns, and pass the block element content for each column in `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "columns",
+    "columns": {
+      "size": 2,
+      "noFill": false
+    },
+    "children": [
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "左栏内容" }
+      },
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "右栏内容" }
+      }
+    ]
+  }
+}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "result": {
+    "data": {
+      "columns": { "size": 2 },
+      "blockType": "columns",
+      "index": 7,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+Fields of the `columns` object:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `size` | Number | Number of columns. |
+| `noFill` | Boolean | Whether to automatically fill the background color. Default: `false`. |
+
+The `children` of `columns` must be a **BlockElement array**, not inline elements.
+
+### How to insert a Numbered List
+
+Call the [Insert block element](/open/development/api-docinsertblocks) API. Set `blockType` to `orderedList`, pass the list attributes in the `orderedList` object, and pass the list item text in `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "orderedList",
+    "orderedList": {
+      "list": {
+        "listId": "my-ordered-list-001",
+        "level": 0,
+        "listStyleType": "decimal",
+        "listStyle": {
+          "format": "decimal",
+          "text": "%1.",
+          "align": "left"
+        }
+      }
+    },
+    "children": [
+      { "text": "有序列表第一项" }
+    ]
+  }
+}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "orderedList",
+      "index": 6,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+Common fields of the `list` object:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `listId` | String | The unique identifier of the list. Multiple list items in the same list should share the same `listId`. |
+| `level` | Number | List indent tier, starting from `0`. |
+| `listStyleType` | String | List style type. Use `"decimal"` for a Numbered List. |
+
+### How to insert a Bulleted List
+
+Call the [Insert block element](/open/development/api-docinsertblocks) API. Set `blockType` to `unorderedList`, pass the list attributes in the `unorderedList` object, and pass the list item text in `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "unorderedList",
+    "unorderedList": {
+      "list": {
+        "listId": "my-unordered-list-001",
+        "level": 0,
+        "listStyleType": "disc",
+        "listStyle": {
+          "format": "disc",
+          "text": "%1",
+          "align": "left"
+        }
+      }
+    },
+    "children": [
+      { "text": "无序列表第一项" }
+    ]
+  }
+}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "unorderedList",
+      "index": 8,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+The `listId` of a Numbered List or Bulleted List associates multiple list items with the same list. To insert multiple items belonging to the same list, use the same `listId` for each item. You can insert all items in one call using the BatchOperate API.
+
+## Query operations
+
+### How to get the blockId of all block elements in a document?
+
+Call the [Query block element](/open/development/api-docblocksquery) API to retrieve the list of top-level block elements under the document's root node. Each element includes its `id` (the `blockId`):
+
+```bash
+curl --location --request GET 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}'
+```
+
+If the call succeeded, the response is in the following format:
+
+```json
+{
+  "success": true,
+  "result": {
+    "data": [
+      {
+        "heading": { "level": "heading-1", "text": "文档标题" },
+        "blockType": "heading",
+        "index": 0,
+        "id": "......"
+      },
+      {
+        "paragraph": { "text": "正文内容。" },
+        "blockType": "paragraph",
+        "index": 1,
+        "id": "......"
+      }
+    ]
+  }
+}
+```
+
+The Query block element API currently **only supports querying top-level block elements under the document's root node**. Recursive queries on child blocks nested inside containers such as Highlight blocks are not supported.

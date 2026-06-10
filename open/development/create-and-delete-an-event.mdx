@@ -1,0 +1,286 @@
+---
+title: "Create, modify, query, and delete events"
+---
+
+This document describes how to call the Calendar API to create events and perform related operations. First, create an internal app, then use the APIs provided by Calendar to create, modify, query the details of a single event, and delete an event.
+
+## Expected result
+
+After an event is created, the result is as follows:
+
+## Integration flow overview
+
+This document demonstrates how to create an internal app and then use the APIs provided by Calendar to create, modify, query the details of a single event, and delete an event.
+
+Prerequisite: Complete the [Create and configure an app](/open/dingstart/create-and-configure-an-application) flow.
+
+Step 1: Obtain the app credential information, including the client ID and Client Secret.
+
+Step 2: Request API permissions for the Calendar-related APIs.
+
+Step 3: Obtain the app access credential [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app). When calling an API, use the access token to authenticate the caller.
+
+Step 4: Call the Server API for Calendar:
+
+1. Call the Server API [New Event](/open/development/create-schedule) to create an event. Obtain the event `id`.
+2. Based on the event `id`, call the Server API [Modify event](/open/development/modify-event) to modify the event information.
+3. Based on the event `id`, call the Server API [Query details about an event](/open/development/query-details-about-an-event) to obtain the event details.
+4. Based on the event `id`, call the Server API [Delete Event](/open/development/delete-event) to delete the created event.
+
+## Prerequisites
+
+Complete the [Create and configure an app](/open/dingstart/create-and-configure-an-application) flow.
+
+## Step 1: Obtain the app credential
+
+1. Select the target app to enter the app details page, then click **Basic information** > **Credentials and basic information**.
+2. Obtain the client ID and Client Secret.
+
+## Step 2: Add API permissions
+
+Click **Development configuration** > **Manage permissions**. In the permission search box, enter `Calendar.Event.Write` and `Calendar.Event.Read` respectively, and request the permissions.
+
+## Step 3: Obtain the app access token
+
+<Warning>
+For details on the differences between Server APIs, see Legacy API vs. New API. The following APIs all use Server APIs. For SDK download details, see Server-side SDK download.
+</Warning>
+
+Use the client ID and Client Secret from Step 1 to obtain the access_token of an internal app.
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("ding*********hgn")
+                .setAppSecret("9G_O**********xamBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Step 4: Call the Server API for Calendar
+
+1. Call the Server API [New Event](/open/development/create-schedule) to create an event. Obtain the event `id`.
+
+   ```java lines
+    public void createCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           CreateEventHeaders createEventHeaders = new CreateEventHeaders();
+           createEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           java.util.Map<String, String> extra = TeaConverter.buildMap(
+                   new TeaPair("noChatNotification", "false"),
+                   new TeaPair("noPushNotification","false")
+           );
+           CreateEventRequest.CreateEventRequestOnlineMeetingInfo onlineMeetingInfo = new CreateEventRequest.CreateEventRequestOnlineMeetingInfo()
+                   .setType("dingtalk");
+           CreateEventRequest.CreateEventRequestReminders reminders0 = new CreateEventRequest.CreateEventRequestReminders()
+                   .setMethod("dingtalk")
+                   .setMinutes(15);
+           CreateEventRequest.CreateEventRequestLocation location = new CreateEventRequest.CreateEventRequestLocation()
+                   .setDisplayName("********A座9F");
+           CreateEventRequest.CreateEventRequestAttendees attendees0 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("日程参与人unionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestAttendees attendees1 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("日程参与人unionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestAttendees attendees2 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("日程参与人unionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestRecurrenceRange recurrenceRange = new CreateEventRequest.CreateEventRequestRecurrenceRange()
+                   .setType("numbered")
+                   .setNumberOfOccurrences(2);
+           CreateEventRequest.CreateEventRequestRecurrencePattern recurrencePattern = new CreateEventRequest.CreateEventRequestRecurrencePattern()
+                   .setType("daily")
+                   .setInterval(1);
+           CreateEventRequest.CreateEventRequestRecurrence recurrence = new CreateEventRequest.CreateEventRequestRecurrence()
+                   .setPattern(recurrencePattern)
+                   .setRange(recurrenceRange);
+           CreateEventRequest.CreateEventRequestEnd end = new CreateEventRequest.CreateEventRequestEnd()
+                   .setDate("2022-09-03");
+   //                .setDateTime("2021-09-20T10:15:30+08:00")
+   //                .setTimeZone("Asia/Shanghai");
+           CreateEventRequest.CreateEventRequestStart start = new CreateEventRequest.CreateEventRequestStart()
+                   .setDate("2022-09-02");
+   //                .setDateTime("2021-09-20T10:15:30+08:00")
+   //                .setTimeZone("Asia/Shanghai");
+           CreateEventRequest createEventRequest = new CreateEventRequest()
+                   .setSummary("0902创建日程")
+                   .setDescription("这是0902创建的一个日程")
+                   .setStart(start)
+                   .setEnd(end)
+                   .setIsAllDay(true)
+                   .setRecurrence(recurrence)
+                   .setAttendees(java.util.Arrays.asList(
+                           attendees0,
+                           attendees1,
+                           attendees2
+                   ))
+                   .setLocation(location)
+                   .setReminders(java.util.Arrays.asList(
+                           reminders0
+                   ))
+                   .setOnlineMeetingInfo(onlineMeetingInfo)
+                   .setExtra(extra);
+           try {
+               CreateEventResponse eventWithOptions = client.createEventWithOptions("日程组织人unionId", "primary", createEventRequest, createEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(eventWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. Based on the event `id`, call the Server API [Modify event](/open/development/modify-event) to modify the event information.
+
+   ```java lines
+   public void  updateCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           PatchEventHeaders patchEventHeaders = new PatchEventHeaders();
+           patchEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           PatchEventRequest.PatchEventRequestReminders reminders0 = new PatchEventRequest.PatchEventRequestReminders()
+                   .setMethod("dingtalk")
+                   .setMinutes(15);
+           java.util.Map<String, String> extra = TeaConverter.buildMap(
+                   new TeaPair("noChatNotification", "false"),
+                   new TeaPair("noPushNotification","false")
+           );
+           PatchEventRequest.PatchEventRequestLocation location = new PatchEventRequest.PatchEventRequestLocation()
+                   .setDisplayName("room 1-2-3");
+           PatchEventRequest.PatchEventRequestAttendees attendees0 = new PatchEventRequest.PatchEventRequestAttendees()
+                   .setId("日程参与人unionId")
+                   .setIsOptional(false);
+           PatchEventRequest.PatchEventRequestRecurrenceRange recurrenceRange = new PatchEventRequest.PatchEventRequestRecurrenceRange()
+                   .setType("numbered")
+                   .setNumberOfOccurrences(1);
+           PatchEventRequest.PatchEventRequestRecurrencePattern recurrencePattern = new PatchEventRequest.PatchEventRequestRecurrencePattern()
+                   .setType("daily")
+                   .setInterval(1);
+           PatchEventRequest.PatchEventRequestRecurrence recurrence = new PatchEventRequest.PatchEventRequestRecurrence()
+                   .setPattern(recurrencePattern)
+                   .setRange(recurrenceRange);
+           PatchEventRequest.PatchEventRequestEnd end = new PatchEventRequest.PatchEventRequestEnd()
+                   .setDate("2022-09-02");
+           PatchEventRequest.PatchEventRequestStart start = new PatchEventRequest.PatchEventRequestStart()
+                   .setDate("2022-09-02");
+           PatchEventRequest patchEventRequest = new PatchEventRequest()
+                   .setSummary("0902修改日程内容")
+                   .setId("日程id")
+                   .setDescription("这是一个0902修改的日程")
+                   .setStart(start)
+                   .setEnd(end)
+                   .setIsAllDay(true)
+                   .setRecurrence(recurrence)
+                   .setAttendees(java.util.Arrays.asList(
+                           attendees0
+                   ))
+                   .setLocation(location)
+                   .setExtra(extra)
+                   .setReminders(java.util.Arrays.asList(
+                           reminders0
+                   ));
+           try {
+               PatchEventResponse patchEventResponse = client.patchEventWithOptions("日程组织者unionId", "primary", "日程id", patchEventRequest, patchEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(patchEventResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+3. Based on the event `id`, call the Server API [Query details about an event](/open/development/query-details-about-an-event) to obtain the event details.
+
+   ```java lines
+    public void calendarInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           GetEventHeaders getEventHeaders = new GetEventHeaders();
+           getEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           GetEventRequest getEventRequest = new GetEventRequest()
+                   .setMaxAttendees(100L);
+           try {
+               GetEventResponse eventWithOptions = client.getEventWithOptions("日程组织者unionId", "primary", "日程id", getEventRequest, getEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(eventWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+4. Based on the event `id`, call the Server API [Delete Event](/open/development/delete-event) to delete the created event.
+
+   ```java lines
+   public void  deleteCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           DeleteEventHeaders deleteEventHeaders = new DeleteEventHeaders();
+           deleteEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           try {
+               client.deleteEventWithOptions("日程组织者unionId", "primary", "日程id", deleteEventHeaders, new RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+<Note>
+The following two deletion scenarios are supported:
+</Note>
+
+- When the organizer deletes the event (the userId parameter in the path uses the organizer's unionId), all attendees receive an event cancellation notification, and the event is removed from all attendees' calendars.
+- When an attendee deletes the event (the userId parameter in the path uses the attendee's unionId), the event is removed only from that attendee's own calendar, and other event attendees are not affected.

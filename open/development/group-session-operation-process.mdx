@@ -1,0 +1,231 @@
+---
+title: "Create, query, modify, and manage group chats"
+---
+
+This document describes how to call the group chat APIs to perform group chat operations. First, create an internal app. Then, use the group chat APIs to create a group chat, retrieve group chat information, manage the group chat, and modify the group chat.
+
+## Process overview
+
+Step 1: Obtain the client ID and Client Secret of the app.
+
+Step 3: Obtain the app access credential by following [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app).
+
+Step 4: Call the server-side group chat APIs.
+
+1. Call the Server API for creating a group chat to create a group chat and obtain its `chatId`.
+2. Based on the `chatId`, call the Server API [Query group chat information](/open/development/obtain-a-group-session) to retrieve the group chat information.
+3. Manage the group chat by using its chatId.
+
+   - Based on the `chatId`, call the new Server API [Obtain the OpenConversationId of a group chat](/open/development/obtain-group-openconversationid) to obtain the `openConversationId`.
+
+     - Based on the `openConversationId`, call the new Server API for setting group admins in batches to set group admins in batches.
+   - Based on the `chatId`, call the Server API for updating group admins to set group admins.
+   - Based on the `chatId`, call the Server API [Turn off Private Chat](/open/development/set-private-chat) to control whether group members can chat privately.
+   - Based on the `chatId`, call the Server API [Update the group nickname of a group member](/open/development/set-a-group-nickname) to set the nickname of a group member.
+   - Based on the `chatId`, call the Server API [Obtain the join chat QR Code link](/open/development/obtain-a-qr-code-link). Other users in your organization can click the link to request to join the group chat.
+4. Based on the `chatId`, call the Server API for updating a group chat to modify the group chat information.
+
+## Prerequisites
+
+Complete the [App creation and configuration](/open/dingstart/create-and-configure-an-application) process.
+
+## Step 1: Obtain the app credential
+
+1. Select the target app, go to the app details page, and click **Basic Information** > **Credentials and Basic Information**.
+2. Obtain the client ID and Client Secret of the app.
+
+## Step 2: Add API permissions
+
+Click **Development Configuration** > **Manage Permissions**. In the permission search box, enter `qyapi_chat_manage`, `qyapi_chat_read`, and `qyapi_chat_base_read` separately, and request the permissions.
+
+## Step 3: Obtain the app access token
+
+<Warning>
+For details about the differences between Server APIs, see Legacy API VS New API. The following APIs all use the new Server API. For SDK download details, see Server-side SDK download.
+</Warning>
+
+Based on the client ID and Client Secret obtained in Step 1, obtain the app access credential by following [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Step 4: Call the server-side group chat APIs
+
+1. Call the Server API for creating a group chat to create a group chat and obtain its chatId.
+
+   ```java lines
+   public void createChat() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/create");
+           OapiChatCreateRequest req = new OapiChatCreateRequest();
+           req.setName("All-staff Chat");
+           req.setOwner("manager4220");
+           req.setUseridlist(Arrays.asList("userid1","userid2"));
+           OapiChatCreateResponse rsp = client.execute(req, access_token);
+           System.out.println(rsp);
+       }
+   ```
+2. Based on the chatId, call the Server API [Query group chat information](/open/development/obtain-a-group-session) to retrieve the group chat information.
+
+   ```java lines
+   public void getChatInfo() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/get");
+           OapiChatGetRequest req = new OapiChatGetRequest();
+           req.setChatid("chate39f540dxxxx");
+           req.setHttpMethod("GET");
+           OapiChatGetResponse rsp = client.execute(req, access_token);
+           System.out.println(rsp.getChatInfo());
+       }
+   ```
+3. Manage the group chat by using its chatId.
+
+   - Based on the `chatId`, call the new Server API [Obtain the OpenConversationId of a group chat](/open/development/obtain-group-openconversationid) to obtain the `openConversationId`.
+
+     ```java lines
+     public void ConversationId() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkim_1_0.Client client = new com.aliyun.dingtalkim_1_0.Client(config);
+             ChatIdToOpenConversationIdHeaders chatIdToOpenConversationIdHeaders = new ChatIdToOpenConversationIdHeaders();
+             chatIdToOpenConversationIdHeaders.xAcsDingtalkAccessToken = "accessToken";
+             try {
+                 ChatIdToOpenConversationIdResponse response = client.chatIdToOpenConversationIdWithOptions("chatId", chatIdToOpenConversationIdHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(response.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err contains the code and message attributes to help locate the issue
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err contains the code and message attributes to help locate the issue
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+     - Based on the `openConversationId`, call the new Server API for setting group admins in batches to set group admins in batches.
+
+       ```java lines
+       public void subAdministrators() throws Exception {
+               Config config = new Config();
+               config.protocol = "https";
+               config.regionId = "central";
+               com.aliyun.dingtalkim_1_0.Client client = new com.aliyun.dingtalkim_1_0.Client(config);
+               ChatSubAdminUpdateHeaders chatSubAdminUpdateHeaders = new ChatSubAdminUpdateHeaders();
+               chatSubAdminUpdateHeaders.xAcsDingtalkAccessToken = "accessToken";
+               ChatSubAdminUpdateRequest chatSubAdminUpdateRequest = new ChatSubAdminUpdateRequest()
+                       .setOpenConversationId("cid55SzIIO********=")
+                       .setUserIds(java.util.Arrays.asList(
+                               "0147********7041"
+                       ))
+                       .setRole(2);
+               try {
+                   ChatSubAdminUpdateResponse chatSubAdminUpdateResponse = client.chatSubAdminUpdateWithOptions(chatSubAdminUpdateRequest, chatSubAdminUpdateHeaders, new RuntimeOptions());
+                   System.out.println(JSON.toJSONString(chatSubAdminUpdateResponse.getBody()));
+               } catch (TeaException err) {
+                   if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                       // err contains the code and message attributes to help locate the issue
+                       System.out.println(err.code);
+                       System.out.println(err.message);
+                   }
+               } catch (Exception _err) {
+                   TeaException err = new TeaException(_err.getMessage(), _err);
+                   if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                       // err contains the code and message attributes to help locate the issue
+                       System.out.println(err.code);
+                       System.out.println(err.message);
+                   }
+               }
+           }
+       ```
+   - Based on the `chatId`, call the Server API for updating group admins to set group admins.
+
+     ```java lines
+     public void setChatAdmin() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/subadmin/update");
+             OapiChatSubadminUpdateRequest req = new OapiChatSubadminUpdateRequest();
+             req.setChatid("chat14432xxxx");
+             req.setUserids("userid1");
+             req.setRole(2L);
+             OapiChatSubadminUpdateResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - Based on the `chatId`, call the Server API [Turn off Private Chat](/open/development/set-private-chat) to control whether group members can chat privately.
+
+     ```java lines
+     public void updateChatMemberFriendswitch() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/member/friendswitch/update");
+             OapiChatMemberFriendswitchUpdateRequest req = new OapiChatMemberFriendswitchUpdateRequest();
+             req.setChatid("chatdafe234xxxx");
+             req.setIsProhibit(true);
+             OapiChatMemberFriendswitchUpdateResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - Based on the `chatId`, call the Server API [Update the group nickname of a group member](/open/development/set-a-group-nickname) to set the nickname of a group member.
+
+     ```java lines
+     public void updateChatMemberNick() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/updategroupnick");
+             OapiChatUpdategroupnickRequest req = new OapiChatUpdategroupnickRequest();
+             req.setUserid("user123");
+             req.setChatid("chate39f540d572b71cf97a556d95929fxxxx");
+             req.setGroupNick("DingTalk Assistant");
+             OapiChatUpdategroupnickResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - Based on the `chatId`, call the Server API [Obtain the join chat QR Code link](/open/development/obtain-a-qr-code-link). Other users in your organization can click the link to request to join the group chat.
+
+     ```java lines
+     public void getChatURL() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/qrcode/get");
+             OapiChatQrcodeGetRequest req = new OapiChatQrcodeGetRequest();
+             req.setChatid("chat32****3a");
+             req.setUserid("manager4220");
+             OapiChatQrcodeGetResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+4. Based on the `chatId`, call the Server API for updating a group chat to modify the group chat information.
+
+   ```java lines
+   public void updateChat() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/update");
+           OapiChatUpdateRequest req = new OapiChatUpdateRequest();
+           req.setChatid("chatxxxx");
+           req.setName("Group name 1");
+           req.setOwner("04201724372xxxx");
+           req.setOwnerType("emp");
+           req.setAddUseridlist(Arrays.asList("userid2"));
+           req.setDelUseridlist(Arrays.asList("userid1"));
+           req.setIcon("@mediaId");
+           req.setIsBan(true);
+           req.setSearchable(0L);
+           req.setValidationType(0L);
+           req.setMentionAllAuthority(0L);
+           req.setManagementType(0L);
+           req.setChatBannedType(0L);
+           req.setShowHistoryType(0L);
+           OapiChatUpdateResponse rsp = client.execute(req,access_token);
+           System.out.println(rsp.getBody());
+       }
+   ```

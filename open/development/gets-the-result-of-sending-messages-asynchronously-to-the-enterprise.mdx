@@ -1,0 +1,157 @@
+---
+title: "Get the delivery result of a Work Notification message"
+---
+
+Call this API to query the delivery result of a Work Notification message.
+
+## API call description
+
+This API is suitable for scenarios where you need to confirm whether a Work Notification message has been successfully delivered to specific users. For example, after the HR department of an organization sends an important notification, you may need to confirm whether employees have received it.
+
+### Notes
+
+- This API only returns the delivery result of Work Notification messages sent within the last 24 hours.
+- This API does not support recipient lists that exceed 100 users. Otherwise, the system returns **Call timeout**.
+
+## Request
+
+| **Basic information** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app appType-Third-party enterprise app |
+| Required permissions | permission-qyapi_base-Basic permission required to call enterprise APIs |
+
+### Query parameters
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| access_token | String | Yes | bE74xxxx | The app credential for calling this API.   - For an internal app, obtain it through the API for getting the access_token of an internal app. - For a third-party enterprise app, obtain it through the API for getting the access_token of a third-party enterprise. |
+
+### Request body
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| agent_id | Number | Yes | 836390886 | The Agent ID of the micro app used to send the message.   - For an internal app, view it on the app details page in the [developer backend](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1). image - For a third-party enterprise app, obtain it by calling the API for getting enterprise authorization information. |
+| task_id | Number | Yes | 256271667526 | The task ID returned by DingTalk when the message was sent. Call the [Send Work Notification](/open/development/asynchronous-sending-of-enterprise-session-messages) API to obtain the value of task_id.  **Note**  Only tasks created within the last 24 hours can be queried. |
+
+### Request example
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=cfe36xxxxd8dbce' \
+-d 'agent_id=123' \
+-d 'task_id=456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+req.setAgentId(123L);
+req.setTaskId(456L);
+OapiMessageCorpconversationGetsendresultResponse rsp = client.execute(req, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationGetsendresultRequest("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult")
+
+req.agent_id=123
+req.task_id=456
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationGetsendresultRequest;
+$req->setAgentId("123");
+$req->setTaskId("456");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+req.AgentId = 123L;
+req.TaskId = 456L;
+OapiMessageCorpconversationGetsendresultResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| send_result | AsyncSendResult |  | The returned result. |
+| invalid_user_id_list | String[] | ["manager4220",user123"] | Invalid user IDs. |
+| forbidden_user_id_list | String[] | ["manager4220",user123"] | The user IDs that were not actually sent due to rate limiting caused by sending messages too frequently or in excessive volume.  Recipients not affected by the rate limit are still sent successfully.  Rate limit rules include:   - Sending the same content to the same user is allowed only once per day. - For the same app sending messages to the same user:    - For third-party enterprise apps, the daily limit is 100 messages per user.   - For internal apps, the daily limit is 500 messages per user. |
+| failed_user_id_list | String[] | ["manager4220",user123"] | The user IDs that failed to receive the message. |
+| read_user_id_list | String[] | ["manager4220",user123"] | The user IDs that have read the message. |
+| unread_user_id_list | String[] | ["manager4220",user123"] | The user IDs that have not read the message. |
+| invalid_dept_id_list | Number[] | [1,2,3] | Invalid department IDs. |
+| forbidden_list | SendForbiddenModel[] |  | The specific reasons why the push was forbidden. |
+| code | String | 143105 | The rate limit code.   - 143105 indicates that the daily limit of messages pushed to a user by an internal app has been exceeded. - 143106 indicates that an internal app has sent duplicate messages to a user. |
+| count | Number | 1 | The rate limit threshold. |
+| userid | String | user123 | The user ID of the employee affected by the rate limit. |
+| errcode | Number | 0 | The return code. |
+| errmsg | String | ok | The description of the return code. |
+| request_id | String | 6pcvwp6jcows | The request ID. |
+
+### Response example
+
+```json
+{
+  "errcode": 0,
+  "send_result": {
+    "failed_user_id_list": [],
+    "forbidden_list": [],
+    "invalid_dept_id_list": [],
+    "invalid_user_id_list": [],
+    "read_user_id_list": [
+      "manager4220"
+    ],
+    "unread_user_id_list": []
+  },
+  "request_id": "6pcvwp6jcows"
+}
+```
+
+### Error codes
+
+If an error occurs when calling this API, refer to the [Global error codes](/open/development/server-api-error-codes-1) document and find the solution based on the error message.
+
+| Error code | Description | Solution |
+| --- | --- | --- |
+| 143103 | The QPM limit for the number of message recipients per app within the organization has been exceeded. | The API is being called too frequently. Try again later. |
+| 143104 | The QPM limit for the number of message recipients per minute within the organization has been exceeded. | The API is being called too frequently. Try again later. |
+| 143105 | The daily push limit per user per app has been exceeded. | An organization can send up to 500 message notifications per employee per day, while an ISV can send up to 50. |
+| 143106 | The limit for duplicate messages pushed by a single app to a single user has been exceeded. | Only one message notification with the same content can be sent to the same employee per day. |
+| 143203 | The QPM limit for an ISV app sending to a single organization has been exceeded. | The API is being called too frequently. Try again later. |
+| 143204 | The QPM limit for an ISV app sending to all organizations has been exceeded. | The API is being called too frequently. Try again later. |
+| 143205 | The daily push limit per user per app has been exceeded. | An organization can send up to 500 message notifications per employee per day, while an ISV can send up to 50. |
+| 143206 | The limit for duplicate messages pushed by a single app to a single user has been exceeded. | Only one message notification with the same content can be sent to the same employee per day. |
+| 1430000 | The recipient is empty. | The recipient cannot be empty. Check whether the message recipient is empty. |
+| 1430001 | Unrecognized grantType. | None. |
+| 1430002 | The message contains prohibited content. | Check whether the message text contains pornographic, reactionary, or other prohibited words. |
+| 1430003 | OAPI system protection triggered. | None. |
+| 1430004 | Senior executive protection. | Disable senior executive protection. |

@@ -1,0 +1,223 @@
+---
+title: "API call walkthrough"
+---
+
+This guide walks developers through the full process of calling DingTalk Open Platform APIs, from creating an app to a successful API call. It covers key steps, code examples, considerations, and debugging methods to help developers get started quickly and call APIs successfully.
+
+<Note>
+This example is based on an internal app and demonstrates how to retrieve user details from Contacts by calling the API. The same approach applies to other app types.
+</Note>
+
+## Prerequisites
+
+1. **Basic concepts**: Be familiar with the basic concepts of the DingTalk Open Platform and the documentation for each product module. See the basic concepts documentation for details.
+2. **API rate limits**: Be familiar with the API rate limits. See the API call frequency and rate limit documentation for details.
+3. **Developer permissions**: Have Sub Admin and developer permissions in the [Developer Backend](https://open-dev.dingtalk.io/?spm=dd_developers.header.unLogin.openDevBtn&hash=%23%2F#/). You can also sign in to DingTalk Developer to register and activate a new user.
+4. **Obtain the user** `UserId`: Sign in to the [DingTalk Admin Console](http://oa.dingtalk.io/) and view the `UserId` under **Contacts > User management**. See the basic concepts documentation for details.
+
+## Step 1: Create a DingTalk app
+
+1. Go to the [Developer Backend](https://open-dev.dingtalk.io/?spm=dd_developers.header.unLogin.openDevBtn&hash=%23%2F#/) and click **App Development** > **DingTalk App** > **Create app**.
+
+2. Enter the app information and click **Save**.
+
+   | **Field** | **Required** | **Description** |
+   | --- | --- | --- |
+   | **App name** | Yes | Enter the app name. The minimum length is 2 characters. |
+   | **App description** | Yes | Briefly describe the products or services provided by the app. The minimum length is 4 characters. |
+   | **App icon** | No | Upload the app icon. The icon must be in JPG or PNG format, at least 240 px \* 240 px, with a 1:1 aspect ratio, no rounded corners, and no larger than 2 MB. |
+
+3. Go to the app details page and view the app credential and basic information under **Basic information** > **Credential and basic information**.
+
+4. Save the **Client ID** and **Client Secret** of the app for subsequent API calls.
+
+### Note
+
+   For details about how to obtain the **Client ID** and **Client Secret**, see the basic concepts documentation. Keep them safe after you obtain them to prevent leaks.
+
+## Step 2: Configure permissions
+
+1. **Find the required permission**: According to the API documentation, calling the user details API requires the `Read user information` permission.
+
+2. **Add the permission**: Go to the [Developer Backend](https://open-dev.dingtalk.io/?spm=dd_developers.header.unLogin.openDevBtn&hash=%23%2F#/), locate the app you created, go to the app details page, search for `Read user information` under **Manage permissions**, and click **Apply now**.
+
+## Step 3: Obtain the Access Token
+
+<Warning>
+Before obtaining the **Access Token**, determine whether the API requires a [standard permission](/open/development/add-api-permission) or a [sensitive permission](/open/development/use-sensitive-permissions). The two have different acquisition methods.
+</Warning>
+
+### Standard-permission API
+
+#### Call the API to obtain the Token
+
+1. Open the [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app) API page and click the **API Debug** button on the right to open the [Server-side debugging tool](https://open.dingtalk.io/document/download/api-explorer).
+2. In the debugging tool, replace the values of `appkey (replace with the Client ID you obtained earlier)` and `appSecret (replace with the Client Secret you obtained earlier)`, and click **Debug**.
+
+### Important
+
+   You must be signed in to use the server-side debugging console and must bind the corresponding app.
+
+   You can also copy the code below and use a cURL command. Replace the values of `appkey (with the Client ID you obtained earlier)` and `appSecret (with the Client Secret you obtained earlier)`, then send the request directly. Example:
+
+   ```bash
+   curl -X POST 'https://api.dingtalk.io/v1.0/oauth2/accessToken' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "appKey": "Replace with the Client ID you obtained earlier",
+       "appSecret": "Replace with the Client Secret you obtained earlier"
+     }'
+   ```
+
+#### Parse the response
+
+After the call succeeds, an access token value is generated, as shown below:
+
+```json
+{
+  "accessToken" : "fw8ef8we8f76e6f7s8dxxxx", # Core credential
+  "expireIn" : 7200 # Validity period (2 hours)
+}
+```
+
+#### Cache and refresh
+
+- Cache the `access_token` in a database or memory and set up scheduled refreshes (10 minutes before expiration).
+- Avoid calling the Token API frequently, otherwise rate limits may be triggered.
+
+### Sensitive-permission API
+
+To enable cross-organization data sharing and feature invocation, third-party apps must go through a strict authorization process. They need to obtain usage permission and user data access permission from the target organization through both organization-level and user-level authorization.
+
+#### Apply for the API permission
+
+Apply for the API permission according to the [Use sensitive permissions](/open/development/use-sensitive-permissions) documentation.
+
+#### Integrate the authorization suite
+
+After applying for the sensitive permission, integrate the authorization suite. When a user accepts the authorization in the prompt, an `authCode` is returned. Then call the [Obtain user token](/open/development/obtain-user-token) API to exchange it for a user-level `access_token`.
+
+## Step 4: Call the user details API
+
+### Standard-permission API
+
+To retrieve user details, call the [Query user details](/open/development/query-user-details) API. You can use the DingTalk SDK or send an HTTP request directly. Choose the method that fits your needs.
+
+#### Option 1: Use the DingTalk SDK (recommended)
+
+<Note>
+Before using the DingTalk SDK, learn about the differences in the Server API, then download the corresponding SDK version. See the Server API differences documentation for details.
+</Note>
+
+1. Install the SDK (Python example)
+
+   ```bash
+   pip install dingtalk-sdk
+   ```
+2. Code example
+
+   ```python
+   # -*- coding: utf-8 -*-
+   import dingtalk.api
+
+   req=dingtalk.api.OapiV2UserGetRequest("https://oapi.dingtalk.io/topapi/v2/user/get")
+
+   req.userid="zhangsan"  # Replace with the actual user ID
+   req.language="zh_CN"
+   try:
+   	resp= req.getResponse(access_token)
+   	print(resp)
+   except Exception,e:
+   	print(e)
+   ```
+
+#### Option 2: Send an HTTP request directly
+
+```bash
+curl -i 'https://oapi.dingtalk.io/topapi/v2/user/get' \
+  -X 'POST' \
+  -H 'Content-Type: application/json' \
+  -d '{"userid":"Replace with the actual user ID","language":"zh_CN"}'
+```
+
+#### Successful response
+
+If the response contains `"errcode":"0"` and `"errmsg":"ok"`, the call succeeded.
+
+```json
+{
+        "errcode":"0",
+        "result":{
+                "extension":"{\"爱好\":\"旅游\",\"年龄\":\"24\"}",
+                "unionid":"z21HjQliSzpw0YWxxxxx",
+                "boss":"true",
+                "role_list":{
+                        "group_name":"职务",
+                        "name":"总监",
+                        "id":"100"
+                },
+                "exclusive_account":false,
+                "manager_userid":"manager240",
+                "admin":"true",
+                "remark":"备注备注",
+                "title":"技术总监",
+                "hired_date":"1597573616828",
+                "userid":"zhangsan",
+                "work_place":"未来park",
+                "dept_order_list":{
+                        "dept_id":"2",
+                        "order":"1"
+                },
+                "real_authed":"true",
+                "dept_id_list":"[2,3,4]",
+                "job_number":"4",
+                "email":"test@xxx.com",
+                "leader_in_dept":{
+                        "leader":"true",
+                        "dept_id":"2"
+                },
+                "mobile":"18513027676",
+                "active":"true",
+                "org_email":"test@xxx.com",
+                "telephone":"010-86123456-2345",
+                "avatar":"xxx",
+                "hide_mobile":"false",
+                "senior":"true",
+                "name":"张三",
+                "union_emp_ext":{
+                        "union_emp_map_list":{
+                                "userid":"5000",
+                                "corp_id":"dingxxx"
+                        },
+                        "userid":"500",
+                        "corp_id":"dingxxx"
+                },
+                "state_code":"86"
+        },
+        "errmsg":"ok"
+}
+```
+
+#### Error handling
+
+- **Insufficient permissions**: Check whether the `Read user information` permission has been requested.
+- **User does not exist**: Verify that the `userid` is valid and free of typos.
+- **Token expired**: Refresh the `access_token` and try again. Make sure the `access_token` is valid and free of typos.
+
+### Sensitive-permission API
+
+After exchanging the `authCode` for a user-level `access_token`, call [Retrieve user profile from Contacts](/open/development/dingtalk-retrieve-user-information) to obtain the user's name, unionId, and other information.
+
+If the API returns 200, the call succeeded. The response is as follows:
+
+```json
+{
+  "nick" : "zhangsan",
+  "avatarUrl" : "https://xxx",
+  "mobile" : "150xxxx9144",
+  "openId" : "123",
+  "unionId" : "z21HjQliSzpw0Yxxxx",
+  "email" : "zhangsan@alibaba-inc.com",
+  "stateCode" : "86"
+}
+```

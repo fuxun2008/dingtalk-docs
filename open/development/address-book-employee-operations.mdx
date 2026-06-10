@@ -1,0 +1,180 @@
+---
+title: "Create, retrieve, update, and delete employees"
+---
+
+This article describes how to create an internal app and use the user management APIs provided by Contacts management to create, retrieve, update, and delete employees in your organization.
+
+## Expected result
+
+The user information page is shown below:
+
+## Integration flow overview
+
+This article describes how to create an internal app and use the user management APIs provided by **Contacts management** to create, retrieve, update, and delete employees in your organization.
+
+Step 1: Obtain the app credential, including the client ID and Client Secret.
+
+Step 2: Request API permissions for Contacts management.
+
+Step 3: Obtain the access_token of the internal app as the app access credential. The access token is used to authenticate the caller when an API is called.
+
+Step 4: Call the Contacts APIs:
+
+1. Call the Server API [Create a user](/open/development/user-information-creation) to create a user and obtain the `userid`.
+
+   - To add an employee to the root department, pass `1` as the parameter. This example adds the employee to the root department.
+   - To add an employee to a specific department, first call [Obtain the list of sub-department IDs](/open/development/obtain-the-list-of-sub-department-ids) to get the department ID, and then pass it as the department parameter when creating the user.
+2. With the `userid`, call the Server API [Query user details](/open/development/query-user-details) to retrieve the user's detailed information.
+3. With the `userid`, call the Server API [Update user information](/open/development/user-information-update) to update the user's information.
+4. With the `userid`, call the Server API [Delete a user](/open/development/delete-a-user) to delete the user.
+
+## Prerequisites
+
+Complete the [app creation and configuration](/open/dingstart/create-and-configure-an-application) flow.
+
+## Step 1: Obtain the app credential
+
+1. Select the target app to enter the app details page, and click **Basic information** > **Credentials and basic information**.
+2. Obtain the client ID and Client Secret.
+
+## Step 2: Add API permissions
+
+Click **Development configuration** > **Manage permissions**. In the permission search box, enter `qyapi_manage_addresslist` and `qyapi_get_department_list`, and request the permissions.
+
+## Step 3: Obtain the app access credential (access token)
+
+### Important
+
+- For differences between Server API versions, see Legacy API vs. New API.
+- To download the Server API SDK, see Server-side SDK download.
+
+Use the client ID and Client Secret obtained in Step 1 to obtain the access_token of the internal app as the app access credential.
+
+```java
+public void getAccessToken() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+        OapiGettokenRequest req = new OapiGettokenRequest();
+        req.setAppkey("dingxxxxxxxxxhgn");
+        req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+        req.setHttpMethod("GET");
+        OapiGettokenResponse rsp = client.execute(req);
+        System.out.println(rsp.getBody());
+    }
+```
+
+## Step 4: Call the Contacts APIs
+
+1. Call the Server API [Create a user](/open/development/user-information-creation) to create a user and obtain the `userid`.
+
+   ```java lines
+   public void createUser() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/create");
+           OapiV2UserCreateRequest req = new OapiV2UserCreateRequest();
+           req.setUserid("manger7676");
+           req.setName("1009测试用户");
+           req.setSeniorMode(false);
+           req.setMobile("152****3025");
+           req.setTitle("技术总监");
+           req.setEmail("test*****@xx.com");
+           req.setOrgEmail("test***@xxx.com");
+           req.setOrgEmailType("profession");
+           ArrayList<OapiV2UserCreateRequest.DeptTitle> deptTitles = new ArrayList<>();
+           OapiV2UserCreateRequest.DeptTitle deptTitle = new OapiV2UserCreateRequest.DeptTitle();
+           deptTitle.setDeptId(724960197L);
+           deptTitle.setTitle("资深技术总监");
+           deptTitles.add(deptTitle);
+           req.setDeptTitleList(deptTitles);
+           req.setHideMobile(false);
+           req.setTelephone("010-8xxxxx6-2345");
+           req.setJobNumber("202210190001");
+           req.setHiredDate(1666143772000L);
+           req.setWorkPlace("阿里中心******");
+           req.setRemark("备注信息");
+           req.setDeptIdList("724960197");
+           List<OapiV2UserCreateRequest.DeptOrder> deptOrderList = new ArrayList<OapiV2UserCreateRequest.DeptOrder>();
+           OapiV2UserCreateRequest.DeptOrder deptOrder = new OapiV2UserCreateRequest.DeptOrder();
+           deptOrder.setDeptId(724960197L);
+           deptOrder.setOrder(1L);
+           deptOrderList.add(deptOrder);
+           req.setDeptOrderList(deptOrderList);
+           req.setExtension("{\"爱好\":\"[爱好](http://test.com?userid=#userid#&corpid=#corpid#)\"}");
+           req.setManagerUserid("manager7676");
+           req.setLoginEmail("test****@xxx.com");
+           OapiV2UserCreateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+
+   - To add an employee to the root department, pass `1` as the parameter. This example adds the employee to the root department.
+   - To add an employee to a specific department, first call [Obtain the list of sub-department IDs](/open/development/obtain-the-list-of-sub-department-ids) to get the department ID, and then pass it as the department parameter when creating the user.
+
+   ```java lines
+   public void departmentListSubId() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/listsubid");
+           OapiV2DepartmentListsubidRequest req = new OapiV2DepartmentListsubidRequest();
+           req.setDeptId(1L);
+           OapiV2DepartmentListsubidResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+2. With the `userid`, call the Server API [Query user details](/open/development/query-user-details) to retrieve the user's detailed information.
+
+### Note
+
+   Some fields returned by the Query user details API have specific requirements. See the field descriptions in the [Query user details](/open/development/query-user-details) API documentation.
+
+   ```java lines
+    public void userInfo() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/get");
+           OapiV2UserGetRequest req = new OapiV2UserGetRequest();
+           req.setUserid("manger7676");
+           req.setLanguage("zh_CN");
+           OapiV2UserGetResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+3. With the `userid`, call the Server API [Update user information](/open/development/user-information-update) to update the user's information.
+
+### Note
+
+   The Update user information API does not currently support updating the mobile number.
+
+   ```java lines
+   public void userModify() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/update");
+           OapiV2UserUpdateRequest req = new OapiV2UserUpdateRequest();
+           req.setUserid("manger7676");
+           req.setName("小钉");
+           req.setHideMobile(false);
+           req.setTelephone("010-86*****6-2345");
+           req.setJobNumber("202210190002");
+           req.setTitle("技术总监");
+           req.setEmail("test*****@xxx.com");
+           req.setWorkPlace("未来park");
+           req.setRemark("备注备注");
+           req.setDeptIdList("1");
+           List<OapiV2UserUpdateRequest.DeptOrder> list2 = new ArrayList<OapiV2UserUpdateRequest.DeptOrder>();
+           OapiV2UserUpdateRequest.DeptOrder obj3 = new OapiV2UserUpdateRequest.DeptOrder();
+           list2.add(obj3);
+           obj3.setDeptId(1L);
+           obj3.setOrder(1L);
+           req.setDeptOrderList(list2);
+           req.setExtension("{\"爱好\":\"旅游\",\"年龄\":\"24\"}");
+           req.setSeniorMode(false);
+           req.setHiredDate(1633017600000L);
+           req.setLanguage("zh_CN");
+           OapiV2UserUpdateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+4. With the `userid`, call the Server API [Delete a user](/open/development/delete-a-user) to delete the user.
+
+   ```java lines
+   public void userDelete() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/delete");
+           OapiV2UserDeleteRequest req = new OapiV2UserDeleteRequest();
+           req.setUserid("manager7676");
+           OapiV2UserDeleteResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```

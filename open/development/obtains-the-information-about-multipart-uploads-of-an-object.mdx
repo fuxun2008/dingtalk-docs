@@ -1,0 +1,662 @@
+---
+title: "Get multipart file upload information"
+---
+
+Call this API to get the upload information for each part of a file after it has been split.
+
+## API call description
+
+Follow these steps to call the API:
+
+Step 1: Call the [Initialize a multipart upload object](/open/development/initialize-a-multipart-upload-object) API to get the upload identifier `uploadKey`.
+
+Step 2: Call this API to get the upload information for each part of the file.
+
+Step 3: Upload each part in a loop.
+
+Step 4: Use the `uploadKey` obtained in Step 1 to call the [Commit file](/open/development/submittal-file) API to complete the upload.
+
+For a complete example, refer to the following:
+
+```java
+import com.aliyun.dingtalkstorage_1_0.models.*;
+import com.aliyun.teaopenapi.models.Config;
+import com.aliyun.teautil.models.RuntimeOptions;
+import com.util.AccessTokenUtil;
+import org.junit.Test;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Map;
+
+public class MultipartUpload {
+  public static com.aliyun.dingtalkstorage_1_0.Client createClient() throws Exception {
+    Config config = new Config();
+    config.protocol = "https";
+    config.regionId = "central";
+    return new com.aliyun.dingtalkstorage_1_0.Client(config);
+  }
+  @Test
+  public void test() throws Exception {
+    com.aliyun.dingtalkstorage_1_0.Client client = MultipartUpload.createClient();
+
+    String spaceId = "存储空间ID";
+    String filePath = "/Users/xxxxx/Desktop/音乐.mp3";
+    // 每片文件大小
+    long partSize = 1 * 1024 * 1024L;  // 1MB
+    // 初始化分片上传接口
+    InitMultipartFileUploadHeaders initMultipartFileUploadHeaders = new InitMultipartFileUploadHeaders();
+    initMultipartFileUploadHeaders.xAcsDingtalkAccessToken = "accessToken";
+    InitMultipartFileUploadRequest initMultipartFileUploadRequest = new InitMultipartFileUploadRequest();
+    initMultipartFileUploadRequest.setUnionId(unionId);
+    InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption initMultipartFileUploadRequestOption = new InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption();
+    initMultipartFileUploadRequestOption.setStorageDriver("DINGTALK");
+    initMultipartFileUploadRequest.setOption(initMultipartFileUploadRequestOption);
+    String uploadKey = client.initMultipartFileUploadWithOptions(spaceId, initMultipartFileUploadRequest, initMultipartFileUploadHeaders, new RuntimeOptions()).getBody().getUploadKey();
+
+    File file = new File(filePath);
+    long fileLength = file.length();
+    int partCount = (int) (fileLength / partSize) + ((fileLength % partSize != 0) ? 1 : 0);
+
+    for (int i = 0; i < partCount; i++) {
+      long startPos = i * partSize;
+      long curPartSize = (i + 1 == partCount) ? (fileLength - startPos) : partSize;
+      // 获取分片上传信息
+      GetMultipartFileUploadInfosHeaders getMultipartFileUploadInfosHeaders = new GetMultipartFileUploadInfosHeaders();
+      getMultipartFileUploadInfosHeaders.xAcsDingtalkAccessToken = "accessToken";
+      GetMultipartFileUploadInfosRequest getMultipartFileUploadInfosRequest = new GetMultipartFileUploadInfosRequest();
+      getMultipartFileUploadInfosRequest.setUnionId(unionId);
+      getMultipartFileUploadInfosRequest.setUploadKey("第一步初始化分片上传接口获取的uploadKey");
+      getMultipartFileUploadInfosRequest.setPartNumbers(Arrays.asList(i + 1));
+      GetMultipartFileUploadInfosResponseBody.GetMultipartFileUploadInfosResponseBodyMultipartHeaderSignatureInfosHeaderSignatureInfo headerSignatureInfo = client.getMultipartFileUploadInfosWithOptions(getMultipartFileUploadInfosRequest, getMultipartFileUploadInfosHeaders, new RuntimeOptions()).body.multipartHeaderSignatureInfos.get(0).headerSignatureInfo;
+            uploadPartFile(startPos, curPartSize, headerSignatureInfo, file);
+        }
+            // 提交文件，完成上传
+            CommitFileHeaders commitFileHeaders = new CommitFileHeaders();
+            commitFileHeaders.xAcsDingtalkAccessToken = "accessToken";
+            CommitFileRequest.CommitFileRequestOption commitFileRequestOption
+                = new CommitFileRequest.CommitFileRequestOption()
+                .setSize(1024L)
+                .setConflictStrategy("OVERWRITE");
+            CommitFileRequest commitFileRequest = new CommitFileRequest()
+                .setUnionId(unionId)
+                .setUploadKey(“第一步初始化分片上传接口获取的uploadKey”)
+                .setName("音乐.mp3")
+                .setParentId("0")
+                .setOption(commitFileRequestOption);
+            CommitFileResponseBody.CommitFileResponseBodyDentry dentry = client.commitFileWithOptions("存储空间ID", commitFileRequest, commitFileHeaders, new RuntimeOptions()).body.dentry;
+            System.out.println(dentry);
+    }
+
+    private void uploadPartFile(long start, long size, GetMultipartFileUploadInfosResponseBody.GetMultipartFileUploadInfosResponseBodyMultipartHeaderSignatureInfosHeaderSignatureInfo headerSignatureInfo, File file) throws Exception {
+        InputStream inputStream = new FileInputStream(file);
+        if (start > 0) {
+            inputStream.skip(start);
+        }
+
+        URL url = new URL(headerSignatureInfo.getResourceUrls().get(0));
+        HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("PUT");
+        connection.setUseCaches(false);
+        if (headerSignatureInfo.getHeaders() != null) {
+            for (Map.Entry<String, String> entry : headerSignatureInfo.getHeaders().entrySet()) {
+                connection.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+        }
+        connection.setReadTimeout(10000);
+        connection.setConnectTimeout(10000);
+        connection.connect();
+        OutputStream out = connection.getOutputStream();
+        byte[] buffer = new byte[1024];
+        long remain = size;
+        for (;remain > 0;) {
+            int sizeToRead = remain < buffer.length ? (int)remain : buffer.length;
+            int rsz = inputStream.read(buffer, 0, sizeToRead);
+            if (rsz < 0) {
+                break;
+            }
+            out.write(buffer, 0, rsz);
+            remain -= rsz;
+        }
+        out.flush();
+        out.close();
+        int responseCode = connection.getResponseCode();
+        if (responseCode == 200) {
+            System.out.println("上传成功");
+        } else {
+            System.out.println("上传失败");
+        }
+        connection.disconnect();
+    }
+}
+```
+
+## Request
+
+### Basic information
+
+| Field | Value |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/storage/spaces/files/multiPartUploadInfos/query |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app　appType-Third-party enterprise app |
+| Permission requirement | permission-Storage.UploadInfo.Read-Read permission for organization storage file upload information |
+
+### Request header
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Yes | The access credential for calling this API. Obtain it as follows:   - For an internal app, call the [Get the access token of an internal app](https://open.dingtalk.io/document/development/obtain-the-access-token-of-an-internal-app#) API. - For a third-party enterprise app, call the [Get the access token of an organization authorized to a third-party app](https://open.dingtalk.io/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#) API. |
+
+### Query parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| unionId | String | Yes | The unionId of the operator. Call the [Query user details](https://open.dingtalk.io/document/development/query-user-details#) API to obtain it. |
+
+### Request body
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| uploadKey | String | Yes | The unique upload identifier. Call the [Initialize a multipart upload object](https://open.dingtalk.io/document/development/initialize-a-multipart-upload-object#) API to obtain the `uploadKey`. |
+| partNumbers | Array of Integer | Yes | The ID of each file part. The maximum number of parts is 10000, and each part size must be between 100 KB and 5 GB. You can pass up to 30 IDs per call.    The ID of each part is specified by the developer. This API returns the upload URL and headers for each part.  Example: [1,2,3,4,5] |
+| option | Object | No | Optional parameters. |
+| preferIntranet | Boolean | No | Whether to prioritize intranet transmission. To use this parameter, you must have configured dedicated storage with intranet transmission.   - true: Yes. This is the default. - false: No. |
+
+### Request example
+
+HTTP
+
+```http
+POST /v1.0/storage/spaces/files/multiPartUploadInfos/query?unionId=chyxxxxx HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:access_token
+Content-Type:application/json
+
+{
+  "uploadKey" : "hwHPAAAAAipHxxxxx",
+  "partNumbers" : [ 1 ],
+  "option" : {
+    "preferIntranet" : true
+  }
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * 使用 Token 初始化账号Client
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkstorage_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkstorage_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkstorage_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkstorage_1_0.models.GetMultipartFileUploadInfosHeaders getMultipartFileUploadInfosHeaders = new com.aliyun.dingtalkstorage_1_0.models.GetMultipartFileUploadInfosHeaders();
+        getMultipartFileUploadInfosHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkstorage_1_0.models.GetMultipartFileUploadInfosRequest.GetMultipartFileUploadInfosRequestOption option = new com.aliyun.dingtalkstorage_1_0.models.GetMultipartFileUploadInfosRequest.GetMultipartFileUploadInfosRequestOption()
+                .setPreferIntranet(true);
+        com.aliyun.dingtalkstorage_1_0.models.GetMultipartFileUploadInfosRequest getMultipartFileUploadInfosRequest = new com.aliyun.dingtalkstorage_1_0.models.GetMultipartFileUploadInfosRequest()
+                .setUnionId("chyxxxxx")
+                .setUploadKey("hwHPAAAAAipHxxxxx")
+                .setPartNumbers(java.util.Arrays.asList(
+                    1
+                ))
+                .setOption(option);
+        try {
+            client.getMultipartFileUploadInfosWithOptions(getMultipartFileUploadInfosRequest, getMultipartFileUploadInfosHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err 中含有 code 和 message 属性，可帮助开发定位问题
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err 中含有 code 和 message 属性，可帮助开发定位问题
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.storage_1_0.client import Client as dingtalkstorage_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.storage_1_0 import models as dingtalkstorage__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkstorage_1_0Client:
+        """
+        使用 Token 初始化账号Client
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkstorage_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_multipart_file_upload_infos_headers = dingtalkstorage__1__0_models.GetMultipartFileUploadInfosHeaders()
+        get_multipart_file_upload_infos_headers.x_acs_dingtalk_access_token = '<your access token>'
+        option = dingtalkstorage__1__0_models.GetMultipartFileUploadInfosRequestOption(
+            prefer_intranet=True
+        )
+        get_multipart_file_upload_infos_request = dingtalkstorage__1__0_models.GetMultipartFileUploadInfosRequest(
+            union_id='chyxxxxx',
+            upload_key='hwHPAAAAAipHxxxxx',
+            part_numbers=[
+                1
+            ],
+            option=option
+        )
+        try:
+            client.get_multipart_file_upload_infos_with_options(get_multipart_file_upload_infos_request, get_multipart_file_upload_infos_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err 中含有 code 和 message 属性，可帮助开发定位问题
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_multipart_file_upload_infos_headers = dingtalkstorage__1__0_models.GetMultipartFileUploadInfosHeaders()
+        get_multipart_file_upload_infos_headers.x_acs_dingtalk_access_token = '<your access token>'
+        option = dingtalkstorage__1__0_models.GetMultipartFileUploadInfosRequestOption(
+            prefer_intranet=True
+        )
+        get_multipart_file_upload_infos_request = dingtalkstorage__1__0_models.GetMultipartFileUploadInfosRequest(
+            union_id='chyxxxxx',
+            upload_key='hwHPAAAAAipHxxxxx',
+            part_numbers=[
+                1
+            ],
+            option=option
+        )
+        try:
+            await client.get_multipart_file_upload_infos_with_options_async(get_multipart_file_upload_infos_request, get_multipart_file_upload_infos_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err 中含有 code 和 message 属性，可帮助开发定位问题
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\GetMultipartFileUploadInfosHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\GetMultipartFileUploadInfosRequest\option;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\GetMultipartFileUploadInfosRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * 使用 Token 初始化账号Client
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $getMultipartFileUploadInfosHeaders = new GetMultipartFileUploadInfosHeaders([]);
+        $getMultipartFileUploadInfosHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $option = new option([
+            "preferIntranet" => true
+        ]);
+        $getMultipartFileUploadInfosRequest = new GetMultipartFileUploadInfosRequest([
+            "unionId" => "chyxxxxx",
+            "uploadKey" => "hwHPAAAAAipHxxxxx",
+            "partNumbers" => [
+                1
+            ],
+            "option" => $option
+        ]);
+        try {
+            $client->getMultipartFileUploadInfosWithOptions($getMultipartFileUploadInfosRequest, $getMultipartFileUploadInfosHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err 中含有 code 和 message 属性，可帮助开发定位问题
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkstorage_1_0  "github.com/alibabacloud-go/dingtalk/storage_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * 使用 Token 初始化账号Client
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkstorage_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkstorage_1_0.Client{}
+  _result, _err = dingtalkstorage_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  getMultipartFileUploadInfosHeaders := &dingtalkstorage_1_0.GetMultipartFileUploadInfosHeaders{}
+  getMultipartFileUploadInfosHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  option := &dingtalkstorage_1_0.GetMultipartFileUploadInfosRequestOption{
+    PreferIntranet: tea.Bool(true),
+  }
+  getMultipartFileUploadInfosRequest := &dingtalkstorage_1_0.GetMultipartFileUploadInfosRequest{
+    UnionId: tea.String("chyxxxxx"),
+    UploadKey: tea.String("hwHPAAAAAipHxxxxx"),
+    PartNumbers: []*int32{tea.Int(1)},
+    Option: option,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.GetMultipartFileUploadInfosWithOptions(getMultipartFileUploadInfosRequest, getMultipartFileUploadInfosHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err 中含有 code 和 message 属性，可帮助开发定位问题
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkstorage_1_0, * as $dingtalkstorage_1_0 from '@alicloud/dingtalk/storage_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * 使用 Token 初始化账号Client
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkstorage_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkstorage_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let getMultipartFileUploadInfosHeaders = new $dingtalkstorage_1_0.GetMultipartFileUploadInfosHeaders({ });
+    getMultipartFileUploadInfosHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let option = new $dingtalkstorage_1_0.GetMultipartFileUploadInfosRequestOption({
+      preferIntranet: true,
+    });
+    let getMultipartFileUploadInfosRequest = new $dingtalkstorage_1_0.GetMultipartFileUploadInfosRequest({
+      unionId: "chyxxxxx",
+      uploadKey: "hwHPAAAAAipHxxxxx",
+      partNumbers: [
+        1
+      ],
+      option: option,
+    });
+    try {
+      await client.getMultipartFileUploadInfosWithOptions(getMultipartFileUploadInfosRequest, getMultipartFileUploadInfosHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err 中含有 code 和 message 属性，可帮助开发定位问题
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * 使用 Token 初始化账号Client
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkstorage_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkstorage_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.GetMultipartFileUploadInfosHeaders getMultipartFileUploadInfosHeaders = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.GetMultipartFileUploadInfosHeaders();
+            getMultipartFileUploadInfosHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.GetMultipartFileUploadInfosRequest.GetMultipartFileUploadInfosRequestOption option = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.GetMultipartFileUploadInfosRequest.GetMultipartFileUploadInfosRequestOption
+            {
+                PreferIntranet = true,
+            };
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.GetMultipartFileUploadInfosRequest getMultipartFileUploadInfosRequest = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.GetMultipartFileUploadInfosRequest
+            {
+                UnionId = "chyxxxxx",
+                UploadKey = "hwHPAAAAAipHxxxxx",
+                PartNumbers = new List<int?>
+                {
+                    1
+                },
+                Option = option,
+            };
+            try
+            {
+                client.GetMultipartFileUploadInfosWithOptions(getMultipartFileUploadInfosRequest, getMultipartFileUploadInfosHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err 中含有 code 和 message 属性，可帮助开发定位问题
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err 中含有 code 和 message 属性，可帮助开发定位问题
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Response
+
+### Response body
+
+| Name | Type | Description |
+| --- | --- | --- |
+| multipartHeaderSignatureInfos | Array | The list of signed header upload information for the parts. |
+| partNumber | Integer | The part ID. |
+| headerSignatureInfo | Object | The header information. |
+| resourceUrls | Array of String | Multiple upload URLs, with a maximum of 10. URLs listed first have higher priority. |
+| headers | `Map<String, String>` | The request headers. |
+| expirationSeconds | Integer | The expiration time, in seconds. |
+| region | String | The region.   - **ZHANGJIAKOU**: Zhangjiakou - **SHENZHEN**: Shenzhen - **SHANGHAI**: Shanghai - **SINGAPORE**: Singapore - **UNKNOWN**: Unknown |
+| internalResourceUrls | Array of String | The list of intranet URLs.    This field is currently not used. You can ignore it. |
+
+### Response body example
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "multipartHeaderSignatureInfos" : [ {
+    "partNumber" : 1,
+    "headerSignatureInfo" : {
+      "resourceUrls" : [ "https://zjk.trans.dingtalkxxxxx" ],
+      "headers" : {
+        "key" : "header_value"
+      },
+      "expirationSeconds" : 900,
+      "region" : "ZHANGJIAKOU",
+      "internalResourceUrls" : [ "lippi-space-zjk.oss-cnxxxxx" ]
+    }
+  } ]
+}
+```
+
+### Error codes
+
+If the API call returns an error, look up the solution in the [Global error codes](https://open.dingtalk.io/document/development/server-api-error-codes-1) document based on the error message.
+
+| HttpCode | Error code | Error message | Description |
+| --- | --- | --- | --- |
+| 400 | paramError | %s | Parameter error |
+| 400 | paramError.uploadKey | %s | Parameter error - uploadKey |
+| 400 | paramError.partNumbers | %s | Parameter error - partNumbers |
+| 500 | systemError | %s | System error |
+| 500 | unknownError | Unknown Error | Unknown error |
+| 503 | operationTimeout | %s | Request timeout |

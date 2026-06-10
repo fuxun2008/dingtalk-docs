@@ -1,0 +1,209 @@
+---
+title: "Upload a file to Knowledge Base"
+description: "To upload a file to a Knowledge Base (Team space) directory, complete the following three steps in order:"
+---
+
+## Overview
+
+1. **Get file upload information**: Request upload credentials from the server (OSS URL + signature Headers).
+2. **Upload the file to OSS**: Use the URL and Headers returned in step 1 to PUT the file content to OSS.
+3. **Commit the file**: Notify the server that the upload is complete to finalize file storage.
+
+<Warning>
+The three steps must be executed in order. The file upload cannot be completed if any step is missing.
+</Warning>
+
+---
+
+## Step 1: Get file upload information
+
+Call the API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query`, passing the `parentDentryUuid` (the unique identifier of the parent directory) of the target directory and the operator's `unionId` to obtain the credentials required for this upload.
+
+<Note>
+For API details, refer to the [Get file upload information](/open/development/obtain-file-upload-informations) documentation. For instructions on calling the API, refer to the documentation on how to call Server APIs.
+</Note>
+
+### Key request parameters:
+
+- `parentDentryUuid` (Path): The dentryUuid of the target upload directory. To upload to the root directory of a Knowledge Base, obtain the root directory's dentryUuid in one of the following two ways:
+
+  - Call the [Get My Docs Knowledge Base information](/open/development/get-my-documents) API and take the value of the `rootNodeId` field under `workspace` in the response.
+  - Call the [Get Knowledge Base list](/open/development/get-knowledge-base-list) API and take the value of the `rootNodeId` field under `workspaces` in the response.
+- `unionId` (Query): The operator's unionId. Call the [Query user details](/open/development/query-user-details) API to obtain it.
+- `protocol` (Body): Fixed value `HEADER_SIGNATURE`.
+- `option.preCheckParam.name` (Body): The file name (including the extension). It must not contain special characters (`*`, `"`, `<`, `>`, `|`) and must not end with `.`.
+
+### Response parameters:
+
+- `uploadKey`: The unique identifier for this upload, used in step 3.
+- `headerSignatureInfo.resourceUrls`: The OSS upload URL, used in step 2.
+- `headerSignatureInfo.headers`: The OSS request headers, used in step 2.
+- `expirationSeconds`: The credential expiration time (in seconds). Complete the subsequent steps before it expires.
+
+**HTTP example**:
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "protocol": "HEADER_SIGNATURE",
+  "option": {
+    "storageDriver": "DINGTALK",
+    "preCheckParam": {
+      "size": 512,
+      "name": "测试文件.xlsx"
+    }
+  }
+}
+```
+
+## Step 2: Upload the file to OSS
+
+Use `resourceUrls[0]` returned in step 1 as the upload URL and `headers` as the request headers. Upload the local file content directly to OSS via the HTTP `PUT` method.
+
+<Note>
+`Content-Type` must be explicitly set to an empty string. Otherwise, signature verification will fail.
+</Note>
+
+**Sample code**:
+
+Java
+
+```java
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+
+public void uploadToOss(String resourceUrl, Map<String, String> headers, String filePath) throws Exception {
+  URL url = new URL(resourceUrl);
+  HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+  // Set the headers returned in step 1
+  if (headers != null) {
+    for (Map.Entry<String, String> entry : headers.entrySet()) {
+      connection.setRequestProperty(entry.getKey(), entry.getValue());
+    }
+  }
+
+  connection.setDoOutput(true);
+  connection.setRequestMethod("PUT");
+  connection.setUseCaches(false);
+  connection.setReadTimeout(10000);
+  connection.setConnectTimeout(10000);
+  connection.connect();
+
+  // Write the file content
+  OutputStream out = connection.getOutputStream();
+  InputStream is = new FileInputStream(new File(filePath));
+
+  byte[ ] buffer = new byte[1024];
+
+  int bytesRead;
+  while ((bytesRead = is.read(buffer)) != -1) {
+    out.write(buffer, 0, bytesRead);
+  }
+  out.flush();
+  out.close();
+  is.close();
+
+  int responseCode = connection.getResponseCode();
+  connection.disconnect();
+
+  if (responseCode == 200) {
+    System.out.println("OSS upload succeeded");
+  } else {
+    System.out.println("OSS upload failed. Status code: " + responseCode);
+  }
+}
+```
+
+Python
+
+```python
+import requests
+
+resource_url = '<resourceUrls[0] returned in step 1>'
+headers = <headers returned in step 1>
+
+  # Note: content-type must be set to empty
+  headers['content-type'] = ''
+
+result = requests.put(resource_url, data=open('<local file path>', 'rb'), headers=headers)
+print(result.status_code)  # 200 indicates a successful upload
+```
+
+Node.js
+
+```javascript
+const fs = require('fs');
+const request = require('request-promise');
+
+const url = '<resourceUrls[0] returned in step 1>';
+const headers = <headers returned in step 1>;
+
+// Note: content-type must be explicitly set to empty
+headers['content-type'] = '';
+
+fs.createReadStream('/path/to/local/file.txt')
+  .pipe(request({ method: 'PUT', url, headers }))
+  .then(() => console.log('OSS upload succeeded'))
+  .catch(err => console.log('OSS upload failed', err));
+```
+
+## Step 3: Commit the file
+
+After the OSS upload is complete, call the API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit` to formally write the file into the Knowledge Base directory and complete the entire upload process.
+
+### Notes
+
+- A successful API call returns the file information (`dentry`), including the file ID, uuid, and the space it belongs to. The upload is complete.
+- For API details, refer to the [Commit file](/open/development/submittal-file) documentation. For instructions on calling the API, refer to the documentation on how to call Server APIs.
+
+### Key request parameters:
+
+- `parentDentryUuid` (Path): Keep consistent with step 1.
+- `unionId` (Query): The operator's unionId. Call the [Query user details](/open/development/query-user-details) API to obtain it.
+- `uploadKey` (Body): The uploadKey returned in step 1, used to associate this upload.
+- `name` (Body): The file name (including the extension).
+- `option.conflictStrategy` (Body): The file name conflict strategy. Options: `AUTO_RENAME` (default, automatically rename) or `OVERWRITE` (overwrite).
+
+### HTTP example:
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "uploadKey": "uploadKey returned in step 1",
+  "name": "测试文件.xlsx",
+  "option": {
+    "conflictStrategy": "AUTO_RENAME"
+  }
+}
+```
+
+## Full process summary
+
+```text
+[Step 1] Call the "Get file upload information" API
+         → Returns uploadKey + resourceUrls + headers (with an expiration time; complete the subsequent steps as soon as possible)
+
+[Step 2] Use resourceUrls[0] + headers to upload the file content to OSS via HTTP PUT
+         → OSS returns 200 to indicate a successful upload
+
+[Step 3] Call the "Commit file" API, passing uploadKey + file name
+         → Returns file information (dentry). The file is formally stored, and the upload is complete.
+```
+
+## Notes
+
+- During the upload in step 2, `Content-Type` must be set to an empty string. Otherwise, OSS signature verification will fail.
+- The upload credentials returned in step 1 have an expiration time (`expirationSeconds`). Complete steps 2 and 3 before they expire. Otherwise, you must call step 1 again.
+- When the storage space type is `USER`, only the space owner and administrators have operation permissions. Other employees must first be granted authorization through the "Add Permissions" API.
+- When the storage space type is `APP`, anyone performing operations must first be granted authorization through the "Add Permissions" API.

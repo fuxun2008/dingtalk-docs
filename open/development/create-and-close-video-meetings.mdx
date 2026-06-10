@@ -1,0 +1,338 @@
+---
+title: "Create, query, and close a video meeting"
+---
+
+This document describes how to call the meeting APIs to create a video meeting and perform related operations. First, create an internal app, and then use the meeting APIs to create a video meeting, close a video meeting, and batch query video meeting information.
+
+## Process overview
+
+Prerequisite: Complete the [app creation and configuration](/open/dingstart/create-and-configure-an-application) process.
+
+Step 1: Obtain the app credential to get the client ID and Client Secret.
+
+Step 2: Request API permissions for the meeting-related APIs.
+
+Step 3: Obtain the app access credential by following [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app). The access token is used to authenticate the caller when calling APIs.
+
+Step 4: Call the meeting-related Server APIs.
+
+1. Call the Server API [Create a video meeting](/open/development/create-a-video-conference) to create a video meeting and obtain the meeting `conferenceId`.
+2. Based on the `conferenceId`, call the Server API [Batch query video meeting information](/open/development/batch-query-of-video-conference-information) to obtain the meeting information and the list of members.
+3. Based on the `conferenceId`, call the Server API [Start cloud recording for a video meeting](/open/development/video-conference-open-cloud-recording) to start cloud recording.
+4. Based on the `conferenceId`, call the Server API [Start cloud recording for a video meeting](/open/development/video-conference-open-cloud-recording) to stop cloud recording.
+5. Based on the `conferenceId`, call the Server API [Close a video meeting](/open/development/close-audio-video-conference) to close the meeting.
+6. Query meeting recording information.
+
+   1. Based on the `conferenceId`, call the Server API [Query recording details of a meeting](/open/development/query-recording-information) to retrieve information such as the recorder, recording start time, and recording duration.
+   2. Based on the `conferenceId`, call the Server API [Query video information of a meeting recording](/open/development/queries-the-playback-information-about-a-recorded-cloud-video) to retrieve information such as the video download URL, video file size, and video duration.
+   3. Based on the `conferenceId`, call the Server API [Query text information of a meeting recording](/open/development/queries-the-text-information-about-cloud-recording) to retrieve information such as the recorded text content, text record start time, and text record end time.
+
+## Prerequisites
+
+Complete the [app creation and configuration](/open/dingstart/create-and-configure-an-application) process.
+
+## Step 1: Obtain the app credential
+
+1. Select the target app to open the app details page, and click **Basic information** > **Credentials and basic information**.
+2. Obtain the client ID and Client Secret.
+
+## Step 2: Add API permissions
+
+Click **Development configuration** > **Manage permissions**. In the permission search box, enter `VideoConference.Conference.Write` and `VideoConference.Conference.Read` respectively, and request the permissions.
+
+## Step 3: Obtain the app access token
+
+<Warning>
+For differences between Server APIs, see Legacy API vs. New API. The following APIs all use the Server API. For SDK downloads, see Server-side SDK Download.
+</Warning>
+
+Using the client ID and Client Secret from Step 1, obtain the app access token by following [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Step 4: Call the meeting-related Server APIs
+
+1. Call the Server API [Create a video meeting](/open/development/create-a-video-conference) to create a video meeting and obtain the `conferenceId`.
+
+   ```java lines
+   public void videoConferencesCreate() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           CreateVideoConferenceHeaders createVideoConferenceHeaders = new CreateVideoConferenceHeaders();
+           createVideoConferenceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           CreateVideoConferenceRequest createVideoConferenceRequest = new CreateVideoConferenceRequest()
+                   .setUserId("E9CS6X*******QiEiE")
+                   .setConfTitle("202211071001视频会议")
+                   .setInviteCaller(true)
+                   .setInviteUserIds(java.util.Arrays.asList(
+                           "tXguN3*******URAiEiE"
+                   ));
+           try {
+               CreateVideoConferenceResponse videoConferenceWithOptions = client.createVideoConferenceWithOptions(createVideoConferenceRequest, createVideoConferenceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(videoConferenceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. Based on the `conferenceId`, call the Server API [Batch query video meeting information](/open/development/batch-query-of-video-conference-information) to obtain the meeting information and the list of members.
+
+### Note
+
+   Only ongoing video meetings can be queried.
+
+   ```java lines
+   public void  videoConferencesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           QueryConferenceInfoBatchHeaders queryConferenceInfoBatchHeaders = new QueryConferenceInfoBatchHeaders();
+           queryConferenceInfoBatchHeaders.xAcsDingtalkAccessToken = "accessToken";
+           QueryConferenceInfoBatchRequest queryConferenceInfoBatchRequest = new QueryConferenceInfoBatchRequest()
+                   .setConferenceIdList(java.util.Arrays.asList(
+                           "636866074147ec014a76e720"
+                   ));
+           try {
+               QueryConferenceInfoBatchResponse queryConferenceInfoBatchResponse = client.queryConferenceInfoBatchWithOptions(queryConferenceInfoBatchRequest, queryConferenceInfoBatchHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryConferenceInfoBatchResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+
+           }
+       }
+   ```
+3. Based on the `conferenceId`, call the Server API [Start cloud recording for a video meeting](/open/development/video-conference-open-cloud-recording) to start cloud recording.
+
+   ```java lines
+   public void cloudRecordsStart() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           StartCloudRecordHeaders startCloudRecordHeaders = new StartCloudRecordHeaders();
+           startCloudRecordHeaders.xAcsDingtalkAccessToken = "accessToken";
+           StartCloudRecordRequest startCloudRecordRequest = new StartCloudRecordRequest()
+                   .setUnionId("E9CS6X*******QiEiE")
+                   .setSmallWindowPosition("relative_right")
+                   .setMode("speech");
+           try {
+               StartCloudRecordResponse startCloudRecordResponse = client.startCloudRecordWithOptions("636866074147ec014a76e720", startCloudRecordRequest, startCloudRecordHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startCloudRecordResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           }
+       }
+   ```
+4. Based on the `conferenceId`, call the Server API [Stop cloud recording for a video meeting](/open/development/video-conferencing-stops-cloud-recording) to stop cloud recording.
+
+   ```java lines
+    public void cloudRecordsStop() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           StopCloudRecordHeaders stopCloudRecordHeaders = new StopCloudRecordHeaders();
+           stopCloudRecordHeaders.xAcsDingtalkAccessToken = "accessToken";
+           StopCloudRecordRequest stopCloudRecordRequest = new StopCloudRecordRequest()
+                   .setUnionId("E9CS6X*******QiEiE");
+           try {
+               StopCloudRecordResponse stopCloudRecordResponse = client.stopCloudRecordWithOptions("636866074147ec014a76e720", stopCloudRecordRequest, stopCloudRecordHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(stopCloudRecordResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           }
+       }
+   ```
+5. Based on the `conferenceId`, call the Server API [Close a video meeting](/open/development/close-audio-video-conference) to close the meeting.
+
+   ```java lines
+   public void  videoConferencesClose() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);        CloseVideoConferenceHeaders closeVideoConferenceHeaders = new CloseVideoConferenceHeaders();
+           closeVideoConferenceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           CloseVideoConferenceRequest closeVideoConferenceRequest = new CloseVideoConferenceRequest()
+                   .setUnionId("E9CS6X*******QiEiE");
+           try {
+               CloseVideoConferenceResponse closeVideoConferenceResponse = client.closeVideoConferenceWithOptions("636866074147ec014a76e720", closeVideoConferenceRequest, closeVideoConferenceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(closeVideoConferenceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains the code and message attributes, which help developers locate issues
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           }
+       }
+   ```
+6. Query meeting recording information.
+
+   1. Based on the `conferenceId`, call the Server API [Query recording details of a meeting](/open/development/query-recording-information) to retrieve information such as the recorder, recording start time, and recording duration.
+
+      ```java lines
+       public void VideoDetailedInfos() throws Exception {
+              Config config = new Config();
+              config.protocol = "https";
+              config.regionId = "central";
+              com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+              QueryCloudRecordVideoHeaders queryCloudRecordVideoHeaders = new QueryCloudRecordVideoHeaders();
+              queryCloudRecordVideoHeaders.xAcsDingtalkAccessToken = "accessToken";
+              QueryCloudRecordVideoRequest queryCloudRecordVideoRequest = new QueryCloudRecordVideoRequest()
+                      .setUnionId("E9CS6X*******QiEiE");
+              try {
+                  QueryCloudRecordVideoResponse queryCloudRecordVideoResponse = client.queryCloudRecordVideoWithOptions("636866074147ec014a76e720", queryCloudRecordVideoRequest, queryCloudRecordVideoHeaders, new RuntimeOptions());
+                  System.out.println(JSON.toJSONString(queryCloudRecordVideoResponse.getBody()));
+              } catch (TeaException err) {
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err contains the code and message attributes, which help developers locate issues
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+
+              } catch (Exception _err) {
+                  TeaException err = new TeaException(_err.getMessage(), _err);
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err contains the code and message attributes, which help developers locate issues
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              }
+          }
+      ```
+   2. Based on the `conferenceId`, call the Server API [Query video information of a meeting recording](/open/development/queries-the-playback-information-about-a-recorded-cloud-video) to retrieve information such as the video download URL, video file size, and video duration.
+
+      ```java lines
+       public void  videosPlayInfos() throws Exception {
+              Config config = new Config();
+              config.protocol = "https";
+              config.regionId = "central";
+              com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+              QueryCloudRecordVideoPlayInfoHeaders queryCloudRecordVideoPlayInfoHeaders = new QueryCloudRecordVideoPlayInfoHeaders();
+              queryCloudRecordVideoPlayInfoHeaders.xAcsDingtalkAccessToken = "accessToken";
+              QueryCloudRecordVideoPlayInfoRequest queryCloudRecordVideoPlayInfoRequest = new QueryCloudRecordVideoPlayInfoRequest()
+                      .setUnionId("E9CS6X*******QiEiE")
+                      .setMediaId("7665cd17********90991fe43bb")
+                      .setRegionId("cn-shanghai");
+              try {
+                  QueryCloudRecordVideoPlayInfoResponse queryCloudRecordVideoPlayInfoResponse = client.queryCloudRecordVideoPlayInfoWithOptions("636866074147ec014a76e720", queryCloudRecordVideoPlayInfoRequest, queryCloudRecordVideoPlayInfoHeaders, new RuntimeOptions());
+                  System.out.println(JSON.toJSONString(queryCloudRecordVideoPlayInfoResponse.getBody()));
+              } catch (TeaException err) {
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err contains the code and message attributes, which help developers locate issues
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              } catch (Exception _err) {
+                  TeaException err = new TeaException(_err.getMessage(), _err);
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err contains the code and message attributes, which help developers locate issues
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              }
+          }
+      ```
+   3. Based on the `conferenceId`, call the Server API [Query text information of a meeting recording](/open/development/queries-the-text-information-about-cloud-recording) to retrieve information such as the recorded text content, text record start time, and text record end time.
+
+      ```java lines
+       public void  videosTextInfos() throws Exception {
+              Config config = new Config();
+              config.protocol = "https";
+              config.regionId = "central";
+              com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+              QueryCloudRecordTextHeaders queryCloudRecordTextHeaders = new QueryCloudRecordTextHeaders();
+              queryCloudRecordTextHeaders.xAcsDingtalkAccessToken = "accessToken";
+              QueryCloudRecordTextRequest queryCloudRecordTextRequest = new QueryCloudRecordTextRequest()
+                      .setUnionId("E9CS6X*******QiEiE")
+                      .setStartTime(1000L)
+                      .setDirection("0")
+                      .setMaxResults(200L);
+                      // This parameter can be omitted for the first query
+                      //.setNextToken(0L);
+              try {
+                  QueryCloudRecordTextResponse queryCloudRecordTextResponse = client.queryCloudRecordTextWithOptions("636866074147ec014a76e720", queryCloudRecordTextRequest, queryCloudRecordTextHeaders, new RuntimeOptions());
+                  System.out.println(JSON.toJSONString(queryCloudRecordTextResponse.getBody()));
+              } catch (TeaException err) {
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err contains the code and message attributes, which help developers locate issues
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              } catch (Exception _err) {
+                  TeaException err = new TeaException(_err.getMessage(), _err);
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err contains the code and message attributes, which help developers locate issues
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              }
+          }
+      ```
