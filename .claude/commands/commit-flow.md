@@ -61,3 +61,14 @@ description: 提交流程 — lint检查 → 生成commit message → 提交
 - commit message 使用中文描述
 - 遵循项目已有的 commit 风格（参考 git log）
 - **【关键】commit message 必须带 `to #<aone-id>`，绝对不可省略！**
+
+## Post-commit push 范围（默认 origin only）
+
+commit 完成后**不自动 push**；用户单独说"push" 才推。push 时遵循：
+
+- 默认只推 `origin`（GitLab 内部主仓）：`git push origin <branch>`
+- **不要顺手 `git push github`**——除非用户明确说"双 push" / "推 github" / 当前分支是 `master`
+- 仓库现有 2 个 remote：
+  - `origin` → `git@gitlab.alibaba-inc.com:dingding/dingtalk-docs.git`（默认）
+  - `github` → `git@github.com:fuxun2008/dingtalk-docs.git`（须明确授权）
+- 详见 user memory `feedback-push-scope`
