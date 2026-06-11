@@ -20,18 +20,25 @@ import sys
 from pathlib import Path
 
 # (目录前缀, [(正则, 说明)]) — 每条规则就是一个绝对禁止出现的 pattern
+_INVALID_DOMAIN = (
+    re.compile(r"open\.dingtalk\.io"),
+    "open.dingtalk.io 域名未部署，应改为内部相对路径 /open/...",
+)
+
 RULES: dict[str, list[tuple[re.Pattern[str], str]]] = {
     "open": [
         (re.compile(r"\]\(/zh/open/"), "en 文档不应跳转到 zh 文档"),
         (re.compile(r"\]\(/ja/open/"), "en 文档不应跳转到 ja 文档"),
         (re.compile(r'href="/zh/open'), "en 文档 href 不应跳转到 zh 文档"),
         (re.compile(r'href="/ja/open'), "en 文档 href 不应跳转到 ja 文档"),
+        _INVALID_DOMAIN,
     ],
     "ja/open": [
         (re.compile(r"\]\(/zh/open/"), "ja 文档不应跳转到 zh 文档"),
         (re.compile(r"\]\(/open/"), "ja 文档不应跳转到 en 文档（无语言前缀）"),
         (re.compile(r'href="/zh/open'), "ja 文档 href 不应跳转到 zh 文档"),
         (re.compile(r'href="/open'), "ja 文档 href 不应跳转到 en 文档（无语言前缀）"),
+        _INVALID_DOMAIN,
     ],
 }
 
