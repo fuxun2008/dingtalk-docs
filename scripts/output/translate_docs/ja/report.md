@@ -1,20 +1,16 @@
 # Translation Batch Report
 
-- 开始：2026-06-10 16:35:03
-- 结束：2026-06-10 16:35:03
-- 用时：0.0s
+- 开始：2026-06-11 09:30:58
+- 结束：2026-06-11 09:32:00
+- 用时：62.7s
 
-- 总：5 / ok: 0 / skipped: 0 / failed: 0 / dry-run: 5
-- input tokens: 0
-- output tokens: 0
-- cost: $0.0000
+- 总：1 / ok: 1 / skipped: 0 / failed: 0 / dry-run: 0
+- input tokens: 6
+- output tokens: 7,815
+- cost: $0.2653
 
 ## 全量明细（前 100）
 
 | rel | status | elapsed | in | out | cost | hits |
 |---|---|---|---|---|---|---|
-| open/development/add-enterprise-external-contacts.mdx | dry-run | 0.0s | 0 | 0 | $0.0000 | 52 |
-| open/development/add-a-role-group.mdx | dry-run | 0.0s | 0 | 0 | $0.0000 | 31 |
-| open/development/add-api-permission.mdx | dry-run | 0.0s | 0 | 0 | $0.0000 | 66 |
-| open/development/add-a-meeting-room.mdx | dry-run | 0.0s | 0 | 0 | $0.0000 | 49 |
-| open/development/add-folder.mdx | dry-run | 0.0s | 0 | 0 | $0.0000 | 69 |
+| open/development/api-queryconferenceinfobyroomcode.mdx | ok | 62.67s | 6 | 7815 | $0.2653 | 58 |

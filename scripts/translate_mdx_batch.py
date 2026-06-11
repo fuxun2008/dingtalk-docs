@@ -349,7 +349,13 @@ async def translate_one(
 # 主流程
 # ---------------------------------------------------------------------------
 
-def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
+def gather_tasks(
+    root: str,
+    lang: str,
+    only: str | None,
+    bucket_id: int | None = None,
+    bucket_count: int | None = None,
+) -> list[FileTask]:
     zh_root = REPO_ROOT / "zh" / root
     if not zh_root.exists():
         sys.exit(f"ERROR: source dir not found: {zh_root}")
@@ -368,13 +374,30 @@ def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
         if only and not rel_str.startswith(only):
             continue
         tasks.append(FileTask(source=mdx, target=target, rel=rel_str))
+
+    if bucket_id is not None and bucket_count and bucket_count > 1:
+        if not 0 <= bucket_id < bucket_count:
+            sys.exit(f"ERROR: bucket_id must be in [0, {bucket_count}), got {bucket_id}")
+        sized = sorted(tasks, key=lambda t: t.source.stat().st_size, reverse=True)
+        buckets: list[list[FileTask]] = [[] for _ in range(bucket_count)]
+        sizes = [0] * bucket_count
+        for t in sized:
+            i = sizes.index(min(sizes))
+            buckets[i].append(t)
+            sizes[i] += t.source.stat().st_size
+        tasks = sorted(buckets[bucket_id], key=lambda t: t.rel)
+        print(
+            f"[bucket] id={bucket_id}/{bucket_count} files={len(tasks)} "
+            f"bytes={sizes[bucket_id]:,} (total all buckets bytes={sum(sizes):,})"
+        )
+
     return tasks
 
 
-def write_report(results: list[FileResult], out_dir: Path, started: float, ended: float) -> None:
+def write_report(results: list[FileResult], out_dir: Path, started: float, ended: float, suffix: str = "") -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_json = out_dir / "report.json"
-    report_md = out_dir / "report.md"
+    report_json = out_dir / f"report{suffix}.json"
+    report_md = out_dir / f"report{suffix}.md"
 
     report_json.write_text(
         json.dumps([asdict(r) for r in results], ensure_ascii=False, indent=2),
@@ -431,7 +454,7 @@ async def main_async(args: argparse.Namespace) -> int:
     system_prompt = build_system_prompt(args.lang, args.root)
     sem = asyncio.Semaphore(args.concurrency)
 
-    tasks = gather_tasks(args.root, args.lang, args.only)
+    tasks = gather_tasks(args.root, args.lang, args.only, args.bucket_id, args.bucket_count)
     if args.limit:
         tasks = tasks[: args.limit]
 
@@ -468,10 +491,11 @@ async def main_async(args: argparse.Namespace) -> int:
 
     ended = time.time()
     out_dir = OUTPUT_DIR / args.lang
-    write_report(results, out_dir, started, ended)
+    report_suffix = f"_bucket{args.bucket_id}of{args.bucket_count}" if args.bucket_id is not None and args.bucket_count else ""
+    write_report(results, out_dir, started, ended, report_suffix)
 
     failed = [r for r in results if r.status == "failed"]
-    print(f"\n[done] report: {out_dir / 'report.md'}")
+    print(f"\n[done] report: {out_dir / f'report{report_suffix}.md'}")
     if failed:
         print(f"[warn] {len(failed)} 篇失败，详见报告")
         return 1
@@ -489,6 +513,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--limit", type=int, default=0, help="只跑前 N 篇")
     p.add_argument("--force", action="store_true", help="覆盖非占位的已译文件")
     p.add_argument("--dry-run", action="store_true", help="只列任务 + 命中术语")
+    p.add_argument("--bucket-id", type=int, default=None, dest="bucket_id",
+                   help="多进程分桶：本进程跑桶 N（0..bucket_count-1），与 --bucket-count 配合")
+    p.add_argument("--bucket-count", type=int, default=None, dest="bucket_count",
+                   help="多进程分桶总数；按文件大小 LPT 算法均衡分配")
     return p.parse_args()
 
 
