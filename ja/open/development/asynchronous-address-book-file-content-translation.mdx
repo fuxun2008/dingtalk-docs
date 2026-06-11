@@ -1,0 +1,515 @@
+---
+title: "連絡先 ID の非同期変換"
+description: "本 API を呼び出して、連絡先 ID コンテンツの非同期変換を開始し、製品ソリューションプロバイダーの連絡先権限スコープ内のユーザー ID と部門 ID を置換します。"
+---
+
+# 連絡先 ID の非同期変換
+
+## API 呼び出し説明
+
+1. 変換が必要なドキュメントを作成します。例は下図のとおりです。
+
+### 説明
+
+   xlsx、xls、csv、txt 形式のファイルのみサポートします。
+
+2. [単一ステップファイルアップロード](https://open.dingtalk.io/document/isvapp/single-step-file-upload) API を呼び出して、media_id を取得します。
+3. 本 API を呼び出して、変換タスク ID を取得します。
+
+### 説明
+
+   本 API を呼び出した後、ファイル変換が成功すると、非同期タスクのコールバック通知がトリガーされます。
+4. [非同期変換タスクの結果取得](https://open.dingtalk.io/document/isvapp/obtains-the-results-of-an-asynchronous-translation-task) API を呼び出して、変換後のファイルダウンロードリンクを取得します。
+
+### 説明
+
+   返されたファイルダウンロードリンクは `<a> タグ` で参照することを推奨します。`download` 属性は指定できません（ブラウザの互換性問題のため）。
+5. ユーザーがダウンロードしたファイルの内容は下図のとおりです。
+
+本 API を呼び出す過程で、以下の問題に遭遇する可能性があります。
+
+- **問題**：`NodeJs` のサードパーティライブラリ `exceljs` で生成した `excel` ファイルは、内容は正常に見えますが、変換が成功しません。
+- **問題の原因**：`exceljs` は `sharedString` をオンにしていない場合、デフォルトで `formula string` を使用してファイル内容を書き込みます。この動作は規約に準拠しておらず、変換が失敗する原因となります。
+- **解決方法**：`exceljs` のドキュメントを参照し、`useSharedStrings` オプションを強制的にオンにしてください。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/contact/files/translate |
+| HTTP Method | POST |
+| サポートされるアプリタイプ | appType-サードパーティ社内アプリ |
+| 権限要件 | permission-qyapi_get_member-ユーザー情報読み取り権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | 本 API を呼び出す際のアクセス認証情報。[サードパーティアプリで認可された企業の access_token を取得](https://open.dingtalk.io/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#) API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| medias | `Map<String, String>` | はい | 変換が必要なファイル情報。   - Map タイプ。key はドライブのファイル media_id で、[ファイルアップロード情報の取得](https://open.dingtalk.io/document/development/obtain-file-upload-informations#) API を呼び出して取得します。 - value はファイル名で、拡張子を含む必要があります。[ファイルアップロード情報の取得](https://open.dingtalk.io/document/development/obtain-file-upload-informations#) API を呼び出す際に渡したファイル名と一致させてください。        - xlsx、xls、csv、txt タイプのファイルのみサポートします。 - 最大 20 ファイルまで。 |
+| outputFileName | String | いいえ | 変換後にパッケージングするファイル名。拡張子は不要です。      medias 内のファイル数が 1 を超える場合、このパラメータは必須です。 |
+| unionId | String | はい | 現在ドキュメントをエクスポートする操作を行うユーザーの unionId。[サイレントログインコードによるユーザー情報の取得](https://open.dingtalk.io/document/development/obtain-the-userid-of-a-user-by-using-the-log-free#) API を呼び出して取得できます。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/contact/files/translate HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:BWe2xxxx
+Content-Type:application/json
+
+{
+  "medias" : {
+    "key" : "xxxx"
+  },
+  "outputFileName" : "学习手册",
+  "unionId" : "fXRUNxxx"
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.teautil.models.*;
+import com.aliyun.dingtalkcontact_1_0.*;
+import com.aliyun.dingtalkcontact_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkcontact_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkcontact_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkcontact_1_0.Client client = Sample.createClient();
+        TranslateFileHeaders translateFileHeaders = new TranslateFileHeaders();
+        translateFileHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        java.util.Map<String, String> medias = TeaConverter.buildMap(
+            new TeaPair("key", "xxxx")
+        );
+        TranslateFileRequest translateFileRequest = new TranslateFileRequest()
+                .setMedias(medias)
+                .setOutputFileName("学习手册")
+                .setUnionId("fXRUNxxx");
+        try {
+            client.translateFileWithOptions(translateFileRequest, translateFileHeaders, new RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.contact_1_0.client import Client as dingtalkcontact_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.contact_1_0 import models as dingtalkcontact__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkcontact_1_0Client:
+        """
+        トークンを使用してアカウント Client を初期化
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkcontact_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        translate_file_headers = dingtalkcontact__1__0_models.TranslateFileHeaders()
+        translate_file_headers.x_acs_dingtalk_access_token = '<your access token>'
+        medias = {
+            'key': 'xxxx'
+        }
+        translate_file_request = dingtalkcontact__1__0_models.TranslateFileRequest(
+            medias=medias,
+            output_file_name='学习手册',
+            union_id='fXRUNxxx'
+        )
+        try:
+            client.translate_file_with_options(translate_file_request, translate_file_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        translate_file_headers = dingtalkcontact__1__0_models.TranslateFileHeaders()
+        translate_file_headers.x_acs_dingtalk_access_token = '<your access token>'
+        medias = {
+            'key': 'xxxx'
+        }
+        translate_file_request = dingtalkcontact__1__0_models.TranslateFileRequest(
+            medias=medias,
+            output_file_name='学习手册',
+            union_id='fXRUNxxx'
+        )
+        try:
+            await client.translate_file_with_options_async(translate_file_request, translate_file_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vcontact_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vcontact_1_0\Models\TranslateFileHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vcontact_1_0\Models\TranslateFileRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $translateFileHeaders = new TranslateFileHeaders([]);
+        $translateFileHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $medias = [
+            "key" => "xxxx"
+        ];
+        $translateFileRequest = new TranslateFileRequest([
+            "medias" => $medias,
+            "outputFileName" => "学习手册",
+            "unionId" => "fXRUNxxx"
+        ]);
+        try {
+            $client->translateFileWithOptions($translateFileRequest, $translateFileHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkcontact_1_0  "github.com/alibabacloud-go/dingtalk/contact_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * トークンを使用してアカウント Client を初期化
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkcontact_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkcontact_1_0.Client{}
+  _result, _err = dingtalkcontact_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  translateFileHeaders := &dingtalkcontact_1_0.TranslateFileHeaders{}
+  translateFileHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  medias := map[string]*string{
+    "key": tea.String("xxxx"),
+  }
+  translateFileRequest := &dingtalkcontact_1_0.TranslateFileRequest{
+    Medias: medias,
+    OutputFileName: tea.String("学习手册"),
+    UnionId: tea.String("fXRUNxxx"),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.TranslateFileWithOptions(translateFileRequest, translateFileHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkcontact_1_0, * as $dingtalkcontact_1_0 from '@alicloud/dingtalk/contact_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * トークンを使用してアカウント Client を初期化
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkcontact_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkcontact_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let translateFileHeaders = new $dingtalkcontact_1_0.TranslateFileHeaders({ });
+    translateFileHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let medias = {
+      key: "xxxx",
+    };
+    let translateFileRequest = new $dingtalkcontact_1_0.TranslateFileRequest({
+      medias: medias,
+      outputFileName: "学习手册",
+      unionId: "fXRUNxxx",
+    });
+    try {
+      await client.translateFileWithOptions(translateFileRequest, translateFileHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * トークンを使用してアカウント Client を初期化
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkcontact_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkcontact_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkcontact_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.TranslateFileHeaders translateFileHeaders = new AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.TranslateFileHeaders();
+            translateFileHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            Dictionary<string, string> medias = new Dictionary<string, string>
+            {
+                {"key", "xxxx"},
+            };
+            AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.TranslateFileRequest translateFileRequest = new AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.TranslateFileRequest
+            {
+                Medias = medias,
+                OutputFileName = "学习手册",
+                UnionId = "fXRUNxxx",
+            };
+            try
+            {
+                client.TranslateFileWithOptions(translateFileRequest, translateFileHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| jobId | String | 非同期変換タスク ID。最大長 64 文字。    **jobId** は [非同期変換タスクの結果取得](https://open.dingtalk.io/document/development/obtains-the-results-of-an-asynchronous-translation-task#) API への引き渡しに使用します。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "jobId" : "fXrgPrvsNxxx"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合、エラーメッセージをもとに [グローバルエラーコード](https://open.dingtalk.io/document/development/server-api-error-codes-1) ドキュメントから解決策を確認できます。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | param.invalid | %s | パラメータが不正です |
+| 500 | system.busy | システムビジー | システムビジー |

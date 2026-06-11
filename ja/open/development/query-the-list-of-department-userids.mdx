@@ -1,0 +1,131 @@
+---
+title: "部門ユーザーの userid リストを取得"
+description: "本 API を呼び出して、指定された部門の userid リストを取得します。"
+---
+
+# 部門ユーザーの userid リストを取得
+
+## API 呼び出し説明
+
+- 本 API は連絡先の権限スコープの制限を受けません。
+- **現時点では、企業内の全社員の userid を一度に取得することはできません**。企業内の全社員の userid を取得したい場合は、以下の方法をご利用ください。
+
+  - [部門リストの取得](/zh/open/development/user-management-acquires-the-list-departments) API を呼び出し、階層ごとに順次たどることで、権限スコープ内のすべての部門 ID を取得します。
+  - 本ドキュメントの API を呼び出し、各部門配下の社員 userid をそれぞれ取得します。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/user/listid |
+| HTTP Method | POST |
+| サポートされるアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_get_member-ユーザー情報の読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | 本 API を呼び出すためのアプリ認証情報です。   - 社内アプリの場合、社内アプリの access_token 取得 API から取得します。 - サードパーティ社内アプリの場合、サードパーティ企業の access_token 取得 API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| dept_id | Number | はい | 100 | 部門 deptId です。[部門リストの取得](/zh/open/development/user-management-acquires-the-list-departments) を呼び出して取得できます。  **説明**  ルート部門の場合、本パラメータには 1 を指定します。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/user/listid" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=03987655-598f-4f7a-8fc3-aaf257c47c27' \
+-d 'dept_id=100'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/user/listid");
+OapiUserListidRequest req = new OapiUserListidRequest();
+req.setDeptId(100L);
+OapiUserListidResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiUserListidRequest("https://oapi.dingtalk.io/topapi/user/listid")
+
+req.dept_id=100
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiUserListidRequest;
+$req->setDeptId("100");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/user/listid");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/user/listid");
+OapiUserListidRequest req = new OapiUserListidRequest();
+req.DeptId = 100L;
+OapiUserListidResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 4f9kasjdhop | リクエスト ID です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| result | ListUserByDeptResponse |  | 戻り値です。 |
+| userid_list | String[] | ["zxxxx","lixxxi"] | 指定された部門の userid リストです。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": {
+    "userid_list": [
+      "usxxx",
+      "manager4xxx",
+      "10203029011xxxx",
+      "usexxx"
+    ]
+  },
+  "request_id": "3naksldjh0dk"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合は、エラーメッセージをもとに[グローバルエラーコード](/zh/open/development/server-api-error-codes-1)ドキュメントから解決方法を検索できます。
+
+| エラーコード（errcode） | エラーコードの説明（errmsg） | 解決方法 |
+| --- | --- | --- |
+| 60003 | 部門が見つかりません | dept_id が正しいかご確認ください |
+| 400002 | 無効なパラメータです | パラメータが正しいかご確認ください |
+| -1 | システムが混雑しています | 後で再試行してください |

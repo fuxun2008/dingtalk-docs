@@ -1,0 +1,446 @@
+---
+title: "ブロック要素のデータ構造"
+description: "オンラインドキュメントは複数のブロック要素から成るツリー構造です。BlockElement のタイプによって内部に入れ子にできる要素タイプが異なります。例えば、ハイライトブロックには任意の BlockElement を入れ子にできますが、段落ブロックには InlineElement のみを入れ子にできます。"
+---
+
+オンラインドキュメントは複数のブロック要素から成るツリー構造です。BlockElement のタイプによって内部に入れ子にできる要素タイプが異なります。例えば、ハイライトブロックには任意の `BlockElement` を入れ子にできますが、段落ブロックには InlineElement のみを入れ子にできます。
+
+1 つのブロック要素のデータ構造は以下のとおりです。
+
+```json
+{
+  "blockType": enum(BlockType),             // 块元素类型，详见文档底部的 `BlockType` 枚举类型
+  /**
+   * 以下为所有支持的 Block 类型，如 Heading、Paragraph。 
+   * 不同类型的 Block 有自己的 property。
+  */
+  "blockquote": Object(Callout),
+  "callout": Object(Callout),
+  "columns": Object(Columns),
+  "heading": Object(Heading),
+  "paragraph": Object(Paragraph),
+  "orderedList": Object(OrderedList)
+  "unorderedList": Object(UnorderedList),
+  "table": Object(Table),
+  // 每1种 Block 都有自己能支持的 BlockChildren，详见每个 Block 类型里的 `children` 的描述
+
+  "children": BlockChildren[ ],
+
+}
+```
+
+## ブロック要素データ構造の説明
+
+オンラインドキュメントは、複数の **ブロック要素** から成るツリー構造で構成されます。ブロック要素のタイプによって、入れ子にできる子要素のタイプが異なります。
+
+- `callout`、`columns` の `children` は **BlockElement 配列** のみ指定できます。
+- `paragraph`、`heading`、`orderedList`、`unorderedList`、`blockquote` の `children` は **InlineElement 配列** のみ指定できます。
+- `table` は現時点で `children` の指定をサポートしていません。
+
+### BlockType 列挙
+
+| 列挙値 | 説明 |
+| --- | --- |
+| paragraph | 段落ブロック。 |
+| heading | 見出しブロック。 |
+| blockquote | 引用ブロック。 |
+| callout | ハイライトブロック。 |
+| columns | カラム分割ブロック。 |
+| orderedList | 番号付きリストブロック。 |
+| unorderedList | 箇条書きブロック。 |
+| table | スプレッドシートブロック。 |
+| tableRow | テーブル行ブロック（スプレッドシートブロックの子ブロック）。 |
+| tableCell | テーブルセルブロック（スプレッドシートブロックの子ブロック）。 |
+
+> 未サポートの要素タイプは一律 `Undefined` を返します。
+
+### 段落
+
+```json
+{
+  "blockType": "paragraph",
+  "paragraph": {
+    "text": "段落文字内容",
+    "indent": { "left": 32 },
+    "folded": false
+  },
+  "children": [InlineElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| text | string | 否 | 段落のテキストコンテンツ。 |
+| indent | object(Indent) | 否 | インデント値。`left` は 0 より大きい整数である必要があります。 |
+| folded | boolean | 否 | 段落を折りたたむかどうか（現在の段落より indent 値が大きいブロック要素を折りたたむ）。 |
+
+- `children`：**InlineElement 配列**。
+- `paragraph` オブジェクトは **省略不可** です。コンテンツが空の場合は `{}` を渡してください。
+
+### 見出し
+
+```json
+{
+  "blockType": "heading",
+  "heading": {
+    "level": 1,
+    "text": "一级标题"
+  },
+  "children": [InlineElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| text | string | 否 | 見出しのテキストコンテンツ。 |
+| level | integer(enum) | 否 | 見出しレベル。値は `1` ～ `6`。1 は H1 を表します。 |
+
+- `children`：**InlineElement 配列**。
+
+### 引用
+
+```json
+{
+  "blockType": "blockquote",
+  "blockquote": {
+    "text": "引用内容",
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| text | string | 否 | 引用内のテキスト。 |
+| indent | object(Indent) | 否 | 具体的なインデント値。 |
+
+- `children`：**InlineElement 配列**。
+
+### ハイライトブロック
+
+```json
+{
+  "blockType": "callout",
+  "callout": {
+    "sticker": "灯泡",
+    "showstk": true,
+    "color": "#333333",
+    "border": "#FFD700",
+    "bgcolor": "#FFF9C4"
+  },
+  "children": [BlockElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| sticker | string(enum Emoji) | 否 | 絵文字コード。詳細は [絵文字（Emoji）の列挙値](/zh/open/development/enumeration-values-of-emojis) を参照してください。 |
+| showstk | boolean | 否 | 絵文字を表示するかどうか。 |
+| color | string | 否 | 文字色。 |
+| border | string | 否 | 枠線の色。 |
+| bgcolor | string | 否 | 背景色。 |
+
+- `children`：**BlockElement 配列**（InlineElement は不可）。
+
+### カラム分割
+
+```json
+{
+  "blockType": "columns",
+  "columns": {
+    "size": 2,
+    "noFill": false
+  },
+  "children": [BlockElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| size | number | 否 | カラムの数。 |
+| noFill | boolean | 否 | 背景色を自動で塗りつぶすかどうか。 |
+
+- `children`：**BlockElement 配列**（InlineElement は不可）。
+
+### 番号付きリスト
+
+```json
+{
+  "blockType": "orderedList",
+  "orderedList": {
+    "list": {
+      "listId": "list-001",
+      "level": 0,
+      "listStyleType": "decimal",
+      "listStyle": {
+        "format": "decimal",
+        "text": "%1.",
+        "align": "left"
+      },
+      "symbolStyle": {
+        "bold": false
+      }
+    },
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| list | object(ListObject) | 是 | 番号付きリストの具体的な属性。詳細は [ListObject（リストオブジェクト）](#e6621bc176irg) を参照してください。 |
+| indent | object(Indent) | 否 | インデント値。`left` は 0 より大きい整数である必要があります。 |
+
+- `children`：**InlineElement 配列**。
+
+### 箇条書き
+
+```json
+{
+  "blockType": "unorderedList",
+  "unorderedList": {
+    "list": {
+      "listId": "list-002",
+      "level": 0,
+      "listStyleType": "disc",
+      "listStyle": {
+        "format": "disc",
+        "text": "%1",
+        "align": "left"
+      },
+      "symbolStyle": {
+        "bold": false
+      }
+    },
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| list | object(ListObject) | 是 | 箇条書きの具体的な属性。詳細は [ListObject（リストオブジェクト）](#e6621bc176irg) を参照してください。 |
+| indent | object(Indent) | 否 | インデント値。`left` は 0 より大きい整数である必要があります。 |
+
+- `children`：**InlineElement 配列**
+
+### スプレッドシート
+
+```json
+{
+  "blockType": "table",
+  "table": {
+    "rolSize": 3,
+    "colSize": 4,
+    "cells": [
+      ["Row1-Col1", "Row1-Col2", "Row1-Col3", "Row1-Col4"],
+      ["Row2-Col1", "Row2-Col2", "Row2-Col3", "Row2-Col4"],
+      ["Row3-Col1", "Row3-Col2", "Row3-Col3", "Row3-Col4"]
+    ]
+  }
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| rolSize | number | 是 | 行数。 |
+| colSize | number | 是 | 列数。 |
+| cells | String[][] | 否 | セルのテキストコンテンツ。二次元 String 配列。 |
+
+- `children`：children の指定は **現時点でサポートされていません**。
+
+## InlineElement のデータ構造説明
+
+インライン要素は、テキスト系ブロック要素（段落、見出し、リストなど）の `children` で使用します。
+
+### InlineType 列挙
+
+| 列挙値 | 説明 |
+| --- | --- |
+| text | テキスト。 |
+| sticker | 絵文字。 |
+| image | 画像。 |
+| link | リンク。 |
+
+### テキスト
+
+```json
+{
+  "text": "加粗红色文字",
+  "sz": 16,
+  "color": "red",
+  "highlight": "yellow",
+  "bold": true,
+  "italic": false,
+  "stike": false,
+  "underline": false,
+  "fonts": "monospace"
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| text | string | 是 | テキストコンテンツ。 |
+| sz | number | 否 | フォントサイズ（デフォルト単位は px）。 |
+| color | string | 否 | 文字色。 |
+| highlight | string | 否 | ハイライト背景色。 |
+| bold | boolean | 否 | 太字にするかどうか。 |
+| italic | boolean | 否 | 斜体にするかどうか。 |
+| stike | boolean | 否 | 取り消し線を引くかどうか。 |
+| underline | boolean | 否 | 下線を引くかどうか。 |
+| fonts | string(enum Fonts) | 否 | フォント。列挙値は以下のとおり：   - **monospace**：等幅フォント - **STSong**：華文宋体 - **Microsoft YaHei**：微軟雅黒 - **FangSong_GB2312**：仿宋 GB2312 - **Helvetica**：Helvetica フォント - **Helvetica Neue**：Neue Helvetica フォント - **Consolas**：Consolas フォント - **宋体**：宋体 - **Impact**：Impact フォント - **sanrif**：sanrif フォント - **Calibri**：Calibri フォント |
+
+### 絵文字
+
+```json
+{
+  "elementType": "sticker",
+  "properties": {
+    "code": "大笑"
+  }
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| code | string(enum Emoji) | 是 | 絵文字コード。詳細は [絵文字（Emoji）の列挙値](/zh/open/development/enumeration-values-of-emojis) を参照してください。 |
+
+### 画像
+
+```json
+{
+  "elementType": "image",
+  "properties": {
+    "src": "https://example.com/image.jpg"
+  }
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| src | string | 否 | 画像リソースの URL。 |
+
+### リンク
+
+```json
+{
+  "elementType": "link",
+  "properties": {
+    "href": "https://example.com"
+  },
+  "children": [
+    { "text": "点击跳转链接" }
+  ]
+}
+```
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| href | string | 否 | リンク URL。 |
+
+- `children`：**Text 配列**。リンクを挿入する際は必ず `children` を指定する必要があり、`text` が空でないテキストノードを少なくとも 1 つ含めてください。
+
+## 共通データ構造
+
+### Indent（インデント）
+
+| フィールド名 | タイプ | 必須 | 説明 | 例 |
+| --- | --- | --- | --- | --- |
+| left | number | 否 | 具体的なインデント値。0 より大きい整数である必要があります。それ以外の場合はエラーになります。 | `32` |
+
+---
+
+### ListObject（リストオブジェクト）
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| listId | string | 否 | 現在のリストの ID。複数階層の番号付きリストを挿入する場合、同一グループ内の複数階層リストで `listId` を一致させる必要があります。一致しない場合は表示エラーになります。 |
+| level | number | 是 | リストの階層（0 から始まる）。 |
+| listStyleType | string | 是 | リストスタイルのタイプ。 |
+| listStyle | object(ListStyle) | 是 | リストの具体的なスタイル。詳細は [ListStyle（リストスタイル）](#bad921c2ebc3h) を参照してください。 |
+| symbolStyle | object(SymbolStyle) | 否 | リスト記号のスタイル。詳細は [SymbolStyle（リスト記号スタイル）](#b16d5427cbutg) を参照してください。 |
+
+---
+
+### ListStyle（リストスタイル）
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| format | string | 是 | 箇条書きのフォーマット。 |
+| text | string | 是 | テキスト。 |
+| align | string | 是 | 揃え方。例：`left`、`center`、`right`。 |
+
+---
+
+### SymbolStyle（リスト記号スタイル）
+
+| フィールド名 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| sz | number | 否 | 箇条書きのフォントサイズ。 |
+| shd | string | 否 | 箇条書きの背景色。 |
+| fonts | string | 否 | 箇条書きのフォント形式。 |
+| color | string | 否 | 箇条書きのフォント色。 |
+| bold | boolean | 否 | 太字にするかどうか。 |
+| strike | boolean | 否 | 取り消し線を表示するかどうか。 |
+| italic | boolean | 否 | 斜体で表示するかどうか。 |
+
+---
+
+## Emoji 列挙値（絵文字コード一覧）
+
+以下の列挙値は `callout.sticker` およびインライン絵文字要素 `sticker.properties.code` で使用できます。
+
+| 絵文字 | 絵文字 | 絵文字 | 絵文字 |
+| --- | --- | --- | --- |
+| `优先级: 1` | `优先级: 2` | `优先级: 3` | `优先级: 4` |
+| `优先级: 5` | `优先级: 6` | `优先级: 7` | `进度: 未开始` |
+| `进度: 20%` | `进度: 40%` | `进度: 50%` | `进度: 70%` |
+| `进度: 90%` | `进度: 已完成` | `微笑` | `憨笑` |
+| `大笑` | `加油` | `色` | `偷笑` |
+| `跳舞` | `捂脸哭` | `笑哭` | `流泪` |
+| `疑问` | `傻笑` | `流鼻血` | `狗子` |
+| `赞` | `OK` | `抱拳` | `向上` |
+| `向下` | `向左` | `向右` | `资料` |
+| `本子` | `笔记本` | `折线图` | `柱状图` |
+| `羽毛笔` | `钢笔` | `警告` | `问号` |
+| `禁止` | `禁行` | `锁` | `气泡` |
+| `沙漏` | `公文包` | `火箭` | `火` |
+| `奖牌` | `灯泡` | `钉子` | `旗子` |
+| `茶` | `休假` | `气球` | `锦鲤` |
+| `咖啡` | `奶茶` | `调色板` | `感谢` |
+| `打招呼` | `666` | `握手` | `胜利` |
+| `一点点` | `鼓掌` | `送花花` | `比心` |
+| `加一` | `100分` | `KPI` | `对勾` |
+| `爱心` | `可爱` | `发呆` | `老板` |
+| `害羞` | `闭嘴` | `睡` | `大哭` |
+| `尴尬` | `调皮` | `惊讶` | `流汗` |
+| `广播` | `自信` | `你强` | `怒吼` |
+| `惊愕` | `快哭了` | `无聊` | `吐` |
+| `算账` | `晕` | `摸摸` | `飞吻` |
+| `鄙视` | `嘘` | `思考` | `亲亲` |
+| `感冒` | `对不起` | `再见` | `投降` |
+| `哼` | `欠扁` | `坏笑` | `拜托` |
+| `可怜` | `舒服` | `爱意` | `财迷` |
+| `迷惑` | `PK` | `委屈` | `灵感` |
+| `天使` | `鬼脸` | `凄凉` | `郁闷` |
+| `吃瓜` | `嘿嘿` | `抠鼻` | `呲牙` |
+| `彩虹` | `耶` | `捂眼睛` | `推眼镜` |
+| `暗中观察` | `开心` | `惊喜` | `回头` |
+| `发怒` | `忍者` | `衰` | `脑暴` |
+| `冷笑` | `黑眼圈` | `恭喜` | `费解` |
+| `收到` | `炸弹` | `白眼` | `一团乱麻` |
+| `无奈` | `敲打` | `专注` | `忙疯了` |
+| `鞠躬` | `摊手` | `抱抱` | `举手` |
+| `跪了` | `猫咪` | `二哈` | `三多` |
+| `承让` | `撒花` | `邮件` | `文档` |
+| `演示` | `表格` | `生日快乐` | `心碎` |
+| `红包` | `嘴唇` | `鲜花` | `残花` |
+| `干杯` | `出差` | `时间` | `福` |
+| `月饼` | `礼物` | `幼苗` | `烟花` |
+| `灯笼` | `爆竹` | `鸡腿` | `高铁` |
+| `三连` | `OKR` | `Done` |  |
+
+---

@@ -1,0 +1,156 @@
+---
+title: "グループテンプレートボットによるグループチャットメッセージの送信"
+---
+
+グループテンプレートボットを使用してグループチャットメッセージを送信する必要がある場合は、本ドキュメントの操作手順を参考にしてください。
+
+## 要件の明確化
+
+正式な開発に入る前に、本ドキュメントではグループテンプレートボットを使用し、グループアシスタントメッセージ送信インターフェースを通じてグループチャットメッセージを送信する方法を説明することをご理解ください。クイックスタートのため、「クイック体験」で提供されているサンプル demo を実行してみることができます。これにより、グループテンプレートボットの使用について直感的に体験できます。
+
+## 前提条件
+
+1. グループテンプレートボットの作成フローを完了していること。
+2. OpenAPI インターフェースの[呼び出し権限申請](/zh/open/development/add-api-permission)を完了し、`DingTalk グループメッセージ管理権限`を申請していること。
+3. 開発環境の準備：
+
+   - Java：JDK 1.8 以上がインストール済み
+   - Java：Maven 3 がインストール済み
+
+## クイック体験
+
+1. [group-template-robot-group-message-quick-start](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20240221/oqqnlh/group-template-robot-group-message-quick-start.zip) サンプル demo をダウンロードできます。
+2. groupTemplateRobotGroupMessage の main メソッドのパラメータを置換します。
+
+   | 設定項目 | 説明 |
+   | --- | --- |
+   | GROUP_TEMPLATE_ID | 開発者バックエンドにログインし、**オープン能力** > **シーングループ** > **グループテンプレート**をクリックして、ID をコピーします。 |
+   | ROBOT_CODE | 開発者バックエンドにログインし、**オープン能力** > **シーングループ** > **グループテンプレート** > **対象のグループテンプレート**をクリックします。ボット ID をコピーします。グループテンプレートにボットが関連付けられていない場合は、グループテンプレートへのグループテンプレートボットの関連付けを参照してください。 |
+   | OWNER_USER_ID | ユーザーの userId 情報。詳細は[ユーザー UserId](/zh/open/dingstart/basic-concepts-beta)を参照してください。 |
+   | CLIENT_ID | アプリの Client ID。詳細は [Client ID](/zh/open/dingstart/basic-concepts-beta) を参照してください。 |
+   | CLIENT_SECRET | アプリの Client Secret。詳細は [Client Secret](/zh/open/dingstart/basic-concepts-beta) を参照してください。 |
+3. main メソッドを起動すると、グループ内でボットが送信したメッセージを受信できます。
+
+## 操作手順
+
+1. プロジェクトの`pom.xml`ファイルに依存項目を追加します。
+
+   ```xml lines
+   <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>dingtalk</artifactId>
+               <version>2.0.76</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>fastjson</artifactId>
+               <version>1.2.68</version>
+           </dependency>
+       </dependencies>
+   ```
+2. main メソッドを作成して起動します。
+
+   ```java lines
+   import com.alibaba.fastjson.JSON;
+   import com.alibaba.fastjson.JSONObject;
+   import com.aliyun.dingtalkoauth2_1_0.Client;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
+   import com.aliyun.teaopenapi.models.Config;
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiImChatScencegroupMessageSendV2Request;
+   import com.dingtalk.api.request.OapiImChatScenegroupCreateRequest;
+   import com.dingtalk.api.response.OapiImChatScencegroupMessageSendV2Response;
+   import com.dingtalk.api.response.OapiImChatScenegroupCreateResponse;
+   import com.taobao.api.ApiException;
+
+   public class groupTemplateRobotGroupMessage {
+
+       //グループテンプレート id
+       public static final String GROUP_TEMPLATE_ID = "<your group template id >";
+
+       //グループテンプレートボット id
+       public static final String ROBOT_CODE = "<your group robot id>";
+
+       //グループ作成者 userId
+       public static final String OWNER_USER_ID= "<owner userId>";
+
+       //アプリ client id
+       public static final String CLIENT_ID= "<your app client id>";
+
+       //アプリ client secret
+       public static final String CLIENT_SECRET= "< your app client secret>";
+
+       /**
+        * グループテンプレートボットメッセージを送信
+        * @param args
+        */
+       public static void main(String[] args) {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/im/chat/scencegroup/message/send_v2");
+           OapiImChatScencegroupMessageSendV2Request req = new OapiImChatScencegroupMessageSendV2Request();
+           req.setTargetOpenConversationId(CreateGroup());
+           req.setMsgTemplateId("inner_app_template_markdown");
+           JSONObject jsonObject = new JSONObject().fluentPut("title","テスト").fluentPut("markdown_content", "# テストコンテンツ \n > テスト");
+           req.setMsgParamMap(JSON.toJSONString(jsonObject));
+           req.setRobotCode(ROBOT_CODE);
+           OapiImChatScencegroupMessageSendV2Response rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+       }
+
+       /**
+        * グループの OpenConversationId を取得
+        * @return
+        */
+       public static String CreateGroup() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/im/chat/scenegroup/create");
+           OapiImChatScenegroupCreateRequest req = new OapiImChatScenegroupCreateRequest();
+           req.setTitle("グループテンプレートボットテストグループ");
+           req.setTemplateId(GROUP_TEMPLATE_ID);
+           req.setOwnerUserId(OWNER_USER_ID);
+           OapiImChatScenegroupCreateResponse rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               return rsp.getResult().getOpenConversationId();
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+
+       }
+
+       public static String accessToken(){
+           GetAccessTokenRequest getAccessTokenRequest = new GetAccessTokenRequest();
+           getAccessTokenRequest.setAppKey(CLIENT_ID);
+           getAccessTokenRequest.setAppSecret(CLIENT_SECRET);
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           try {
+               Client client = new Client(config);
+               GetAccessTokenResponse accessToken = client.getAccessToken(getAccessTokenRequest);
+               return accessToken.getBody().getAccessToken();
+           } catch (Exception e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   この時点で、グループチャットが自動的に作成され、グループ内でグループテンプレートボットが送信したメッセージを確認できます。
+
+## 関連ドキュメント
+
+- グループアシスタントメッセージの送信

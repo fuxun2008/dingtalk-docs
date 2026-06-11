@@ -1,0 +1,701 @@
+---
+title: "ファイル分割アップロードの初期化"
+---
+
+本 API を呼び出して、ファイル分割アップロードを初期化します。
+
+## API 呼び出し説明
+
+API 呼び出しのフローは、以下のステップを参考にしてください。
+
+ステップ 1：本 API を呼び出して、ファイル分割アップロードを初期化し、アップロード識別子 uploadKey を取得します。
+
+ステップ 2：[ファイル分割アップロード情報の取得](/zh/open/development/obtains-the-information-about-multipart-uploads-of-an-object) API を呼び出して、各分割ファイルのアップロード情報を取得します。
+
+ステップ 3：各分割ファイルに対してアップロード操作を繰り返し実行します。
+
+ステップ 4：ステップ 1 の API で取得したアップロード識別子 uploadKey を使用して、[ファイル送信](/zh/open/development/submittal-file) API を呼び出し、アップロードを完了します。
+
+完全なサンプルは以下を参考にしてください。
+
+```java
+import com.aliyun.dingtalkstorage_1_0.models.*;
+import com.aliyun.teaopenapi.models.Config;
+import com.aliyun.teautil.models.RuntimeOptions;
+import com.util.AccessTokenUtil;
+import org.junit.Test;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Map;
+
+public class MultipartUpload {
+    public static com.aliyun.dingtalkstorage_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkstorage_1_0.Client(config);
+    }
+    @Test
+    public void test() throws Exception {
+        com.aliyun.dingtalkstorage_1_0.Client client = MultipartUpload.createClient();
+
+        String spaceId = "存储空间ID";
+        String filePath = "/Users/xxxxx/Desktop/音乐.mp3";
+        // 各分割ファイルのサイズ
+        long partSize = 1 * 1024 * 1024L;  // 1MB
+        // 分割アップロード初期化 API
+        InitMultipartFileUploadHeaders initMultipartFileUploadHeaders = new InitMultipartFileUploadHeaders();
+        initMultipartFileUploadHeaders.xAcsDingtalkAccessToken = "accessToken";
+        InitMultipartFileUploadRequest initMultipartFileUploadRequest = new InitMultipartFileUploadRequest();
+        initMultipartFileUploadRequest.setUnionId(unionId);
+        InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption initMultipartFileUploadRequestOption = new InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption();
+        initMultipartFileUploadRequestOption.setStorageDriver("DINGTALK");
+        initMultipartFileUploadRequest.setOption(initMultipartFileUploadRequestOption);
+        String uploadKey = client.initMultipartFileUploadWithOptions(spaceId, initMultipartFileUploadRequest, initMultipartFileUploadHeaders, new RuntimeOptions()).getBody().getUploadKey();
+
+        File file = new File(filePath);
+        long fileLength = file.length();
+        int partCount = (int) (fileLength / partSize) + ((fileLength % partSize != 0) ? 1 : 0);
+
+        for (int i = 0; i < partCount; i++) {
+            long startPos = i * partSize;
+            long curPartSize = (i + 1 == partCount) ? (fileLength - startPos) : partSize;
+            // 分割アップロード情報の取得
+            GetMultipartFileUploadInfosHeaders getMultipartFileUploadInfosHeaders = new GetMultipartFileUploadInfosHeaders();
+            getMultipartFileUploadInfosHeaders.xAcsDingtalkAccessToken = "accessToken";
+            GetMultipartFileUploadInfosRequest getMultipartFileUploadInfosRequest = new GetMultipartFileUploadInfosRequest();
+            getMultipartFileUploadInfosRequest.setUnionId(unionId);
+            getMultipartFileUploadInfosRequest.setUploadKey("ステップ 1 の分割アップロード初期化 API で取得した uploadKey");
+            getMultipartFileUploadInfosRequest.setPartNumbers(Arrays.asList(i + 1));
+            GetMultipartFileUploadInfosResponseBody.GetMultipartFileUploadInfosResponseBodyMultipartHeaderSignatureInfosHeaderSignatureInfo headerSignatureInfo = client.getMultipartFileUploadInfosWithOptions(getMultipartFileUploadInfosRequest, getMultipartFileUploadInfosHeaders, new RuntimeOptions()).body.multipartHeaderSignatureInfos.get(0).headerSignatureInfo;
+            uploadPartFile(startPos, curPartSize, headerSignatureInfo, file);
+        }
+            // ファイルを送信してアップロードを完了
+            CommitFileHeaders commitFileHeaders = new CommitFileHeaders();
+            commitFileHeaders.xAcsDingtalkAccessToken = "accessToken";
+            CommitFileRequest.CommitFileRequestOption commitFileRequestOption
+                = new CommitFileRequest.CommitFileRequestOption()
+                .setSize(1024L)
+                .setConflictStrategy("OVERWRITE");
+            CommitFileRequest commitFileRequest = new CommitFileRequest()
+                .setUnionId(unionId)
+                .setUploadKey(“第一步初始化分片上传接口获取的uploadKey”)
+                .setName("音乐.mp3")
+                .setParentId("0")
+                .setOption(commitFileRequestOption);
+            CommitFileResponseBody.CommitFileResponseBodyDentry dentry = client.commitFileWithOptions("存储空间ID", commitFileRequest, commitFileHeaders, new RuntimeOptions()).body.dentry;
+            System.out.println(dentry);
+    }
+
+    private void uploadPartFile(long start, long size, GetMultipartFileUploadInfosResponseBody.GetMultipartFileUploadInfosResponseBodyMultipartHeaderSignatureInfosHeaderSignatureInfo headerSignatureInfo, File file) throws Exception {
+        InputStream inputStream = new FileInputStream(file);
+        if (start > 0) {
+            inputStream.skip(start);
+        }
+
+        URL url = new URL(headerSignatureInfo.getResourceUrls().get(0));
+        HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+        connection.setDoOutput(true);
+        connection.setRequestMethod("PUT");
+        connection.setUseCaches(false);
+        if (headerSignatureInfo.getHeaders() != null) {
+            for (Map.Entry<String, String> entry : headerSignatureInfo.getHeaders().entrySet()) {
+                connection.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+        }
+        connection.setReadTimeout(10000);
+        connection.setConnectTimeout(10000);
+        connection.connect();
+        OutputStream out = connection.getOutputStream();
+        byte[] buffer = new byte[1024];
+        long remain = size;
+        for (;remain > 0;) {
+            int sizeToRead = remain < buffer.length ? (int)remain : buffer.length;
+            int rsz = inputStream.read(buffer, 0, sizeToRead);
+            if (rsz < 0) {
+                break;
+            }
+            out.write(buffer, 0, rsz);
+            remain -= rsz;
+        }
+        out.flush();
+        out.close();
+        int responseCode = connection.getResponseCode();
+        if (responseCode == 200) {
+            System.out.println("アップロード成功");
+        } else {
+            System.out.println("アップロード失敗");
+        }
+        connection.disconnect();
+    }
+}
+```
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | `https://api.dingtalk.io/v1.0/storage/spaces/{spaceId}/files/multiPartUploadInfos/init` |
+| HTTP Method | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 権限要件 | permission-Storage.UploadInfo.Read-企業ストレージファイルアップロード情報の読み取り権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | 必須 | 本 API を呼び出すためのアクセス認証情報。以下の方法で取得します：   - 社内アプリの場合、[社内アプリの accessToken 取得](https://open.dingtalk.io/document/development/obtain-the-access-token-of-an-internal-app#) API を呼び出して取得します。 - サードパーティ社内アプリの場合、[サードパーティアプリの権限付与企業の accessToken 取得](https://open.dingtalk.io/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#) API を呼び出して取得します。 |
+
+### パスパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| spaceId | String | 必須 | スペース Id。[スペースの追加](https://open.dingtalk.io/document/development/add-space#) API を呼び出して id パラメータ値を取得できます。 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| unionId | String | 必須 | 操作者の unionId。[ユーザー詳細の照会](https://open.dingtalk.io/document/development/query-user-details#) API を呼び出して取得できます。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| option | Object | 任意 | オプションパラメータ。 |
+| storageDriver | String | 任意 | ファイルストレージドライバタイプ。現在は DINGTALK のみサポート。 |
+| preCheckParam | Object | 任意 | 事前チェックフィールド。    ファイル名、ファイル完全性、容量のチェックを実現できます。 |
+| md5 | String | 任意 | ファイル md5 値、`DigestUtils.md5Hex()`。    ファイル完全性チェック。指定しない場合はチェックを行いません。 |
+| size | Long | 任意 | ファイルサイズ、単位 Byte。    容量関連のチェック。指定しない場合はチェックを行いません。 |
+| parentId | String | 任意 | 親ディレクトリ Id。ルートディレクトリの場合、本パラメータは 0 です。[ファイルまたはフォルダーリストの取得](https://open.dingtalk.io/document/development/obtain-the-file-list-storage#) API を呼び出して parentId パラメータ値を取得します。    同一ディレクトリ内のファイル名の重複チェックに使用します。 |
+| name | String | 任意 | ファイル名。命名には以下の要件があります：- 先頭と末尾に空白を含めることはできません。含まれている場合は自動的に除去されます - 特殊文字（タブ、`*`、`"`、`<`、`>`、`|`）を含めることはできません - `.` で終わることはできません - ファイル名の妥当性とファイル名の重複チェック。 |
+| preferRegion | String | 任意 | 優先地域。   - **ZHANGJIAKOU**：張家口 - **SHENZHEN**：深セン - **SHANGHAI**：上海 - **SINGAPORE**：シンガポール - **UNKNOWN**：不明     リソースをどの地域に保存することを優先するか。近距離アップロードなどの機能を実現できます。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/storage/spaces/568xxxxx/files/multiPartUploadInfos/init?unionId=chyxxxxx HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:xxxxx
+Content-Type:application/json
+
+{
+  "option" : {
+    "storageDriver" : "DINGTALK",
+    "preCheckParam" : {
+      "md5" : "md5",
+      "size" : 512,
+      "parentId" : "897xxxxx",
+      "name" : "测试文件.txt"
+    },
+    "preferRegion" : "ZHANGJIAKOU"
+  }
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkstorage_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkstorage_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkstorage_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadHeaders initMultipartFileUploadHeaders = new com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadHeaders();
+        initMultipartFileUploadHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOptionPreCheckParam optionPreCheckParam = new com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOptionPreCheckParam()
+                .setMd5("md5")
+                .setSize(512L)
+                .setParentId("897xxxxx")
+                .setName("测试文件.txt");
+        com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption option = new com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption()
+                .setStorageDriver("DINGTALK")
+                .setPreCheckParam(optionPreCheckParam)
+                .setPreferRegion("ZHANGJIAKOU");
+        com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadRequest initMultipartFileUploadRequest = new com.aliyun.dingtalkstorage_1_0.models.InitMultipartFileUploadRequest()
+                .setUnionId("chyxxxxx")
+                .setOption(option);
+        try {
+            client.initMultipartFileUploadWithOptions("568xxxxx", initMultipartFileUploadRequest, initMultipartFileUploadHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.storage_1_0.client import Client as dingtalkstorage_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.storage_1_0 import models as dingtalkstorage__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkstorage_1_0Client:
+        """
+        トークンを使用してアカウント Client を初期化
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkstorage_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        init_multipart_file_upload_headers = dingtalkstorage__1__0_models.InitMultipartFileUploadHeaders()
+        init_multipart_file_upload_headers.x_acs_dingtalk_access_token = '<your access token>'
+        option_pre_check_param = dingtalkstorage__1__0_models.InitMultipartFileUploadRequestOptionPreCheckParam(
+            md_5='md5',
+            size=512,
+            parent_id='897xxxxx',
+            name='测试文件.txt'
+        )
+        option = dingtalkstorage__1__0_models.InitMultipartFileUploadRequestOption(
+            storage_driver='DINGTALK',
+            pre_check_param=option_pre_check_param,
+            prefer_region='ZHANGJIAKOU'
+        )
+        init_multipart_file_upload_request = dingtalkstorage__1__0_models.InitMultipartFileUploadRequest(
+            union_id='chyxxxxx',
+            option=option
+        )
+        try:
+            client.init_multipart_file_upload_with_options('568xxxxx', init_multipart_file_upload_request, init_multipart_file_upload_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        init_multipart_file_upload_headers = dingtalkstorage__1__0_models.InitMultipartFileUploadHeaders()
+        init_multipart_file_upload_headers.x_acs_dingtalk_access_token = '<your access token>'
+        option_pre_check_param = dingtalkstorage__1__0_models.InitMultipartFileUploadRequestOptionPreCheckParam(
+            md_5='md5',
+            size=512,
+            parent_id='897xxxxx',
+            name='测试文件.txt'
+        )
+        option = dingtalkstorage__1__0_models.InitMultipartFileUploadRequestOption(
+            storage_driver='DINGTALK',
+            pre_check_param=option_pre_check_param,
+            prefer_region='ZHANGJIAKOU'
+        )
+        init_multipart_file_upload_request = dingtalkstorage__1__0_models.InitMultipartFileUploadRequest(
+            union_id='chyxxxxx',
+            option=option
+        )
+        try:
+            await client.init_multipart_file_upload_with_options_async('568xxxxx', init_multipart_file_upload_request, init_multipart_file_upload_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\InitMultipartFileUploadHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\InitMultipartFileUploadRequest\option\preCheckParam;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\InitMultipartFileUploadRequest\option;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_1_0\Models\InitMultipartFileUploadRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $initMultipartFileUploadHeaders = new InitMultipartFileUploadHeaders([]);
+        $initMultipartFileUploadHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $optionPreCheckParam = new preCheckParam([
+            "md5" => "md5",
+            "size" => 512,
+            "parentId" => "897xxxxx",
+            "name" => "测试文件.txt"
+        ]);
+        $option = new option([
+            "storageDriver" => "DINGTALK",
+            "preCheckParam" => $optionPreCheckParam,
+            "preferRegion" => "ZHANGJIAKOU"
+        ]);
+        $initMultipartFileUploadRequest = new InitMultipartFileUploadRequest([
+            "unionId" => "chyxxxxx",
+            "option" => $option
+        ]);
+        try {
+            $client->initMultipartFileUploadWithOptions("568xxxxx", $initMultipartFileUploadRequest, $initMultipartFileUploadHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkstorage_1_0  "github.com/alibabacloud-go/dingtalk/storage_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * トークンを使用してアカウント Client を初期化
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkstorage_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkstorage_1_0.Client{}
+  _result, _err = dingtalkstorage_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  initMultipartFileUploadHeaders := &dingtalkstorage_1_0.InitMultipartFileUploadHeaders{}
+  initMultipartFileUploadHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  optionPreCheckParam := &dingtalkstorage_1_0.InitMultipartFileUploadRequestOptionPreCheckParam{
+    Md5: tea.String("md5"),
+    Size: tea.Int64(512),
+    ParentId: tea.String("897xxxxx"),
+    Name: tea.String("测试文件.txt"),
+  }
+  option := &dingtalkstorage_1_0.InitMultipartFileUploadRequestOption{
+    StorageDriver: tea.String("DINGTALK"),
+    PreCheckParam: optionPreCheckParam,
+    PreferRegion: tea.String("ZHANGJIAKOU"),
+  }
+  initMultipartFileUploadRequest := &dingtalkstorage_1_0.InitMultipartFileUploadRequest{
+    UnionId: tea.String("chyxxxxx"),
+    Option: option,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.InitMultipartFileUploadWithOptions(tea.String("568xxxxx"), initMultipartFileUploadRequest, initMultipartFileUploadHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkstorage_1_0, * as $dingtalkstorage_1_0 from '@alicloud/dingtalk/storage_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * トークンを使用してアカウント Client を初期化
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkstorage_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkstorage_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let initMultipartFileUploadHeaders = new $dingtalkstorage_1_0.InitMultipartFileUploadHeaders({ });
+    initMultipartFileUploadHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let optionPreCheckParam = new $dingtalkstorage_1_0.InitMultipartFileUploadRequestOptionPreCheckParam({
+      md5: "md5",
+      size: 512,
+      parentId: "897xxxxx",
+      name: "测试文件.txt",
+    });
+    let option = new $dingtalkstorage_1_0.InitMultipartFileUploadRequestOption({
+      storageDriver: "DINGTALK",
+      preCheckParam: optionPreCheckParam,
+      preferRegion: "ZHANGJIAKOU",
+    });
+    let initMultipartFileUploadRequest = new $dingtalkstorage_1_0.InitMultipartFileUploadRequest({
+      unionId: "chyxxxxx",
+      option: option,
+    });
+    try {
+      await client.initMultipartFileUploadWithOptions("568xxxxx", initMultipartFileUploadRequest, initMultipartFileUploadHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * トークンを使用してアカウント Client を初期化
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkstorage_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkstorage_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadHeaders initMultipartFileUploadHeaders = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadHeaders();
+            initMultipartFileUploadHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption.InitMultipartFileUploadRequestOptionPreCheckParam optionPreCheckParam = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption.InitMultipartFileUploadRequestOptionPreCheckParam
+            {
+                Md5 = "md5",
+                Size = 512,
+                ParentId = "897xxxxx",
+                Name = "测试文件.txt",
+            };
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption option = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadRequest.InitMultipartFileUploadRequestOption
+            {
+                StorageDriver = "DINGTALK",
+                PreCheckParam = optionPreCheckParam,
+                PreferRegion = "ZHANGJIAKOU",
+            };
+            AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadRequest initMultipartFileUploadRequest = new AlibabaCloud.SDK.Dingtalkstorage_1_0.Models.InitMultipartFileUploadRequest
+            {
+                UnionId = "chyxxxxx",
+                Option = option,
+            };
+            try
+            {
+                client.InitMultipartFileUploadWithOptions("568xxxxx", initMultipartFileUploadRequest, initMultipartFileUploadHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれ、開発時の問題特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| uploadKey | String | アップロード一意識別子。 |
+| storageDriver | String | ファイルストレージタイプ。   - **DINGTALK**：DingTalk 統合ストレージドライバ - **ALIDOC**：DingTalkドキュメントストレージドライバ - **SHANJI**：閃記ストレージドライバ - **UNKNOWN**：不明なドライバ |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "uploadKey" : "xhy89xxxxx",
+  "storageDriver" : "DINGTALK"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合は、エラーメッセージに基づいて [グローバルエラーコード](https://open.dingtalk.io/document/development/server-api-error-codes-1) ドキュメントで解決方法を検索できます。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | paramError | %s | パラメータエラー |
+| 400 | paramError.multipart | %s | パラメータエラー-multipart |
+| 400 | paramError.protocol | %s | パラメータエラー-protocol |
+| 400 | paramError.spaceId | %s | パラメータエラー-spaceId |
+| 400 | paramError.storageDriver | %s | パラメータエラー-storageDriver |
+| 400 | spaceQuotaInsufficient | %s | スペース容量不足 |
+| 400 | sceneQuotaInsufficient | %s | シーン容量不足 |
+| 400 | appQuotaInsufficient | %s | アプリ容量不足 |
+| 400 | orgQuotaInsufficient | %s | 企業容量不足 |
+| 400 | dentryUploadForbidden | %s | アップロード禁止 |
+| 400 | dentryUploadProtocolNotSupport | %s | サポートされていないアップロードプロトコル |
+| 403 | permissionDenied | %s | ユーザーにファイルアップロード権限がありません |
+| 404 | spaceNotExist | %s | スペースが存在しません |
+| 500 | systemError | %s | システムエラー |
+| 500 | unknownError | Unknown Error | 不明なエラー |
+| 503 | operationTimeout | %s | リクエストタイムアウト |

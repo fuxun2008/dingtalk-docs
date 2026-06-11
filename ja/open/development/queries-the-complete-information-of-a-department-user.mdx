@@ -1,0 +1,206 @@
+---
+title: "部門ユーザー詳細の取得"
+---
+
+本 API を呼び出して、指定された部門内のユーザー詳細情報を取得します。
+
+## API 呼び出し説明
+
+- 本 API は、指定された部門配下の社員詳細情報のみ取得可能で、子部門の社員情報は取得できません。
+- 本 API では、部門の一般アカウントユーザー詳細、または部門の企業アカウントユーザー詳細を取得できます。呼び出し時のパラメータ使用に差異が多いため、開発者の参照しやすさを考慮し、新しいユーザーのアカウントタイプ別に分割・最適化しています。
+
+  - 部門の一般アカウントユーザー詳細を取得する場合は、本ドキュメントの API 説明をご確認ください。
+  - 部門の企業アカウントユーザー詳細（一般的に DingTalk 企業ユーザー）を取得する場合は、[部門企業アカウントユーザー詳細の取得](/zh/open/development/queries-account-details)をご参照ください。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/v2/user/list |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_get_department_member-連絡先部門メンバー読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API を呼び出すためのアプリ認証情報。   - 社内アプリの場合、社内アプリの access_token を取得する API から取得します。 - サードパーティ社内アプリの場合、サードパーティ企業の access_token を取得する API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| dept_id | Number | はい | 10 | 部門 ID。[部門リストの取得](/zh/open/development/user-management-acquires-the-list-departments)から取得できます。ルート部門の場合、このパラメータには 1 を指定します。  **説明**  現在の部門配下の社員情報のみ取得し、子部門内の社員は含まれません。 |
+| cursor | Number | はい | 0 | ページング検索のカーソル。最初は 0 を指定し、以降はレスポンスパラメータの next_cursor 値を指定します。 |
+| size | Number | はい | 10 | ページサイズ。 |
+| order_field | String | いいえ | modify_desc | 部門メンバーの並べ替えルール。デフォルト（未指定時）はカスタム並び替え（custom）です。   - **entry_asc**：部門加入時刻の昇順 - **entry_desc**：部門加入時刻の降順 - **modify_asc**：部門情報編集時間の昇順 - **modify_desc**：部門情報編集時間の降順 - **custom**：ユーザー定義（未定義の場合はピンイン順）による並び替え |
+| contain_access_limit | Boolean | いいえ | false | アクセス制限された社員を返すかどうか。   - true：返す - false：返さない |
+| language | String | いいえ | zh_CN | 連絡先の言語。   - **zh_CN**：中国語（デフォルト） - **en_US**：英語 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/v2/user/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=834f6b00-25b8-4484-a89d-595d1f7fa0a7' \
+-d 'contain_access_limit=false' \
+-d 'cursor=0' \
+-d 'dept_id=10' \
+-d 'language=zh_CN' \
+-d 'order_field=modify_desc' \
+-d 'size=10'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/list");
+OapiV2UserListRequest req = new OapiV2UserListRequest();
+req.setDeptId(1L);
+req.setCursor(0L);
+req.setSize(10L);
+req.setOrderField("modify_desc");
+req.setContainAccessLimit(false);
+req.setLanguage("zh_CN");
+OapiV2UserListResponse rsp = client.execute(req, "");
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiV2UserListRequest("https://oapi.dingtalk.io/topapi/v2/user/list")
+
+req.dept_id=10
+req.cursor=0
+req.size=10
+req.order_field="modify_desc"
+req.contain_access_limit=false
+req.language="zh_CN"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiV2UserListRequest;
+$req->setDeptId("10");
+$req->setCursor("0");
+$req->setSize("10");
+$req->setOrderField("modify_desc");
+$req->setContainAccessLimit("false");
+$req->setLanguage("zh_CN");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/v2/user/list");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/list");
+OapiV2UserListRequest req = new OapiV2UserListRequest();
+req.DeptId = 10L;
+req.Cursor = 0L;
+req.Size = 10L;
+req.OrderField = "modify_desc";
+req.ContainAccessLimit = false;
+req.Language = "zh_CN";
+OapiV2UserListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | リターンコード。 |
+| errmsg | String | ok | リターンコードの説明。 |
+| result | Object |  | レスポンス結果。 |
+| has_more | Boolean | true | さらにデータがあるかどうか。   - true：あり - false：なし |
+| next_cursor | Number | 10 | 次のページングのカーソル。  **説明**  **has_more** が **false** の場合、それ以上のページングデータがないことを表します。 |
+| list | Object[] |  | ユーザー情報リスト。 |
+| userid | String | zhangsan | ユーザーの userId。 |
+| unionid | String | z21HjQliSzpw0YWCNxmii6u2Os62cZ62iSZ | 現在の開発者の企業アカウント範囲内におけるユーザーの一意識別子。 |
+| name | String | 張三 | ユーザー名。 |
+| avatar | String | xxx | プロフィール写真の URL。 |
+| state_code | String | 86 | 国際電話の国番号。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **企業社員携帯番号情報権限** がオンになっているかご確認ください。 - サードパーティ社内アプリではこのパラメータは返されません。state_code を取得するには、DingTalk 統合権限付与パッケージ方式をご利用ください。 |
+| mobile | String | 18513027676 | 携帯番号。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **企業社員携帯番号情報権限** がオンになっているかご確認ください。 - サードパーティ社内アプリではこのパラメータは返されません。mobile を取得するには、DingTalk 統合権限付与パッケージ方式をご利用ください。 |
+| hide_mobile | Boolean | false | 番号を非表示にするかどうか。   - **true**：非表示  携帯番号を非表示にすると、プロフィールページでは番号が非表示になりますが、引き続き DING の送信や DingTalk 無料ビジネス通話の発信が可能です。 - **false**：非表示にしない |
+| telephone | String | 010-86123456-2345 | 内線番号。  **説明**  サードパーティ社内アプリではこのパラメータは返されません。 |
+| job_number | String | 4 | 社員番号。 |
+| title | String | 技術ディレクター | 職位。 |
+| email | String | test@xxx.com | 社員のメール。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **メールなどのプロフィール** 権限がオンになっているかご確認ください。 - 社員情報パネル内のメールフィールドに値がある場合のみ、このフィールドが返されます。 - サードパーティ社内アプリではこのパラメータは返されません。 |
+| org_email | String | test@xxx.com | 社員のエンタープライズメール。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **メールなどのプロフィール** 権限がオンになっているかご確認ください。 - 社員情報パネル内の該当フィールドに値がある場合のみ返されます。 - サードパーティ社内アプリではこのパラメータは返されません。 |
+| work_place | String | 未来 park | 勤務地。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **メールなどのプロフィール** 権限がオンになっているかご確認ください。 - 社員情報パネル内の該当フィールドに値がある場合のみ返されます。 - サードパーティ社内アプリではこのパラメータは返されません。 |
+| remark | String | 表示名表示名 | 表示名。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **メールなどのプロフィール** 権限がオンになっているかご確認ください。 - 社員情報パネル内の該当フィールドに値がある場合のみ返されます。 - サードパーティ社内アプリではこのパラメータは返されません。 |
+| dept_id_list | Number[] | [2,3,4] | 所属部門 ID リスト。 |
+| dept_order | Number | 1 | 部門内における社員の並び順。 |
+| extension | String | `{"趣味":"旅行","年齢":"24"}` | 拡張属性。  **説明**   - 社内アプリでこのフィールドが返されない場合、現在のアプリの連絡先権限における **メールなどのプロフィール** 権限がオンになっているかご確認ください。 - 社員情報パネル内の該当フィールドに値がある場合のみ返されます。 - サードパーティ社内アプリではこのパラメータは返されません。 |
+| hired_date | Number | 1597573616828 | 入社時間。Unix タイムスタンプ、単位はミリ秒です。  **説明**  サードパーティ社内アプリではこのパラメータは返されません。 |
+| active | Boolean | true | DingTalk をアクティベート済みかどうか。   - **true**：アクティベート済み - **false**：未アクティベート |
+| admin | Boolean | true | 企業の管理者かどうか。   - **true**：はい - **false**：いいえ |
+| boss | Boolean | true | 企業のオーナーかどうか。   - **true**：はい - **false**：いいえ |
+| leader | Boolean | true | 部門の責任者かどうか。   - **true**：はい - **false**：いいえ |
+| exclusive_account | Boolean | false | 企業アカウントかどうか。   - **true**：はい - **false**：いいえ   **説明**   - 企業アカウントの紹介については、[企業アカウント概要](/zh/open/development/dedicated-account-overview)をご参照ください。 - サードパーティ社内アプリではこのパラメータは返されません。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode":"0",
+  "result":{
+    "next_cursor":"10",
+    "has_more":"true",
+    "list":{
+      "leader":"true",
+      "extension":"{\"爱好\":\"旅游\",\"年龄\":\"24\"}",
+      "unionid":"z21HjQliSzpw0YWCNxmii6u2Os62cZ62iSZ",
+      "boss":"true",
+      "exclusive_account":"false",
+      "admin":"true",
+      "remark":"备注备注",
+      "title":"技术总监",
+      "hired_date":"1597573616828",
+      "userid":"zhangsan",
+      "work_place":"未来park",
+      "dept_id_list":"[2,3,4]",
+      "job_number":"4",
+      "email":"test@xxx.com",
+      "dept_order":"1",
+      "mobile":"18513027676",
+      "active":"true",
+      "telephone":"010-86123456-2345",
+      "avatar":"xxx",
+      "hide_mobile":"false",
+      "org_email":"test@xxx.com",
+      "name":"张三",
+      "state_code":"86"
+    }
+  },
+  "errmsg":"ok"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合は、エラーメッセージをもとに[グローバルエラーコード](/zh/open/development/server-api-error-codes-1)ドキュメントから解決方法を検索してください。
+
+| エラーコード（errcode） | エラーコードの説明（errmsg） | 解決策 |
+| --- | --- | --- |
+| 400002 | 無効なパラメータ | パラメータが要件通りに入力されているかご確認ください |
+| 50004 | 部門が権限スコープ外です | access_token に操作権限があるかご確認ください |
+| 40035 | パラメータが不正です | dept_id、cursor、size または order_field の入力が規格に適合していません |
+| 60019 | 部門からユーザーを取得できませんでした | 関連パラメータが正しく入力されているかご確認ください |
+| -1 | システムビジー | 後で再試行してください |

@@ -1,0 +1,612 @@
+---
+title: "チャット送受信タイプ"
+---
+
+本文書では、ボットを通じて送信するチャットのタイプとデータ形式、およびボットが受信するチャットのデータ形式について詳しく説明します。
+
+## ボットによるチャット送信
+
+### チャットタイプ
+
+ボットチャットの送信方法は 2 種類あり、**API 経由**でボットチャットを送信する方法と、**Webhook 経由**でボットチャットを送信する方法があります。それぞれ、サポートされるチャットタイプとデータ形式が異なります。
+
+<Note>
+API 経由でのチャット送信を推奨します。
+</Note>
+
+| チャットタイプ | API 経由のボットチャット送信 | Webhook 経由のボットチャット送信 |
+| --- | --- | --- |
+| Text テキストタイプ | ✅ | ✅ |
+| Markdown タイプ | ✅ | ✅ |
+| 画像 Image タイプ | ✅ | ❌ |
+| ActionCard タイプ | ✅ | ✅ |
+| FeedCard タイプ | ❌ | ✅ |
+| Link リンクチャット | ✅ | ✅ |
+| Audio 音声タイプ | ✅ | ❌ |
+| File ファイルタイプ | ✅ | ❌ |
+| Video 動画タイプ | ✅ | ❌ |
+
+### 方法 1：API 経由
+
+### 重要
+
+- ユーザーとボットの個別チャットにおけるボットチャット：画像・音声・ファイルの**送受信**に対応しています。
+- グループチャットにおけるボットチャット：画像・音声・動画・ファイルの**送信**に対応していますが、**グループチャット内でユーザーがボットに対して音声・動画・ファイルを@メンションで送信することはできません**。
+
+#### 対応 API
+
+- [ユーザーとボットの個別チャットにおけるボットチャットの一括送信](/zh/open/development/chatbots-send-one-on-one-chat-messages-in-batches)
+- [ボットによるグループチャットメッセージの送信](/zh/open/development/the-robot-sends-a-group-message)
+
+#### データ形式
+
+- **チャットテンプレート Key**：チャットテンプレート Key とは、開発者がチャットを送信する際に使用する一意の識別子です。プログラムコードを記述する際に、事前に設定したチャットテンプレートを素早く参照できます。
+- **チャットテンプレートパラメータ**：チャットテンプレート内で事前定義されたプレースホルダーを置き換える実データです。例えば、`sampleText` というチャットテンプレート Key を使用する場合、`content` フィールドの値を定義する必要があります。
+- **例**：社内アプリのボットが**グループ内**で**テキストタイプ**を送信する HTTP のサンプルコードを提供します：
+
+  - チャットテンプレート Key： `"msgKey" : "sampleText"`
+  - チャットテンプレートパラメータ： `"msgParam" : "{\"content\":\"钉钉，让进步发生\"}"`
+
+詳細は [ボットによるグループチャットメッセージの送信](/zh/open/development/the-robot-sends-a-group-message) を参照してください。
+
+```http
+POST /v1.0/robot/groupMessages/send HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:<your access token>
+Content-Type:application/json
+
+{
+  "msgParam" : "{\"content\":\"钉钉，让进步发生\"}",
+  "msgKey" : "sampleText",
+  "openConversationId" : "cid6KeBBLov********",
+  "robotCode" : "dingue4kfzdxbyn*******"
+}
+```
+
+| チャットタイプ | チャットテンプレート Key | チャットテンプレートパラメータ | 説明 |
+| --- | --- | --- | --- |
+| テキストタイプ | sampleText | ``` {   "content": "xxxx" } ``` |  |
+| Markdown タイプ | sampleMarkdown | ``` {   "title": "xxxx",   "text": "xxxx" } ``` |  |
+| 画像タイプ | sampleImageMsg | ``` {   "photoURL": "xxxx" } ``` | **説明**  photoURL には、画像の完全な URL パス、または画像の mediaId を指定できます。mediaId は、[メディアファイルのアップロード](/zh/open/development/upload-media-files) API を呼び出して `media_id` パラメータの値として取得できます。 |
+| リンクタイプ | sampleLink | ``` {        "text": "消息内容测试",   "title": "sampleLink消息测试",   "picUrl": "@lADOADmaWMzazQKA",   "messageUrl": "http://dingtalk.io"      } ``` | リンクチャット。 |
+| ActionCard タイプ | sampleActionCard | ``` {   "title": "测试标题",   "text": "内容测试",   "singleTitle": "查看详情",   "singleURL": "https://open.dingtalk.io" } ``` | カードメッセージ：ボタン 1 つ。 |
+| sampleActionCard2 | ``` {   "title": "消息标题测试",   "text": "消息正文测试",   "actionTitle1": "一个按钮",   "actionURL1": "https://www.taobao.com",   "actionTitle2": "两个按钮",   "actionURL2": "https://www.tmall.com" } ``` | カードメッセージ：縦並びのボタン 2 つ。 |
+| sampleActionCard3 | ``` {   "title": "消息标题测试",   "text": "消息内容测试",   "actionTitle1": "第一个按钮的文本",   "actionURL1": "第一个按钮触发的url",   "actionTitle2": "第二个按钮的文本",   "actionURL2": "第二个按钮触发的url",   "actionTitle3": "第三个按钮的文本",   "actionURL3": "第三个按钮触发的url" } ``` | カードメッセージ：縦並びのボタン 3 つ。 |
+| sampleActionCard4 | ``` {   "title":"消息标题测试",   "text":"消息内容测试",   "actionTitle1":"第一个按钮的文本",   "actionURL1":"第一个按钮触发的url",   "actionTitle2":"第二个按钮的文本",   "actionURL2":"第二个按钮触发的url",   "actionTitle3":"第三个按钮的文本",   "actionURL3":"第三个按钮触发的url",   "actionTitle4":"第四个按钮的文本",   "actionURL4":"第四个按钮触发的url" } ``` | カードメッセージ：縦並びのボタン 4 つ。 |
+| sampleActionCard5 | ``` {   "title":"消息标题测试",   "text":"消息内容测试",   "actionTitle1":"第一个按钮的文本",   "actionURL1":"第一个按钮触发的url",   "actionTitle2":"第二个按钮的文本",   "actionURL2":"第二个按钮触发的url",   "actionTitle3":"第三个按钮的文本",   "actionURL3":"第三个按钮触发的url",   "actionTitle4":"第四个按钮的文本",   "actionURL4":"第四个按钮触发的url",   "actionTitle5":"第五个按钮的文本",   "actionURL5":"第五个按钮触发的url" } ``` | カードメッセージ：縦並びのボタン 5 つ。 |
+| sampleActionCard6 | ``` {   "title": "xxxx",   "text": "xxxx",   "buttonTitle1":"xxxxx",   "buttonUrl1":"xxxxx",   "buttonTitle2":"xxxxx",   "buttonUrl2":"xxxxx" } ``` | カードメッセージ：横並びのボタン 2 つ。 |
+| 音声タイプ | sampleAudio | ``` {   "mediaId": "@IR_P********nFkfhsisbf4A",   "duration":"xxxxx" } ``` | 音声チャット：   - **mediaId**：[メディアファイルのアップロード](/zh/open/development/upload-media-files) API を呼び出して `media_id` パラメータの値として取得します。  **説明**  ogg、amr 形式に対応しています。 - **duration**：音声チャットの長さ。単位はミリ秒。 |
+| ファイルタイプ | sampleFile | ``` {   "mediaId":"@lAz*********shRs5m2pRL",   "fileName":"表格.xlsx",   "fileType":"xlsx" } ``` | ファイルメッセージ：   - **mediaId**：[メディアファイルのアップロード](/zh/open/development/upload-media-files) API を呼び出して `media_id` パラメータの値として取得します。 - **fileName**：ファイル名。 - **fileType**：ファイルタイプ。   **説明**  ファイルタイプは xlsx、pdf、zip、rar、doc、docx 形式に対応しています。 |
+| 動画タイプ | sampleVideo | ``` {   "duration":"999",   "videoMediaId":"$iQEL**********AXNSs6QPPAAABhKN2L3EEzTcTB84BFM7iCAAJomlt",   "videoType":"mp4",   "picMediaId":"$igE**********tAFzQUABtoAIYQBpAtR3SICqrQ7ZX0nEJzAKxUDzwAAAYSjdi2cBM02vwcACAAJomltCgQ"             } ``` | 動画メッセージ：   - **duration**：音声チャットの長さ。単位は秒。 - **videoMediaId**：[メディアファイルのアップロード](/zh/open/development/upload-media-files) API を呼び出して `media_id` パラメータの値として取得します。 - **videoType**：動画タイプ。mp4 形式に対応しています。 - **picMediaId**：動画のカバー画像。[メディアファイルのアップロード](/zh/open/development/upload-media-files) API を呼び出して `media_id` パラメータの値として取得します。 - **height**：動画の表示の高さ。単位は px。 - **width**：動画の表示の幅。単位は px。 |
+
+#### Markdown でサポートされる構文
+
+> チャットタイプ sampleMarkdown における Markdown 構文の補足説明です。
+
+```text
+标题
+# 一级标题
+## 二级标题
+### 三级标题
+#### 四级标题
+##### 五级标题
+###### 六级标题
+ 
+引用
+> A man who stands for nothing will fall for anything.
+ 
+文字加粗、斜体
+**bold**
+*italic*
+ 
+链接
+[this is a link](http://name.com)
+ 
+图片
+
+ 
+无序列表
+- item1
+- item2
+ 
+有序列表
+1. item1
+2. item2
+
+换行
+ \n (建议\n前后分别加2个空格)
+```
+
+### 方法 2：Webhook 経由
+
+<Note>
+Webhook 方式はグループチャットでのみ対応しています。
+</Note>
+
+Webhook によるチャット送信の実装方法については、[ボットの返信/チャット送信](/zh/open/dingstart/robot-reply-and-send-messages) および [カスタムボットの作成](/zh/open/dingstart/custom-bot-creation-and-installation) を参照してください。
+
+#### テキスト text タイプ
+
+```json
+{
+    "at": {
+        "atMobiles": [
+            "180xxxxxx"
+        ],
+        "atUserIds": [
+            "user123"
+        ],
+        "isAtAll": false
+    },
+    "text": {
+        "content": "我就是我, @180xxxxxx 是不一样的烟火"
+    },
+    "msgtype": "text"
+}
+```
+
+| **パラメータ** | **必須** | **タイプ** | **説明** |
+| --- | --- | --- | --- |
+| msgtype | 必須 | String | text。 |
+| content | 必須 | String | チャットテキスト。 |
+| atMobiles | 任意 | Array | @メンション対象者の携帯電話番号。  **説明**  content 内に@メンション対象者の携帯電話番号を追加します。グループ内のユーザーのみ@メンション可能で、グループ外のユーザーの携帯電話番号はマスキングされます。 |
+| atUserIds | 任意 | Array | @メンション対象者のユーザー ID。  **説明**  content 内に@メンション対象者の userId を追加します。 |
+| isAtAll | 任意 | Boolean | @全員の場合は true、それ以外は false。 |
+
+#### リンク Link タイプ
+
+<Note>
+このタイプは@メンションには対応していません。
+</Note>
+
+```json
+{
+    "msgtype": "link", 
+    "link": {
+        "text": "这个即将发布的新版本，创始人xx称它为红树林。而在此之前，每当面临重大升级，产品经理们都会取一个应景的代号，这一次，为什么是红树林", 
+        "title": "时代的火车向前开", 
+        "picUrl": "https://img.alicdn.com/tfs/TB1NwmBEL9TBuNjy1zbXXXpepXa-2400-1218.png", 
+        "messageUrl": "https://open.dingtalk.io/document/"
+    }
+}
+```
+
+| **パラメータ** | **パラメータタイプ** | 必須 | **説明** |
+| --- | --- | --- | --- |
+| msgtype | String | 必須 | チャットタイプ。ここでは link 固定です。 |
+| title | String | 必須 | チャットの見出し。 |
+| text | String | 必須 | チャットコンテンツ。長すぎる場合は一部のみ表示されます。 |
+| messageUrl | String | 必須 | チャットをクリックした際に遷移する URL。開き方は以下の通りです：   - モバイル端末では DingTalk クライアント内で開きます - PC 端末    - デフォルトではサイドバーで開きます   - 外部ブラウザで開きたい場合は、[チャットリンクの説明](/zh/open/development/message-link-description) を参照してください。 |
+| picUrl | String | 任意 | 画像 URL。 |
+
+#### Markdown タイプ
+
+```json
+{
+     "msgtype": "markdown",
+     "markdown": {
+         "title":"杭州天气",
+         "text": "#### 杭州天气 @150XXXXXXXX \n> 9度，西北风1级，空气良89，相对温度73%\n> \n> ###### 10点20分发布 [天气](https://www.dingalk.com) \n"
+     },
+      "at": {
+          "atMobiles": [
+              "150XXXXXXXX"
+          ],
+          "atUserIds": [
+              "user123"
+          ],
+          "isAtAll": false
+      }
+ }
+```
+
+| **パラメータ** | **必須** | **タイプ** | **説明** |
+| --- | --- | --- | --- |
+| msgtype | 必須 | String | チャットタイプ。ここでは markdown 固定です。 |
+| title | 必須 | String | チャット一覧の最初の画面に表示される内容。 |
+| text | 必須 | String | Markdown 形式のチャットコンテンツ。 |
+| atMobiles | 任意 | Array | @メンション対象者の携帯電話番号。  **説明**  text コンテンツ内に@メンション対象者の携帯電話番号を含める必要があります。グループ内のユーザーのみ@メンション可能で、グループ外のユーザーの携帯電話番号はマスキングされます。 |
+| atUserIds | 任意 | Array | @メンション対象者のユーザー ID。  **説明**  text 内に@メンション対象者の userId を追加します。 |
+| isAtAll | 任意 | Boolean | @全員の場合は true、それ以外は false。 |
+
+現在は Markdown 構文のサブセットのみ対応しており、対応する要素は以下の通りです：
+
+```text
+标题
+# 一级标题
+## 二级标题
+### 三级标题
+#### 四级标题
+##### 五级标题
+###### 六级标题
+ 
+引用
+> A man who stands for nothing will fall for anything.
+ 
+文字加粗、斜体
+**bold**
+*italic*
+ 
+链接
+[this is a link](https://www.dingtalk.io/)
+ 
+图片
+
+ 
+无序列表
+- item1
+- item2
+ 
+有序列表
+1. item1
+2. item2
+```
+
+#### ActionCard タイプ
+
+- **全体遷移 ActionCard タイプ**
+
+  ```json lines
+  {
+      "msgtype": "actionCard",
+      "actionCard": {
+          "title": "打造一间咖啡厅", 
+          "text": " \n #### 乔布斯 20 年前想打造的苹果咖啡厅 \n\n Apple Store 的设计正从原来满满的科技感走向生活化，而其生活化的走向其实可以追溯到 20 年前苹果一个建立咖啡馆的计划",
+          "singleTitle" : "阅读全文",
+          "btnOrientation": "0", 
+          "singleURL" : "https://www.dingtalk.io/"
+      }
+  }
+  ```
+
+  | **パラメータ** | **必須** | **タイプ** | **説明** |
+  | --- | --- | --- | --- |
+  | msgtype | 必須 | String | チャットタイプ。ここでは actionCard 固定です。 |
+  | title | 必須 | String | チャット一覧の最初の画面に表示される内容。 |
+  | text | 必須 | String | markdown 形式のチャット。  **説明**  @ 機能を実装する場合は、text コンテンツ内に @ ユーザーの userId を追加してください。例：@manager7675 |
+  | singleTitle | 必須 | String | 単一ボタンの見出し。 |
+  | singleURL | 必須 | String | チャットをクリックした際に遷移する URL。開き方は以下の通りです：  - モバイル端末では DingTalk クライアント内で開きます - PC 端末    - デフォルトではサイドバーで開きます   - 外部ブラウザで開きたい場合は、[チャットリンクの説明](/zh/open/development/message-link-description) を参照してください。 |
+  | btnOrientation | 任意 | String | ボタンの配置方式：  - **0**：ボタンを縦並びに配置 - **1**：ボタンを横並びに配置 |
+
+- **独立遷移 ActionCard タイプ**
+
+  ```json lines
+  {
+      "msgtype": "actionCard",
+      "actionCard": {
+          "title": "乔布斯 20 年前想打造一间苹果咖啡厅，而它正是 Apple Store 的前身", 
+          "text": " \n\n #### 乔布斯 20 年前想打造的苹果咖啡厅 \n\n Apple Store 的设计正从原来满满的科技感走向生活化，而其生活化的走向其实可以追溯到 20 年前苹果一个建立咖啡馆的计划", 
+          "btnOrientation": "0", 
+          "btns": [
+              {
+                  "title": "内容不错", 
+                  "actionURL": "https://www.dingtalk.io/"
+              }, 
+              {
+                  "title": "不感兴趣", 
+                  "actionURL": "https://www.dingtalk.io/"
+              }
+          ]
+      }
+  }
+  ```
+
+  | **パラメータ** | **必須** | **タイプ** | **説明** |
+  | --- | --- | --- | --- |
+  | msgtype | 必須 | String | actionCard。 |
+  | title | 必須 | String | チャット一覧の最初の画面に表示される内容。 |
+  | text | 必須 | String | markdown 形式のチャットコンテンツ。  **説明**  @ 機能を実装する場合は、text コンテンツ内に @ ユーザーの userId を追加してください。例：@manager7675 |
+  | btns | 必須 | Array | ボタン。 |
+  | title | 必須 | String | ボタンの見出し。 |
+  | actionURL | 必須 | String | ボタンをクリックした際にトリガーされる URL。開き方は以下の通りです：  - モバイル端末では DingTalk クライアント内で開きます - PC 端末    - デフォルトではサイドバーで開きます   - 外部ブラウザで開きたい場合は、[チャットリンクの説明](/zh/open/development/message-link-description) を参照してください。 |
+  | btnOrientation | 任意 | String | ボタンの配置順序。  **0**：ボタンを縦並びに配置  **1**：ボタンを横並びに配置 |
+
+#### FeedCard タイプ
+
+<Note>
+このタイプは@メンションには対応していません。
+</Note>
+
+```json
+{
+    "msgtype": "feedCard",
+    "feedCard": {
+        "links": [
+            {
+                "title": "时代的火车向前开1", 
+                "messageURL": "https://www.dingtalk.io/", 
+                "picURL": "https://img.alicdn.com/tfs/TB1NwmBEL9TBuNjy1zbXXXpepXa-2400-1218.png"
+            },
+            {
+                "title": "时代的火车向前开2", 
+                "messageURL": "https://www.dingtalk.io/", 
+                "picURL": "https://img.alicdn.com/tfs/TB1NwmBEL9TBuNjy1zbXXXpepXa-2400-1218.png"
+            }
+        ]
+    }
+}
+```
+
+| **パラメータ** | **必須** | **タイプ** | **説明** |
+| --- | --- | --- | --- |
+| msgtype | 必須 | String | feedCard。 |
+| title | 必須 | String | 単一情報のテキスト。 |
+| messageURL | 必須 | String | 単一情報をクリックした際の遷移リンク。詳細は [チャットリンクの説明](/zh/open/development/message-link-description) を参照してください。 |
+| picURL | 必須 | String | 単一情報の後ろに表示される画像の URL。 |
+
+グループにチャットを返信したくない場合は、以下の形式で返信します：
+
+```json
+{
+    "msgtype": "empty"
+}
+```
+
+## ボットによるチャット受信
+
+ユーザーがグループボットを@メンションした場合、またはボットと個別チャットでメッセージを送信した場合、DingTalk はボットが受信したチャットを、開発者が設定したボットのコールバックサービスへ送信します。
+
+### チャット本文
+
+本例では text テキストタイプを例に説明します。HTTP コールバック方式を使用する場合、POST リクエストで DingTalk からプッシュされたチャットを受信します。
+
+```json
+{
+  "senderPlatform": "Mac",
+  "conversationId": "cid6EUxxxxsg==",
+  "atUsers": [
+    {
+      "dingtalkId": "xxx",
+      "staffId":"xxx",
+      "unionId":"edxxx34"
+    }
+  ],
+  "chatbotCorpId": "ding9733d095*******6cb783455b",
+  "chatbotUserId": "$:LWCP_xxxxr5",
+  "msgId": "msgrK2xxxxU+riw==",
+  "senderNick": "小钉",
+  "isAdmin": true,
+  "senderStaffId": "0147xxxx8602",
+  "sessionWebhookExpiredTime": 1708332604316,
+  "createAt": 1708327204136,
+  "senderCorpId": "ding9733d095*******6cb783455b",
+  "conversationType": "2",
+  "senderId": "$:LWCP_v1xxxxBv1MhAv9",
+  "conversationTitle": "测试群",
+  "isInAtList": true,
+  "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=66d7c695a9xxxxdeb885",
+  "text": {
+    "content": " text"
+  },
+  "robotCode": "dingoxxxxdm3k",
+  "msgtype": "text"
+}
+```
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| senderPlatform | String | チャット送信プラットフォーム。 |
+| conversationId | String | チャット ID。 |
+| atUsers | Array of Object | @メンション対象者の情報。   - **dingtalkId**：暗号化された@メンション対象者の ID。 - **staffId**：@メンション対象者の userId。外部グループの外部ユーザーの場合、このフィールドは空です。 - **unionId**：@メンション対象者の unionid。 |
+| chatbotCorpId | String | 暗号化されたボットが所属する企業の組織 ID。 |
+| chatbotUserId | String | 暗号化されたボット ID。 |
+| msgId | String | 暗号化されたチャット ID。 |
+| senderNick | String | 送信者の名前。 |
+| isAdmin | Boolean | 管理者かどうか：   - true：はい - false：いいえ   ボットが公開された後に有効となります。それ以外の場合は返されません。 |
+| senderStaffId | String | 社内グループにおいて、このボットを@メンションしたユーザーの userId。  送信者がボットの所属企業のユーザーでない場合（例：外部グループで外部ユーザーがボットを@メンションした場合）、このフィールドは空です。  ボットが公開された後に有効となります。それ以外の場合は返されません。 |
+| senderUnionId | String | 送信者の unionid。 |
+| sessionWebhookExpiredTime | Long | 現在のチャットの Webhook アドレスの有効期限。 |
+| createAt | String | チャットのタイムスタンプ。単位はミリ秒。 |
+| senderCorpId | String | 社内グループにおける送信者の現在のグループの企業の組織 ID。 |
+| conversationType | String | 会話タイプ：   - **1**：個別チャット - **2**：グループチャット |
+| senderId | String | 暗号化された送信者 ID。 |
+| conversationTitle | String | グループチャットの場合のみ存在する会話の見出し。 |
+| isInAtList | Boolean | @メンションリストに含まれているかどうか。 |
+| sessionWebhook | String | 現在のチャットの Webhook アドレス。 |
+| text | Object | チャットテキスト：   - content：ボットが受信したチャットコンテンツ。   このフィールドは、チャットタイプが text の場合にのみ存在します。 |
+| msgtype | String | チャットタイプ：   - text：テキストチャット - richText：リッチテキストチャット - picture：画像メッセージ - audio：音声チャット - video：動画メッセージ - file：ファイルメッセージ   チャットタイプの具体的な形式は、下記の **チャットタイプ** を参照してください。 |
+| robotCode | String | ボットコード。  カスタムボットには robotCode はありません。 |
+
+### チャットタイプ
+
+ボットは現在、テキスト・音声・画像・ファイル・動画・リッチテキストタイプのチャット受信に対応しています。以下は、ボットが受信する各チャットタイプのフィールドの説明です。チャットタイプとチャット本文のフィールドが異なる以外は、その他のパラメータフィールドは上記のテーブルと同じです。
+
+#### テキストチャット
+
+```json
+{
+  "msgtype": "text",
+  "text": {
+    "content": "你好"
+  }
+}
+```
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **text**：テキストチャット |
+| text | Object | チャットテキスト：   - **content**：ボットが受信したチャットコンテンツ。 |
+
+#### リッチテキストチャット
+
+```json
+{
+  "msgtype": "richText",
+  "content": {
+    "richText": [
+      {
+        "text": "你好"
+      },
+      {
+        "downloadCode": "mIofN681YE3f*************JkVBG2vhj4Q9、d2tn/t6XxjaB6UxxxxOVnYYbn1aMT/n3JFgb4i64X3TFxxxxGWxJPR/egKS8syvGzxxxxOO/FYLor2Q==",
+        "type": "picture"
+      }
+    ]
+  }
+}
+```
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **richText**：リッチテキスト |
+| content | Object | チャットコンテンツ。 |
+| richText | Array of Object | リッチテキストリスト。  **説明**  チャットリストには以下を含めることができます：   - **text：** テキストチャット - **picture**：画像メッセージ  画像ファイルのダウンロードコード downloadCode は、サーバー API の [ボットが受信したチャットのファイルコンテンツのダウンロード](/zh/open/development/download-the-file-content-of-the-robot-receiving-message) API を呼び出して一時ダウンロードリンクを取得できます。 |
+
+#### 画像メッセージ
+
+```json
+{
+  "msgtype": "picture",
+  "content": {
+    "downloadCode": "mIofN681YE3f/+m+**********8rs4RGdQAwyVs3B75N7boKf8ep0FBB122u9YY/novFAM9BQrirm4/+avZaCV+6nnZ0Zk="
+  }
+}
+```
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **picture**：画像メッセージ |
+| downloadCode | String | 画像ファイルのダウンロードコード。画像のバイナリファイルをダウンロードするために使用されます。サーバー API の [ボットが受信したチャットのファイルコンテンツのダウンロード](/zh/open/development/download-the-file-content-of-the-robot-receiving-message) API を呼び出して一時ダウンロードリンクを取得できます。 |
+
+#### 音声チャット
+
+<Note>
+グループチャットにおいて、グループメンバーがボットを @メンションした場合、ボットは音声チャットの受信に**対応していません**。
+</Note>
+
+```json
+{
+  "msgtype": "audio",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/+m+Nn***********geqPd7xpJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "recognition": "钉钉，让进步发生"
+  }
+}
+```
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **audio**：音声チャット |
+| downloadCode | String | 音声ファイルのダウンロードコード。音声のバイナリファイルをダウンロードするために使用されます。サーバー API の [ボットが受信したチャットのファイルコンテンツのダウンロード](/zh/open/development/download-the-file-content-of-the-robot-receiving-message) API を呼び出して一時ダウンロードリンクを取得できます。 |
+| recognition | String | 音声認識後のテキスト。 |
+| duration | Long | 音声の長さ。単位はミリ秒。 |
+
+#### 動画メッセージ
+
+<Note>
+グループチャットにおいて、グループメンバーがボットを @メンションした場合、ボットは動画メッセージの受信に**対応していません**。
+</Note>
+
+```json
+{
+  "msgtype": "video",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/****************OAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZxxxxLC3Bk51U+i",
+    "videoType": "mp4"
+  }
+}
+```
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **video**：動画メッセージ |
+| downloadCode | String | 動画ファイルのダウンロードコード。動画のバイナリファイルをダウンロードするために使用されます。サーバー API の [ボットが受信したチャットのファイルコンテンツのダウンロード](/zh/open/development/download-the-file-content-of-the-robot-receiving-message) API を呼び出して一時ダウンロードリンクを取得できます。 |
+| videoType | String | 動画ファイルタイプ。 |
+| duration | Long | 動画の長さ。単位はミリ秒。 |
+
+#### ファイルメッセージ
+
+<Note>
+グループチャットにおいて、グループメンバーがボットを @メンションした場合、ボットはファイルメッセージの受信に**対応していません**。
+</Note>
+
+```json
+{
+  "msgtype": "file",
+  "content": {
+    "downloadCode": "mIofN681YE3f*************pJF/9NbOAORDnadxxxxg2ecUdno/RGtZ/sqzdxxxxC3Bk51U+i",
+    "fileName": "钉钉让进步发生.pdf"
+  }
+}
+```
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **video**：ファイルメッセージ |
+| downloadCode | String | ファイルのダウンロードコード。ファイルのバイナリファイルをダウンロードするために使用されます。サーバー API の [ボットが受信したチャットのファイルコンテンツのダウンロード](/zh/open/development/download-the-file-content-of-the-robot-receiving-message) API を呼び出して一時ダウンロードリンクを取得できます。 |
+| fileName | String | ファイル名。 |
+
+### 関連情報
+
+[社内アプリのボット作成](/zh/open/dingstart/configure-the-robot-application) 時に、チャット受信モードで HTTP モードを選択した場合、ボットの利用中、ボットがチャットを受信した際に、上記のチャット本文に加えて、以下の形式の HTTP header パラメータが存在します：
+
+```json
+{
+  "Content-Type": "application/json; charset=utf-8",
+  "timestamp": "1577262236757",
+  "sign":"xxxxxxxxxx"
+}
+```
+
+| **パラメータ** | **説明** |
+| --- | --- |
+| timestamp | チャットを送信したタイムスタンプ。単位はミリ秒。 |
+| sign | 署名値。 |
+
+header 内の timestamp と sign を検証し、DingTalk からの正当なリクエストであるかを判断する必要があります。これは、他者が DingTalk を偽装して開発者の HTTPS サービスにデータを送信することを防ぐためです。具体的な検証ロジックは以下の通りです：
+
+- timestamp とシステムの現在のタイムスタンプの差が 1 時間以上ある場合、不正なリクエストと見なします。
+- sign が開発者自身が計算した結果と一致しない場合、不正なリクエストと見なします。
+
+timestamp と sign の両方の検証が通過した場合のみ、DingTalk からの正当なリクエストと見なすことができます。
+
+HmacSHA256 アルゴリズムを使用して署名を計算し、Base64 エンコードを行うことで、最終的な署名値を取得します。例は以下の通りです：
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Base64;
+
+public class Test {
+    public static void main(String[] args) throws Exception {
+        Long timestamp = 1577262236757L;
+        String appSecret = "this is a secret";
+        String stringToSign = timestamp + "\n" + appSecret;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(appSecret.getBytes("UTF-8"), "HmacSHA256"));
+        byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+        String sign = new String(Base64.encodeBase64(signData));
+        System.out.println(sign);
+    }
+}
+```
+
+| **設定項目** | **説明** |
+| --- | --- |
+| timestamp | 現在時刻のタイムスタンプ。単位はミリ秒。 |
+| appSecret | アプリの Client Secret。詳細は [Client Secret](/zh/open/dingstart/basic-concepts-beta) を参照してください。 |
+
+### エラーコード
+
+ボットの Webhook と Stream の使用量が上限を超えた場合、以下のような内容が表示されます：
+
+#### エラーの状態
+
+##### グループチャット
+
+##### 個別チャット
+
+#### エラーの説明
+
+| エラーコード（errorCode） | エラーメッセージ（errorMessage） | **説明** | 解決方法 |
+| --- | --- | --- | --- |
+| 20001 | 呼び出し回数の上限を超えたため、現在マイメッセージサービスは一時停止されています。所属組織の管理者へ連絡して対応を依頼してください  受信チャットに新たに **errorMessage** フィールドが追加され、エラーメッセージの表示に使用されます。 | - 受信チャットには text と content フィールドのコンテンツがありません - [開発者管理画面](https://open-dev.dingtalk.io/) にログインすることで呼び出し回数を確認できます。 | DingTalk プロフェッショナル版へのアップグレードまたは追加購入パッケージの購入が必要です。詳細は [企業追加購入パッケージ購入の説明](https://open.dingtalk.io/document/orgapp/purchase-instructions-for-enterprise-additional-purchase-package) を参照してください。 |
+
+### 関連ドキュメント
+
+- 社内ボットによるグループチャットメッセージの送信
+- 社内ボットによる個別チャットメッセージの送信
+- カスタムボットによるグループチャットメッセージの送信
+- グループテンプレートボットによるグループチャットメッセージの送信

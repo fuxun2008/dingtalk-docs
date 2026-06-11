@@ -1,0 +1,173 @@
+---
+title: "業務通知の送信"
+---
+
+本 API を呼び出して業務通知メッセージを送信します。
+
+## API 呼び出し説明
+
+業務通知メッセージとは、特定のアプリ名義で社員にプッシュされる業務通知メッセージです。例えば誕生日のお祝いや入社のリマインドなどです。テキスト、音声、リンクなどを送信でき、メッセージタイプとサンプルは [メッセージ通知タイプ](/zh/open/development/message-types-and-data-format) を参照してください。
+
+<Note>
+API の送信が成功したにもかかわらず受信者がメッセージを受け取れない場合は、[業務通知メッセージの送信結果取得](/zh/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) を呼び出して結果を確認し、ドキュメント内の戻りエラーコードと照合してください。
+</Note>
+
+### 利用シーン
+
+### 重要
+
+- 適用シーン：通知系メッセージの送信に適しています。承認タスクなどは含みません。
+- 非適用シーン：承認タスクなど、タスク系の通知リマインドを社員に送信する場合、本 API では実現できません。このようなシーンではタスク作成 API をご利用ください。
+
+### レート制限
+
+### 以下の制限回数を超えた場合、API は成功を返しますが、ユーザーは受信できません。
+
+<Note>
+詳しい制限の説明は [レート制限](/zh/open/development/call-frequency-limit) を参照してください。
+</Note>
+
+- 社内アプリは 1 回の送信で最大 5000 人まで、サードパーティ社内アプリは 1 回の送信で最大 1000 人まで送信できます。
+- 同一社員に対して、1 日に同じ内容のメッセージ通知は 1 件しか送信できません。
+- 社内アプリは 1 人の社員に対して 1 日最大 500 件、サードパーティ社内アプリは最大 100 件のメッセージ通知を送信できます。
+- 社内アプリまたはサードパーティ社内アプリがメッセージを送信する際、1 分間に最大 5000 人がメッセージを受信できます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2 |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 権限要件 | permission-qyapi_base-企業 API 呼び出し時に必要な基本権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | 必須 | bE74xxxx | この API を呼び出すアプリ認証情報。   - 社内アプリの場合、社内アプリの access_token 取得 API で取得します。 - サードパーティ社内アプリの場合、サードパーティ企業の access_token 取得 API で取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| agent_id | Long | 必須 | 123L | メッセージ送信に使用するマイクロアプリの AgentId。   - 社内アプリの場合、[開発者バックエンド](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1) のアプリ詳細ページで確認できます。 - サードパーティ社内アプリの場合、企業権限付与情報取得 API を呼び出して取得します。 |
+| userid_list | String | 任意 | user123,user456 | 受信者のユーザー ID リスト。最大ユーザーリスト長は 100。 |
+| dept_id_list | String | 任意 | 123,345 | 受信者の部門 ID リスト。最大リスト長は 20。  受信者が部門 ID の場合、子部門配下のすべてのユーザーを含みます。 |
+| to_all_user | Boolean | 任意 | false | 企業のすべてのユーザーに送信するかどうか。  **説明**  false に設定した場合、userid_list または dept_id_list のいずれかのパラメータ値を必ず指定してください。 |
+| msg | JSON Object | 必須 | `{"msgtype":"text","text":{"content":"請提交日報。"}}` | メッセージコンテンツ。最大 2048 バイトまで。以下の [メッセージ通知タイプ](/zh/open/development/message-types-and-data-format) をサポートします。msgtype には次のものが含まれます。  **重要**  メッセージ送信時に複数のメッセージタイプを同時に送信することはできません。   - text：テキストメッセージ - image：画像メッセージ - voice：音声メッセージ - file：ファイルメッセージ - link：リンクメッセージ - oa：OA メッセージ  **説明**  OA メッセージは `status_bar` パラメータでメッセージのステータス文言と色を設定でき、送信後に [業務通知ステータスバーの更新](/zh/open/development/update-work-notification-status-bar) API でメッセージのステータスと色を更新できます。 - markdown：Markdown メッセージ - action_card：カードメッセージ |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=7e0a4xxxx31351' \
+-d 'agent_id=123' \
+-d 'dept_id_list=123%2C456' \
+-d 'msg=%7B+++%5C%22msgtype%5C%22%3A+%5C%22text%5C%22%2C+%5C%22text%5C%22%3A+%7B+++++%5C%22content%5C%22%3A+%5C%22%E5%BC%A0%E4%B8%89%E7%9A%84%E8%AF%B7%E5%81%87%E7%94%B3%E8%AF%B7%5C%22+++%7D+%7D' \
+-d 'to_all_user=false' \
+-d 'userid_list=123%2C456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+OapiMessageCorpconversationAsyncsendV2Request request = new OapiMessageCorpconversationAsyncsendV2Request();
+request.setAgentId(2839445214L);
+request.setUseridList("0147282552401293909,manager4974");
+request.setToAllUser(false);
+OapiMessageCorpconversationAsyncsendV2Request.Msg msg = new OapiMessageCorpconversationAsyncsendV2Request.Msg();
+msg.setMsgtype("text");
+OapiMessageCorpconversationAsyncsendV2Request.Text text = new OapiMessageCorpconversationAsyncsendV2Request.Text();
+text.setContent("test123");
+msg.setText(text);
+request.setMsg(msg);
+OapiMessageCorpconversationAsyncsendV2Response rsp = client.execute(request, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationAsyncsendV2Request("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2")
+
+req.agent_id=123
+req.userid_list="123,456"
+req.dept_id_list="123,456"
+req.to_all_user=false
+req.msg="{\"msgtype\":\"text\",\"text\": {\"content\": \"张三的请假申请\"}}"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationAsyncsendV2Request;
+$req->setAgentId("123");
+$req->setUseridList("123,456");
+$req->setDeptIdList("123,456");
+$req->setToAllUser("false");
+$msg = new Msg;
+$msg->msgtype="text";
+$text = new Text;
+$text->content="123";
+$msg->text = $text;
+$req->setMsg($msg);
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+OapiMessageCorpconversationAsyncsendV2Request req = new OapiMessageCorpconversationAsyncsendV2Request();
+req.AgentId = 123L;
+req.UseridList = "123,456";
+req.DeptIdList = "123,456";
+req.ToAllUser = false;
+OapiMessageCorpconversationAsyncsendV2Request.MsgDomain obj1 = new OapiMessageCorpconversationAsyncsendV2Request.MsgDomain();
+obj1.Msgtype = "text";
+OapiMessageCorpconversationAsyncsendV2Request.TextDomain obj2 = new OapiMessageCorpconversationAsyncsendV2Request.TextDomain();
+obj2.Content = "123";
+obj1.Text= obj2;
+req.Msg_ = obj1;
+OapiMessageCorpconversationAsyncsendV2Response rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 4jzllmte0wau | リクエスト ID。 |
+| errmsg | String | ok | リターンコードの説明。  **重要**  API の送信が成功したにもかかわらず受信者がメッセージを受け取れない場合は、[業務通知メッセージの送信結果取得](/zh/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) を呼び出して結果を確認し、ドキュメント内の戻りエラーコードと照合してください。 |
+| errcode | Number | 0 | リターンコード。 |
+| task_id | Number | 256271667526 | 作成された非同期送信タスク ID。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode":0,
+  "task_id":256271667526,
+  "request_id":"4jzllmte0wau"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合、エラーメッセージをもとに [グローバルエラーコード](/zh/open/development/server-api-error-codes-1) ドキュメントで解決策を検索してください。

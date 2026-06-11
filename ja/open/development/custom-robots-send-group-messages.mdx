@@ -1,0 +1,299 @@
+---
+title: "カスタムボットによるグループチャット送信"
+---
+
+本 API を呼び出すと、カスタムボットを使用してグループチャットを送信できます。
+
+## API 呼び出し説明
+
+- 本 API は、社内グループおよび一般グループでのカスタムボットによるチャット送信をサポートします。呼び出し前にカスタムボットを作成する必要があります。詳細は「ボットアプリの開発」を参照してください。
+- 大量のチャットを送信するシナリオ（システム監視アラートなど）では、これらの情報を統合し、Markdown チャットとして要約形式でグループに送信できます。
+- カスタムボットの安全設定で [カスタムボット安全設定](/zh/open/dingstart/customize-robot-security-settings) を使用している場合、本 API を呼び出してチャットを送信する際には、timestamp および sign パラメータを連結する必要があります。例：
+
+  ```text
+  https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+  ```
+- **各ボットは 1 分間に最大 20 件のチャットをグループに送信できます。20 件を超えた場合は 10 分間レート制限されます**。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/robot/send |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_base-企業 API 呼び出しベーシック権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | BE3xxxx | カスタムボットが API を呼び出すための認証情報。カスタムボットインストール後の Webhook アドレスに含まれる access_token の値です。詳細は [カスタムボットの Webhook アドレスを取得する](/zh/open/dingstart/obtain-the-webhook-address-of-a-custom-robot) を参照してください。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| msgtype | String | はい | text | チャットタイプ。カスタムボットが送信できるチャットタイプについては、「カスタムボットが送信するチャットのタイプ」を参照してください。 |
+| msgUuid | String | いいえ | 123 | チャットの冪等キー。チャットの冪等性を制御するために使用できます。  **説明**  典型的な使用シナリオ：チャット送信時に API 呼び出しがタイムアウトしたり、未知のエラーが発生した場合、開発者は同じ msgUuid を使用して再試行することで、重複したチャット送信を回避できます。 |
+| text | Object | いいえ |  | テキストタイプのチャット。 |
+| content | String | いいえ | DingTalk、進歩を生み出す | テキストチャットのコンテンツ。 |
+| at | Object | いいえ |  | @ されたグループメンバー情報。 |
+| isAtAll | Boolean | いいえ | false | @全員かどうか。   - true：はい - false：いいえ |
+| atMobiles | String[] | いいえ | ["15xxx,18xxx"] | @ されたグループメンバーの電話番号。 |
+| atUserIds | String[] | いいえ | ["user001","user002"] | @ されたグループメンバーの userId。  **説明**  グループメンバーを @ できるのは最大 50 名までです。 |
+| link | Object | いいえ |  | リンクタイプのチャット。 |
+| messageUrl | String | いいえ | https://www.dingtalk.io | チャットをクリックした際の遷移先 URL。 |
+| title | String | いいえ | これは見出しです | リンクチャットの見出し。 |
+| picUrl | String | いいえ | @aubHxxxxx | リンクチャット内の画像アドレス。[メディアファイルをアップロードする](/zh/open/development/upload-media-files) API を使用して取得することを推奨します。 |
+| text | String | いいえ | リンクチャットのコンテンツ | リンクチャットのコンテンツ。 |
+| markdown | Object | いいえ |  | Markdown タイプのチャット。 |
+| text | String | いいえ | Markdown チャットコンテンツ | Markdown タイプのチャットのテキストコンテンツ。 |
+| title | String | いいえ | チャットリストに表示される見出し | チャットリストに表示される見出し。チャット本体の見出しではありません。 |
+| actionCard | Object | いいえ |  | actionCard タイプのチャット。 |
+| hideAvatar | String | いいえ | 1 | チャット送信者のプロフィール写真を表示するかどうか。   - 0：送信者のプロフィール写真を通常表示 - 1：送信者のプロフィール写真を非表示 |
+| btnOrientation | String | いいえ | 1 | チャット内のボタン配置方法。   - 0：ボタンを縦に配置 - 1：ボタンを横に配置 |
+| singleURL | String | いいえ | https://www.dingtalk.io | singleTitle ボタンをクリックした際にトリガーされる URL。  **説明**  チャット内にボタンが 1 つしかない場合、本パラメータは必須です。 |
+| singleTitle | String | いいえ | これはボタンです | 単一ボタンの設定。（本項目と singleURL を設定すると btns は無効になります。）  **説明**  チャット内にボタンが 1 つしかない場合、本パラメータは必須です。 |
+| text | String | いいえ | チャットコンテンツ | actionCard タイプのチャットの本文コンテンツ。Markdown 構文をサポートします。 |
+| title | String | いいえ | チャットリストに表示される見出し | チャットリストに表示される見出し。チャット本体の見出しではありません。 |
+| btns | Object[] | いいえ |  | ボタンの情報リスト。  **説明**  チャット内にボタンが複数ある場合、本パラメータは必須です。 |
+| actionURL | String | いいえ | https://www.dingtalk.io | ボタンの遷移先 URL。 |
+| title | String | いいえ | これはボタンです | ボタンに表示されるテキスト。 |
+| feedCard | Object | いいえ |  | feedCard タイプのチャット。 |
+| links | Object[] | いいえ |  | feedCard チャットのコンテンツリスト。 |
+| picURL | String | いいえ | @aubHxxxxx | feedCard チャット内の各コンテンツの画像 URL。[メディアファイルをアップロードする](/zh/open/development/upload-media-files) API を使用して取得することを推奨します。 |
+| messageURL | String | いいえ | https://www.dingtalk.io | feedCard チャット内の各コンテンツの遷移先リンク。 |
+| title | String | いいえ | チャット見出し | feedCard チャット内の各コンテンツの見出し。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/robot/send" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=c370586xxxxd65d506' \
+-d 'actionCard=null' \
+-d 'at=null' \
+-d 'feedCard=null' \
+-d 'link=null' \
+-d 'markdown=null' \
+-d 'msgtype=text' \
+-d 'text=null'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send");
+OapiRobotSendRequest req = new OapiRobotSendRequest();
+req.setMsgtype("text");
+Text obj1 = new Text();
+obj1.setContent("123");
+req.setText(obj1);
+At obj2 = new At();
+obj2.setIsAtAll(false);
+obj2.setAtMobiles("");
+obj2.setAtUserIds("");
+req.setAt(obj2);
+Link obj3 = new Link();
+obj3.setMessageUrl("1");
+obj3.setTitle("1");
+obj3.setPicUrl("1");
+obj3.setText("1");
+req.setLink(obj3);
+Markdown obj4 = new Markdown();
+obj4.setText("1");
+obj4.setTitle("1");
+req.setMarkdown(obj4);
+Actioncard obj5 = new Actioncard();
+obj5.setHideAvatar("1");
+obj5.setBtnOrientation("1");
+obj5.setSingleURL("1");
+obj5.setSingleTitle("1");
+obj5.setText("1");
+obj5.setTitle("1");
+List<Btns> list7 = new ArrayList<Btns>();
+Btns obj8 = new Btns();
+list7.add(obj8);
+obj8.setActionURL("1");
+obj8.setTitle("1");
+obj5.setBtns(list7);
+req.setActionCard(obj5);
+Feedcard obj9 = new Feedcard();
+List<Links> list11 = new ArrayList<Links>();
+Links obj12 = new Links();
+list11.add(obj12);
+obj12.setPicURL("1");
+obj12.setMessageURL("1");
+obj12.setTitle("1");
+obj9.setLinks(list11);
+req.setFeedCard(obj9);
+OapiRobotSendResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+import dingtalk.api
+
+req=dingtalk.api.OapiRobotSendRequest("https://oapi.dingtalk.io/robot/send")
+
+req.msgtype="text"
+req.text=""
+req.at=""
+req.link=""
+req.markdown=""
+req.actionCard=""
+req.feedCard=""
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiRobotSendRequest;
+$req->setMsgtype("text");
+$text = new Text;
+$text->content="123";
+$req->setText($text);
+$at = new At;
+$at->isAtAll="false";
+$at->atMobiles="[]";
+$at->atUserIds="[]";
+$req->setAt($at);
+$link = new Link;
+$link->messageUrl="1";
+$link->title="1";
+$link->picUrl="1";
+$link->text="1";
+$req->setLink($link);
+$markdown = new Markdown;
+$markdown->text="1";
+$markdown->title="1";
+$req->setMarkdown($markdown);
+$actionCard = new Actioncard;
+$actionCard->hideAvatar="1";
+$actionCard->btnOrientation="1";
+$actionCard->singleURL="1";
+$actionCard->singleTitle="1";
+$actionCard->text="1";
+$actionCard->title="1";
+$btns = new Btns;
+$btns->actionURL="1";
+$btns->title="1";
+$actionCard->btns = array($btns);
+$req->setActionCard($actionCard);
+$feedCard = new Feedcard;
+$links = new Links;
+$links->picURL="1";
+$links->messageURL="1";
+$links->title="1";
+$feedCard->links = array($links);
+$req->setFeedCard($feedCard);
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/robot/send");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send");
+OapiRobotSendRequest req = new OapiRobotSendRequest();
+req.Msgtype = "text";
+OapiRobotSendRequest.TextDomain obj1 = new OapiRobotSendRequest.TextDomain();
+obj1.Content = "123";
+req.Text_ = obj1;
+OapiRobotSendRequest.AtDomain obj2 = new OapiRobotSendRequest.AtDomain();
+obj2.IsAtAll = false;
+obj2.AtMobiles = "";
+obj2.AtUserIds = "";
+req.At_ = obj2;
+OapiRobotSendRequest.LinkDomain obj3 = new OapiRobotSendRequest.LinkDomain();
+obj3.MessageUrl = "1";
+obj3.Title = "1";
+obj3.PicUrl = "1";
+obj3.Text = "1";
+req.Link_ = obj3;
+OapiRobotSendRequest.MarkdownDomain obj4 = new OapiRobotSendRequest.MarkdownDomain();
+obj4.Text = "1";
+obj4.Title = "1";
+req.Markdown_ = obj4;
+OapiRobotSendRequest.ActioncardDomain obj5 = new OapiRobotSendRequest.ActioncardDomain();
+obj5.HideAvatar = "1";
+obj5.BtnOrientation = "1";
+obj5.SingleURL = "1";
+obj5.SingleTitle = "1";
+obj5.Text = "1";
+obj5.Title = "1";
+List<OapiRobotSendRequest.BtnsDomain> list7 = new List<OapiRobotSendRequest.BtnsDomain>();
+OapiRobotSendRequest.BtnsDomain obj8 = new OapiRobotSendRequest.BtnsDomain();
+list7.Add(obj8);
+obj8.ActionURL = "1";
+obj8.Title = "1";
+obj5.Btns= list7;
+req.ActionCard_ = obj5;
+OapiRobotSendRequest.FeedcardDomain obj9 = new OapiRobotSendRequest.FeedcardDomain();
+List<OapiRobotSendRequest.LinksDomain> list11 = new List<OapiRobotSendRequest.LinksDomain>();
+OapiRobotSendRequest.LinksDomain obj12 = new OapiRobotSendRequest.LinksDomain();
+list11.Add(obj12);
+obj12.PicURL = "1";
+obj12.MessageURL = "1";
+obj12.Title = "1";
+obj9.Links= list11;
+req.FeedCard_ = obj9;
+OapiRobotSendResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errmsg | String | ok | エラーコードの説明。 |
+| errcode | Number | 0 | エラーコード。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode":"0",
+  "errmsg":"ok"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合、エラーメッセージを基に [グローバルエラーコード](/zh/open/development/server-api-error-codes-1) ドキュメントから解決方法を確認できます。
+
+| エラーコード（errorcode） | エラーコードの説明（errmsg） | 解決方法 |
+| --- | --- | --- |
+| -1 | システムがビジー状態です | 後で再試行してください |
+| 40035 | パラメータ json が不足しています | チャット json を補完してください |
+| 43004 | 無効な HTTP HEADER Content-Type です | 具体的なチャットパラメータを設定してください |
+| 400013 | グループは既に解散されています | 他のグループにチャットを送信してください |
+| 400101 | access_token が存在しません | access_token のスペルが正しいか確認してください |
+| 400102 | ボットが停止されています | 管理者にボットの有効化を依頼してください |
+| 400105 | サポートされていないチャットタイプです | ドキュメントでサポートされているチャットタイプを使用してください |
+| 400106 | ボットが存在しません | ボットがグループ内に存在するか確認してください |
+| 410100 | 送信速度が速すぎてレート制限されました | 送信速度を下げてください |
+| 430101 | 安全でない外部リンクが含まれています | 送信内容が適切か確認してください |
+| 430102 | 不適切なテキストが含まれています | 送信内容が適切か確認してください |
+| 430103 | 不適切な画像が含まれています | 送信内容が適切か確認してください |
+| 430104 | 不適切なコンテンツが含まれています | 送信内容が適切か確認してください |
+
+以下のエラーが発生した場合、チャットの検証が通っていないことを意味します。ボットの安全設定を確認してください。
+
+| エラーコード（errorcode） | エラーコードの説明（errmsg） | 解決方法 |
+| --- | --- | --- |
+| 310000 | - keywords not in content - invalid timestamp - sign not match - ip X.X.X.X not in whitelist | - チャットコンテンツにキーワードが含まれていません - timestamp が無効です - 署名が一致しません - IP アドレスがホワイトリストに含まれていません |

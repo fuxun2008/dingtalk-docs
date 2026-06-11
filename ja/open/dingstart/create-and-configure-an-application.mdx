@@ -1,0 +1,298 @@
+---
+title: "アプリの作成と設定"
+description: "本格的な開発を始める前に、開発の基礎知識を理解しておくことで、スムーズにスタートできます。"
+---
+
+## 事前準備
+
+- DingTalk オープンプラットフォームの基本概念を理解していること。詳細は [ベーシック概念](/zh/open/dingstart/basic-concepts-beta) を参照してください。
+- DingTalk オープンプラットフォームのアプリタイプを理解していること。詳細はアプリタイプの紹介を参照してください。
+- 開発中に問題が発生した場合、テクニカルサポートでチケットを発行できます。
+- 本格的に開始する前に、開発者権限を取得し、DingTalk 開発者になる必要があります。
+
+## アプリの作成と設定
+
+### アプリの作成
+
+アプリを作成すると、アプリのベーシック認証情報を取得でき、開発担当者や API 権限などを設定できます。
+
+以下の手順を参考に、サードパーティ個人ミニプログラムアプリを作成します。
+
+1. [DingTalk 開発者バックエンド](https://open-dev.dingtalk.io/) にログインします。
+
+### 説明
+
+   管理者およびサブ管理者のみが開発者バックエンドにログインできます。
+2. **アプリ開発** ページで、**サードパーティ個人アプリ** を選択し、**アプリを作成** をクリックします。
+
+3. アプリの基本情報を入力し、**作成を完了** をクリックします。
+
+4. **認証情報とベーシック情報** をクリックし、アプリの AppId と AppSecret を取得します。
+
+### メンバー管理
+
+**メンバー管理** ページで、開発者および体験ユーザーを追加します。
+
+- ミニプログラム作成後、デフォルトで現在のミニプログラムの作成者が開発者として追加されます。アプリに複数の開発者がいる場合、管理者は携帯電話番号を使用してアプリの開発者を追加できます。開発者を追加すると、その開発者は開発者ツールを使用してアプリ開発を行えます。
+- 体験ユーザーとして追加されると、ミニプログラムの体験バージョンを使用できます。
+
+### モニタリングセンター
+
+**モニタリングセンター** ページでモニタリングをオンにし、安定性責任者を設定します。
+
+### セキュリティセンター
+
+**セキュリティセンター** ページで HTTP セキュリティドメインと WebView セキュリティドメインを追加します。
+
+- HTTP セキュリティドメイン:
+
+  開発者が開発したミニプログラムにおいて、フロントエンドとサーバーサイドがネットワーク通信を行う必要がある場合、事前に 1 つまたは複数のサーバーサイドセキュリティドメイン (または IP) を設定する必要があります。ミニプログラムのフロントエンドは、設定済みのセキュリティドメイン (または IP) のみを介してサーバーサイドとネットワーク通信を行えます。
+
+  セキュリティドメインを更新した場合、ミニプログラム開発ツールで再パッケージしてバージョンをアップロードしないと、設定したドメインは有効になりません。
+
+  本質的に、ミニプログラムのフロントエンドとバックエンドのネットワーク通信は、通常の H5 のフロントエンド・バックエンドと同じです。そのため、クイックに体験する際には、ミニプログラムのフロントエンドが動作する環境からアクセス可能な任意のドメイン / IP アドレス (例: 自分のオフィス PC のローカルアドレスや LAN アドレス) を入力できます。
+- WebView セキュリティドメイン:
+
+  ミニプログラムが WebView コンポーネントを使用して H5 ページを埋め込む場合、H5 ページのアドレスドメインを WebView セキュリティドメインに追加する必要があります。
+
+## サイレントログイン連携
+
+DingTalk オープンプラットフォームが提供する機能を利用して、ユーザーがアプリを使用する際にアカウントとパスワードを入力することなく、迅速に認証を完了できます。
+
+### 適用対象と制約条件
+
+本機能は以下のシナリオに適用されます。
+
+- アプリタイプ: **サードパーティ個人アプリ**
+- 実行環境: **ミニプログラム** のみ対応
+- 認証方式: 一時認可コード (authCode) に基づく権限付与メカニズム
+
+### フロー説明
+
+#### フロントエンドが権限付与を開始し authCode を取得
+
+ユーザーが E ミニプログラムに入った後、フロントエンドは DingTalk クライアントが提供する JSAPI を介して権限付与リクエストを開始し、サイレントログイン用の一時認可コード (authCode) を取得します。続いて、その code をアプリのバックエンドに渡します。この操作は通常 `dd.getAuthCode` API を使用して行います。
+
+> **重要な用語説明**: `authCode` は DingTalk クライアント JSAPI (例: `dd.getAuthCode`) を介して取得する一時認可コードで、有効期間が短く一度しか使用できません。バックエンドがユーザーの基本情報と引き換えるために使用します。
+
+#### サーバーサイドが API を呼び出してユーザー情報を取得
+
+アプリのバックエンドは `authCode` を受信した後、DingTalk サーバーサイド API `sns/getuserinfo_bycode` を呼び出してユーザーの基本情報を取得し、ログインフローを完了します。
+
+### 説明
+
+- レート制限が 1 分あたりに設けられていますので、リクエスト頻度を適切に制御してください。
+- エラー時のリトライ機構とログ記録の実装を推奨します。
+
+### サンプルコード
+
+#### フロントエンドのサンプル
+
+```text
+dd.getAuthCode({
+    success: function(res) {
+        const authCode = res.authCode;
+        // Send authCode to the app backend
+    },
+    fail: function(err) {
+        console.error('Failed to get authCode', err);
+    }
+});
+```
+
+#### サーバーサイドのサンプル
+
+API の呼び出しに成功すると、`nick` (名前)、`openid`、`unionid` などのフィールドを含むユーザー情報が返されます。
+
+```java
+/**
+ * Quick-Start sample code
+ * Implements the simplest personal identity authentication feature
+ */
+@RestController
+public class IndexController {
+    private static final Logger bizLogger = LoggerFactory.getLogger(IndexController.class);
+
+    /**
+     * Welcome page
+     */
+    @RequestMapping(value = "/welcome", method = RequestMethod.GET)
+    public String welcome() {
+        return "welcome";
+    }
+
+    /**
+     * DingTalk user login, displays the basic information of the current logged-in user
+     * @param authCode Temporary authorization code obtained by the E-app frontend JSAPI
+     */
+    @RequestMapping(value = "/login", method = RequestMethod.POST)
+    @ResponseBody
+    public Object login(@RequestParam(value = "authCode") String authCode) {
+        Long start = System.currentTimeMillis();
+        ServiceResult serviceResult;
+        try {
+            DefaultDingTalkClient  client = new DefaultDingTalkClient(URL_GET_USERINFO_BY_CODE);
+            OapiSnsGetuserinfoBycodeRequest req = new OapiSnsGetuserinfoBycodeRequest();
+            req.setTmpAuthCode(authCode);
+            OapiSnsGetuserinfoBycodeResponse response = client.execute(req,Constant.APP_ID,Constant.APP_SECRET);
+            serviceResult = ServiceResult.success(response.getUserInfo());
+            return serviceResult;
+        } catch (Exception e) {
+            bizLogger.error("loginFailed,authCode"+authCode,e);
+            serviceResult = ServiceResult.failure("-1",e.getMessage());
+            // Return result
+        }
+        bizLogger.info("cost:"+(System.currentTimeMillis()-start));
+        return serviceResult;
+    }
+}
+```
+
+### キャッシュ戦略の推奨事項
+
+ユーザーエクスペリエンスを向上させ、繰り返しリクエストを減らすため、ユーザーログイン状態のローカルキャッシュ管理を推奨します。
+
+- `dd.setStorage` を使用してクライアントサイドにユーザー情報とタイムスタンプを保存します。
+- 次回ページに入る際は、優先的にキャッシュを読み込みます。
+- キャッシュ有効期間は 2 時間を推奨します。長時間の無効なログイン状態を回避できます。
+
+### よくある質問
+
+- **Q: authCode の取得に失敗する一般的な原因は何ですか**?
+
+  A: 考えられる原因として、dd-sdk-js が正しく導入されていない、ネットワークエラー、DingTalk クライアント内で開いていない、などがあります。
+- **Q: ユーザー情報 API が errcode=40001 を返します**?
+
+  A: 認証情報が無効であることを示します。入力したパラメータが正しいかを確認し、authCode が期限切れになっていないかを確認してください。
+- Q: **PC 端のサイレントログインに対応していますか**?
+
+  A: 現在の方式は主にモバイル端のミニプログラムに適用されます。PC 端では QRコードでログインまたは他の認証方式との組み合わせを推奨します。
+
+## チャットの送信
+
+開発者はチャットを介して効率的にユーザーへリーチし、現在の動作の結果やステータスなどを通知できます。チャットでは、アプリ内ジャンプ先のページアドレスを設定できます。ユーザーがチャットを表示して「アプリで確認」をクリックすると、開発者が指定したアプリ内のページに遷移します。具体的な実装方法は本ドキュメントの開発フローを参照してください。
+
+開発を開始する前に、以下を準備してください。
+
+- アプリの **ベーシック情報 > アプリ情報** で **AppId** と **AppSecret** を取得します。後続の API 呼び出しの認証に使用します。
+- クライアントサイドのミニプログラムがリリース済みであり、実機環境でフォーム送信操作を実行できることを確認してください。
+
+### 制約事項
+
+- **適用アプリタイプ**: サードパーティ個人アプリ
+- **formId の有効期間**: formId は一時認可コードであり、有効期間は 7 日です。期限切れ後はチャット送信に使用できません。
+- **プッシュ回数のルール**: フォームを 1 回送信するごとに、7 日以内にユーザーへ 1 件のチャットをプッシュできます。複数回送信すれば、複数件プッシュできます。
+
+### 開発フロー
+
+1. 開発者は、ユーザーが送信する form フォームに `report-submit="true"` 属性を宣言します。
+
+### 説明
+
+   この属性は実機環境で有効になります。
+
+   ```xml lines
+   <form onSubmit="formSubmit"  report-submit="true">
+     <view class="section section_gap">
+       <view class="section__title">Form type</view>
+       <input name="text" maxlength="10" placeholder="Maximum input length 10" />
+     </view>
+     <view class="btn-area">
+       <button formType="submit">Push message</button>
+     </view>
+   </form>
+   ```
+2. `onSubmit` イベント内で `e.detail.formId` を介してチャットプッシュに必要な一時認可コード (code) を取得し、その code を開発者サーバーへ送信して保存します。
+
+   ```text lines
+   formSubmit(e){
+       // Get the temporary authorization code (code) for pushing messages through e.detail.formId
+       dd.httpRequest({
+                           url: 'http://form-submission-server-address?code='+e.detail.formId,
+                           method: 'POST',
+                           headers:{"Content-Type":"application/json"},
+                           data: { 
+                           },
+                           dataType: 'json',
+                           success: function(res) {
+                               if(res.data.success){
+                                   dd.alert({content:'Form submission processed successfully'});
+                               }else{
+                                   dd.alert({title:"Form submission processing failed",
+                                           content:JSON.stringify(res)});
+                               }                            
+                           },
+                           fail: function(res) {
+                                dd.alert({content: 'Form submission processing'});
+                           }
+                       });
+       }
+   ```
+3. 業務上ユーザーへチャットをプッシュする必要が生じた際、サーバーサイドは DingTalk が提供するメッセージプッシュ API を呼び出し、事前に取得した code を使用してユーザーへチャットを送信します。
+
+   ```java lines
+   public static String sendMsg() throws RuntimeException {
+       try {
+           DefaultDingTalkClient  client = new DefaultDingTalkClient("https://oapi.dingtalk.io/sns/send_msg");
+           OapiSnsSendMsgRequest req = new OapiSnsSendMsgRequest();
+           req.setCode(code);
+           OapiSnsSendMsgRequest.Eapp eapp = new OapiSnsSendMsgRequest.Eapp();
+           eapp.setImg("@lALPBY0V5EuR4oDNAcrNAs4");
+           eapp.setContent("Thank you very much for your feedback. \n\n"+System.currentTimeMillis());
+           eapp.setTitle("Ticket replied");
+           eapp.setLink("eapp://page/index?param=aaa");
+           OapiSnsSendMsgRequest.Msg msg = new OapiSnsSendMsgRequest.Msg();
+           msg.setMsgtype("eapp");
+           msg.setEapp(eapp);
+           req.setMsg(msg);
+           OapiSnsSendMsgResponse response = client.execute(req,Constant.APP_ID,Constant.APP_SECRET)
+       } catch (ApiException e) {
+           bizLogger.error("sendMsg failed", e);
+           throw new RuntimeException();
+       }
+
+   }
+   ```
+
+## アプリのリリース
+
+アプリの開発が完了したら、体験ユーザーを指名招待してアプリのテストを行えます。アプリの体験テスト完了後、アプリ審査を送信し、審査通過後にアプリをリリースできます。
+
+### 体験バージョン
+
+開発者が既に開発したバージョンを体験・テストしやすくするため、開発者バックエンドでは、製品公開審査を経ずに開発バージョンを体験バージョンに設定できます。設定が成功すると、体験ユーザーは QRコードをスキャンしてそのバージョンを使用できます。手順は以下のとおりです。
+
+1. メンバー設定で体験ユーザーを追加します。
+2. バージョン管理で、任意の開発バージョンを体験バージョンに設定します。
+
+3. 体験者に体験 QRコードをスキャンしてもらい、体験を開始します。
+
+### 審査の送信
+
+製品を正式に公開する前に、製品審査を送信する必要があります。アプリを初めて公開する際、DingTalk チームが製品を審査します。審査通過後、DingTalk ユーザーは DingTalk 内でそのアプリを開いて使用できます。
+
+### グレーリリーステスト
+
+審査通過後、開発者は「グレーリリース」をクリックしてバージョンのグレーリリースを実施できます。新バージョンがグレーリリーステスト段階に入った後、開発者はグレーリリース比率を引き上げることができます。グレーリリース比率は引き上げのみ可能で、引き下げはできません。グレーリリース段階でバージョンに欠陥が発生した場合、開発者はそのバージョンのアプリをリリースしないことを選択できます。
+
+### バージョンのリリース
+
+グレーリリーステスト後、開発者が **リリース** をクリックすると、アプリがオンラインにリリースされ、ユーザーは QRコードのスキャンや共有を介してアプリに入ることができ、すべての DingTalk ユーザーがこのバージョンのアプリを使用できます。
+
+### 説明
+
+- DingTalk 組織はプレミアム認証を完了している必要があります。
+- DingTalk 組織は製品ソリューションパートナーの入居を完了している必要があります。
+
+1. リリースするアプリをクリックし、**バージョン管理** をクリックし、審査を送信したいバージョンを選択します。
+
+2. **審査を送信** をクリックします。
+
+### 説明
+
+   DingTalk 組織認証およびサービスパートナー認証を実施していない場合、先に認証を行うよう案内が表示されます。開発者バックエンドの案内フローに従って認証を行うか、提携全フローガイドを参照してください。
+3. 製品審査ページで、セキュリティスキャン、製品審査などを順番に実施します。
+
+   1. セキュリティスキャン下の **クリックして開始** をクリックし、送信したアプリに対してセキュリティスキャンを実施します。セキュリティスキャンレポートが表示されます。
+   2. 製品審査基準を確認し、サードパーティ個人アプリの製品設計規範を確認できます。製品設計規範を参照してください。
+   3. 審査の送信下の **ここをクリック** をクリックし、審査を送信します。

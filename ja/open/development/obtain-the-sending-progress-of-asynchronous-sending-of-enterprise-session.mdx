@@ -1,0 +1,128 @@
+---
+title: "業務通知チャットの送信進捗を取得する"
+---
+
+本 API を呼び出すと、業務通知チャットの送信進捗を取得できます。企業がメッセージプッシュのステータスを監視する場合や、チャット送信エラーを調査する場合などのシーンに適しています。
+
+## API 呼び出し説明
+
+本 API を呼び出す場合、過去 7 日間の業務通知チャットの送信進捗のみ取得可能です。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress |
+| HTTP Method | POST |
+| サポートされるアプリタイプ | appType-社内アプリappType-サードパーティ社内アプリ |
+| 権限要件 | permission-qyapi_base-企業 API 呼び出し時に必要な基本権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API を呼び出すためのアプリ認証情報。   - 社内アプリの場合は、社内アプリの access_token を取得する API から取得します。 - サードパーティ社内アプリの場合は、サードパーティ企業の access_token を取得する API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| agent_id | Number | はい | 836390886 | チャット送信時に使用するマイクロアプリの AgentId。   - 社内アプリの場合は、[開発者バックエンド](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1) のアプリ詳細ページで確認できます。 - サードパーティ社内アプリの場合は、企業の権限付与情報を取得する API を呼び出して取得します。 |
+| task_id | Number | はい | 256271667526 | チャット送信時に DingTalk から返されるタスク ID。[業務通知を送信する](/zh/open/development/asynchronous-sending-of-enterprise-session-messages) API を呼び出して task_id パラメータの値を取得します。  **説明**  過去 24 時間以内のタスクのみクエリ可能です。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=a0a25xxxxed3ff' \
+-d 'agent_id=123' \
+-d 'task_id=456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress");
+OapiMessageCorpconversationGetsendprogressRequest req = new OapiMessageCorpconversationGetsendprogressRequest();
+req.setAgentId(123L);
+req.setTaskId(456L);
+OapiMessageCorpconversationGetsendprogressResponse rsp = client.execute(req, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationGetsendprogressRequest("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress")
+
+req.agent_id=123
+req.task_id=456
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationGetsendprogressRequest;
+$req->setAgentId("123");
+$req->setTaskId("456");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress");
+OapiMessageCorpconversationGetsendprogressRequest req = new OapiMessageCorpconversationGetsendprogressRequest();
+req.AgentId = 123L;
+req.TaskId = 456L;
+OapiMessageCorpconversationGetsendprogressResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 5y2znla8tw3d | リクエスト ID。 |
+| errcode | Number | 0 | リターンコード。 |
+| errmsg | String | ok | リターンコードの説明。 |
+| progress | AsyncSendProgress |  | 戻り結果。 |
+| progress_in_percent | Number | 100 | 0〜100 の値で、処理のパーセントを表します。 |
+| status | Number | 2 | タスクの実行ステータス：   - **0**：未開始 - **1**：処理中 - **2**：処理完了 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "progress": {
+    "progress_in_percent": 100,
+    "status": 2
+  },
+  "request_id": "5y2znla8tw3d"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/zh/open/development/server-api-error-codes-1) ドキュメントから解決策を検索してください。
+
+| エラーコード（errorcode） | エラーメッセージの説明（errmsg） | 解決策 |
+| --- | --- | --- |
+| 40035 | 不正なパラメータ | task_id または agent_id が正しいか確認してください |
+| 500 | システムエラー | 不明なシステムエラーが発生しました |

@@ -1,0 +1,660 @@
+---
+title: "フィルタービューの作成"
+---
+
+本 API を呼び出すことで、DingTalk スプレッドシートの指定したワークシート上にフィルタービューを作成し、ビュー名と絞り込み範囲を指定できます。作成に成功した後、各列にフィルターを設定できます。
+
+## API 呼び出し説明
+
+- フィルタービューは、グローバルなフィルターとは独立した個人向けのデータフィルタリング方式であり、複数ユーザーでのコラボレーションの場面で、異なるユーザーがそれぞれ異なるデータのサブセットを表示する必要がある場合に適しています。
+- 各ワークシートには最大 20 個のフィルタービューを作成できます。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | `https://api.dingtalk.io/v1.0/doc/workbooks/{workbookId}/sheets/{sheetId}/filterViews` |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ |
+| 必要な権限 | permission-Document.Workbook.Write-スプレッドシート書き込み権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | 本 API を呼び出すためのアクセス認証情報です。[社内アプリのアクセストークンを取得する](/zh/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出して取得できます。 |
+
+### パスパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| workbookId | String | はい | スプレッドシートファイル ID。[ナレッジベース API](https://open.dingtalk.io/document/orgapp/knowledge-base-overview) が返す `nodeId(dentryUuid)` がスプレッドシートの `workbookId` に該当します。[ノードを取得する](https://open.dingtalk.io/document/orgapp/get-node) および [ナレッジベースドキュメントを作成する](https://open.dingtalk.io/document/orgapp/create-team-space-document) API を呼び出して取得できます。 |
+| sheetId | String | はい | ワークシートの ID または名前。[すべてのワークシートを取得する](https://open.dingtalk.io/document/orgapp/obtain-all-worksheets) API を呼び出して id または name の値を取得できます。 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| operatorId | String | はい | 操作者の unionId。   - [サイレントログインコードによりユーザー情報を取得する](https://open.dingtalk.io/document/orgapp/obtain-the-userid-of-a-user-by-using-the-log-free) API で unionid の値を取得できます。 - [ユーザー詳細を照会する](https://open.dingtalk.io/document/orgapp/query-user-details) API を呼び出して unionid の値を取得できます。       操作者に権限がない場合、API は `The operator has no permission` というエラーを返します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| name | String | はい | フィルタービューの名前。 |
+| range | String | はい | フィルタービューの範囲。A1 表記を使用します。例えば `A1:D10` は A1 から D10 までの領域を表します。絞り込み範囲の 1 行目は見出し行として扱われ、絞り込み計算には含まれません。 |
+| criteria | `Map<String, Object>` | いいえ | 作成時に各列のフィルターを同時に設定します。key は列のオフセット（range の先頭列に対する相対値、0 から始まる）、value はフィルターオブジェクトです。指定しない場合は、空のフィルタービューが作成されます。 |
+|  | Object | いいえ | 現在の列のフィルター |
+| filterType | String | いいえ | 絞り込みタイプ。指定可能な値：   - **values**：値で絞り込み - **color**：色で絞り込み - **condition**：条件で絞り込み |
+| visibleValues | Array of String | いいえ | 表示する値 |
+| conditions | Array | いいえ | 条件で絞り込む際に、フィルターのリストを指定します。`filterType` が `condition` の場合に有効です。各条件オブジェクトには `operator`（演算子）および `value`（条件値）フィールドが含まれます。 |
+| operator | String | いいえ | 条件演算子。指定可能な値：   - **equal**：等しい - **not-equal**：等しくない - **contains**：含む - **not-contains**：含まない - **starts-with**：で始まる - **not-starts-with**：で始まらない - **ends-with**：で終わる - **not-ends-with**：で終わらない - **greater**：より大きい - **greater-equal**：以上 - **less**：より小さい - **less-equal**：以下 |
+| value | String | いいえ | 条件値 |
+| conditionOperator | String | いいえ | 複数条件間の論理関係。指定可能な値：`and`（かつ）、`or`（または）。デフォルトは `and` です。`filterType` が `condition` で、かつ複数の条件がある場合に有効です。 |
+| backgroundColor | String | いいえ | 背景色で絞り込む際に、色の値（16 進数、例：`#FF0000`）を指定します。`filterType` が `color` の場合に有効で、`fontColor` とは二者択一です。 |
+| fontColor | String | いいえ | フォント色で絞り込む際に、色の値（16 進数、例：`#FF0000`）を指定します。`filterType` が `color` の場合に有効で、`backgroundColor` とは二者択一です。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/doc/workbooks/e54Lq3xxx/sheets/Sheet1/filterViews?operatorId=ppgAxxx HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:f86e0bxxx
+Content-Type:application/json
+
+{
+  "name" : "销售数据筛选",
+  "range" : "A1:E20",
+  "criteria" : {
+    "key" : {
+      "filterType" : "condition",
+      "conditions" : [ {
+        "operator" : "less",
+        "value" : "20"
+      } ],
+    }
+  }
+}
+```
+
+Java
+
+```java
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>使用 Token 初始化账号Client</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkdoc_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkdoc_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkdoc_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkdoc_1_0.models.CreateFilterViewHeaders createFilterViewHeaders = new com.aliyun.dingtalkdoc_1_0.models.CreateFilterViewHeaders();
+        createFilterViewHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkdoc_1_0.models.CriteriaValue.CriteriaValueConditions criteriaValueKeyConditions0 = new com.aliyun.dingtalkdoc_1_0.models.CriteriaValue.CriteriaValueConditions()
+                .setOperator("less")
+                .setValue("20");
+        com.aliyun.dingtalkdoc_1_0.models.CriteriaValue criteriaValueKey = new com.aliyun.dingtalkdoc_1_0.models.CriteriaValue()
+                .setFilterType("condition")
+                .setVisibleValues(java.util.Arrays.asList(
+                    "123"
+                ))
+                .setConditions(java.util.Arrays.asList(
+                    criteriaValueKeyConditions0
+                ))
+                .setConditionOperator("or")
+                .setBackgroundColor("#FF0000")
+                .setFontColor("#FF0000");
+        java.util.Map<String, com.aliyun.dingtalkdoc_1_0.models.CriteriaValue> criteria = TeaConverter.buildMap(
+            new TeaPair("criteriaValueKey", criteriaValueKey)
+        );
+        com.aliyun.dingtalkdoc_1_0.models.CreateFilterViewRequest createFilterViewRequest = new com.aliyun.dingtalkdoc_1_0.models.CreateFilterViewRequest()
+                .setOperatorId("ppgAxxx")
+                .setName("销售数据筛选")
+                .setRange("A1:E20")
+                .setCriteria(criteria);
+        try {
+            client.createFilterViewWithOptions("e54Lq3xxx", "Sheet1", createFilterViewRequest, createFilterViewHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains code and message attributes, which help developers identify the issue
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains code and message attributes, which help developers identify the issue
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import os
+import sys
+import json
+
+from typing import List
+
+from alibabacloud_dingtalk.doc_1_0.client import Client as dingtalkdoc_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.doc_1_0 import models as dingtalkdoc__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkdoc_1_0Client:
+        """
+        使用 Token 初始化账号Client
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkdoc_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_filter_view_headers = dingtalkdoc__1__0_models.CreateFilterViewHeaders()
+        create_filter_view_headers.x_acs_dingtalk_access_token = '<your access token>'
+        criteria_value_key_conditions_0 = dingtalkdoc__1__0_models.CriteriaValueConditions(
+            operator='less',
+            value='20'
+        )
+        criteria_value_key = dingtalkdoc__1__0_models.CriteriaValue(
+            filter_type='condition',
+            visible_values=[
+                '123'
+            ],
+            conditions=[
+                criteria_value_key_conditions_0
+            ],
+            condition_operator='or',
+            background_color='#FF0000',
+            font_color='#FF0000'
+        )
+        criteria = {
+            'criteriaValueKey': criteria_value_key
+        }
+        create_filter_view_request = dingtalkdoc__1__0_models.CreateFilterViewRequest(
+            operator_id='ppgAxxx',
+            name='销售数据筛选',
+            range='A1:E20',
+            criteria=criteria
+        )
+        try:
+            client.create_filter_view_with_options('e54Lq3xxx', 'Sheet1', create_filter_view_request, create_filter_view_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains code and message attributes, which help developers identify the issue
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_filter_view_headers = dingtalkdoc__1__0_models.CreateFilterViewHeaders()
+        create_filter_view_headers.x_acs_dingtalk_access_token = '<your access token>'
+        criteria_value_key_conditions_0 = dingtalkdoc__1__0_models.CriteriaValueConditions(
+            operator='less',
+            value='20'
+        )
+        criteria_value_key = dingtalkdoc__1__0_models.CriteriaValue(
+            filter_type='condition',
+            visible_values=[
+                '123'
+            ],
+            conditions=[
+                criteria_value_key_conditions_0
+            ],
+            condition_operator='or',
+            background_color='#FF0000',
+            font_color='#FF0000'
+        )
+        criteria = {
+            'criteriaValueKey': criteria_value_key
+        }
+        create_filter_view_request = dingtalkdoc__1__0_models.CreateFilterViewRequest(
+            operator_id='ppgAxxx',
+            name='销售数据筛选',
+            range='A1:E20',
+            criteria=criteria
+        )
+        try:
+            await client.create_filter_view_with_options_async('e54Lq3xxx', 'Sheet1', create_filter_view_request, create_filter_view_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains code and message attributes, which help developers identify the issue
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\CreateFilterViewHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\CriteriaValue\conditions;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\CriteriaValue;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\CreateFilterViewRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * 使用 Token 初始化账号Client
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $createFilterViewHeaders = new CreateFilterViewHeaders([]);
+        $createFilterViewHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $criteriaValueKeyConditions0 = new conditions([
+            "operator" => "less",
+            "value" => "20"
+        ]);
+        $criteriaValueKey = new CriteriaValue([
+            "filterType" => "condition",
+            "visibleValues" => [
+                "123"
+            ],
+            "conditions" => [
+                $criteriaValueKeyConditions0
+            ],
+            "conditionOperator" => "or",
+            "backgroundColor" => "#FF0000",
+            "fontColor" => "#FF0000"
+        ]);
+        $criteria = [
+            "criteriaValueKey" => $criteriaValueKey
+        ];
+        $createFilterViewRequest = new CreateFilterViewRequest([
+            "operatorId" => "ppgAxxx",
+            "name" => "销售数据筛选",
+            "range" => "A1:E20",
+            "criteria" => $criteria
+        ]);
+        try {
+            $client->createFilterViewWithOptions("e54Lq3xxx", "Sheet1", $createFilterViewRequest, $createFilterViewHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err contains code and message attributes, which help developers identify the issue
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkdoc_1_0  "github.com/alibabacloud-go/dingtalk/doc_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Description:
+// 
+// 使用 Token 初始化账号Client
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkdoc_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkdoc_1_0.Client{}
+  _result, _err = dingtalkdoc_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  createFilterViewHeaders := &dingtalkdoc_1_0.CreateFilterViewHeaders{}
+  createFilterViewHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  criteriaValueKeyConditions0 := &dingtalkdoc_1_0.CriteriaValueConditions{
+    Operator: tea.String("less"),
+    Value: tea.String("20"),
+  }
+  criteriaValueKey := &dingtalkdoc_1_0.CriteriaValue{
+    FilterType: tea.String("condition"),
+    VisibleValues: []*string{tea.String("123")},
+    Conditions: []*dingtalkdoc_1_0.CriteriaValueConditions{criteriaValueKeyConditions0},
+    ConditionOperator: tea.String("or"),
+    BackgroundColor: tea.String("#FF0000"),
+    FontColor: tea.String("#FF0000"),
+  }
+  criteria := map[string]*dingtalkdoc_1_0.CriteriaValue{
+    "criteriaValueKey": criteriaValueKey,
+  }
+  createFilterViewRequest := &dingtalkdoc_1_0.CreateFilterViewRequest{
+    OperatorId: tea.String("ppgAxxx"),
+    Name: tea.String("销售数据筛选"),
+    Range: tea.String("A1:E20"),
+    Criteria: criteria,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.CreateFilterViewWithOptions(tea.String("e54Lq3xxx"), tea.String("Sheet1"), createFilterViewRequest, createFilterViewHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err contains code and message attributes, which help developers identify the issue
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```text
+'use strict';
+// This file is auto-generated, don't edit it
+const Util = require('@alicloud/tea-util');
+const dingtalkdoc_1_0 = require('@alicloud/dingtalk/doc_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * 使用 Token 初始化账号Client
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkdoc_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let createFilterViewHeaders = new dingtalkdoc_1_0.CreateFilterViewHeaders({ });
+    createFilterViewHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let criteriaValueKeyConditions0 = new dingtalkdoc_1_0.CriteriaValueConditions({
+      operator: 'less',
+      value: '20',
+    });
+    let criteriaValueKey = new dingtalkdoc_1_0.CriteriaValue({
+      filterType: 'condition',
+      visibleValues: [
+        '123'
+      ],
+      conditions: [
+        criteriaValueKeyConditions0
+      ],
+      conditionOperator: 'or',
+      backgroundColor: '#FF0000',
+      fontColor: '#FF0000',
+    });
+    let criteria = {
+      criteriaValueKey: criteriaValueKey,
+    };
+    let createFilterViewRequest = new dingtalkdoc_1_0.CreateFilterViewRequest({
+      operatorId: 'ppgAxxx',
+      name: '销售数据筛选',
+      range: 'A1:E20',
+      criteria: criteria,
+    });
+    try {
+      await client.createFilterViewWithOptions('e54Lq3xxx', 'Sheet1', createFilterViewRequest, createFilterViewHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err contains code and message attributes, which help developers identify the issue
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+using Newtonsoft.Json;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Description:</b></term>
+        /// <description>
+        /// <para>使用 Token 初始化账号Client</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkdoc_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkdoc_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CreateFilterViewHeaders createFilterViewHeaders = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CreateFilterViewHeaders();
+            createFilterViewHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue.CriteriaValueConditions criteriaValueKeyConditions0 = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue.CriteriaValueConditions
+            {
+                Operator = "less",
+                Value = "20",
+            };
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue criteriaValueKey = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue
+            {
+                FilterType = "condition",
+                VisibleValues = new List<string>
+                {
+                    "123"
+                },
+                Conditions = new List<AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue.CriteriaValueConditions>
+                {
+                    criteriaValueKeyConditions0
+                },
+                ConditionOperator = "or",
+                BackgroundColor = "#FF0000",
+                FontColor = "#FF0000",
+            };
+            Dictionary<string, AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue> criteria = new Dictionary<string, AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CriteriaValue>
+            {
+                {"criteriaValueKey", criteriaValueKey},
+            };
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CreateFilterViewRequest createFilterViewRequest = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.CreateFilterViewRequest
+            {
+                OperatorId = "ppgAxxx",
+                Name = "销售数据筛选",
+                Range = "A1:E20",
+                Criteria = criteria,
+            };
+            try
+            {
+                client.CreateFilterViewWithOptions("e54Lq3xxx", "Sheet1", createFilterViewRequest, createFilterViewHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains code and message attributes, which help developers identify the issue
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains code and message attributes, which help developers identify the issue
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| id | String | フィルタービューの一意な ID。 |
+| name | String | フィルタービューの名前。 |
+| range | String | フィルタービューの範囲（A1 表記）。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "id" : "fv-xxxxx",
+  "name" : "销售数据筛选",
+  "range" : "A1:E20"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合、エラーメッセージをもとに [グローバルエラーコード](https://open.dingtalk.io/document/development/server-api-error-codes-1) ドキュメントから解決策を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | invalidRequest.inputArgs.invalid | %s | リクエストパラメータが不正です。エラーメッセージを確認してください。 |
+| 400 | invalidRequest.inputArgs.workbookIdIllegal | The workbookId is illegal. | workbookId が不正です。 |
+| 400 | invalidRequest.resource.notWorkbook | %s | サポートされていないドキュメントタイプです。workbookId を確認してください。 |
+| 400 | invalidRequest.document.stillInitializing | The document is still initializing. Please try again later. | ドキュメントの初期化中です。後で再試行してください。 |
+| 403 | forbidden.accessDenied | The operator has no permission. | 現在のユーザーには本操作の権限がありません。 |
+| 403 | forbidden.acrossOrg | %s | リクエストが不正です。アクセス対象のドキュメントが、アクセストークンで指定された組織に所属しているかを確認してください。 |
+| 403 | forbidden.operationIllegal | %s | リクエスト操作が不正です。エラーメッセージを確認してください。 |
+| 403 | forbidden.document.sizeOverLimit | The document size is over limit and the server is unable to complete your request. Retry is unlikely to work unless the document size is decreased. | スプレッドシートのコンテンツが大きすぎます。スプレッドシートのコンテンツを縮小してください。 |
+| 404 | invalidRequest.resource.notFound | %s | リクエストに失敗しました。アクセス対象のリソースが見つかりません。 |
+| 500 | serviceBusy | The server is busy and unable to complete your request. Please try again later. | サービスが混雑しています。後で再試行してください。 |
+| 500 | internalError | The server encountered an internal error and was unable to complete your request. Please try again later. | サービス内部エラーです。後で再試行してください。 |

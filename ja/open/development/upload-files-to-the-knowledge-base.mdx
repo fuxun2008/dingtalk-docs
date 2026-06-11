@@ -1,0 +1,209 @@
+---
+title: "ナレッジベースへのファイルアップロード"
+description: "ナレッジベース（チームスペース）の目次配下にファイルをアップロードするには、以下の 3 つのステップを順番に実施する必要があります。"
+---
+
+## 機能説明
+
+1. **ファイルアップロード情報の取得**：サーバーサイドにアップロード認証情報（OSS アドレス + 署名 Headers）を申請します。
+2. **OSS へのファイルアップロード**：ステップ 1 で返却されたアドレスと Headers を使用し、ファイルコンテンツを OSS に PUT します。
+3. **ファイルの送信**：サーバーサイドにアップロード完了を通知し、ファイルの最終登録を完了します。
+
+<Warning>
+3 つのステップは必ず順番に実行してください。いずれか一つでも欠けるとファイルのアップロードを完了できません。
+</Warning>
+
+---
+
+## ステップ 1：ファイルアップロード情報の取得
+
+API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query` を呼び出し、対象目次の `parentDentryUuid`（親目次の一意識別子）と操作者の `unionId` を渡して、今回のアップロードに必要な認証情報を取得します。
+
+<Note>
+API の詳細は [ファイルアップロード情報の取得](/zh/open/development/obtain-file-upload-informations) のドキュメントを参照してください。呼び出し方法については、サーバー API の呼び出し方法に関するドキュメントを参照してください。
+</Note>
+
+### 主要なリクエストパラメータ：
+
+- `parentDentryUuid`（Path）：アップロード先目次の dentryUuid。ナレッジベースのルート目次にアップロードする場合、以下の 2 つの方法でルート目次の dentryUuid を取得できます。
+
+  - [マイドキュメントナレッジベース情報の取得](/zh/open/development/get-my-documents) API を呼び出し、戻り値の `workspace` 配下の `rootNodeId` フィールドの値を取得します。
+  - [ナレッジベース一覧の取得](/zh/open/development/get-knowledge-base-list) API を呼び出し、戻り値の `workspaces` 配下の `rootNodeId` フィールドの値を取得します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/zh/open/development/query-user-details) API を呼び出して取得できます。
+- `protocol`（Body）：固定値 `HEADER_SIGNATURE` を指定します。
+- `option.preCheckParam.name`（Body）：ファイル名（拡張子を含む）。特殊文字（`*`、`"`、`<`、`>`、`|`）を含めることはできず、`.` で終わることもできません。
+
+### レスポンスパラメータ：
+
+- `uploadKey`：今回のアップロードの一意識別子。ステップ 3 で使用します。
+- `headerSignatureInfo.resourceUrls`：OSS アップロードアドレス。ステップ 2 で使用します。
+- `headerSignatureInfo.headers`：OSS リクエストヘッダー。ステップ 2 で使用します。
+- `expirationSeconds`：認証情報の有効期限（秒）。期限切れ前に後続ステップを完了してください。
+
+**HTTP サンプル**：
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "protocol": "HEADER_SIGNATURE",
+  "option": {
+    "storageDriver": "DINGTALK",
+    "preCheckParam": {
+      "size": 512,
+      "name": "测试文件.xlsx"
+    }
+  }
+}
+```
+
+## ステップ 2：OSS へのファイルアップロード
+
+ステップ 1 で返却された `resourceUrls[0]` をアップロードアドレスとして、`headers` をリクエストヘッダーとして使用し、HTTP `PUT` メソッドでローカルファイルのコンテンツを直接 OSS にアップロードします。
+
+<Note>
+`Content-Type` は必ず空文字列に設定してください。設定しないと署名検証が失敗します。
+</Note>
+
+**サンプルコード**：
+
+Java
+
+```java
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+
+public void uploadToOss(String resourceUrl, Map<String, String> headers, String filePath) throws Exception {
+  URL url = new URL(resourceUrl);
+  HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+  // ステップ 1 で返却された headers を設定
+  if (headers != null) {
+    for (Map.Entry<String, String> entry : headers.entrySet()) {
+      connection.setRequestProperty(entry.getKey(), entry.getValue());
+    }
+  }
+
+  connection.setDoOutput(true);
+  connection.setRequestMethod("PUT");
+  connection.setUseCaches(false);
+  connection.setReadTimeout(10000);
+  connection.setConnectTimeout(10000);
+  connection.connect();
+
+  // ファイルコンテンツを書き込み
+  OutputStream out = connection.getOutputStream();
+  InputStream is = new FileInputStream(new File(filePath));
+
+  byte[ ] buffer = new byte[1024];
+
+  int bytesRead;
+  while ((bytesRead = is.read(buffer)) != -1) {
+    out.write(buffer, 0, bytesRead);
+  }
+  out.flush();
+  out.close();
+  is.close();
+
+  int responseCode = connection.getResponseCode();
+  connection.disconnect();
+
+  if (responseCode == 200) {
+    System.out.println("OSS アップロード成功");
+  } else {
+    System.out.println("OSS アップロード失敗、ステータスコード：" + responseCode);
+  }
+}
+```
+
+Python
+
+```python
+import requests
+
+resource_url = '<ステップ 1 で返却された resourceUrls[0]>'
+headers = <ステップ 1 で返却された headers>
+
+  # 注意：content-type は必ず空に設定する必要があります
+  headers['content-type'] = ''
+
+result = requests.put(resource_url, data=open('<ローカルファイルパス>', 'rb'), headers=headers)
+print(result.status_code)  # 200 はアップロード成功を示します
+```
+
+Node.js
+
+```javascript
+const fs = require('fs');
+const request = require('request-promise');
+
+const url = '<ステップ 1 で返却された resourceUrls[0]>';
+const headers = <ステップ 1 で返却された headers>;
+
+// 注意：content-type は必ず空に設定する必要があります
+headers['content-type'] = '';
+
+fs.createReadStream('/path/to/local/file.txt')
+  .pipe(request({ method: 'PUT', url, headers }))
+  .then(() => console.log('OSS アップロード成功'))
+  .catch(err => console.log('OSS アップロード失敗', err));
+```
+
+## ステップ 3：ファイルの送信
+
+OSS へのアップロードが完了したら、API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit` を呼び出し、ファイルを正式にナレッジベースの目次に書き込み、アップロードフロー全体を完了します。
+
+### 説明
+
+- API が成功すると、ファイル ID、uuid、所属スペースなどを含むファイル情報（`dentry`）が返却され、アップロードが完了します。
+- API の詳細は [ファイルの送信](/zh/open/development/submittal-file) のドキュメントを参照してください。呼び出し方法については、サーバー API の呼び出し方法に関するドキュメントを参照してください。
+
+### 主要なリクエストパラメータ：
+
+- `parentDentryUuid`（Path）：ステップ 1 と同じ値を指定します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/zh/open/development/query-user-details) API を呼び出して取得できます。
+- `uploadKey`（Body）：ステップ 1 で返却された uploadKey。今回のアップロードと関連付けるために使用します。
+- `name`（Body）：ファイル名（拡張子を含む）。
+- `option.conflictStrategy`（Body）：ファイル名の競合戦略。`AUTO_RENAME`（デフォルト、自動で名前を変更）/`OVERWRITE`（上書き）から選択できます。
+
+### HTTP サンプル：
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "uploadKey": "ステップ 1 で返却された uploadKey",
+  "name": "测试文件.xlsx",
+  "option": {
+    "conflictStrategy": "AUTO_RENAME"
+  }
+}
+```
+
+## 全体フローのまとめ
+
+```text
+[ステップ 1] 「ファイルアップロード情報の取得」API を呼び出し
+         → uploadKey + resourceUrls + headers を返却（有効期限があるため、後続ステップを早めに完了してください）
+
+[ステップ 2] resourceUrls[0] + headers を使用し、HTTP PUT でファイルコンテンツを OSS にアップロード
+         → OSS が 200 を返却するとアップロード成功
+
+[ステップ 3] 「ファイルの送信」API を呼び出し、uploadKey + ファイル名を渡す
+         → ファイル情報（dentry）を返却し、ファイルが正式に登録されアップロード完了
+```
+
+## 注意事項
+
+- ステップ 2 のアップロード時、`Content-Type` は必ず空文字列に設定してください。設定しないと OSS の署名検証が失敗します。
+- ステップ 1 で返却されたアップロード認証情報には有効期限（`expirationSeconds`）があります。期限切れ前にステップ 2 とステップ 3 を完了してください。期限切れの場合はステップ 1 を再度呼び出す必要があります。
+- ストレージスペースのタイプが `USER` の場合、スペースのオーナーと管理者のみが操作権限を持ち、その他の社員は事前に「権限の追加」API で権限付与を受ける必要があります。
+- ストレージスペースのタイプが `APP` の場合、いかなるユーザーの操作も事前に「権限の追加」API で権限付与を受ける必要があります。

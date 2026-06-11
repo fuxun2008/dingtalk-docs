@@ -1,0 +1,146 @@
+---
+title: "企業の部門を作成・取得・更新・削除する"
+---
+
+本記事では、社内アプリを作成し、連絡先管理が提供する部門管理関連 API を使用して、企業の部門を作成・取得・更新・削除する方法を説明します。
+
+## 想定する効果
+
+部門情報は以下のように表示されます。
+
+## 統合フローの概要
+
+1. アプリ認証情報を取得し、クライアント ID と Client Secret を取得します。
+2. API 権限をリクエストし、連絡先管理関連の API 権限を申請します。
+3. アプリのアクセス認証情報を取得し、社内アプリの access_token を取得します。API を呼び出す際は、アクセストークンで呼び出し元の身元を認証します。
+4. 連絡先関連の API を呼び出します。
+
+   1. サーバー API の [部門の作成](/zh/open/development/address-book-creation-department-established-department) API を呼び出して部門を作成し、部門の `dept_id` を取得します。
+
+      - ルート部門の子部門を作成する場合は、パラメータ parent_id に 1 を渡します。本サンプルではルート部門配下の子部門を作成します。
+      - その他の部門の子部門を作成する場合は、先に [部門リストの取得](/zh/open/development/user-management-acquires-the-list-departments) API を呼び出し、取得した部門 ID を parent_id の値として使用する必要があります。
+   2. 部門の `dept_id` に基づき、サーバー API の [部門詳細の取得](/zh/open/development/query-department-details0-v2) API を呼び出して、部門の詳細情報を取得します。
+   3. 部門の `dept_id` に基づき、サーバー API の [部門の更新](/zh/open/development/address-book-update-department) API を呼び出して、部門情報を更新します。
+   4. 部門の `dept_id` に基づき、サーバー API の [部門の削除](/zh/open/development/address-book-deletion-department) API を呼び出して、部門情報を削除します。
+
+## 前提条件
+
+[アプリの作成と設定](/zh/open/dingstart/create-and-configure-an-application) のフローを完了していること。
+
+## ステップ 1：アプリ認証情報を取得する
+
+1. 対象アプリを選択し、アプリ詳細ページに移動して、**ベーシック情報** > **認証情報とベーシック情報** をクリックします。
+2. クライアント ID と Client Secret を取得します。
+
+## ステップ 2：API 権限を追加する
+
+**開発設定** > **権限管理** をクリックし、権限検索ボックスに `qyapi_manage_addresslist` と `qyapi_get_department_list` を入力して、権限をリクエストします。
+
+## ステップ 3：アプリのアクセス認証情報 アクセストークン を取得する
+
+### 重要
+
+- サーバー API の差異については、旧版 API VS 新版 API を参照してください。
+- サーバー API の SDK ダウンロードについては、サーバーサイド SDK ダウンロードを参照してください。
+
+ステップ 1 で取得した Client ID と Client Secret を使って、アプリのアクセス認証情報として社内アプリの access_token を取得します。
+
+```java
+public void getAccessToken() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+        OapiGettokenRequest req = new OapiGettokenRequest();
+        req.setAppkey("dingxxxxxxxxxhgn");
+        req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+        req.setHttpMethod("GET");
+        OapiGettokenResponse rsp = client.execute(req);
+        System.out.println(rsp.getBody());
+    }
+```
+
+## ステップ 4：連絡先関連の API を呼び出す
+
+1. サーバー API の [部門の作成](/zh/open/development/address-book-creation-department-established-department) API を呼び出して部門を作成し、部門の `dept_id` を取得します。
+
+   ```java lines
+   public void deptCreate() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/create");
+           OapiV2DepartmentCreateRequest req = new OapiV2DepartmentCreateRequest();
+           req.setParentId(1L);
+           req.setOuterDept(true);
+           req.setHideDept(false);
+           req.setCreateDeptGroup(true);
+           req.setOrder(1L);
+           req.setName("1019部门测试");
+           req.setSourceIdentifier("1019部门测试");
+           req.setOuterPermitUsers("manager7675,01472825524039877041");
+           req.setOuterDeptOnlySelf(true);
+           OapiV2DepartmentCreateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+
+   - ルート部門の子部門を作成する場合は、パラメータ parent_id に 1 を渡します。本サンプルではルート部門配下の子部門を作成します。
+   - その他の部門の子部門を作成する場合は、先に [部門リストの取得](/zh/open/development/user-management-acquires-the-list-departments) API を呼び出し、取得した部門 ID を parent_id の値として使用する必要があります。
+
+     ```java lines
+     public void departmentList() throws ApiException {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/listsub");
+             OapiV2DepartmentListsubRequest req = new OapiV2DepartmentListsubRequest();
+             req.setDeptId(1L);
+             req.setLanguage("zh_CN");
+             OapiV2DepartmentListsubResponse rsp = client.execute(req, "access_token");
+             System.out.println(rsp.getBody());
+         }
+     ```
+2. 部門の `dept_id` に基づき、サーバー API の [部門詳細の取得](/zh/open/development/query-department-details0-v2) API を呼び出して、部門の詳細情報を取得します。
+
+   ```java lines
+   public void deptInfo() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/get");
+           OapiV2DepartmentGetRequest req = new OapiV2DepartmentGetRequest();
+           req.setDeptId(724960197L);
+           req.setLanguage("zh_CN");
+           OapiV2DepartmentGetResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+3. 部門の `dept_id` に基づき、サーバー API の [部門の更新](/zh/open/development/address-book-update-department) API を呼び出して、部門情報を更新します。
+
+   ```java lines
+   public void deptModify() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/update");
+           OapiV2DepartmentUpdateRequest req = new OapiV2DepartmentUpdateRequest();
+           req.setDeptId(724960197L);
+           req.setParentId(1L);
+           req.setOuterDept(true);
+           req.setHideDept(false);
+           req.setCreateDeptGroup(true);
+           req.setOrder(1L);
+           req.setName("1019部门测试");
+           req.setSourceIdentifier("1019部门测试");
+           req.setOuterPermitUsers("manager7675,01472825524039877041");
+           req.setOuterDeptOnlySelf(true);
+           req.setLanguage("zh_CN");
+           req.setAutoAddUser(true);
+           req.setAutoApproveApply(true);
+           req.setOrgDeptOwner("manager7675");
+           OapiV2DepartmentUpdateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+4. 部門の `dept_id` に基づき、サーバー API の [部門の削除](/zh/open/development/address-book-deletion-department) API を呼び出して、部門情報を削除します。
+
+   ```java lines
+    public void deptDelete() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/delete");
+           OapiV2DepartmentDeleteRequest req = new OapiV2DepartmentDeleteRequest();
+           req.setDeptId(724960197L);
+           OapiV2DepartmentDeleteResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+
+   **説明**
+   - 当該部門内にユーザーがいる場合、または当該部門の子部門内にユーザーがいる場合は、削除できません。
+   - 当該部門およびそのすべての子部門が削除されます。
+   - 部門を削除すると、対応する部門グループは自動的に解散されます。

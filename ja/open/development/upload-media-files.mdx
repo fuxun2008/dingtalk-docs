@@ -1,0 +1,127 @@
+---
+title: "メディアファイルをアップロード"
+description: "本 API を呼び出して、画像、音声メディアリソースファイルおよび通常ファイルをアップロードします。API はメディアリソース識別子 media_id を返します。"
+---
+
+## API 呼び出し説明
+
+本 API を呼び出してメディアファイルをアップロードすると、メディアリソース識別子 media_id を取得できます。media_id について：
+
+- multipart/form-data POST を使用してファイルをアップロードし、ファイル識別名は media とします。
+- media_id は再利用可能で、同一の media_id を複数回使用できます。
+- media_id に対応するリソースファイルは、DingTalk クライアントサイド内でのみ使用できます。
+- メディアファイルが使用するスペースは、DingTalk が組織に提供する専用ストレージスペースであり、本 API を呼び出してファイルをアップロードしても、DingTalk 組織のドライブのスペースは消費されません。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/media/upload |
+| HTTP Method | POST |
+| サポートされるアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 権限要件 | permission-qyapi_base-企業 API を呼び出す際に必要となる基本権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API を呼び出すアプリ認証情報。   - 社内アプリの場合、社内アプリの access_token 取得 API から取得します。 - サードパーティ社内アプリの場合、サードパーティ企業の access_token 取得 API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| type | String | はい | image | メディアファイルタイプ：   - **image**：画像。最大 20MB。jpg、gif、png、bmp 形式に対応。 - **voice**：音声。最大 2MB。amr、mp3、wav 形式に対応。 - **video**：動画。最大 20MB。mp4 形式に対応。 - **file**：通常ファイル。最大 20MB。doc、docx、xls、xlsx、ppt、pptx、zip、pdf、rar 形式に対応。   **重要**  C# でこの API を呼び出す際に **40004**（不正なメディアファイルタイプ）エラーが発生する場合は、パラメータ **type** をリクエスト URL の末尾に追加してください。 |
+| media | FileItem | はい | C:/Users/Desktop/222.png | アップロードするメディアファイル。  form-data 内のメディアファイル識別子で、filename、filelength、content-type などの情報を含みます。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/media/upload" \
+-H 'Content-Type:multipart/form-data;charset=utf-8' \
+-F 'access_token=4c813ba0-2363-4927-9de0-376b0e6853a2' \
+-F 'type=image' \
+-F 'media=@"C:/Users/Desktop/222.png"'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/media/upload");
+OapiMediaUploadRequest req = new OapiMediaUploadRequest();
+req.setType("image");
+// アップロードするメディアファイル
+FileItem item = new FileItem("C:/Users/Desktop/222.png");
+req.setMedia(item);
+OapiMediaUploadResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMediaUploadRequest("https://oapi.dingtalk.io/media/upload")
+
+req.type="image"
+req.media=dingtalk.api.FileItem('abc.jpg',open('abc.jpg','rb'))
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMediaUploadRequest;
+$req->setType("image");
+
+$req->setMedia("C:/Users/Desktop/222.png");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/media/upload");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/media/upload");
+OapiMediaUploadRequest req = new OapiMediaUploadRequest();
+req.Type = "image";
+req.Media = new FileItem("C:/Users/Desktop/222.png");
+OapiMediaUploadResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | リターンコード。 |
+| errmsg | String | ok | リターンコードの説明。 |
+| type | String | file | メディアファイルタイプ：   - **image**：画像 - **voice**：音声 - **file**：通常ファイル - **video**：動画 |
+| media_id | String | @#lAzPDgCwPn1mJiDOQoLpxxxx | メディアファイルのアップロード後に取得する一意の識別子。 |
+| created_at | Number | 1599556098964 | メディアファイルのアップロードタイムスタンプ。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "errmsg": "ok",
+  "media_id": "$iAEKAqNwbmcDBgTNAk",
+  "created_at": 1605863153573,
+  "type": "image"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/zh/open/development/server-api-error-codes-1) ドキュメントで解決策を検索してください。

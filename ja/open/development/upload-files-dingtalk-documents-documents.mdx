@@ -1,0 +1,285 @@
+---
+title: "ローカルファイルを DingTalk ドキュメント（マイドキュメント）にアップロード"
+---
+
+本ドキュメントでは、ローカルファイルを DingTalk ドキュメント（マイドキュメント）の目次配下にアップロードする方法を説明します。
+
+## 概要
+
+### チュートリアル内容
+
+本チュートリアルでは、開発者がローカルファイルを DingTalk ドキュメント（マイドキュメント）の目次にアップロードする方法を紹介します。
+
+### 学習目標
+
+開発者がローカルファイルを DingTalk ドキュメント（マイドキュメント）の目次にアップロードする機能を素早く習得できるように支援します。
+
+### 対象範囲
+
+DingTalk のすべての開発者向け
+
+## 前提条件
+
+- 開発者権限を取得済みであること。
+- IDE またはその他の開発ツールをインストール済みであること。
+- [node.js](https://nodejs.org/en/download) をインストールし、関連する[環境設定](https://m.runoob.com/nodejs/nodejs-install-setup.html)を完了していること。
+- [maven](https://maven.apache.org/) をインストールし、関連する[環境設定](https://maven.apache.org/install.html)を完了していること。
+- [JDK](https://www.oracle.com/java/technologies/downloads/?er=221886) をインストールし、関連する[環境設定](https://docs.oracle.com/en/java/javase/24/install/overview-jdk-installation.html)を完了していること。
+
+## 開発フロー
+
+1. [マイドキュメントのナレッジベース情報を取得](/zh/open/development/get-my-documents)の API を呼び出し、「マイドキュメント」のルートノード ID（戻りパラメータ `rootNodeId`、すなわち parentDentryUuid）を取得します。
+2. [ファイルアップロード情報を取得](/zh/open/development/obtain-file-upload-informations)の API を呼び出し、ファイルアップロードに必要な `resourceUrls` と `headers` のパラメータ値を取得します。
+3. OSS の header リクエスト署名方式でファイルをアップロードします。
+
+   Java
+
+   ```java lines
+   import java.io.*;
+   import java.net.HttpURLConnection;
+   import java.net.URL;
+   public void test(){
+                  // API のレスポンスから resourceUrls を取得
+                   String resourceUrl = "上述接口返回的resourceUrls";
+                 // API のレスポンスから headers を取得
+                   Map<String, String> headers = "上述接口返回的headers";
+                   URL url = new URL(resourceUrl);
+                   HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+                  if (headers != null) {
+                   for (Map.Entry<String, String> entry : headers.entrySet()) {
+                       connection.setRequestProperty(entry.getKey(), entry.getValue());
+                   }
+               }
+                   connection.setDoOutput(true);
+                   connection.setRequestMethod("PUT");
+                   connection.setUseCaches(false);
+                   connection.setReadTimeout(10000);
+                   connection.setConnectTimeout(10000);
+                   connection.connect();
+                   OutputStream out = connection.getOutputStream();
+                   InputStream is = new FileInputStream(new File("/Users/xxxxx/Desktop/测试文件.xls"));
+                   byte[] b =new byte[1024];
+                   int temp;
+                   while ((temp=is.read(b))!=-1){
+                          out.write(b,0,temp);
+                   }
+                   out.flush();
+                   out.close();
+                   int responseCode = connection.getResponseCode();
+                   connection.disconnect();
+                   if (responseCode == 200) {
+                       System.out.println("上传成功");
+                    } else {
+                       System.out.println("上传失败");
+                    }
+   }
+   ```
+
+   Python
+
+   ```python lines
+   #!/usr/bin/env python
+
+   import requests
+
+   url = '<第一步接口获取的resourceUrl>'
+   headers = <第一步接口返回的headers>
+   result = requests.put(url, data=open('<path_to_file>', 'rb'), headers=headers)
+   print(result)
+   ```
+
+   C#
+
+   ```java lines
+   public static string HttpRequest(string url, string filePath, Dictionary<string, string> headers) {
+
+       FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+       BinaryReader reader = new BinaryReader(fileStream);
+       reader.BaseStream.Seek(0, SeekOrigin.Begin);
+       byte[] datas = reader.ReadBytes((int)reader.BaseStream.Length);
+       HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+       request.Method = "PUT";
+       request.Timeout = 150000;
+       foreach (var header in headers) {
+           request.Headers.Add($"{header.Key}", $"{header.Value}");
+       }
+       Stream requestStream = null;
+       string responseStr = null;
+       try {
+           if (datas != null) {
+               request.ContentLength = datas.Length;
+               requestStream = request.GetRequestStream();
+               requestStream.Write(datas, 0, datas.Length);
+               requestStream.Close();
+           } else {
+               request.ContentLength = 0;
+           }
+           HttpWebResponse response = request.GetResponse() as HttpWebResponse;
+           responseStr = response.Headers.GetValues("x-oss-request-id")[0];
+       } catch (Exception ex) {
+           Console.WriteLine("error");
+       } finally {
+           request = null;
+           requestStream = null;
+       }
+       return responseStr;
+   }
+   ```
+
+   PHP
+
+   ```text lines
+   $url = $result->body->headerSignatureInfo->resourceUrls[0];
+   $headersSource = $result->body->headerSignatureInfo->headers;
+   foreach ($headersSource as $key => $value) {
+   $headers[] = $key . ': ' . $value;
+   }
+   // content-type を空に明示的に指定する必要があります
+   $headers['Content-Type'] = '';
+
+   $file = '/Users/dengxian.ldx/Desktop/test.txt';
+
+   $ch = curl_init();
+   curl_setopt_array($ch, array(
+   CURLOPT_URL => $url,
+   CURLOPT_RETURNTRANSFER => true,
+   CURLOPT_HEADER => true,
+   CURLOPT_TIMEOUT => 100,
+   CURLOPT_CONNECTTIMEOUT => 100,
+   CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+   CURLOPT_PUT => true,
+   CURLOPT_HTTPHEADER => $headers,
+   CURLOPT_SSL_VERIFYPEER => false,
+   CURLOPT_SSL_VERIFYHOST => false,
+   ));
+   curl_setopt($ch, CURLOPT_INFILE, fopen($file , 'rb'));
+   curl_setopt($ch, CURLOPT_INFILESIZE, filesize($file) );
+   curl_setopt($ch, CURLOPT_UPLOAD, true);
+
+   $response = curl_exec($ch);
+   curl_close($ch);
+
+   echo $response .PHP_EOL;
+   ```
+
+   Node.js
+
+   ```javascript lines
+   const fs = require('fs');
+   const request = require('request-promise');
+
+   url = <url>;
+   header = <headers>;
+
+   // 注意: content-type を空に明示的に指定する必要があります
+   headers['content-type']='';
+
+   var options = {
+     method: 'PUT',
+     url: url,
+     headers: headers
+   };
+
+   fs.createReadStream('/Users/dengxian.ldx/temp/test/a.txt').pipe(request(options)).then(body =>{
+     console.log(body);
+   }).catch(err => {
+     console.log(err);
+   });
+   ```
+4. [ファイル送信](/zh/open/development/submittal-file)の API を呼び出し、ファイルを DingTalk ドキュメント（マイドキュメント）の目次にアップロードします。
+
+## ステップ 1: アプリを作成
+
+1. [開発者管理画面](https://open-dev.dingtalk.io/#/)にログインします。
+2. **アプリ開発** > **社内アプリ** > **DingTalk アプリ** > **アプリを作成** をクリックします。
+3. アプリ情報を入力します。
+
+   | **設定項目** | **必須** | **設定説明** |
+   | --- | --- | --- |
+   | **アプリ名** | はい | アプリ名を入力します。最小長は 2 文字です。 |
+   | **アプリの説明** | はい | アプリが提供する製品またはサービスを簡潔に説明します。最小長は 4 文字です。 |
+   | **アプリアイコン** | いいえ | アプリアイコンをアップロードします。JPG/PNG 形式、240 px \* 240 px 以上、1:1、2 MB 以内、角丸なしのアイコンが必要です。 |
+4. **保存** をクリックし、アプリ詳細ページに移動します。
+
+作成が完了したら、**ベーシック情報** > **認証情報とベーシック情報** をクリックして、アプリの Client ID と Client Secret を確認できます。
+
+> *注意: Client ID と Client Secret を保存してください。後続のステップで使用します。*
+
+## ステップ 2: Web アプリを設定
+
+1. アプリ詳細ページで、**アプリ機能** > **アプリ機能を追加** をクリックします。
+2. Web アプリの追加を選択します。
+3. Web アプリ（H5）の情報を設定します。
+
+   | **設定項目** | **説明** |
+   | --- | --- |
+   | アプリのホームページ URL | ホームページの URL を入力します。本例では後続のテスト用に `http://localhost:5173?corpid=$CORPID$` を使用します。本例はローカルテスト専用です。 image |
+   | PC 版ホームページ URL |
+
+   設定が完了したら、保存をクリックします。
+
+## ステップ 3: API 権限をリクエスト
+
+1. アプリ詳細ページで、**開発設定** > **権限管理** をクリックし、権限申請ページに移動します。
+2. 権限検索ボックスに `Wiki.Workspace.Read`、`Storage.UploadInfo.Read`、`Storage.File.Write` をそれぞれ入力し、API 権限をリクエストします。
+
+   > 組織管理者でない場合、またはアプリ開発権限がない場合、権限申請時に組織管理者の承認が必要です。
+
+## ステップ 4: アプリを公開
+
+1. アプリの設定が完了したら、アプリを公開する必要があります。アプリ詳細ページで、**アプリ公開** > **バージョン管理と公開** をクリックします。
+2. **新しいバージョンを作成** をクリックし、バージョン詳細ページに移動します。
+3. バージョン情報を設定します。
+
+   | **設定項目** | **説明** |
+   | --- | --- |
+   | アプリのバージョン番号 | アプリのバージョン番号を入力します。デフォルトのバージョンを使用してください。 |
+   | バージョンの説明 | バージョンの説明情報を入力します。カスタムで構いません。 |
+   | 公開するコンテンツ | ワークベンチに表示されるアプリ機能:  - Web アプリを選択 |
+
+   設定が完了したら、下部の保存をクリックします。
+4. 保存成功のダイアログページで、直接公開をクリックします。
+
+   > *組織管理者でない場合、アプリ公開時に組織管理者の承認が必要です。自分のみに公開する場合は管理者の承認は不要です。*
+
+## ステップ 5: サービスを構築
+
+1. 上記のステップを完了し、以下の Demo を実行するためのパラメータ情報を取得していることを確認します。
+2. [doc-demo.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250704/bpihcw/doc-demo.zip) の Demo をダウンロードできます。
+3. IDE を開き、ダウンロード済みの Demo をインポートします。
+
+   > サンプルコードは backend（バックエンドコード目次）と frontend（フロントエンドコード目次）に分かれています。
+
+4. バックエンドコード目次を開き、resources 目次内の `application.properties` ファイルを修正し、`clientId（アプリ Client ID）` と `clientSecret（アプリ Client Secret）` を入力します。
+
+5. バックエンドサービスを起動するためにクリックします。
+
+   **説明**
+   - バックエンドサービスを起動する前に、Maven と JDK が正しくインストールされ、関連環境が設定されていることを確認してください。IDE を初めてインストールした場合は、IDE 内の関連設定ファイルを修正する必要があります。
+   - 5173 と 8080 ポートが占有されていないことを確認してください。
+
+6. フロントエンドコード目次を開き、`vite.config.ts` を修正し、正しい `clientId（アプリ Client ID）` を入力します。
+
+7. フロントエンドプロジェクトファイルをクリックし、右クリックで **ターミナル** を選択して開きます。
+
+8. ターミナルウィンドウで、以下のコマンドを入力します。
+
+   1. `npm install`
+   2. `npm run dev`
+
+      > 注意: Windows で起動する場合は `npm run dev:raw` を使用してください。
+9. これで、フロントエンドとバックエンドのサービスが正常に起動しました。
+
+## ステップ 6: アプリをテスト
+
+1. DingTalk クライアントサイドにログインし、アプリが所属する組織を選択します。
+
+2. **ワークベンチ** > **追加** をクリックし、上記で作成した社内アプリを検索して追加操作を完了します。
+
+3. ワークベンチでアプリにアクセスし、**ローカルファイルを選択** をクリックしてアップロードします。
+
+   > アップロードするファイルは 50M 未満である必要があります。
+
+4. ファイルを選択した後、**送信** をクリックしてアップロード操作を完了します。
+
+5. アップロード完了後、ファイルを開いてアップロード内容を確認できます。

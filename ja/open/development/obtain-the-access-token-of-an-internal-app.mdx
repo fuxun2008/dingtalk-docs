@@ -1,0 +1,523 @@
+---
+title: "社内アプリの access token を取得する"
+---
+
+社内アプリが本 API を呼び出して、アクセス認証情報（access token）を取得します。DingTalk のサーバー API を呼び出す際は、access token によって本人認証を行い、リクエストの追加元が正当で、かつ相応の権限を持っていることを確認します。
+
+## API 呼び出し説明
+
+本 API は、社内システム連携のシナリオに適しており、DingTalk のオープン機能を呼び出すために必要なアクセス認証情報の取得に使用します。一般的な利用フローは以下のとおりです。
+
+- アプリの起動時、または初めて API を呼び出す前に本 API を呼び出して access token を取得します。
+- 取得した access token をローカルストレージ（Redis、メモリキャッシュなど）にキャッシュし、リクエストの繰り返しを回避します。
+- 認証を必要とする以降のすべての API 呼び出しには、この access token を含めて送信します。
+- キャッシュの有効期限は 7200 秒よりやや短く（例: 7000 秒）設定し、自動更新の仕組みを実装することを推奨します。時刻のずれによる認証情報の失効を防止できます。
+- 短時間に本 API を頻繁に呼び出すと、レート制限ポリシーが発動し、サービスの安定性に影響する場合がありますのでご注意ください。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/oauth2/accessToke |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ |
+| 権限要件 | permission-qyapi_base-企業 API を呼び出す際に必要な基本権限 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| appKey | String | 必須 | dingeqqpkv3xxxxxx | 作成済みの社内アプリの Client ID。取得方法は [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta) ドキュメントを参照してください。 |
+| appSecret | String | 必須 | GT-lsu-taDAxxxsTsxxxx | 作成済みの社内アプリの Client Secret。取得方法は [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta) ドキュメントを参照してください。  **説明**  Client Secret は厳重に管理し、漏洩しないようご注意ください。 |
+
+### リクエスト例
+
+```curl
+curl -X POST 'https://api.dingtalk.io/v1.0/oauth2/accessToken' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "appKey": "dingeqqpkv3xxxxxx",
+    "appSecret": "GT-lsu-taDAxxxsTsxxxx"
+  }'
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Initialize the account Client with a token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkoauth2_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkoauth2_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkoauth2_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest getAccessTokenRequest = new com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest()
+                .setAppKey("dingeqqpkv3xxxxxx")
+                .setAppSecret("GT-lsu-taDAxxxsTsxxxx");
+        try {
+            client.getAccessToken(getAccessTokenRequest);
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains code and message properties to help developers locate the issue
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains code and message properties to help developers locate the issue
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.oauth2_1_0.client import Client as dingtalkoauth2_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.oauth2_1_0 import models as dingtalkoauth_2__1__0_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkoauth2_1_0Client:
+        """
+        Initialize the account Client with a token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkoauth2_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_access_token_request = dingtalkoauth_2__1__0_models.GetAccessTokenRequest(
+            app_key='dingeqqpkv3xxxxxx',
+            app_secret='GT-lsu-taDAxxxsTsxxxx'
+        )
+        try:
+            client.get_access_token(get_access_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains code and message properties to help developers locate the issue
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_access_token_request = dingtalkoauth_2__1__0_models.GetAccessTokenRequest(
+            app_key='dingeqqpkv3xxxxxx',
+            app_secret='GT-lsu-taDAxxxsTsxxxx'
+        )
+        try:
+            await client.get_access_token_async(get_access_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains code and message properties to help developers locate the issue
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Voauth2_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Voauth2_1_0\Models\GetAccessTokenRequest;
+
+class Sample {
+
+    /**
+     * Initialize the account Client with a token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $getAccessTokenRequest = new GetAccessTokenRequest([
+            "appKey" => "dingeqqpkv3xxxxxx",
+            "appSecret" => "GT-lsu-taDAxxxsTsxxxx"
+        ]);
+        try {
+            $client->getAccessToken($getAccessTokenRequest);
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err contains code and message properties to help developers locate the issue
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkoauth2_1_0  "github.com/alibabacloud-go/dingtalk/oauth2_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Initialize the account Client with a token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkoauth2_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkoauth2_1_0.Client{}
+  _result, _err = dingtalkoauth2_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  getAccessTokenRequest := &dingtalkoauth2_1_0.GetAccessTokenRequest{
+    AppKey: tea.String("dingeqqpkv3xxxxxx"),
+    AppSecret: tea.String("GT-lsu-taDAxxxsTsxxxx"),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.GetAccessToken(getAccessTokenRequest)
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err contains code and message properties to help developers locate the issue
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util from '@alicloud/tea-util';
+import dingtalkoauth2_1_0, * as $dingtalkoauth2_1_0 from '@alicloud/dingtalk/oauth2_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Initialize the account Client with a token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkoauth2_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkoauth2_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let getAccessTokenRequest = new $dingtalkoauth2_1_0.GetAccessTokenRequest({
+      appKey: "dingeqqpkv3xxxxxx",
+      appSecret: "GT-lsu-taDAxxxsTsxxxx",
+    });
+    try {
+      await client.getAccessToken(getAccessTokenRequest);
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err contains code and message properties to help developers locate the issue
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Initialize the account Client with a token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkoauth2_1_0.Models.GetAccessTokenRequest getAccessTokenRequest = new AlibabaCloud.SDK.Dingtalkoauth2_1_0.Models.GetAccessTokenRequest
+            {
+                AppKey = "dingeqqpkv3xxxxxx",
+                AppSecret = "GT-lsu-taDAxxxsTsxxxx",
+            };
+            try
+            {
+                client.GetAccessToken(getAccessTokenRequest);
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains code and message properties to help developers locate the issue
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains code and message properties to help developers locate the issue
+                }
+            }
+        }
+
+    }
+}
+```
+
+python2
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+from __future__ import unicode_literals
+
+import sys
+
+from alibabacloud_dingtalkoauth2_1_0.client import Client as dingtalkoauth2_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalkoauth2_1_0 import models as dingtalkoauth_2__1__0_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client():
+        """
+        Initialize the account Client with a token
+
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkoauth2_1_0Client(config)
+
+    @staticmethod
+    def main(args):
+        client = Sample.create_client()
+        get_access_token_request = dingtalkoauth_2__1__0_models.GetAccessTokenRequest(
+            app_key='dingeqqpkv3xxxxxx',
+            app_secret='GT-lsu-taDAxxxsTsxxxx'
+        )
+        try:
+            client.get_access_token(get_access_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains code and message properties to help developers locate the issue
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+Swift
+
+```java
+#!/usr/bin/env xcrun swift
+
+import Cocoa
+import Foundation
+import Tea
+import TeaUtils
+import AlibabacloudDingtalkoauth210
+import AlibabacloudOpenApi
+
+open class Client {
+    public static func createClient() throws -> AlibabacloudDingtalkoauth210.Client {
+        var config: AlibabacloudOpenApi.Config = AlibabacloudOpenApi.Config([:])
+        config.protocol_ = "https"
+        config.regionId = "central"
+        return AlibabacloudDingtalkoauth210.Client(config)
+    }
+
+    @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
+    public static func main(_ args: [String]?) async throws -> Void {
+        var client: AlibabacloudDingtalkoauth210.Client = try Client.createClient()
+        var getAccessTokenRequest: AlibabacloudDingtalkoauth210.GetAccessTokenRequest = AlibabacloudDingtalkoauth210.GetAccessTokenRequest([
+            "appKey": "dingeqqpkv3xxxxxx",
+            "appSecret": "GT-lsu-taDAxxxsTsxxxx"
+        ])
+        do {
+            try await client.getAccessToken(getAccessTokenRequest as! AlibabacloudDingtalkoauth210.GetAccessTokenRequest)
+        }
+        catch {
+            if error is Tea.TeaError {
+                var err = error as! Tea.TeaError
+                if (!TeaUtils.Client.empty(err.code) && !TeaUtils.Client.empty(err.message)) {
+                }
+            } else {
+                throw error
+            }
+        }
+    }
+}
+
+Client.main(CommandLine.arguments)
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| accessToken | String | fw8ef8we8f76e6f7s8dxxxx | 生成されたアクセストークン。  **説明**  アクセストークンを利用する際は、以下の点にご注意ください。   - 開発者側でアクセストークンをキャッシュし、アプリ単位で区別して保存してください。社内アプリごとにアクセストークンは独立しています。 - 本 API を頻繁に呼び出して認証情報を取得しないでください。キャッシュと組み合わせて呼び出し頻度を制御し、システムによるレート制限を回避することを推奨します。 |
+| expireIn | Long | 7200 | アクセストークンの有効期限（単位: 秒）。  **説明**  アクセストークンの有効期間は 7200 秒（2 時間）です。有効期間内に繰り返し取得した場合は同じ結果が返り、有効期限が自動的に更新されます。有効期限が切れた後に取得すると、新しいアクセストークンが返されます。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "accessToken" : "fw8ef8we8f76e6f7s8dxxxx",
+  "expireIn" : 7200
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/zh/open/development/server-api-error-codes-1) ドキュメントで解決方法を検索してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | invalidClientIdOrSecret | 無効な clientId または clientSecret です | 無効な clientId または clientSecret です |

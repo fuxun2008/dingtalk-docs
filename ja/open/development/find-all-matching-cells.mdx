@@ -1,0 +1,571 @@
+---
+title: "条件に一致するすべてのセルを検索"
+description: "完全一致、大文字小文字の区別、正規表現、数式内検索など、複数の検索モードに対応します。"
+---
+
+本インターフェースを呼び出すと、DingTalk スプレッドシートの指定ワークシート内で、対象テキストを含むすべてのセルを検索し、一致したセルの位置情報リストを返します。大量データから特定コンテンツを一括で特定するシーンに適しており、完全一致、大文字小文字の区別、正規表現、数式内検索など、複数の検索モードに対応します。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | `https://api.dingtalk.io/v1.0/doc/workbooks/{workbookId}/sheets/{sheetId}/findAll` |
+| HTTP Method | POST |
+| 対応アプリタイプ | appType-社内アプリ |
+| 権限要件 | permission-Document.Workbook.Read-DingTalk スプレッドシート読み取り権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | 必須 | 本インターフェースを呼び出すためのアクセス認証情報です。[社内アプリの accessToken を取得](https://open.dingtalk.io/document/development/obtain-the-access-token-of-an-internal-app) インターフェースを呼び出して取得します。 |
+
+### パスパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| workbookId | String | 必須 | スプレッドシートファイル ID。[ナレッジベース API](https://open.dingtalk.io/document/development/knowledge-base-overview) が返す `nodeId(dentryUuid)` がスプレッドシートの `workbookId` です。[ノードを取得](https://open.dingtalk.io/document/development/get-node) および [ナレッジベースドキュメントを作成](https://open.dingtalk.io/document/development/create-team-space-document) インターフェースを呼び出して取得できます。 |
+| sheetId | String | 必須 | ワークシート ID またはタイトル。[すべてのワークシートを取得](https://open.dingtalk.io/document/development/obtain-all-worksheets) インターフェースを呼び出して、id とワークシートのタイトルを取得できます。 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| operatorId | String | 必須 | 操作者の unionId。[ユーザー詳細を照会](https://open.dingtalk.io/document/development/query-user-details) インターフェースを呼び出して取得します。操作者に権限がない場合、インターフェースは `The operator has no permission` エラーを返します。 |
+| select | String | 任意 | 戻り値のフィールドを絞り込みます。本パラメータを指定しない場合、すべてのフィールドが返されます。   - select=a1Notation の場合、本インターフェースは a1Notation フィールドのみを返します。 - 複数のフィールドを返す場合は、カンマで区切ります。例：select=a1Notation,values の場合、本インターフェースは a1Notation と values フィールドのみを返します。       パフォーマンスを向上させ、今後戻り値が追加された際の API タイムアウトを防ぐため、本パラメータの指定を推奨します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| text | String | 必須 | 検索するテキスト。**useRegExp** がオンの場合は正規表現パターンとなります。例：「\\d+」 |
+| findOptions | Object | 必須 | 検索オプション。 |
+| matchEntireCell | Boolean | 任意 | セル全体に一致させるかどうか。指定可能な値：   - **true**：はい - **false**：いいえ（デフォルト） |
+| matchCase | Boolean | 任意 | 大文字小文字を区別するかどうか。指定可能な値：   - **true**：はい - **false**：いいえ（デフォルト） |
+| useRegExp | Boolean | 任意 | text を正規表現として扱うかどうか。指定可能な値：   - **true**：はい - **false**：いいえ（デフォルト） |
+| matchFormulaText | Boolean | 任意 | 数式の元テキストで検索するかどうか。指定可能な値：   - **true**：はい - **false**：いいえ（デフォルト）   例えば、あるセルに数式「=A1+B1」が入力されており、表示値が 4 の場合   - 検索テキストが「4」で matchFormulaText が true のとき、結果に含まれません。 - 検索テキストが「=A1」で matchFormulaText が true のとき、結果に含まれます。 |
+| scope | String | 任意 | 検索範囲。A1 表記で指定する Range アドレス形式です。 |
+| includeHidden | Boolean | 任意 | 非表示のセル（行列の非表示、絞り込み、グループ分けなどの機能によって不可視となったセル）を含めるかどうか。閲覧権限のないセルは含まれません。指定可能な値：   - **true**：はい - **false**：いいえ（デフォルト） |
+| unionCells | Boolean | 必須 | 検出されたセルのアドレスを集約するかどうか。集約することを推奨します。集約しない場合、大量のアドレスが返される可能性があります。指定可能な値：   - **true**：はい - **false**：いいえ（デフォルト） |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/doc/workbooks/e54Lq3xxx/sheets/Sheet1/findAll?operatorId=ppgAxxx&select=a1Notation HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:f86e0bxxx
+Content-Type:application/json
+
+{
+  "text" : "DingTalk",
+  "findOptions" : {
+    "matchEntireCell" : true,
+    "matchCase" : true,
+    "useRegExp" : true,
+    "matchFormulaText" : true,
+    "scope" : "A:A",
+    "includeHidden" : false,
+    "unionCells" : true
+  }
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkdoc_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkdoc_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkdoc_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkdoc_1_0.models.SheetFindAllHeaders sheetFindAllHeaders = new com.aliyun.dingtalkdoc_1_0.models.SheetFindAllHeaders();
+        sheetFindAllHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkdoc_1_0.models.SheetFindAllRequest.SheetFindAllRequestFindOptions findOptions = new com.aliyun.dingtalkdoc_1_0.models.SheetFindAllRequest.SheetFindAllRequestFindOptions()
+                .setMatchEntireCell(true)
+                .setMatchCase(true)
+                .setUseRegExp(true)
+                .setMatchFormulaText(true)
+                .setScope("A:A")
+                .setIncludeHidden(false)
+                .setUnionCells(true);
+        com.aliyun.dingtalkdoc_1_0.models.SheetFindAllRequest sheetFindAllRequest = new com.aliyun.dingtalkdoc_1_0.models.SheetFindAllRequest()
+                .setOperatorId("ppgAxxx")
+                .setSelect("a1Notation")
+                .setText("DingTalk")
+                .setFindOptions(findOptions);
+        try {
+            client.sheetFindAllWithOptions("e54Lq3xxx", "Sheet1", sheetFindAllRequest, sheetFindAllHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.doc_1_0.client import Client as dingtalkdoc_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.doc_1_0 import models as dingtalkdoc__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkdoc_1_0Client:
+        """
+        トークンを使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkdoc_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        sheet_find_all_headers = dingtalkdoc__1__0_models.SheetFindAllHeaders()
+        sheet_find_all_headers.x_acs_dingtalk_access_token = '<your access token>'
+        find_options = dingtalkdoc__1__0_models.SheetFindAllRequestFindOptions(
+            match_entire_cell=True,
+            match_case=True,
+            use_reg_exp=True,
+            match_formula_text=True,
+            scope='A:A',
+            include_hidden=False,
+            union_cells=True
+        )
+        sheet_find_all_request = dingtalkdoc__1__0_models.SheetFindAllRequest(
+            operator_id='ppgAxxx',
+            select='a1Notation',
+            text='DingTalk',
+            find_options=find_options
+        )
+        try:
+            client.sheet_find_all_with_options('e54Lq3xxx', 'Sheet1', sheet_find_all_request, sheet_find_all_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        sheet_find_all_headers = dingtalkdoc__1__0_models.SheetFindAllHeaders()
+        sheet_find_all_headers.x_acs_dingtalk_access_token = '<your access token>'
+        find_options = dingtalkdoc__1__0_models.SheetFindAllRequestFindOptions(
+            match_entire_cell=True,
+            match_case=True,
+            use_reg_exp=True,
+            match_formula_text=True,
+            scope='A:A',
+            include_hidden=False,
+            union_cells=True
+        )
+        sheet_find_all_request = dingtalkdoc__1__0_models.SheetFindAllRequest(
+            operator_id='ppgAxxx',
+            select='a1Notation',
+            text='DingTalk',
+            find_options=find_options
+        )
+        try:
+            await client.sheet_find_all_with_options_async('e54Lq3xxx', 'Sheet1', sheet_find_all_request, sheet_find_all_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\SheetFindAllHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\SheetFindAllRequest\findOptions;
+use AlibabaCloud\SDK\Dingtalk\Vdoc_1_0\Models\SheetFindAllRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $sheetFindAllHeaders = new SheetFindAllHeaders([]);
+        $sheetFindAllHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $findOptions = new findOptions([
+            "matchEntireCell" => true,
+            "matchCase" => true,
+            "useRegExp" => true,
+            "matchFormulaText" => true,
+            "scope" => "A:A",
+            "includeHidden" => false,
+            "unionCells" => true
+        ]);
+        $sheetFindAllRequest = new SheetFindAllRequest([
+            "operatorId" => "ppgAxxx",
+            "select" => "a1Notation",
+            "text" => "DingTalk",
+            "findOptions" => $findOptions
+        ]);
+        try {
+            $client->sheetFindAllWithOptions("e54Lq3xxx", "Sheet1", $sheetFindAllRequest, $sheetFindAllHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkdoc_1_0  "github.com/alibabacloud-go/dingtalk/doc_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * トークンを使用してアカウント Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkdoc_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkdoc_1_0.Client{}
+  _result, _err = dingtalkdoc_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  sheetFindAllHeaders := &dingtalkdoc_1_0.SheetFindAllHeaders{}
+  sheetFindAllHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  findOptions := &dingtalkdoc_1_0.SheetFindAllRequestFindOptions{
+    MatchEntireCell: tea.Bool(true),
+    MatchCase: tea.Bool(true),
+    UseRegExp: tea.Bool(true),
+    MatchFormulaText: tea.Bool(true),
+    Scope: tea.String("A:A"),
+    IncludeHidden: tea.Bool(false),
+    UnionCells: tea.Bool(true),
+  }
+  sheetFindAllRequest := &dingtalkdoc_1_0.SheetFindAllRequest{
+    OperatorId: tea.String("ppgAxxx"),
+    Select: tea.String("a1Notation"),
+    Text: tea.String("DingTalk"),
+    FindOptions: findOptions,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.SheetFindAllWithOptions(tea.String("e54Lq3xxx"), tea.String("Sheet1"), sheetFindAllRequest, sheetFindAllHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkdoc_1_0, * as $dingtalkdoc_1_0 from '@alicloud/dingtalk/doc_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * トークンを使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkdoc_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkdoc_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let sheetFindAllHeaders = new $dingtalkdoc_1_0.SheetFindAllHeaders({ });
+    sheetFindAllHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let findOptions = new $dingtalkdoc_1_0.SheetFindAllRequestFindOptions({
+      matchEntireCell: true,
+      matchCase: true,
+      useRegExp: true,
+      matchFormulaText: true,
+      scope: "A:A",
+      includeHidden: false,
+      unionCells: true,
+    });
+    let sheetFindAllRequest = new $dingtalkdoc_1_0.SheetFindAllRequest({
+      operatorId: "ppgAxxx",
+      select: "a1Notation",
+      text: "DingTalk",
+      findOptions: findOptions,
+    });
+    try {
+      await client.sheetFindAllWithOptions("e54Lq3xxx", "Sheet1", sheetFindAllRequest, sheetFindAllHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * トークンを使用してアカウント Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkdoc_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkdoc_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.SheetFindAllHeaders sheetFindAllHeaders = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.SheetFindAllHeaders();
+            sheetFindAllHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.SheetFindAllRequest.SheetFindAllRequestFindOptions findOptions = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.SheetFindAllRequest.SheetFindAllRequestFindOptions
+            {
+                MatchEntireCell = true,
+                MatchCase = true,
+                UseRegExp = true,
+                MatchFormulaText = true,
+                Scope = "A:A",
+                IncludeHidden = false,
+                UnionCells = true,
+            };
+            AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.SheetFindAllRequest sheetFindAllRequest = new AlibabaCloud.SDK.Dingtalkdoc_1_0.Models.SheetFindAllRequest
+            {
+                OperatorId = "ppgAxxx",
+                Select = "a1Notation",
+                Text = "DingTalk",
+                FindOptions = findOptions,
+            };
+            try
+            {
+                client.SheetFindAllWithOptions("e54Lq3xxx", "Sheet1", sheetFindAllRequest, sheetFindAllHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| value | Array | コンテンツが見つからなかった場合、value は空の配列となります。 |
+| a1Notation | String | 検出されたセルのアドレス。   - `unionCells` を `true` に設定した場合、集約後のアドレスは `A1:B3` のような形式になります。 - `unionCells` を `false` に設定した場合は、`A1` のような単一セルのアドレスとなります。 |
+| values | Array |  |
+|  | Array of Any | 検出されたセル内の値（表示テキスト）。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "value" : [ {
+    "a1Notation" : "A1:B3",
+    "values" : [ [ "1" ] ]
+  } ]
+}
+```
+
+### エラーコード
+
+本インターフェースの呼び出しでエラーが発生した場合、エラーメッセージをもとに [グローバルエラーコード](https://open.dingtalk.io/document/development/server-api-error-codes-1) ドキュメントで解決策をご確認ください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | invalidRequest.inputArgs.workbookIdIllegal | The workbookId is illegal. | workbookId が不正です。 |
+| 400 | invalidRequest.inputArgs.operatorIdIllegal | The operatorId is illegal. | operatorId が不正です。 |
+| 400 | invalidRequest.inputArgs.invalid | %s | リクエストパラメータが不正です。エラーメッセージをご確認ください。 |
+| 400 | invalidRequest.resource.notWorkbook | %s | 対応していないドキュメントタイプです。workbookId をご確認ください。 |
+| 403 | forbidden.operationIllegal | %s | リクエスト操作が不正です。エラーメッセージをご確認ください。 |
+| 403 | forbidden.accessDenied | The operator has no permission. | 現在のユーザーには本操作の権限がありません。 |
+| 403 | forbidden.document.sizeOverLimit | The document size is over limit and the server is unable to complete your request. Retry is unlikely to work unless the document size is decreased. | スプレッドシートのコンテンツが大きすぎます。コンテンツを縮小してください。 |
+| 403 | forbidden.acrossOrg | %s | リクエストが不正です。アクセス対象のドキュメントが accessToken で指定された組織に所属しているかご確認ください。 |
+| 404 | invalidRequest.resource.notFound | %s | リクエストが失敗しました。アクセス対象のリソースが見つかりません。 |
+| 500 | internalError | The server encountered an internal error and was unable to complete your request. Please try again later. | サーバー内部エラーです。後で再試行してください。 |
+| 503 | serviceBusy | The server is busy and unable to complete your request. Please try again later. | サービスが混雑しています。後で再試行してください。 |

@@ -1,0 +1,638 @@
+---
+title: "連絡先閲覧制限設定の追加または更新"
+---
+
+本 API を呼び出して、社員・部門・ロールに対する連絡先閲覧制限の設定を追加または更新します。
+
+## API 呼び出し説明
+
+DingTalk OA 管理コンソールでは、自部門メンバーによる連絡先の閲覧を制限できます。本 API はその機能を拡張したものであり、部門メンバーの閲覧制限に加えて、社員やロール単位での閲覧制限も実現できます。
+
+<Note>
+本 API による閲覧制限設定と OA 管理コンソールでの閲覧制限設定は独立して保存され、最終的な有効結果は両者の OR 条件で決まります。例えば、同一部門に対して本 API または OA 管理コンソールのいずれかで「自分のみ閲覧可能」と設定すると、最終的にその部門は自分のみ閲覧可能になります。
+</Note>
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/contact/restrictions/settings |
+| HTTP Method | PUT |
+| サポートされるアプリタイプ | appType-社内アプリ |
+| 必要な権限 | permission-Contact.Visibility.ReadWrite-連絡先データ可視範囲管理権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | 本 API を呼び出すためのアクセス認証情報。[社内アプリの access_token を取得する](https://open.dingtalk.io/document/development/obtain-the-access-token-of-an-internal-app#) API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| id | Long | いいえ | 設定 ID。   - 新規追加の場合は本パラメータを指定しません。 - 既存の設定を変更する場合は本パラメータを指定する必要があります。[連絡先閲覧制限設定リストを取得する](https://open.dingtalk.io/document/development/gets-a-list-of-address-book-limit-visibility-settings#) API を呼び出して取得します。 |
+| name | String | いいえ | 設定名。 |
+| description | String | いいえ | 設定の説明。 |
+| subjectUserIds | Array of String | いいえ | 連絡先閲覧を制限するユーザーの userId リスト。[部門ユーザー userid リストを取得する](https://open.dingtalk.io/document/development/query-the-list-of-department-userids#) API を呼び出して userId を取得できます。      subjectUserIds、subjectDeptIds、subjectTagIds の 3 つのパラメータ内の要素数の合計は 50 を超えることはできません。 |
+| subjectDeptIds | Array of Long | いいえ | 連絡先閲覧を制限する部門 ID リスト。[部門リストを取得する](https://open.dingtalk.io/document/development/obtain-the-department-list-v2#) API を呼び出して dept_id を取得できます。      subjectUserIds、subjectDeptIds、subjectTagIds の 3 つのパラメータ内の要素数の合計は 50 を超えることはできません。 |
+| subjectTagIds | Array of Long | いいえ | 連絡先閲覧を制限するロール ID。[ロールリストを取得する](https://open.dingtalk.io/document/development/obtains-a-list-of-enterprise-roles#) API を呼び出して取得します。      subjectUserIds、subjectDeptIds、subjectTagIds の 3 つのパラメータ内の要素数の合計は 50 を超えることはできません。 |
+| type | String | はい | 制限タイプ。以下の値があります。   - **onlySelf**：自分のみ閲覧可能で、自分以外の部門や人は閲覧できません。 - **onlySelfDeptAndChild**：自分が所属する部門および子部門のみ閲覧可能で、それ以外の部門や人は閲覧できません。 - **excludeNode**：デフォルト値。ホワイトリストに含まれる部門や人のみ閲覧可能です。       本パラメータの値が excludeNode の場合のみ、設定したホワイトリストが有効になります。 |
+| excludeUserIds | Array of String | いいえ | ホワイトリストユーザーの userId。[部門ユーザー userid リストを取得する](https://open.dingtalk.io/document/development/query-the-list-of-department-userids#) API を呼び出して userId を取得できます。       - excludeUserIds、excludeDeptIds、excludeTagIds の 3 つのパラメータ内の要素数の合計は 50 を超えることはできません。 - type パラメータの値が excludeNode の場合のみ、設定したホワイトリストが有効になります。 |
+| excludeDeptIds | Array of Long | いいえ | ホワイトリスト部門 ID。[部門リストを取得する](https://open.dingtalk.io/document/development/obtain-the-department-list-v2#) API を呼び出して取得します。       - excludeUserIds、excludeDeptIds、excludeTagIds の 3 つのパラメータ内の要素の合計は 50 を超えることはできません。 - type パラメータの値が excludeNode の場合のみ、設定したホワイトリストが有効になります。 |
+| excludeTagIds | Array of Long | いいえ | ホワイトリストロール ID。[ロールリストを取得する](https://open.dingtalk.io/document/development/obtains-a-list-of-enterprise-roles#) API を呼び出して取得します。       - excludeUserIds、excludeDeptIds、excludeTagIds の 3 つのパラメータ内の要素数の合計は 50 を超えることはできません。 - type パラメータの値が excludeNode の場合のみ、設定したホワイトリストが有効になります。 |
+| active | Boolean | いいえ | 本設定を有効にするかどうか。   - true：有効 - false：無効 |
+| restrictInUserProfile | Boolean | いいえ | プロフィールページの閲覧も同時に制限するかどうか。   - true：はい - false：いいえ       閲覧を制限すると、DingTalk クライアントサイドで閲覧可能範囲外の社員のプロフィール写真をタップしても、現在の組織のプロフィール情報は表示されません。 |
+| restrictInSearch | Boolean | いいえ | 検索も同時に制限するかどうか。   - true：はい - false：いいえ       検索を制限すると、DingTalk クライアントサイドで閲覧可能範囲外の社員を検索しても、結果がヒットしません。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+PUT /v1.0/contact/restrictions/settings HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:xxxxx
+Content-Type:application/json
+
+{
+  "id" : 10001,
+  "name" : "xxx部门的人只能查看自己",
+  "description" : "xxx部门的人限制查看外部门的人",
+  "subjectUserIds" : [ "userId1" ],
+  "subjectDeptIds" : [ 10000 ],
+  "subjectTagIds" : [ 20000 ],
+  "type" : "excludeNode",
+  "excludeUserIds" : [ "userId2" ],
+  "excludeDeptIds" : [ 10000 ],
+  "excludeTagIds" : [ 20000 ],
+  "active" : true,
+  "restrictInUserProfile" : true,
+  "restrictInSearch" : true
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * トークンを使用してアカウントの Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkcontact_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkcontact_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkcontact_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkcontact_1_0.models.UpdateContactRestrictSettingHeaders updateContactRestrictSettingHeaders = new com.aliyun.dingtalkcontact_1_0.models.UpdateContactRestrictSettingHeaders();
+        updateContactRestrictSettingHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkcontact_1_0.models.UpdateContactRestrictSettingRequest updateContactRestrictSettingRequest = new com.aliyun.dingtalkcontact_1_0.models.UpdateContactRestrictSettingRequest()
+                .setId(10001L)
+                .setName("xxx部门的人只能查看自己")
+                .setDescription("xxx部门的人限制查看外部门的人")
+                .setSubjectUserIds(java.util.Arrays.asList(
+                    "userId1"
+                ))
+                .setSubjectDeptIds(java.util.Arrays.asList(
+                    10000L
+                ))
+                .setSubjectTagIds(java.util.Arrays.asList(
+                    20000L
+                ))
+                .setType("excludeNode")
+                .setExcludeUserIds(java.util.Arrays.asList(
+                    "userId2"
+                ))
+                .setExcludeDeptIds(java.util.Arrays.asList(
+                    10000L
+                ))
+                .setExcludeTagIds(java.util.Arrays.asList(
+                    20000L
+                ))
+                .setActive(true)
+                .setRestrictInUserProfile(true)
+                .setRestrictInSearch(true);
+        try {
+            client.updateContactRestrictSettingWithOptions(updateContactRestrictSettingRequest, updateContactRestrictSettingHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.contact_1_0.client import Client as dingtalkcontact_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.contact_1_0 import models as dingtalkcontact__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkcontact_1_0Client:
+        """
+        トークンを使用してアカウントの Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkcontact_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        update_contact_restrict_setting_headers = dingtalkcontact__1__0_models.UpdateContactRestrictSettingHeaders()
+        update_contact_restrict_setting_headers.x_acs_dingtalk_access_token = '<your access token>'
+        update_contact_restrict_setting_request = dingtalkcontact__1__0_models.UpdateContactRestrictSettingRequest(
+            id=10001,
+            name='xxx部门的人只能查看自己',
+            description='xxx部门的人限制查看外部门的人',
+            subject_user_ids=[
+                'userId1'
+            ],
+            subject_dept_ids=[
+                10000
+            ],
+            subject_tag_ids=[
+                20000
+            ],
+            type='excludeNode',
+            exclude_user_ids=[
+                'userId2'
+            ],
+            exclude_dept_ids=[
+                10000
+            ],
+            exclude_tag_ids=[
+                20000
+            ],
+            active=True,
+            restrict_in_user_profile=True,
+            restrict_in_search=True
+        )
+        try:
+            client.update_contact_restrict_setting_with_options(update_contact_restrict_setting_request, update_contact_restrict_setting_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        update_contact_restrict_setting_headers = dingtalkcontact__1__0_models.UpdateContactRestrictSettingHeaders()
+        update_contact_restrict_setting_headers.x_acs_dingtalk_access_token = '<your access token>'
+        update_contact_restrict_setting_request = dingtalkcontact__1__0_models.UpdateContactRestrictSettingRequest(
+            id=10001,
+            name='xxx部门的人只能查看自己',
+            description='xxx部门的人限制查看外部门的人',
+            subject_user_ids=[
+                'userId1'
+            ],
+            subject_dept_ids=[
+                10000
+            ],
+            subject_tag_ids=[
+                20000
+            ],
+            type='excludeNode',
+            exclude_user_ids=[
+                'userId2'
+            ],
+            exclude_dept_ids=[
+                10000
+            ],
+            exclude_tag_ids=[
+                20000
+            ],
+            active=True,
+            restrict_in_user_profile=True,
+            restrict_in_search=True
+        )
+        try:
+            await client.update_contact_restrict_setting_with_options_async(update_contact_restrict_setting_request, update_contact_restrict_setting_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vcontact_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vcontact_1_0\Models\UpdateContactRestrictSettingHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vcontact_1_0\Models\UpdateContactRestrictSettingRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * トークンを使用してアカウントの Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $updateContactRestrictSettingHeaders = new UpdateContactRestrictSettingHeaders([]);
+        $updateContactRestrictSettingHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $updateContactRestrictSettingRequest = new UpdateContactRestrictSettingRequest([
+            "id" => 10001,
+            "name" => "xxx部门的人只能查看自己",
+            "description" => "xxx部门的人限制查看外部门的人",
+            "subjectUserIds" => [
+                "userId1"
+            ],
+            "subjectDeptIds" => [
+                10000
+            ],
+            "subjectTagIds" => [
+                20000
+            ],
+            "type" => "excludeNode",
+            "excludeUserIds" => [
+                "userId2"
+            ],
+            "excludeDeptIds" => [
+                10000
+            ],
+            "excludeTagIds" => [
+                20000
+            ],
+            "active" => true,
+            "restrictInUserProfile" => true,
+            "restrictInSearch" => true
+        ]);
+        try {
+            $client->updateContactRestrictSettingWithOptions($updateContactRestrictSettingRequest, $updateContactRestrictSettingHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkcontact_1_0  "github.com/alibabacloud-go/dingtalk/contact_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * トークンを使用してアカウントの Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkcontact_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkcontact_1_0.Client{}
+  _result, _err = dingtalkcontact_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  updateContactRestrictSettingHeaders := &dingtalkcontact_1_0.UpdateContactRestrictSettingHeaders{}
+  updateContactRestrictSettingHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  updateContactRestrictSettingRequest := &dingtalkcontact_1_0.UpdateContactRestrictSettingRequest{
+    Id: tea.Int64(10001),
+    Name: tea.String("xxx部门的人只能查看自己"),
+    Description: tea.String("xxx部门的人限制查看外部门的人"),
+    SubjectUserIds: []*string{tea.String("userId1")},
+    SubjectDeptIds: []*int64{tea.Int64(10000)},
+    SubjectTagIds: []*int64{tea.Int64(20000)},
+    Type: tea.String("excludeNode"),
+    ExcludeUserIds: []*string{tea.String("userId2")},
+    ExcludeDeptIds: []*int64{tea.Int64(10000)},
+    ExcludeTagIds: []*int64{tea.Int64(20000)},
+    Active: tea.Bool(true),
+    RestrictInUserProfile: tea.Bool(true),
+    RestrictInSearch: tea.Bool(true),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.UpdateContactRestrictSettingWithOptions(updateContactRestrictSettingRequest, updateContactRestrictSettingHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkcontact_1_0, * as $dingtalkcontact_1_0 from '@alicloud/dingtalk/contact_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * トークンを使用してアカウントの Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkcontact_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkcontact_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let updateContactRestrictSettingHeaders = new $dingtalkcontact_1_0.UpdateContactRestrictSettingHeaders({ });
+    updateContactRestrictSettingHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let updateContactRestrictSettingRequest = new $dingtalkcontact_1_0.UpdateContactRestrictSettingRequest({
+      id: 10001,
+      name: "xxx部门的人只能查看自己",
+      description: "xxx部门的人限制查看外部门的人",
+      subjectUserIds: [
+        "userId1"
+      ],
+      subjectDeptIds: [
+        10000
+      ],
+      subjectTagIds: [
+        20000
+      ],
+      type: "excludeNode",
+      excludeUserIds: [
+        "userId2"
+      ],
+      excludeDeptIds: [
+        10000
+      ],
+      excludeTagIds: [
+        20000
+      ],
+      active: true,
+      restrictInUserProfile: true,
+      restrictInSearch: true,
+    });
+    try {
+      await client.updateContactRestrictSettingWithOptions(updateContactRestrictSettingRequest, updateContactRestrictSettingHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * トークンを使用してアカウントの Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkcontact_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkcontact_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkcontact_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.UpdateContactRestrictSettingHeaders updateContactRestrictSettingHeaders = new AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.UpdateContactRestrictSettingHeaders();
+            updateContactRestrictSettingHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.UpdateContactRestrictSettingRequest updateContactRestrictSettingRequest = new AlibabaCloud.SDK.Dingtalkcontact_1_0.Models.UpdateContactRestrictSettingRequest
+            {
+                Id = 10001,
+                Name = "xxx部门的人只能查看自己",
+                Description = "xxx部门的人限制查看外部门的人",
+                SubjectUserIds = new List<string>
+                {
+                    "userId1"
+                },
+                SubjectDeptIds = new List<long?>
+                {
+                    10000
+                },
+                SubjectTagIds = new List<long?>
+                {
+                    20000
+                },
+                Type = "excludeNode",
+                ExcludeUserIds = new List<string>
+                {
+                    "userId2"
+                },
+                ExcludeDeptIds = new List<long?>
+                {
+                    10000
+                },
+                ExcludeTagIds = new List<long?>
+                {
+                    20000
+                },
+                Active = true,
+                RestrictInUserProfile = true,
+                RestrictInSearch = true,
+            };
+            try
+            {
+                client.UpdateContactRestrictSettingWithOptions(updateContactRestrictSettingRequest, updateContactRestrictSettingHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message プロパティが含まれ、開発者が問題を特定するのに役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| result | Long | 制限設定 ID。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : 10001
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合、エラーメッセージをもとに [グローバルエラーコード](https://open.dingtalk.io/document/development/server-api-error-codes-1) ドキュメントで解決方法を検索できます。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | userIdInvalid | userId が存在しません | userId が存在しません |
+| 400 | excludeNodeExceed | excludeUserIds、excludeDeptIds、excludeTagIds の 3 配列要素の合計は 50 を超えることはできません | excludeUserIds、excludeDeptIds、excludeTagIds の 3 配列要素の合計は 50 を超えることはできません |
+| 400 | subjectNodeExceed | subjectUserIds、subjectDeptIds、subjectTagIds の 3 配列要素の合計は 50 を超えることはできません | subjectUserIds、subjectDeptIds、subjectTagIds の 3 配列要素の合計は 50 を超えることはできません |
+| 400 | typeInvalid | type は excludeNode、onlySelf、onlySelfDeptAndChild のいずれかである必要があります | type は excludeNode、onlySelf、onlySelfDeptAndChild のいずれかである必要があります |
+| 400 | subjectNodeEmpty | subjectUserIds、subjectDeptIds、subjectTagIds をすべて空にすることはできません | subjectUserIds、subjectDeptIds、subjectTagIds をすべて空にすることはできません |
+| 400 | idInvalid | id に対応する設定が存在しません | id に対応する設定が存在しません |
+| 500 | system.error | システムエラー | システムエラー |

@@ -1,0 +1,217 @@
+---
+title: "Range を指定して部分コンテンツをダウンロード"
+description: "本記事では、Range を指定して部分コンテンツをダウンロードする方法について説明します。"
+---
+
+# Range を指定して部分コンテンツをダウンロード
+
+## HTTP Range を指定したコンテンツダウンロードとは
+
+OSS 内の大容量ファイル（100M を超えるもの）をダウンロードする際、転送中にネットワーク環境の影響を受けると、転送が失敗することがあります。この場合、HTTP Range リクエストを利用して大容量ファイルの一部コンテンツを取得できます。例は以下のとおりです。
+
+```text
+Get /ObjectName HTTP/1.1
+Host:xxxx.oss-cn-hangzhou.aliyuncs.com
+Date:Tue, 17 Nov 2015 17:27:45 GMT
+Authorization:SignatureValue
+Range:bytes=[$ByteRange]
+```
+
+<Note>
+[$ByteRange] はリクエストするリソースの範囲を示し、単位は「Byte（バイト）」です。例は以下のとおりです。
+</Note>
+
+- `Range: bytes=0-499` は第 0〜499 バイトの範囲のコンテンツを示します。
+- `Range: bytes=500-999` は第 500〜999 バイトの範囲のコンテンツを示します。
+- `Range: bytes=-500` は末尾 500 バイトのコンテンツを示します。
+- `Range: bytes=500-` は第 500 バイトからファイル終端までのコンテンツを示します。
+- `Range: bytes=0-` は最初のバイトから最後のバイトまで、つまりファイル全体のコンテンツを示します。
+- OSS は複数の Range パラメータをサポートしていません。つまり、複数の範囲指定はサポートされていません。複数の範囲を指定した場合、OSS は最初の Range のデータのみを返します。例えば、`Range:bytes=0-499,500-999` の場合、OSS は 0〜499 バイトの範囲のコンテンツのみを返します。
+- [$ByteRange] の有効区間は 0 から `content-length - 1` までの範囲内です。
+
+HTTP Range リクエストが正当な場合、レスポンスの戻り値は `206` となり、レスポンスヘッダーに `Content-Range` が含まれます。HTTP Range リクエストが不正な場合、または指定範囲が有効区間外の場合、Range は適用されず、レスポンスの戻り値は `200` となり、Object 全体のコンテンツが転送されます。HTTP Range リクエストが不正な例とエラー説明は以下のとおりです。
+
+<Note>
+ここでは Object リソースのサイズが 1000 バイト、Range 有効区間が 0〜999 と仮定します。
+</Note>
+
+- `Range: byte=0-499`：フォーマットエラー。byte は bytes であるべきです。
+- `Range: bytes=0-1000`：末尾バイト 1000 が有効区間を超えています。
+- `Range: bytes=1000-2000`：指定範囲が有効区間を超えています。
+- `Range: bytes=1000-`：先頭バイトが有効区間を超えています。
+- `Range: bytes=-2000`：指定範囲が有効区間を超えています。
+
+### 互換動作
+
+HTTP Range を使用する際にリクエストヘッダー `x-oss-range-behavior:standard` を追加すると、指定範囲が有効区間外の場合の OSS の動作を変更できます。動作変更の例は以下のとおりです。
+
+<Note>
+ここでは Object リソースのサイズが 1000 バイト、Range 有効区間が 0-999 と仮定します。HTTP Range リクエストで大容量ファイルの一部コンテンツを取得する際、無効な範囲を選択したことで OSS が InvalidRange エラーコードを返します。詳細なエラーメッセージは以下のとおりです：`The requested range cannot be satisfied`
+</Note>
+
+- `Range: bytes=500-2000`：末尾バイトが有効区間を超えています。500-999 バイトの範囲のコンテンツを返します。
+- `Range: bytes=1000-2000`：先頭バイトが有効区間を超えています。エラー `416 (InvalidRange)` を返します。
+- `Range: bytes=1000-`：先頭バイトが有効区間を超えています。エラー `416 (InvalidRange)` を返します。
+- `Range: bytes=-2000`：指定範囲が有効区間を超えています。0-999 バイト、つまりファイル全体のコンテンツを返します。
+
+## 例
+
+上記の内容に対して、本記事では以下の HTTP Range リクエスト例を提供します。
+
+<Note>
+ここでは Object リソースのサイズが 1000 バイト、Range 有効区間が 0-999 と仮定します。
+</Note>
+
+### 正常リクエスト例
+
+- Object リソースの 0-499 バイト範囲のコンテンツをリクエストします。
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-499
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:51:30 GMT
+  Authorization: Sigature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 0-499/1000
+  connection: keep-alive
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA928B227D52731327DE078
+  date: Fri, 18 Oct 2019 02:51:30 GMT
+  [500 bytes of object data]
+  ```
+- Object リソースの第 500 バイトからファイル終端までのコンテンツをリクエストします。
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=500-
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:24:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9307750EBE33332E3720A
+  date: Fri, 18 Oct 2019 03:24:39 GMT
+  [500 bytes of object data]
+  ```
+- Object リソースの末尾 500 バイトのコンテンツをリクエストします。
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=-500
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:23:22 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9302A6646AC37397F7039
+  date: Fri, 18 Oct 2019 03:23:22 GMT
+  [500 bytes of object data]
+  ```
+
+### 範囲超過リクエスト例
+
+- 末尾バイト 1000 が有効区間を超えているため、Range は適用されません。レスポンスの戻り値は `200` となり、Object 全体のコンテンツが転送されます。
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-1000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:00:02 GMT
+  Authorization: Signature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA92AB204321E36347F3E7D
+  date: Fri, 18 Oct 2019 03:00:02 GMT
+  [1000 bytes of object data]
+  ```
+- 指定範囲が有効区間を超えているため、Range は適用されません。レスポンスの戻り値は `200` となり、Object 全体のコンテンツが転送されます。
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:56:24 GMT
+  Authorization: Sigature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA929D9CCCC823835CBE134
+  date: Fri, 18 Oct 2019 02:56:25 GMT
+  [1000 bytes of object data]
+  ```
+
+### 互換動作リクエスト例
+
+- `x-oss-range-behavior:standard` リクエストヘッダーを追加した場合、末尾バイトが有効区間を超えているため、500-999 バイト範囲のコンテンツを返します。
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=500-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:02:23 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9637FB3B1C73234CC59EB
+  date: Fri, 18 Oct 2019 07:02:23 GMT
+  [500 bytes of object data]
+  ```
+- `x-oss-range-behavior:standard` リクエストヘッダーを追加した場合、先頭バイトが有効区間を超えているため、`416` エラーを返します。
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:04:23 GMT
+  Authorization: Signature
+
+  416 (Requested Range Not Satisfiable)
+  content-length: 345
+  x-oss-request-id: 5DA963F7CEBFAA3931BF91F5
+  date: Fri, 18 Oct 2019 07:04:23 GMT
+  content-type: application/xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <Error>
+    <Code>InvalidRange</Code>
+    <Message>The requested range cannot be satisfied</Message>
+    <RequestId>5DA963F7CEBFAA3931BF91F5</RequestId>
+    <HostId>bucket.oss-cn-hangzhou.aliyuncs.com</HostId>
+    <ActualObjectSize>1000</ActualObjectSize>
+    <RangeRequested>bytes=1000-2000</RangeRequested>
+  </Error>
+  ```
+- `x-oss-range-behavior:standard` リクエストヘッダーを追加した場合、指定範囲が有効区間を超えているため、0-999 バイト、つまりファイル全体のコンテンツを返します。
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:06:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 1000
+  content-range: bytes 0-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9647FC4334F3534AF9A83
+  date: Fri, 18 Oct 2019 07:06:39 GMT
+  [1000 bytes of object data]
+  ```
