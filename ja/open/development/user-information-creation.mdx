@@ -1,0 +1,219 @@
+---
+title: "ユーザーの作成"
+---
+
+この API を呼び出して、新しいユーザーを作成します。
+
+## API 呼び出し説明
+
+この API を呼び出すと、一般ユーザーまたは企業アカウントユーザーを作成できます。呼び出し時のパラメータの使い方に多くの違いがあるため、開発者が確認しやすいように、新規ユーザーのアカウントタイプ別に分けて最適化しています。
+
+- 一般ユーザーを作成する場合は、本ドキュメントの API 説明をご参照ください。
+- 企業アカウントユーザーを作成する場合（購入して開通した組織のみ利用可能）は、以下の API 説明ドキュメントをご参照ください。
+
+  - [シングルサインオン企業アカウントの作成](/ja/open/development/create-an-sso-account)
+  - [DingTalk 自社作成企業アカウントの作成](/ja/open/development/create-dingtalk-user-created-dedicated-account)
+  - [他組織の企業アカウントを招待して参加させる](/ja/open/development/invite-other-organization-specific-accounts-to-join)
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/v2/user/create |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ |
+| 必要な権限 | permission-qyapi_manage_addresslist-連絡先データ管理権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | BE3xxxx | この API を呼び出すためのアプリ認証情報。社内アプリの access_token を取得する API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| userid | String | いいえ | zhangsan | 社員の一意の識別 ID（変更不可）。社内で一意である必要があります。長さは 1〜64 文字。指定しない場合は、自動的に userid が生成されます。 |
+| name | String | はい | 山田太郎 | 社員名。最大 80 文字。 |
+| mobile | String | はい | 185xxxx | 電話番号。社内で一意であり、重複は不可。   - 国際電話番号、中国香港、中国マカオ、中国台湾の番号の場合は、+xx-xxxxxx の形式を使用してください。 - 企業の登録地が中国本土以外の場合、ユーザーを追加する際の電話番号は +86-xxxxxx の形式を使用してください。   **説明**  [DingTalk 管理者バックエンド](https://oa.dingtalk.io)にログインして、企業の登録地を確認できます。 |
+| hide_mobile | Boolean | いいえ | false | 電話番号を非表示にするかどうか。   - **true**：非表示  電話番号を非表示にすると、プロフィールページでは非表示になりますが、引き続き DING の送信や DingTalk 無料ビジネス通話の発信は可能です。 - **false**：表示 |
+| telephone | String | いいえ | 010-86123456-2345 | 内線番号。最大 50 文字。  **説明**  内線番号は一意であり、社内で重複は不可です。 |
+| job_number | String | いいえ | 4 | 社員番号。最大 50 文字。 |
+| title | String | いいえ | 技術ディレクター | 職位。最大 200 文字。 |
+| email | String | いいえ | test@xxx.com | 社員の個人メール。最大 50 文字。  **説明**  社員メールは一意であり、社内で重複は不可です。 |
+| org_email | String | いいえ | test@xxx.com | 社員のエンタープライズメール。最大 100 文字。  **説明**  以下の条件を満たす場合のみ、このフィールドは有効になります。社員のエンタープライズメールが開通済みであること。 |
+| org_email_type | String | いいえ | profession | 社員のエンタープライズメールのタイプ。   - **profession：** 標準版 - **base：** ベーシック版 |
+| work_place | String | いいえ | 未来 park | 勤務地。最大 100 文字。 |
+| remark | String | いいえ | 表示名表示名 | 表示名。最大 2000 文字。 |
+| dept_id_list | String | はい | "2,3,4" | 所属部門 ID のリスト。1 回の呼び出しで最大 100 個の部門 ID を指定できます。 |
+| dept_order_list | Object[] | いいえ |  | 社員の対応する部門内での並び替え。 |
+| dept_id | Number | いいえ | 2 | 部門 ID。 |
+| order | Number | いいえ | 1 | 社員の部門内での並び替え。 |
+| dept_title_list | Object[] | いいえ |  | 社員の対応する部門内での職位。 |
+| dept_id | Number | いいえ | 2 | 部門 ID。 |
+| title | String | いいえ | シニアプロダクトマネージャー | 社員の部門内での職位。 |
+| extension | Object | いいえ | `{"趣味":"旅行","年齢":"24"}` | 拡張属性。複数の属性を設定でき、最大長は 2000 文字です。  **説明**   - モバイル端末では、最大 10 個の拡張属性しか表示できません。 - このパラメータを使用する前に、[DingTalk 管理者バックエンド](https://oa.dingtalk.io/index_new.htm#/setting/contactInfo) > 社内連絡先設定 > ユーザーフィールド管理で属性を追加してから、API を呼び出して値を割り当てる必要があります。詳細は、後述の **extension パラメータの使用について** をご参照ください。 - このフィールドの値はリンクタイプの入力に対応しており、リンク内では変数のワイルドカード自動置換にも対応しています。現在サポートしているワイルドカードは：userid、corpid。例：`{"趣味":"[趣味](http://www.dingtalk.io?userid=#userid#&corpid=#corpid#)"}` - **重要：** 新しい属性を直接追加すると元の属性値が上書きされます。既存の属性をまず取得し、新しい属性を既存の属性に追加してから、全体を更新する必要があります。 |
+| senior_mode | Boolean | いいえ | false | 高管モードを有効にするかどうか。デフォルトは false。   - **true**：有効。  **説明**    - 有効にすると、電話番号はすべての社員に対して非表示になります。   - 一般社員は DING の送信や DingTalk ビジネス通話の発信ができません。   - 高管同士では DING の送信や DingTalk ビジネス通話の発信が可能です。 - **false**：無効。 |
+| hired_date | Number | いいえ | 1597573616828 | 入社日。Unix タイムスタンプ、単位はミリ秒。 |
+| manager_userid | String | いいえ | 001 | 直属上司の userId。 |
+| login_email | String | いいえ | test@xxx.com | ログインメール。  **説明**  メールアカウントのみに適用されます。メールアカウント以外でこのフィールドを設定しても無効です。 |
+| dept_position_list | DeptPosition[] | いいえ |  | 部門内の在職情報。 |
+| extension_i18n | Json | いいえ | `{"趣味": {"zh_CN": "旅游", "en_US": "travel", "aJP": "旅行"}}` | 拡張属性の国際化値。 |
+
+### リクエスト例
+
+```bash
+curl -X POST "https://oapi.dingtalk.io/topapi/v2/user/create" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=1c016742-9383-4276-beb1-ebb375acc454' \
+-d 'name=%E5%BC%A0%E4%B8%89' \
+-d 'mobile=18513027676' \
+-d 'dept_id_list=%5C%222%2C3%2C4%5C%22'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/create");
+OapiV2UserCreateRequest req = new OapiV2UserCreateRequest();
+req.setUserid("002");
+req.setName("テスト");
+req.setSeniorMode(false);
+req.setMobile("184806*****");
+req.setTitle("教職員");
+req.setEmail("test@xx.com");
+req.setOrgEmail("test@xxx.com");
+req.setOrgEmailType("profession");
+req.setDeptIdList("1");
+ArrayList<OapiV2UserCreateRequest.DeptTitle> deptTitles = new ArrayList<>();
+OapiV2UserCreateRequest.DeptTitle deptTitle = new OapiV2UserCreateRequest.DeptTitle();
+deptTitle.setDeptId(1L);
+deptTitle.setTitle("テスト");
+OapiV2UserCreateRequest.DeptTitle deptTitle1 = new OapiV2UserCreateRequest.DeptTitle();
+deptTitle1.setDeptId(1L);
+deptTitle1.setTitle("担当者");
+deptTitles.add(deptTitle);
+deptTitles.add(deptTitle1);
+req.setDeptTitleList(deptTitles);
+req.setHideMobile(false);
+req.setTelephone("010-8xxxxx6-2345");
+req.setJobNumber("100828");
+req.setHiredDate(1615219200000L);
+req.setWorkPlace("未来park");
+req.setRemark("備考備考");
+List<OapiV2UserCreateRequest.DeptOrder> deptOrderList = new ArrayList<OapiV2UserCreateRequest.DeptOrder>();
+OapiV2UserCreateRequest.DeptOrder deptOrder = new OapiV2UserCreateRequest.DeptOrder();
+deptOrder.setDeptId(1L);
+deptOrder.setOrder(1L);
+OapiV2UserCreateRequest.DeptOrder deptOrder1 = new OapiV2UserCreateRequest.DeptOrder();
+deptOrder1.setDeptId(1L);
+deptOrder1.setOrder(1L);
+deptOrderList.add(deptOrder);
+deptOrderList.add(deptOrder1);
+req.setDeptOrderList(deptOrderList);
+req.setExtension("{\"趣味\":\"[趣味](http://test.com?userid=#userid#&corpid=#corpid#)\"}");
+req.setManagerUserid("001");
+req.setLoginEmail("test@xxx.com");
+OapiV2UserCreateResponse rsp = client.execute(req, "");
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiV2UserCreateRequest("https://oapi.dingtalk.io/topapi/v2/user/create")
+
+req.userid="zhangsan"
+req.name="山田太郎"
+req.mobile="18513027676"
+req.job_number="4"
+req.title="技術ディレクター"
+req.email="test@xxx.com"
+req.org_email="test@xxx.com"
+req.work_place="未来park"
+req.remark="備考備考"
+req.dept_id_list="2,3,4"
+req.check_user_protect=true
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiV2UserCreateRequest;
+$req->setUserid("zhangsan");
+$req->setName("山田太郎");
+$req->setMobile("18513027676");
+$req->setTelephone("010-86123456-2345");
+$req->setTitle("技術ディレクター");
+$req->setEmail("test@xxx.com");
+$req->setWorkPlace("未来park");
+$req->setRemark("備考備考");
+$req->setDeptIdList("\"2,3,4\"");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/v2/user/create");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/create");
+OapiV2UserCreateRequest req = new OapiV2UserCreateRequest();
+req.Userid = "zhangsan";
+req.Name = "山田太郎";
+req.Mobile = "18513027676";
+req.Title = "技術ディレクター";
+req.Email = "test@xxx.com";
+req.OrgEmail = "test@xxx.com";
+req.WorkPlace = "未来park";
+req.Remark = "備考備考";
+req.DeptIdList = "\"2,3,4\"";
+OapiV2UserCreateResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | エラーコード。0 は成功を表します。 |
+| errmsg | String | ok | エラーメッセージ。 |
+| result | Object |  | 戻り結果。 |
+| userid | String | zhangsan | 社員 ID。 |
+| unionId | String | xxxx | 社員の一意 ID。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode":"0",
+  "result":{
+    "unionId":"xxxx",
+    "userid":"zhangsan"
+  },
+  "errmsg":"ok"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。
+
+## extension パラメータの説明
+
+拡張フィールド **extension** で設定したユーザー属性を表示したい場合は、以下の操作を完了する必要があります。
+
+1. [DingTalk 管理者バックエンド](https://login.dingtalk.io/) にログインします。
+2. 社内連絡先設定をクリックし、**ユーザーフィールド管理** > **カスタムフィールドの追加** の順にクリックします。

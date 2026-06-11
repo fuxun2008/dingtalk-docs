@@ -48,7 +48,16 @@ SYSTEM_RULES = """你是钉钉国际版帮助中心的资深技术文档翻译�
 铁律（违反则译文无效）：
 1. 仅翻译自然语言段落、frontmatter 的 title 与 description、列表项、表格单元格文本、heading 文本。
 2. 保留所有 MDX 组件标签 (<Note> <Tip> <Warning> <Info> <Check> <Card> <CardGroup> <Steps> <Step> <Tabs> <Tab> <Accordion> <AccordionGroup> <CodeGroup> <Update> <Frame> <Icon>) 及其全部 props (title / icon / href / cols / caption / ...) 完全不动，只译子节点的可见文本。
-3. 保留所有代码块 ``` 内部内容完全不动；代码块的 title="x" 中的 x 不译。
+3. 代码块 ``` 内部内容按 4 类区分处理（严禁一刀切「全部不动」）：
+   3a. API 契约（保留原样）：JSON 字段名 / HTTP 方法 / 状态码 / Header 名 / URL 与占位符 / 函数名 / 方法名 / SDK 调用 / 变量名 / 错误码字符串 / 已是英文或数字的 enum 值。
+   3b. 示例字面量（**必须按目标语言重写**）：示例 JSON 中 user-facing 字段（title/content/text/key/value/description/desc/name/author/unit 等）的中文字符串值；表格 example 列里的中文示例值。
+       例：`"content": "月会通知"` → en `"content": "Monthly meeting notification"` / ja `"content": "月例ミーティング通知"`
+       例：`"key": "姓名"` / `"value": "张三"` → en `"key": "Name"` / `"value": "John"` / ja `"key": "名前"` / `"value": "山田太郎"`
+   3c. 代码注释 + markdown 语法示例（**必须翻译**）：` // ... ` ` # ... ` 行内注释；```text``` 块内的纯中文 markdown 语法说明（"标题/引用/文字加粗/链接/无序列表"等）。
+   3d. API enum 必传中文值（**保留中文 + 加目标语言行内注释**）：如 sticker name `"灯泡"` 调 API 必须传中文：
+       en: `"sticker": "灯泡"  // Lightbulb`     ja: `"sticker": "灯泡"  // 電球`
+       识别要点：上下文有 sticker / emoji / 资源 enum / 枚举值 等关键词，或字符串属于明确的 enum 列表表格。
+   代码块的 title="x" 中的 x 不译；代码块 ``` 后的 lines / json lines 等修饰符不动。
 4. 【强制移除】删除所有图片引用 ![alt](path)、HTML <img/> 标签、<video>...</video>、<iframe>...</iframe>、含图 <Frame>...</Frame>—整段删除，前后空行折叠为一行。如果 <Frame> 内只是纯文本 caption 无图，可保留为段落。
 5. 保留所有内部相对链接 [text](/foo/bar) 的 URL 完全不动；锚文本可翻译。外链 URL 不动；锚文本可翻译。
 6. frontmatter 只翻 title 与 description 的 value；字段名不动；其它字段（sidebarTitle、icon、tag 等）的 value 不动。
@@ -77,6 +86,57 @@ STYLE_JA = """風格指南（日文）：
 - 标点：、。「」（）；数字半角；日付 2026年6月2日
 - 注意：避免中文式 kanji 顺序、避免「的」直译为「の」过多
 - 功能更新用：新機能 / 改善 / 修正 / 廃止"""
+
+
+# 开放平台 (Open Platform / OpenAPI) 专属铁律 — 仅 root=open 注入
+# 对标 Google API Docs / Microsoft Learn 的开发者文档质量
+OPEN_PLATFORM_RULES = """开放平台 (Open Platform / OpenAPI) 专属铁律 — 违反任意一条则译文无效：
+
+【强制术语 — 覆盖词库】
+A. 「机器人」译为 **Bot**（单数 / 英文）/ **ボット**（日文），**绝对不译为 Robot/ロボット**。
+   - 适用：所有 DingTalk 聊天机器人 / chatbot 语境
+   - 即便词库给出 Bots（复数），单实体场景一律改 Bot；列表 / 数组场景才用 bots
+   - 复合词：DingTalk Bot / Group bot / Custom bot / Stream-mode bot
+B. 「应用」一致译为 **App**（不要 Application）
+C. 「企业内部应用」→ **Internal app**；「第三方应用」→ **Third-party app**；「服务端 API」→ **Server API**
+
+【API 契约 — 严格保持原样不译】
+D. HTTP 动词 / 状态码 / Header 名 / Content-Type 完全不译：
+   POST / GET / PUT / DELETE / PATCH / 200 OK / 401 Unauthorized / Authorization / Content-Type / application/json
+E. JSON 字段名 / 路径参数名 / 查询参数名 **完全不译**（这些是面向程序的契约）：
+   corpId / userid / unionid / client_id / client_secret / access_token / refresh_token / grant_type
+   / authorization_code / request_id / dept_id / role_id / agent_id / nonce / timestamp / signature
+   即使中文上下文叫"用户 ID"，但当它作为 JSON 字段或表格里的"参数名"列出时，保持 `userid` 原样
+F. API 端点 URL 与路径占位符不译：
+   https://api.dingtalk.io/v1.0/oauth2/{corpId}/token 中 {corpId} 保持
+G. 错误码字符串不译（如 InvalidParameter.AccessToken / NotAuthorized / ServiceUnavailable）；
+   错误消息中的自然语言文本才译（如 "参数错误：accessToken 已过期" → "Invalid parameter: access token has expired"）
+H. 代码示例 ```code``` 块按铁律 3 的 4 类区分处理；开放平台额外细则：
+   - 注释翻译（铁律 3c）：`// 获取访问令牌` → en `// Get the access token` / ja `// アクセストークンを取得`；
+     方法名 / 变量名 `getAccessToken()` 保持
+   - JSON 示例 body 里的 user-facing 中文字符串值（铁律 3b）：title / content / text / desc 及示例 form 的 "姓名/张三/正文标题/打球听音乐" 等**必须翻译为目标语言等价 placeholder**
+   - 错误码字符串 `InvalidParameter.AccessToken` 保留（API 契约）；错误消息正文「参数错误：accessToken 已过期」翻译（人读文本）
+   - sticker name / 钉钉资源 enum 中文值（铁律 3d）：保留中文 + 行内注释
+   - 表格 example 列出现中文时按 3b 翻译，不要因为「在表格里」就保留原值
+
+【Heading 大小写 — 体现专业性】
+I. 英文 Heading（# / ## / ### 等）一律 **Sentence case + 专有名词大写**：
+   ✅ "Get the access token of an internal app"
+   ❌ "Get The Access Token Of An Internal App"  （Title Case 错）
+   ❌ "get the access token of an internal app"  （首字母必须大写）
+   专有名词强制大写：DingTalk / API / SDK / URL / HTTP / OAuth / JSON / Webhook / JSAPI / H5 / SaaS / SSO / QR
+   品牌词强制大小写：DingTalk / DingTalk Bot / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind
+J. 日文标题：体言止め或动词原形结句；API 类专有词前后留半角空格（access token を取得する）
+
+【动作导向语气 — 开发者文档标准】
+K. 英文：祈使句 + 主动语态 — "Click..." / "Call..." / "Send a request to..." / "Configure the webhook"
+   避免：You can click... / It is possible to... / You should... / It is recommended that you...
+L. 日文：敬体 + 简洁 — 「〜します」「〜してください」「〜を呼び出します」
+   避免：「〜することができます」滥用、「〜することをお勧めします」冗长
+
+【表格列头惯用】
+M. 英文：Name / Type / Required / Example / Description（不写 "Required or not"）
+N. 日文：名前 / タイプ / 必須 / 例 / 説明"""
 
 
 # ---------------------------------------------------------------------------
@@ -166,10 +226,14 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
     )
 
 
-def build_system_prompt(lang: str) -> str:
+def build_system_prompt(lang: str, root: str = "") -> str:
     style = STYLE_EN if lang == "en" else STYLE_JA
     target = "英文（American English）" if lang == "en" else "日文（敬体 です・ます）"
-    return f"{SYSTEM_RULES}\n\n{style}\n\n本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。"
+    sections = [SYSTEM_RULES, style]
+    if root == "open":
+        sections.append(OPEN_PLATFORM_RULES)
+    sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
+    return "\n\n".join(sections)
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +362,13 @@ async def translate_one(
 # 主流程
 # ---------------------------------------------------------------------------
 
-def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
+def gather_tasks(
+    root: str,
+    lang: str,
+    only: str | None,
+    bucket_id: int | None = None,
+    bucket_count: int | None = None,
+) -> list[FileTask]:
     zh_root = REPO_ROOT / "zh" / root
     if not zh_root.exists():
         sys.exit(f"ERROR: source dir not found: {zh_root}")
@@ -317,13 +387,30 @@ def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
         if only and not rel_str.startswith(only):
             continue
         tasks.append(FileTask(source=mdx, target=target, rel=rel_str))
+
+    if bucket_id is not None and bucket_count and bucket_count > 1:
+        if not 0 <= bucket_id < bucket_count:
+            sys.exit(f"ERROR: bucket_id must be in [0, {bucket_count}), got {bucket_id}")
+        sized = sorted(tasks, key=lambda t: t.source.stat().st_size, reverse=True)
+        buckets: list[list[FileTask]] = [[] for _ in range(bucket_count)]
+        sizes = [0] * bucket_count
+        for t in sized:
+            i = sizes.index(min(sizes))
+            buckets[i].append(t)
+            sizes[i] += t.source.stat().st_size
+        tasks = sorted(buckets[bucket_id], key=lambda t: t.rel)
+        print(
+            f"[bucket] id={bucket_id}/{bucket_count} files={len(tasks)} "
+            f"bytes={sizes[bucket_id]:,} (total all buckets bytes={sum(sizes):,})"
+        )
+
     return tasks
 
 
-def write_report(results: list[FileResult], out_dir: Path, started: float, ended: float) -> None:
+def write_report(results: list[FileResult], out_dir: Path, started: float, ended: float, suffix: str = "") -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_json = out_dir / "report.json"
-    report_md = out_dir / "report.md"
+    report_json = out_dir / f"report{suffix}.json"
+    report_md = out_dir / f"report{suffix}.md"
 
     report_json.write_text(
         json.dumps([asdict(r) for r in results], ensure_ascii=False, indent=2),
@@ -377,10 +464,10 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
     glossary = load_glossary(args.lang)
-    system_prompt = build_system_prompt(args.lang)
+    system_prompt = build_system_prompt(args.lang, args.root)
     sem = asyncio.Semaphore(args.concurrency)
 
-    tasks = gather_tasks(args.root, args.lang, args.only)
+    tasks = gather_tasks(args.root, args.lang, args.only, args.bucket_id, args.bucket_count)
     if args.limit:
         tasks = tasks[: args.limit]
 
@@ -417,10 +504,11 @@ async def main_async(args: argparse.Namespace) -> int:
 
     ended = time.time()
     out_dir = OUTPUT_DIR / args.lang
-    write_report(results, out_dir, started, ended)
+    report_suffix = f"_bucket{args.bucket_id}of{args.bucket_count}" if args.bucket_id is not None and args.bucket_count else ""
+    write_report(results, out_dir, started, ended, report_suffix)
 
     failed = [r for r in results if r.status == "failed"]
-    print(f"\n[done] report: {out_dir / 'report.md'}")
+    print(f"\n[done] report: {out_dir / f'report{report_suffix}.md'}")
     if failed:
         print(f"[warn] {len(failed)} 篇失败，详见报告")
         return 1
@@ -438,6 +526,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--limit", type=int, default=0, help="只跑前 N 篇")
     p.add_argument("--force", action="store_true", help="覆盖非占位的已译文件")
     p.add_argument("--dry-run", action="store_true", help="只列任务 + 命中术语")
+    p.add_argument("--bucket-id", type=int, default=None, dest="bucket_id",
+                   help="多进程分桶：本进程跑桶 N（0..bucket_count-1），与 --bucket-count 配合")
+    p.add_argument("--bucket-count", type=int, default=None, dest="bucket_count",
+                   help="多进程分桶总数；按文件大小 LPT 算法均衡分配")
     return p.parse_args()
 
 

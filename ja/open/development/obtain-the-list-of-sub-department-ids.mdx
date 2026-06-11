@@ -1,0 +1,131 @@
+---
+title: "子部門 ID リストの取得"
+description: "本 API を呼び出して、企業の部門配下にあるすべての直属の子部門リストを取得します。"
+---
+
+# 子部門 ID リストの取得
+
+## API 呼び出し説明
+
+- 本 API は権限付与範囲の制限を受けません。
+- 本 API は次の階層のすべての部門 ID リストの取得のみをサポートします。
+
+例えば、本 API を呼び出してルート部門の子部門 ID リストを取得した結果が [123,666] の場合、部門 1 と部門 2 配下の子部門は取得できません。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/v2/department/listsubid |
+| HTTP Method | POST |
+| サポートされるアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_get_department_list-連絡先部門情報の読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | 必須 | bE74xxxx | この API を呼び出すアプリ認証情報。   - 社内アプリの場合、社内アプリの access_token を取得する API から取得します。 - サードパーティ社内アプリの場合、サードパーティ企業の access_token を取得する API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| dept_id | Number | 必須 | 1 | 親部門 ID。ルート部門は 1 を指定します。[部門リストの取得](/ja/open/development/user-management-acquires-the-list-departments) API を呼び出して dept_id パラメータの値を取得できます。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/v2/department/listsubid" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=0dcxxxx108dcd028' \
+-d 'dept_id=100'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/listsubid");
+OapiV2DepartmentListsubidRequest req = new OapiV2DepartmentListsubidRequest();
+req.setDeptId(100L);
+OapiV2DepartmentListsubidResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiV2DepartmentListsubidRequest("https://oapi.dingtalk.io/topapi/v2/department/listsubid")
+
+req.dept_id=100
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiV2DepartmentListsubidRequest;
+$req->setDeptId("100");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/v2/department/listsubid");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/listsubid");
+OapiV2DepartmentListsubidRequest req = new OapiV2DepartmentListsubidRequest();
+req.DeptId = 100L;
+OapiV2DepartmentListsubidResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 48vhxdnwhve6 | リクエスト ID。 |
+| errcode | Number | 0 | 戻りコード。 |
+| errmsg | String | 不正な部門 ID | 呼び出しエラー時に返されるエラーメッセージ。 |
+| result | DeptListSubIdResponse |  | 戻り結果。 |
+| dept_id_list | Number[] | [2,3,4,5] | 子部門リスト。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": {
+    "dept_id_list": [
+      379xxxx95,
+      411xxxx76,
+      399xxxx96,
+      400xxxx83,
+      404xxxx47
+    ]
+  },
+  "request_id": "169dfniaazqb4"
+}
+```
+
+### エラーコード
+
+本 API の呼び出し時にエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決策を検索してください。
+
+| エラーコード（errcode） | エラーコード説明（errmsg） | 解決策 |
+| --- | --- | --- |
+| 60003 | 対応する部門が見つかりません | dept_id が正しいか確認してください |
+| 400002 | 無効なパラメータ | パラメータが要件どおりに入力されているか確認してください |
+| -1 | システムビジー | 後で再試行してください |

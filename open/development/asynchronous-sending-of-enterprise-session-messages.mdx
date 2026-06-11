@@ -1,0 +1,173 @@
+---
+title: "Send Work Notifications"
+---
+
+Call this API to send a Work Notification message.
+
+## API call description
+
+A Work Notification is a message pushed to employees on behalf of an app, such as birthday greetings or onboarding reminders. You can send text, voice, links, and more. For message types and samples, refer to [Message notification types](/open/development/message-types-and-data-format).
+
+<Note>
+If the API call succeeds but the recipient does not receive the message, call [Get the result of sending messages asynchronously to the enterprise](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) to query the result and compare it with the error codes listed in the documentation.
+</Note>
+
+### Use cases
+
+### Important
+
+- Applicable scenarios: Suitable for sending notification-type messages, excluding Approval tasks.
+- Inapplicable scenarios: When you need to send a task-type notification reminder to an employee, such as an Approval task, this API cannot meet the requirement. For such scenarios, use the Create To-Do API instead.
+
+### Rate limit
+
+### After the following limits are exceeded, the API returns success, but users cannot receive the messages.
+
+<Note>
+For detailed restrictions, refer to [API rate limit](/open/development/call-frequency-limit).
+</Note>
+
+- An internal app can send messages to a maximum of 5,000 recipients per call, while a third-party enterprise app can send messages to a maximum of 1,000 recipients per call.
+- Only one message notification with the same content can be sent to the same employee per day.
+- An internal app can send up to 500 message notifications per employee per day, and a third-party enterprise app can send up to 100.
+- When an internal app or a third-party enterprise app sends messages, up to 5,000 recipients can receive messages per minute.
+
+## Request
+
+| **Basic information** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2 |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app, appType-Third-party enterprise app |
+| Permission requirements | permission-qyapi_base-Basic permission required to call enterprise APIs |
+
+### Query parameter
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| access_token | String | Yes | bE74xxxx | The app credential used to call this API.   - For an internal app, obtain it through the API for getting the access_token of an internal app. - For a third-party enterprise app, obtain it through the API for getting the access_token of a third-party enterprise. |
+
+### Request body
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| agent_id | Long | Yes | 123L | The Agent ID of the micro app used to send the message.   - For an internal app, view it on the app details page in the [Developer Backend](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1). - For a third-party enterprise app, obtain it by calling the API for getting enterprise authorization information. |
+| userid_list | String | No | user123,user456 | The list of recipient user IDs. The maximum length is 100. |
+| dept_id_list | String | No | 123,345 | The list of recipient department IDs. The maximum length is 20.  When the recipient is a department ID, all users in its sub-departments are included. |
+| to_all_user | Boolean | No | false | Whether to send the message to all users in your organization.  **Note**  When set to false, you must specify the value of either userid_list or dept_id_list. |
+| msg | JSON Object | Yes | `{"msgtype":"text","text":{"content":"Please submit the daily report."}}` | The message content, with a maximum length of 2,048 bytes. The following [message notification types](/open/development/message-types-and-data-format) are supported. Available msgtype values:  **Important**  Multiple message types cannot be sent in a single call.   - text: Text message - image: Image message - voice: Voice message - file: File message - link: Link message - oa: OA message  **Note**  An OA message supports setting the message status text and color through the `status_bar` parameter. After sending, you can update the message status and color by calling the [Update Work Notification status bar](/open/development/update-work-notification-status-bar) API. - markdown: Markdown message - action_card: Card message |
+
+### Request example
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=7e0a4xxxx31351' \
+-d 'agent_id=123' \
+-d 'dept_id_list=123%2C456' \
+-d 'msg=%7B+++%5C%22msgtype%5C%22%3A+%5C%22text%5C%22%2C+%5C%22text%5C%22%3A+%7B+++++%5C%22content%5C%22%3A+%5C%22Leave+request+from+John%5C%22+++%7D+%7D' \
+-d 'to_all_user=false' \
+-d 'userid_list=123%2C456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+OapiMessageCorpconversationAsyncsendV2Request request = new OapiMessageCorpconversationAsyncsendV2Request();
+request.setAgentId(2839445214L);
+request.setUseridList("0147282552401293909,manager4974");
+request.setToAllUser(false);
+OapiMessageCorpconversationAsyncsendV2Request.Msg msg = new OapiMessageCorpconversationAsyncsendV2Request.Msg();
+msg.setMsgtype("text");
+OapiMessageCorpconversationAsyncsendV2Request.Text text = new OapiMessageCorpconversationAsyncsendV2Request.Text();
+text.setContent("test123");
+msg.setText(text);
+request.setMsg(msg);
+OapiMessageCorpconversationAsyncsendV2Response rsp = client.execute(request, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationAsyncsendV2Request("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2")
+
+req.agent_id=123
+req.userid_list="123,456"
+req.dept_id_list="123,456"
+req.to_all_user=false
+req.msg="{\"msgtype\":\"text\",\"text\": {\"content\": \"Leave request from John\"}}"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationAsyncsendV2Request;
+$req->setAgentId("123");
+$req->setUseridList("123,456");
+$req->setDeptIdList("123,456");
+$req->setToAllUser("false");
+$msg = new Msg;
+$msg->msgtype="text";
+$text = new Text;
+$text->content="123";
+$msg->text = $text;
+$req->setMsg($msg);
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+OapiMessageCorpconversationAsyncsendV2Request req = new OapiMessageCorpconversationAsyncsendV2Request();
+req.AgentId = 123L;
+req.UseridList = "123,456";
+req.DeptIdList = "123,456";
+req.ToAllUser = false;
+OapiMessageCorpconversationAsyncsendV2Request.MsgDomain obj1 = new OapiMessageCorpconversationAsyncsendV2Request.MsgDomain();
+obj1.Msgtype = "text";
+OapiMessageCorpconversationAsyncsendV2Request.TextDomain obj2 = new OapiMessageCorpconversationAsyncsendV2Request.TextDomain();
+obj2.Content = "123";
+obj1.Text= obj2;
+req.Msg_ = obj1;
+OapiMessageCorpconversationAsyncsendV2Response rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| request_id | String | 4jzllmte0wau | The request ID. |
+| errmsg | String | ok | The description of the return code.  **Important**  If the API call succeeds but the recipient does not receive the message, call [Get the result of sending messages asynchronously to the enterprise](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) to query the result and compare it with the error codes listed in the documentation. |
+| errcode | Number | 0 | The return code. |
+| task_id | Number | 256271667526 | The ID of the created asynchronous send task. |
+
+### Response body example
+
+```json
+{
+  "errcode":0,
+  "task_id":256271667526,
+  "request_id":"4jzllmte0wau"
+}
+```
+
+### Error codes
+
+If an error is returned when you call this API, look up the solution in the [Global error codes](/open/development/server-api-error-codes-1) documentation based on the error message.

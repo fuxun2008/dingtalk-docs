@@ -1,0 +1,100 @@
+---
+title: "Security settings for custom bots"
+---
+
+Refer to this document to learn about the security settings of a Custom bot.
+
+## Background
+
+To ensure the security of Custom bots, we provide three protection measures to safeguard the operation of your Custom bot. These measures include **Custom keywords**, **sign request** (encryption with a signature), and IP address (range). These methods effectively protect your bot from malicious attacks.
+
+## Prerequisites
+
+Complete the [Create a Custom bot](/open/dingstart/custom-bot-creation-and-installation) procedure.
+
+## Custom keywords
+
+You can configure up to 10 keywords. A message must contain at least one of these keywords to be sent successfully.
+
+For example, if you add the Custom keyword **monitoring alert**, the messages sent by this bot must contain the phrase **monitoring alert** to be delivered successfully.
+
+## Sign request
+
+The sign request method enables two-way Security Authentication between the DingTalk Bot and the developer to verify Security. The signature calculation steps are as follows:
+
+1. Use the timestamp and the secret as the signing string. Calculate the signature using the HmacSHA256 algorithm, encode the result with Base64, and then urlEncode the signature parameter to obtain the final signature. UTF-8 encoding is required.
+
+   | **Parameter** | **Description** |
+   | --- | --- |
+   | timestamp | The current system timestamp of the developer service, in milliseconds. The difference from the request invocation time must not exceed 1 hour. |
+   | secret | The secret. The string starting with SEC displayed under the Sign request section on the bot Security Settings Page. |
+
+   - Sample signature calculation code (Java)
+
+     ```java lines
+     import javax.crypto.Mac;
+     import javax.crypto.spec.SecretKeySpec;
+     import org.apache.commons.codec.binary.Base64;
+     import java.net.URLEncoder;
+
+     public class Test{
+         public static void main(String[] args) throws Exception{
+             Long timestamp = System.currentTimeMillis();
+             String secret = "this is secret";
+
+             String stringToSign = timestamp + "\n" + secret;
+             Mac mac = Mac.getInstance("HmacSHA256");
+             mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+             String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+             System.out.println(sign);
+         }
+
+     }
+     ```
+   - Sample signature calculation code (Python)
+
+     ```python lines
+     #python 3.8
+     import time
+     import hmac
+     import hashlib
+     import base64
+     import urllib.parse
+
+     timestamp = str(round(time.time() * 1000))
+     secret = 'this is secret'
+     secret_enc = secret.encode('utf-8')
+     string_to_sign = '{}\n{}'.format(timestamp, secret)
+     string_to_sign_enc = string_to_sign.encode('utf-8')
+     hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
+     sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+     print(timestamp)
+     print(sign)
+     ```
+2. Obtain the current system timestamp and the encrypted sign value from the developer service, and append timestamp and sign to the URL.
+
+   ```text
+   https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+   ```
+
+   | Parameter | Description |
+   | --- | --- |
+   | timestamp | The timestamp used by the developer to calculate the sign value. |
+   | sign | The signature value obtained in Step 1. |
+
+   For details, see Send Group Chat messages with a Custom bot.
+
+## IP address (range)
+
+After configuration, only requests from IP addresses within the specified range are processed. Two configuration methods are supported: IP address and IP address range. IPv6 Allowlist is not yet supported. The formats are as follows:
+
+| Format | Description |
+| --- | --- |
+| 1.1.1.1 | The developer's outbound public IP address (not a LAN address). |
+| 1.1.1.0/24 | A network segment expressed in CIDR notation. |
+
+## Related documents
+
+- Send Group Chat messages with a Custom bot
+- [OpenAPI for sending group messages with a Custom bot](/open/development/custom-robots-send-group-messages)

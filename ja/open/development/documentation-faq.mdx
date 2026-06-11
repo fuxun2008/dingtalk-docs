@@ -1,0 +1,401 @@
+---
+title: "よくある質問"
+description: "Markdown コンテンツをドキュメントに書き込むには、2 つの方法があります。"
+---
+
+## コンテンツの書き込み
+
+### Markdown 形式のコンテンツを DingTalk ドキュメントに書き込む方法
+
+- **方法 1：コンテンツの挿入（追加、既存のコンテンツに影響なし）**
+
+  [コンテンツの挿入](/ja/open/development/api-insertcontent) インターフェイスを呼び出し、Markdown コンテンツをドキュメントの指定位置に挿入します。
+
+  ```bash lines
+  curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{documentId}/content?operatorId={operatorId}' \
+  --header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": {
+      "type": "markdown",
+      "content": "# 見出し1\n\nこれは本文の段落です。"
+    }
+  }'
+  ```
+- **方法 2：ドキュメントの上書き（クリア後に再書き込み）**
+
+  [ドキュメントの上書き（アプリ認可）](/ja/open/development/api-doc-updatecontent) インターフェイスを呼び出し、Markdown 形式でドキュメントの全コンテンツを上書きします。
+
+  ```bash lines
+  curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/overwriteContent?operatorId={operatorId}' \
+  --header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "# ドキュメントタイトル\n\n本文の内容。",
+    "dataType": "markdown"
+  }'
+  ```
+
+  ドキュメントの上書きは、ドキュメントの既存の全コンテンツを**クリア**する破壊的な操作です。慎重に使用してください。コンテンツを追加するだけの場合は、コンテンツ挿入インターフェイスを使用してください。
+
+## ブロック要素の操作
+
+### コンテンツ付き段落の挿入方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出し、ドキュメントに段落ブロックを挿入し、`children` フィールドで段落内のインライン要素を指定します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{dentryUuid}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "paragraph",
+    "paragraph": {},
+    "children": [
+      {
+        "text": "これは太字の赤い文字です",
+        "bold": true,
+        "color": "#FF5733"
+      },
+      {
+        "elementType": "sticker",
+        "properties": { "code": "大笑" }
+      }
+    ]
+  }
+}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "result": {
+    "data": {
+      "paragraph": { "text": "これは太字の赤い文字です" },
+      "blockType": "paragraph",
+      "index": 0,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+`paragraph` オブジェクトは省略できません。段落に特殊な属性がない場合でも、空のオブジェクト `{}` を渡す必要があります。
+
+### ドキュメントの指定位置（末尾ではない場所）にブロック要素を挿入する方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出す際に、`blockId` または `index` でターゲット位置を指定し、`where` パラメータでターゲット位置の前後どちらに挿入するかを制御します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "paragraph",
+    "paragraph": {}
+  },
+  "blockId": "lc4si5p3n84zwqxxx",
+  "where": "before"
+}'
+```
+
+| パラメータ | 説明 |
+| --- | --- |
+| `blockId` | ターゲットブロックの一意の識別子。このブロックの前後に挿入します |
+| `index` | `blockId` が存在しない場合、ドキュメントの `index` 番目の一次ブロックをターゲット位置として使用します（0 から開始） |
+| `where` | `"before"` はターゲット位置の前に挿入、`"after"` は後に挿入を意味します（デフォルトは `"after"`） |
+
+### 見出しの挿入方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出し、`blockType` を `heading` に設定し、`heading` オブジェクト内で `level` により見出しレベル（1〜6）を指定します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "heading",
+    "heading": {
+      "level": 2,
+      "text": "これは二次見出しです"
+    }
+  }
+}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "success": true
+}
+```
+
+`heading.level` と見出しレベルの対応関係：
+
+| level の値 | 対応する見出し |
+| --- | --- |
+| `1` | 一次見出し（H1） |
+| `2` | 二次見出し（H2） |
+| `3` | 三次見出し（H3） |
+| `4` | 四次見出し（H4） |
+| `5` | 五次見出し（H5） |
+| `6` | 六次見出し（H6） |
+
+### 参照ブロックの挿入方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出し、`blockType` を `blockquote` に設定し、`blockquote` オブジェクト内に参照コンテンツを渡します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "blockquote",
+    "blockquote": {
+      "text": "これは引用文の内容です"
+    }
+  }
+}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "blockquote",
+      "index": 4,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+### ハイライトブロックを挿入し、その中に段落をネストする方法
+
+ハイライトブロックの `children` は `BlockElement` 配列のみとなります。[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出す際、`children` 内に子段落を渡します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "callout",
+    "callout": {
+      "sticker": "灯泡",
+      "showstk": true,
+      "bgcolor": "#FFF9C4",
+      "border": "#FFD700"
+    },
+    "children": [
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "これはハイライトブロック内の段落内容です" }
+      }
+    ]
+  }
+}'
+```
+
+ブロック要素のタイプによって `children` のタイプが異なります。段落ブロックの `children` はインライン要素のみ、ハイライトブロックの `children` はブロック要素のみとなります。
+
+### カラム分割の挿入方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出し、`blockType` を `columns` に設定し、`columns.size` でカラム数を指定し、`children` 内に各カラムのブロック要素コンテンツを渡します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "columns",
+    "columns": {
+      "size": 2,
+      "noFill": false
+    },
+    "children": [
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "左カラムの内容" }
+      },
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "右カラムの内容" }
+      }
+    ]
+  }
+}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "result": {
+    "data": {
+      "columns": { "size": 2 },
+      "blockType": "columns",
+      "index": 7,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+`columns` オブジェクトのフィールド説明：
+
+| フィールド | タイプ | 説明 |
+| --- | --- | --- |
+| `size` | Number | カラム数 |
+| `noFill` | Boolean | 背景色を自動で塗りつぶすかどうか、デフォルトは `false` |
+
+`columns` の `children` は **BlockElement 配列**のみで、インライン要素は使用できません。
+
+### 番号付きリストの挿入方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出し、`blockType` を `orderedList` に設定し、`orderedList` オブジェクト内にリスト属性を渡し、`children` 内にリスト項目のテキストを渡します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "orderedList",
+    "orderedList": {
+      "list": {
+        "listId": "my-ordered-list-001",
+        "level": 0,
+        "listStyleType": "decimal",
+        "listStyle": {
+          "format": "decimal",
+          "text": "%1.",
+          "align": "left"
+        }
+      }
+    },
+    "children": [
+      { "text": "番号付きリストの最初の項目" }
+    ]
+  }
+}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "orderedList",
+      "index": 6,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+`list` オブジェクトの主なフィールド説明：
+
+| フィールド | タイプ | 説明 |
+| --- | --- | --- |
+| `listId` | String | リストの一意の識別子。同一リストの複数のリスト項目には同じ `listId` を使用します |
+| `level` | Number | リストのインデント階層、`0` から開始 |
+| `listStyleType` | String | リストのスタイルタイプ。番号付きリストでは `"decimal"` を使用します |
+
+### 箇条書きの挿入方法
+
+[ブロック要素の挿入](/ja/open/development/api-docinsertblocks) インターフェイスを呼び出し、`blockType` を `unorderedList` に設定し、`unorderedList` オブジェクト内にリスト属性を渡し、`children` 内にリスト項目のテキストを渡します。
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "unorderedList",
+    "unorderedList": {
+      "list": {
+        "listId": "my-unordered-list-001",
+        "level": 0,
+        "listStyleType": "disc",
+        "listStyle": {
+          "format": "disc",
+          "text": "%1",
+          "align": "left"
+        }
+      }
+    },
+    "children": [
+      { "text": "箇条書きの最初の項目" }
+    ]
+  }
+}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "unorderedList",
+      "index": 8,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+番号付きリストと箇条書きの `listId` は、複数のリスト項目を同一のリストとして関連付けるために使用します。同一リストの複数のリスト項目を挿入する場合、各リスト項目に同じ `listId` を使用し、BatchOperate バッチインターフェイスで一括挿入できます。
+
+## クエリ操作
+
+### ドキュメント内のすべてのブロック要素の blockId を取得する方法
+
+[ブロック要素のクエリ](/ja/open/development/api-docblocksquery) インターフェイスを呼び出し、ドキュメントのルートノード配下の一次ブロック要素リストを取得します。各要素には `id`（つまり `blockId`）が含まれています。
+
+```bash
+curl --location --request GET 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}'
+```
+
+呼び出しに成功した場合、以下の形式のデータが返されます。
+
+```json
+{
+  "success": true,
+  "result": {
+    "data": [
+      {
+        "heading": { "level": "heading-1", "text": "ドキュメントタイトル" },
+        "blockType": "heading",
+        "index": 0,
+        "id": "......"
+      },
+      {
+        "paragraph": { "text": "本文の内容。" },
+        "blockType": "paragraph",
+        "index": 1,
+        "id": "......"
+      }
+    ]
+  }
+}
+```
+
+現在、ブロック要素のクエリインターフェイスは**ドキュメントのルートノード配下の一次ブロック要素のクエリのみをサポート**しており、ハイライトブロックなどのコンテナ内にネストされた子ブロック要素の再帰的なクエリはサポートしていません。

@@ -1,0 +1,86 @@
+---
+title: "Data description"
+description: "An AI Table contains the following basic structure."
+---
+
+## Data structure
+
+- Base, that is, an AI Table document.
+
+  - `baseId` uniquely identifies an AI Table document. You can obtain `baseId` in the following ways.
+
+    | **Obtain from URL** | **Obtain from the document information panel** | **Obtain through other APIs**  Call the [Get node list](/open/development/get-node-list) API. **Note**  When an AI Table is created, the value of `docType` is `BASE`. |
+    | --- | --- | --- |
+- Sheet (the table). An AI Table document usually contains multiple tables, and must contain at least one table.
+
+  - All APIs that need to access a sheet can use either `sheetId` or `sheetName` as the input parameter.
+  - You can obtain `sheetId` by calling the [Get all tables](/open/development/api-notable-getallsheets) API.
+
+### Note
+
+    `sheetId` is unique only within the document and is not globally unique.
+  - `sheetName` is the sheet name visible on the front end, such as `Task management` in the figure below.
+- Field. Each column in a table is a field, and a table usually contains multiple fields.
+
+  - All APIs that need to access a field can use either `fieldId` or `fieldName` as the input parameter.
+  - You can obtain `fieldId` by calling the [Get all fields](/open/development/api-noatable-getallfields) API.
+
+### Note
+
+    `fieldId` is unique only within the document and is not globally unique.
+  - `fieldName` is the field name visible on the front end, such as `Priority` in the figure below.
+  - The first column of each sheet is the "primary field". It supports only specific field types and cannot be deleted. To view the supported field types:
+
+    - Open any AI Table.
+    - Edit the primary field.
+    - View the configurable field types.
+- Record. Each row in a table is a record, and a table usually contains multiple records.
+
+  - All APIs that need to access a record must use `recordId`.
+  - You can obtain `recordId` by calling APIs such as [Insert records](/open/development/api-notable-insertrecords) or [List records](/open/development/api-notable-listrecords).
+
+### Note
+
+    `recordId` is unique only within the document and is not globally unique.
+
+## Field attributes
+
+The field attribute area is shown in the figure below.
+
+For the attributes supported by different field types, refer to the following table.
+
+| **Field name** | **Type (type)** | **Attribute (property)** |
+| --- | --- | --- |
+| Text | text | None |
+| Number | number | `formatter` values: `INT` / `FLOAT_1` / `FLOAT_2` / `FLOAT_3` / `FLOAT_4` (keep N decimal places) / `THOUSAND` / `THOUSAND_FLOAT` (thousands separator) / `PERCENT` / `PERCENT_FLOAT` (percent) |
+| Currency | currency | `currencyType`: `CNY` / `HKD` / `USD` / `EUR` / `GBP` / `MOP` / `VND` / `JPY` / `KRW` / `AED` / `AUD` / `BRL` / `CAD` / `CHF` / `INR` / `IDR` / `MXN` / `MYR` / `PHP` / `PLN` / `RUB` / `SGD` / `THB` / `TRY` / `TWD`; `formatter` values: `INT` / `FLOAT_1` … `FLOAT_4` |
+| Select | singleSelect | `{ choices: [{ name: "optionName1" }, { name: "optionName2" }] }` |
+| Multiselect | multipleSelect | Same as "Select". |
+| Date | date | `formatter` values: `YYYY-MM-DD` / `YYYY-MM-DD HH:mm` / `YYYY/MM/DD` / `YYYY/MM/DD HH:mm` |
+| User | user | `{ multiple: boolean }` (multiselect supported; defaults to true) |
+| Department | department | `{ multiple: boolean }` (multiselect supported; defaults to true) |
+| Attachment | attachment | None |
+| One-way Link | unidirectionalLink | `{ multiple: boolean, linkedSheetId: "xxx" }` (`linkedSheetId` is the linked table ID) |
+| Both-way Link | bidirectionalLink | `{ multiple: boolean, linkedSheetId: "xxx", linkedFieldId: "yyy" }` (do not pass `linkedFieldId` when creating the field) |
+| Link | url | None |
+
+## Record value format
+
+The record value (also known as field value) display is shown in the figure below.
+
+For the formats used by different field types, refer to the following table.
+
+| **Field name** | **Type (type)** | **Set value (format used when inserting or updating records)** | **Return value (format returned when the record value is returned)** |
+| --- | --- | --- | --- |
+| Text | text | `"TextString"` (string) | `"TextString"` (string) |
+| Number | number | `123` (supports integer / float / string) | `"123"` (numeric value returned as a string) |
+| Currency | currency | `123` (supports integer / float / string) | `"123"` (numeric value returned as a string) |
+| Select | singleSelect | `"optionName1"` (option name) | `{ "id": "id", "name": "optionName1" }` (id is the option ID; name is the option name) |
+| Multiselect | multipleSelect | `["optionName1", "optionName2"]` (option names) | `[{ "id": "id1", "name": "optionName1" }, { "id": "id2", "name": "optionName2" }]` |
+| Date | date | `1688601600000` (timestamp) or `"2023-12-20 03:00"` (ISO 8601 string) | `1688601600000` (timestamp) |
+| User | user | `[{ unionId: "xxx" }]` | `[{ unionId: "xxx" }]` |
+| Department | department | `[{ deptId: "xxx" }]` | `[{ deptId: "xxx" }]` |
+| Attachment | attachment | For details, refer to [Upload attachment](/open/development/upload-attachment). | `[{ "filename": "image.xlsx", "size": 92250, "type": "xls", "url": "xxx" }]`  **Note**  `url` is the attachment access link. When the attachment is an online document, the link points to the online document and never expires. When the attachment is another type of file, the link is a download link with a **limited validity period**, and becomes inaccessible after some time. |
+| One-way Link | unidirectionalLink | `{ "linkedRecordIds": ["xxx", "yyy"] }` | `{ "linkedRecordIds": ["xxx", "yyy"] }`  **Note**  The field property contains the linked `sheetId`. Together with the `recordId` returned here, you can call the [Get record](/open/development/api-getrecord) API to retrieve the values of the linked records. |
+| Both-way Link | bidirectionalLink | `{ "linkedRecordIds": ["xxx", "yyy"] }` | `{ "linkedRecordIds": ["xxx", "yyy"] }` |
+| Link | url | `{ "text": "Dingtalk", "link": "https://dingtalk.io" }` | `{ "text": "Dingtalk", "link": "https://dingtalk.io" }` |

@@ -1,0 +1,72 @@
+---
+title: "Rate limits"
+---
+
+To prevent abnormal app calls from overloading DingTalk servers, the platform applies default rate limits to all Server API endpoints. When the call frequency exceeds the limit in any dimension, the API triggers a rate limit and returns the corresponding error message, which affects normal business operations.
+
+## Overview
+
+When you call an API, the system checks multiple rate limit dimensions at the same time. Once any dimension (such as the global or IP dimension) exceeds its threshold, the request is rejected and the corresponding rate limit response is returned. Pay attention to the two main rate limit rules — the **global dimension** and the **IP dimension** — and add retry and fallback mechanisms in your app design to improve stability.
+
+<Note>
+This mechanism ensures the overall stability of the platform. Plan your call pace properly and avoid concentrated high-frequency requests.
+</Note>
+
+## Glossary
+
+The following core terms related to the rate limit mechanism are defined to help you understand the following content:
+
+- **Call frequency**: The number of HTTP requests sent to an API endpoint per unit of time, usually measured in "requests per second".
+- **Egress IP (public IP)**: The public IP address that your app server uses to access DingTalk APIs.
+- **Global dimension**: The cumulative call frequency to a specific API endpoint across all organizations and all apps on the entire platform.
+- **IP dimension**: The total API call volume per unit of time from a caller's public egress IP address, regardless of the specific API.
+- **errcode**: The error code returned by a DingTalk API to identify the cause of a failed call. For example, `90002` indicates that the global rate limit has been triggered.
+- **Exponential backoff**: A retry strategy in which the interval between retries grows exponentially (such as 1s, 2s, 4s...) to avoid continuously hitting the API.
+
+## Global rate limit dimension
+
+- When the call frequency to the **same API endpoint** from all organizations and all apps reaches the upper limit, the global rate limit is triggered.
+- After it is triggered, no caller can successfully request this API, and the error code `90002` is returned.
+- This limit applies to all App types, including Internal apps, Third-party enterprise apps, and Third-party personal apps.
+- **Applicable scenarios**: In high-concurrency scenarios (such as batch data synchronization), multiple apps that call popular APIs (such as user management or message sending) at the same time can easily trigger this limit.
+- **Permission requirements**: To call a protected API, you must have the corresponding permission package, and Admin authorization is usually required to enable the related capabilities.
+- **Error handling suggestions**:
+
+  - When you receive `errcode: 90002`, immediately pause intensive calls to this API.
+  - Use the exponential backoff strategy to try again (such as waiting 1s, 2s, 4s...).
+  - Combine the event subscription mechanism to process tasks asynchronously and reduce active polling frequency.
+
+## IP dimension rate limit
+
+- The total call volume from each public egress IP address to all APIs is limited to **10,000 calls within 20 seconds**.
+- After the rate limit is triggered, the IP is blocked from calling all APIs for **5 minutes**.
+- The rate limit does not return a Standard JSON error structure. Instead, it returns an HTML page or a JSON response in the following format:
+
+  ```json lines
+  {
+     "status":1111,
+     "wait":5,
+     "source":"x5",
+     "punish":"deny",
+     "uuid":"xxx"
+  }
+  ```
+- **Notes**
+
+  - This limit does not distinguish API types. The overall traffic from a single IP is the only criterion.
+  - It is common in scenarios where multiple apps share an egress IP behind a unified gateway or NAT.
+  - When you use cloud services, if multiple tenants share a cluster egress IP, the threshold may be reached earlier than expected.
+
+## Mitigation suggestions and best practices
+
+- **Use a proxy pool or distributed deployment**: Distribute requests across multiple different egress IPs to prevent a single IP from becoming a bottleneck.
+- **Apply load balancing strategies**: Implement request distribution on the Client-side or at the gateway layer to balance the call pressure across nodes.
+- **Add a local cache mechanism**: Cache data that is read frequently but changes rarely (such as organization structure and user information) to reduce duplicate calls.
+- **Implement circuit breakers and fallback logic**:
+
+  - When you detect that an IP is blocked, automatically switch to a backup IP or delay non-critical tasks.
+  - Record logs and trigger alerts so that the operations team can respond quickly.
+- **Monitoring and alerts**:
+
+  - Track the trend of queries per second (QPS).
+  - Set up alert notifications that are triggered when the value approaches the threshold (such as 8,000 requests per 20 seconds).

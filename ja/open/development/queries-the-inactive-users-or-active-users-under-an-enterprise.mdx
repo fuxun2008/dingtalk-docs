@@ -1,0 +1,153 @@
+---
+title: "DingTalk 未ログイン社員リストの取得"
+---
+
+本 API を呼び出して、指定日付内に DingTalk にログインしていない企業社員のリストを取得します。
+
+## API 呼び出し説明
+
+- 前日のデータを確実に取得するため、毎日 9 時以降に API を呼び出してください。
+- 本 API では、1 ヶ月以内に DingTalk にログインしていない社員リストのみ取得できます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/inactive/user/v2/get |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリ |
+| 権限要件 | permission-qyapi_liveness_base-企業活性度データアクセス権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 6d1bxxxx | この API を呼び出すアプリ認証情報。社内アプリの access_token を取得する API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| is_active | Boolean | はい | false | アクティブかどうか：   - **false**：未ログイン - **true**：ログイン済み |
+| dept_ids | String | いいえ | 1,2,3 | 部門 ID リスト。[部門リストの取得](/ja/open/development/user-management-acquires-the-list-departments) API を呼び出して取得できます。指定しない場合は企業全体を検索します。 |
+| offset | Number | はい | 1 | ページング検索をサポートします。size パラメータと同時に設定した場合のみ有効です。このパラメータはオフセット量を表し、0 から始まります。 |
+| size | Number | はい | 100 | ページング検索をサポートします。offset パラメータと同時に設定した場合のみ有効です。このパラメータはページサイズを表し、最大 100 です。 |
+| query_date | String | はい | 20200101 | 検索日付。日付形式：yyyyMMdd。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/inactive/user/v2/get" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=2146ca78-23af-4580-9335-883348ff9a54' \
+-d 'dept_ids=%5C%222%2C3%2C4%5C%22' \
+-d 'is_active=false' \
+-d 'offset=0' \
+-d 'query_date=20200101' \
+-d 'size=100'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/inactive/user/v2/get");
+OapiInactiveUserV2GetRequest req = new OapiInactiveUserV2GetRequest();
+req.setIsActive(false);
+req.setDeptIds("1,2,3");
+req.setOffset(0L);
+req.setSize(100L);
+req.setQueryDate("20200101");
+OapiInactiveUserV2GetResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiInactiveUserV2GetRequest("https://oapi.dingtalk.io/topapi/inactive/user/v2/get")
+
+req.is_active=false
+req.dept_ids=""2,3,4""
+req.offset=0
+req.size=100
+req.query_date="20200101"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiInactiveUserV2GetRequest;
+$req->setIsActive("false");
+$req->setDeptIds("\"2,3,4\"");
+$req->setOffset("0");
+$req->setSize("100");
+$req->setQueryDate("20200101");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/inactive/user/v2/get");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/inactive/user/v2/get");
+OapiInactiveUserV2GetRequest req = new OapiInactiveUserV2GetRequest();
+req.IsActive = false;
+req.DeptIds = "\"2,3,4\"";
+req.Offset = 0L;
+req.Size = 100L;
+req.QueryDate = "20200101";
+OapiInactiveUserV2GetResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | PageVo |  | 戻り結果。 |
+| next_cursor | Number | 1000 | 次のページのオフセット量。 |
+| list | String[] | ["user123","user456"] | 未ログインユーザーリスト。 |
+| has_more | Boolean | false | その他のデータがあるかどうか。 |
+| errmsg | String | ok | 戻りコードの説明。 |
+| errcode | Number | 0 | 戻りコード。 |
+| request_id | String | o565d47xy9cz | リクエスト ID。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "has_more": false,
+    "list": [
+      "011250026469774889",
+      "0260470242730556"
+    ]
+  },
+  "request_id": "o565d47xy9cz"
+}
+```
+
+### エラーコード
+
+この API の呼び出し時にエラーが発生した場合は、エラーメッセージに基づき、[グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントから解決方法を検索してください。
+
+| エラーコード（errcode） | エラーコード説明（errmsg） | 解決方法 |
+| --- | --- | --- |
+| 400002 | パラメータが不正です | 必須パラメータが要件を満たしているか確認してください |
+| 40069 | 無効な size | ページサイズを確認してください |
+| 40068 | 無効なオフセット量 | オフセット量を調整してください |
+| 400002 | パラメータ形式が正しくありません | 入力パラメータの形式を確認してください |
+| -1 | システムビジー | 後で再試行してください |

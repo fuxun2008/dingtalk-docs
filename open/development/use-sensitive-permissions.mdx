@@ -1,0 +1,88 @@
+---
+title: "Sensitive permissions for apps"
+description: "Authorization experience and FAQs to help you manage sensitive permissions smoothly."
+---
+
+If your app needs to call sensitive APIs that involve core organization data (such as Contacts write operations or AI Table read/write), it must go through a strict permission authorization flow. This article systematically introduces the concept of sensitive permissions, the developer integration flow, the admin authorization experience, and FAQs to help you smoothly manage sensitive permissions.
+
+## Concept overview
+
+### What are sensitive permissions
+
+On the DingTalk Open Platform, some permissions are defined as "sensitive permissions" because they involve core organization data or high-risk actions. An app must apply for these permissions separately and obtain explicit authorization from the organization Admin before it can call the related OpenAPIs.
+
+The main sensitive permissions currently available include:
+
+<Note>
+Only users with the specified role can authorize or revoke sensitive permissions. For example, the "Org-wide Contacts Admin" is the only role that can authorize the `qyapi_manage_addresslist` permission.
+</Note>
+
+| **Permission scope code** | **Description** | **Eligible role** |
+| --- | --- | --- |
+| qyapi_manage_addresslist | Contacts data management permission | Org-wide Contacts Admin |
+| Notable.Base.Write | DingTalk AI Table write permission. **Important:** AI Table permission scopes are being expanded. New applications are temporarily not supported. For special requirements, contact the product team. | DingTalk Docs (Knowledge Base) Admin |
+| Notable.Base.Read | DingTalk AI Table read permission. **Important:** AI Table permission scopes are being expanded. New applications are temporarily not supported. For special requirements, contact the product team. | DingTalk Docs (Knowledge Base) Admin |
+
+### What is an Org-wide Contacts Admin
+
+`qyapi_manage_addresslist` is the sensitive permission scope used to call Contacts write APIs. Only the "Org-wide Contacts Admin" can authorize it.
+
+This role must meet both of the following conditions:
+
+- Has basic Contacts management permissions
+- Manages the entire organization
+
+To view the Org-wide Contacts Admin, go to the [OA backend](https://oa.dingtalk.io) and click Manage permissions.
+
+### Unified authorization suite and authCode
+
+- **Unified authorization suite**: A standardized organization-level authorization solution provided by DingTalk, designed for scenarios where a Third-party app requests sensitive permissions from a customer organization. By integrating this suite, developers can guide the authorizing organization through the authorization flow and obtain a temporary authorization code (authCode).
+- **authCode**: The temporary authorization code returned by DingTalk after the user confirms the authorization. It has a short lifespan. Developers use this code to call the API to exchange it for an `access_token`, and then call the protected OpenAPIs.
+
+## Developer experience
+
+### Associate a permission scope during app development
+
+> This article uses the sensitive permission scope `qyapi_manage_addresslist` as an example.
+
+First, associate the sensitive permission scope `qyapi_manage_addresslist` with your app in the Developer Backend. This allows the app to call OpenAPIs under the sensitive permission — Set the management scope for role members.
+
+If the sensitive permission scope `qyapi_manage_addresslist` is not available in the Developer Backend, contact technical support and explain your business requirements. After the evaluation is passed, the platform will enable the sensitive permission for your developer organization.
+
+> After the permission is applied for, the developer must also integrate the DingTalk unified authorization suite to reach out to the Admin of the authorizing organization for authorization. Otherwise, API calls will return 403.
+
+### Call OpenAPIs from your app
+
+Use `access_token` to call the target OpenAPI (such as creating a department or updating a user). HTTP 200 indicates that the call succeeded. The developer experience here is the same as that of a standard permission scope.
+
+## Organization Admin experience
+
+### App activation authorization
+
+- Standard permissions are granted to the app by the Admin when the app is activated.
+- Sensitive permissions do not take effect upon app activation. The Admin with the corresponding role must manually complete the authorization in the Workbench.
+
+### View audit logs in the OA backend
+
+You can view organization actions on sensitive permissions in the OA backend, including "Accept the app's request for permissions" and "Recall permissions previously granted to the app".
+
+## FAQs
+
+### My app's OpenAPI call returns 403. How can I fix it?
+
+Possible causes and solutions are as follows:
+
+Confirm that the required API permission has been correctly applied for in the Developer Backend.
+
+- First, confirm that the API permission has been applied for in the Developer Backend.
+
+- Check whether organization-side authorization has been completed:
+
+  - Guide the Admin of the authorizing organization to complete manual authorization in the Workbench.
+  - Or integrate the unified authorization suite SDK to enable an automated authorization flow.
+
+A 403 response from an OpenAPI call means that the app's authorizing organization has not granted permissions to the app, or has revoked permissions previously granted to it.
+
+### Integrating the authorization component takes development time. What if the developer cannot integrate it in time? Is there a temporary workaround for the 403 issue?
+
+Answer: Third-party app developers can guide the **Admin of the authorizing organization** to complete manual authorization in the Workbench.

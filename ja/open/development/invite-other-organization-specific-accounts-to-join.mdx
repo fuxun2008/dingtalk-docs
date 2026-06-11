@@ -1,0 +1,312 @@
+---
+title: "他組織の企業アカウントを招待して参加させる"
+---
+
+本 API を呼び出して、他組織の企業アカウントを自組織に参加させます。
+
+## API 呼び出し説明
+
+他組織の企業アカウントを自組織に参加させる機能は、購入して有効化した組織のみ利用可能です。
+
+本 API を呼び出して他組織の企業アカウントを自組織に参加させる際は、以下の点にご注意ください。
+
+1. 本 API は、他企業の非企業アカウントの参加には対応していません。
+2. 他企業側で API【[企業アカウントの複数組織参加を許可する](/ja/open/development/authorize-a-dedicated-account-to-join-multiple-organizations)】を呼び出し、他企業の企業アカウントが自組織に参加することを許可する必要があります。権限付与が完了すると、他企業が自企業に対し、他企業の企業アカウントを自企業へ参加させることを許可したことを意味します。
+3. 本 API の呼び出しに成功すると、他企業の企業アカウントは直接自組織に参加します。他企業の企業アカウント側での承認は不要です（上記 2 の権限付与が完了した時点で、他企業が承認済みとみなされ、アカウント単位での再度の承認は不要です）。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/v2/user/create |
+| HTTP Method | POST |
+| 対応するアプリタイプ | appType-社内アプリ |
+| 権限要件 | permission-qyapi_manage_addresslist-連絡先データ管理権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | 必須 | BE3xxxx | 本 API を呼び出すアプリ認証情報。社内アプリの access_token 取得 API から取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| userid | String | 任意 | zhangsan | 社員の一意の識別 ID（変更不可）。長さは 1〜64 文字。  **説明**   - 社内で一意である必要があります。 - 指定しない場合は、userid が自動生成されます。 |
+| outer_exclusive_corpid | String | 必須 | ding12345 | 追加する企業アカウントが所属する corpId。 |
+| outer_exclusive_userid | String | 必須 | user01 | 追加する企業アカウントが所属する userId。 |
+| name | String | 必須 | 山田太郎 | 社員名。最大 80 文字。 |
+| dept_id_list | String | 必須 | "2,3,4" | 所属部門 ID リスト。複数の部門 ID は `半角カンマ ,` で区切ります。1 回の呼び出しで最大 100 個の部門 ID を指定できます。 |
+| telephone | String | 任意 | 010-86123456-2345 | 内線番号。最大 50 文字。  **説明**  内線番号は一意であり、社内で重複できません。 |
+| job_number | String | 任意 | 4 | 社員番号。最大 50 文字。 |
+| title | String | 任意 | 技術ディレクター | 職位。最大 200 文字。 |
+| email | String | 任意 | test@xxx.com | 社員の個人メール。最大 50 文字。  **説明**  社員のメールは一意であり、社内で重複できません。 |
+| org_email | String | 任意 | test@xxx.com | 社員のエンタープライズメール。最大 100 文字。  **説明**  本フィールドが有効になるのは、社員がエンタープライズメールを有効化している場合のみです。 |
+| org_email_type | String | 任意 | profession | 社員のエンタープライズメールタイプ。   - **profession:** 標準版。 - **base：** ベーシック版。 |
+| work_place | String | 任意 | みらいパーク | 勤務地。最大 100 文字。 |
+| remark | String | 任意 | 備考情報 | 表示名。最大 2000 文字。 |
+| dept_order_list | Object[] | 任意 |  | 対応する部門における社員の並び替え。 |
+| dept_id | Number | 任意 | 2 | 部門 ID。 |
+| order | Number | 任意 | 1 | 部門内での社員の並び替え。数値が大きいほど上位に表示されます。 |
+| dept_title_list | Object[] | 任意 |  | 対応する部門における社員の職位。 |
+| dept_id | Number | 任意 | 2 | 部門 ID。 |
+| title | String | 任意 | シニアプロダクトマネージャー | 部門内での社員の職位。 |
+| extension | String | 任意 | `{"趣味":"旅行","年齢":"24"}` | 拡張属性。複数の属性を設定可能で、最大 2000 文字。**説明**   - モバイル上では最大 10 個の拡張属性まで表示できます。 - 本パラメータを使用する前に、[DingTalk 管理者画面](https://oa.dingtalk.io/index_new.htm#/setting/contactInfo) で当該属性を追加してから API を呼び出して値を設定してください。 - 本フィールドの値にはリンクタイプの指定が可能で、リンク内では変数ワイルドカードによる自動置換に対応しています。現在対応しているワイルドカードは userid、corpid です。例：`{"趣味":"[趣味](http://www.dingtalk.io?userid=#userid#&corpid=#corpid#)"}`。 |
+| senior_mode | Boolean | 任意 | false | 役員モードを有効にするかどうか。デフォルトは false。   - **true**：オン。  **説明**    - 有効にすると、携帯電話番号がすべての社員に対して非表示になります。   - 一般社員から DING の送信や DingTalk ビジネス通話の発信ができなくなります。   - 役員同士では DING の送信や DingTalk ビジネス通話の発信が可能です。 - **false**：オフ。 |
+| hired_date | Number | 任意 | 1597573616828 | 入社日時。Unix タイムスタンプ、単位はミリ秒。 |
+| manager_userid | String | 任意 | 001 | 直属上司の userId。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/v2/user/create" \
+  -H 'Content-Type: application/x-www-form-urlencoded;charset=utf-8' \
+  -d 'access_token=YOUR_ACCESS_TOKEN' \
+  -d 'outer_exclusive_corpid=ding12345' \
+  -d 'outer_exclusive_userid=user01' \
+  -d 'name=山田太郎' \
+  -d 'dept_id_list=2,3,4' \
+  -d 'userid=zhangsan' \
+  -d 'telephone=010-86123456-2345' \
+  -d 'job_number=4' \
+  -d 'title=技術ディレクター' \
+  -d 'email=test@xxx.com' \
+  -d 'work_place=みらいパーク' \
+  -d 'remark=備考情報'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/create");
+OapiV2UserCreateRequest req = new OapiV2UserCreateRequest();
+req.setUserid("zhangsan");
+req.setName("山田太郎");
+req.setMobile("18513027676");
+req.setHideMobile(false);
+req.setTelephone("010-86123456-2345");
+req.setJobNumber("4");
+req.setTitle("技術ディレクター");
+req.setEmail("test@xxx.com");
+req.setOrgEmail("test@xxx.com");
+req.setWorkPlace("みらいパーク");
+req.setRemark("備考情報");
+req.setDeptIdList("2,3,4");
+List<DeptOrder> list2 = new ArrayList<DeptOrder>();
+DeptOrder obj3 = new DeptOrder();
+list2.add(obj3);
+req.setDeptOrderList(list2);
+List<DeptTitle> list5 = new ArrayList<DeptTitle>();
+DeptTitle obj6 = new DeptTitle();
+list5.add(obj6);
+req.setDeptTitleList(list5);
+req.setSeniorMode(false);
+req.setHiredDate(1597573616828L);
+req.setLoginEmail("test@xxx.com");
+req.setExclusiveAccount(false);
+req.setExclusiveAccountType("dingtalk");
+req.setLoginId("login_id3");
+req.setInitPassword("init_password220");
+List<DeptPosition> list8 = new ArrayList<DeptPosition>();
+DeptPosition obj9 = new DeptPosition();
+list8.add(obj9);
+req.setDeptPositionList(list8);
+req.setOrgEmailType("profession");
+req.setManagerUserid("001");
+req.setExclusiveMobile("+86-13412341234");
+req.setExclusiveMobileVerifyStatus("verified/notVerified");
+req.setOuterExclusiveCorpid("corpid");
+req.setOuterExclusiveUserid("userid");
+req.setAvatarMediaId("@lALPDfmVUw19YdrNA-jNA-g");
+req.setNickname("名前");
+req.setExtAttrsUpdateMode(0L);
+List<EmpExtAttr> list11 = new ArrayList<EmpExtAttr>();
+EmpExtAttr obj12 = new EmpExtAttr();
+list11.add(obj12);
+req.setExtAttrs(list11);
+req.setGender("F/M/none");
+req.setLimited(false);
+req.setHasSubordinate(false);
+req.setDeptName("部門1-部門11-部門111");
+req.setFlowerName("ニックネーム");
+req.setSendPasswordToUser(false);
+req.setCheckUserProtect(true);
+OapiV2UserCreateResponse rsp = client.execute(req, "");
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+import dingtalk.api
+
+req=dingtalk.api.OapiV2UserCreateRequest("https://oapi.dingtalk.io/topapi/v2/user/create")
+
+req.userid="zhangsan"
+req.name="山田太郎"
+req.mobile="18513027676"
+req.hide_mobile=false
+req.telephone="010-86123456-2345"
+req.job_number="4"
+req.title="技術ディレクター"
+req.email="test@xxx.com"
+req.org_email="test@xxx.com"
+req.work_place="みらいパーク"
+req.remark="備考情報"
+req.dept_id_list="2,3,4"
+req.dept_order_list="[2,1]"
+req.dept_title_list="[2,"シニアプロダクトマネージャー"]"
+req.senior_mode=false
+req.hired_date=1597573616828
+req.login_email="test@xxx.com"
+req.exclusive_account=false
+req.exclusive_account_type="dingtalk"
+req.login_id="login_id3"
+req.init_password="init_password220"
+req.dept_position_list="[true,"みらいパーク","シニアプロダクトマネージャー",2,"100"]"
+req.org_email_type="profession"
+req.manager_userid="001"
+req.exclusive_mobile="+86-13412341234"
+req.exclusive_mobile_verify_status="verified/notVerified"
+req.outer_exclusive_corpid="corpid"
+req.outer_exclusive_userid="userid"
+req.avatarMediaId="@lALPDfmVUw19YdrNA-jNA-g"
+req.nickname="名前"
+req.ext_attrs_update_mode=0
+req.ext_attrs="["emp:xxx",{"images":["https://img.alicdn.com/imgextra/i2/O1CN01IVwD5w1mqnRxmUBng_!!6000000005006-2-tps-64-64.png"],"text":"クリックして DingTalk 公式サイトへ","url":"www.dingtalk.io"}]"
+req.gender="F/M/none"
+req.limited=false
+req.has_subordinate=false
+req.dept_name="部門1-部門11-部門111"
+req.flower_name="ニックネーム"
+req.send_password_to_user=false
+req.check_user_protect=true
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiV2UserCreateRequest;
+$req->setUserid("zhangsan");
+$req->setName("山田太郎");
+$req->setMobile("18513027676");
+$req->setHideMobile("false");
+$req->setTelephone("010-86123456-2345");
+$req->setJobNumber("4");
+$req->setTitle("技術ディレクター");
+$req->setEmail("test@xxx.com");
+$req->setOrgEmail("test@xxx.com");
+$req->setWorkPlace("みらいパーク");
+$req->setRemark("備考情報");
+$req->setDeptIdList("2,3,4");
+$dept_order_list = new DeptOrder;
+$req->setDeptOrderList(array($dept_order_list));
+$dept_title_list = new DeptTitle;
+$req->setDeptTitleList(array($dept_title_list));
+$req->setSeniorMode("false");
+$req->setHiredDate("1597573616828");
+$req->setLoginEmail("test@xxx.com");
+$req->setExclusiveAccount("false");
+$req->setExclusiveAccountType("dingtalk");
+$req->setLoginId("login_id3");
+$req->setInitPassword("init_password220");
+$dept_position_list = new DeptPosition;
+$req->setDeptPositionList(array($dept_position_list));
+$req->setOrgEmailType("profession");
+$req->setManagerUserid("001");
+$req->setExclusiveMobile("+86-13412341234");
+$req->setExclusiveMobileVerifyStatus("verified/notVerified");
+$req->setOuterExclusiveCorpid("corpid");
+$req->setOuterExclusiveUserid("userid");
+$req->setAvatarMediaId("@lALPDfmVUw19YdrNA-jNA-g");
+$req->setNickname("名前");
+$req->setExtAttrsUpdateMode("0");
+$ext_attrs = new EmpExtAttr;
+$req->setExtAttrs(array($ext_attrs));
+$req->setGender("F/M/none");
+$req->setLimited("false");
+$req->setHasSubordinate("false");
+$req->setDeptName("部門1-部門11-部門111");
+$req->setFlowerName("ニックネーム");
+$req->setSendPasswordToUser("false");
+$req->setCheckUserProtect("true");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/v2/user/create");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/create");
+OapiV2UserCreateRequest req = new OapiV2UserCreateRequest();
+req.OuterExclusiveCorpid = "ding12345"; 
+req.OuterExclusiveUserid = "user01";  
+req.Name = "山田太郎"; 
+req.DeptIdList = "2,3,4"; 
+req.Userid = "zhangsan"; 
+req.Telephone = "010-86123456-2345";
+req.JobNumber = "4"; 
+req.Title = "技術ディレクター";  
+req.Email = "test@xxx.com";  
+req.OrgEmail = "test@xxx.com"; 
+req.OrgEmailType = "profession";
+req.WorkPlace = "みらいパーク"; 
+req.Remark = "備考情報"; 
+List<OapiV2UserCreateRequest.DeptOrderDomain> deptOrderList = new List<OapiV2UserCreateRequest.DeptOrderDomain>();
+OapiV2UserCreateRequest.DeptOrderDomain orderObj = new OapiV2UserCreateRequest.DeptOrderDomain();
+orderObj.DeptId = 2L;
+orderObj.Order = 1L;
+deptOrderList.Add(orderObj);
+req.DeptOrderList_ = deptOrderList;
+List<OapiV2UserCreateRequest.DeptTitleDomain> deptTitleList = new List<OapiV2UserCreateRequest.DeptTitleDomain>();
+OapiV2UserCreateRequest.DeptTitleDomain titleObj = new OapiV2UserCreateRequest.DeptTitleDomain();
+titleObj.DeptId = 2L;
+titleObj.Title = "シニアプロダクトマネージャー";
+deptTitleList.Add(titleObj);
+req.DeptTitleList_ = deptTitleList;
+req.Extension = "{\"趣味\":\"旅行\",\"年齢\":\"24\"}"; 
+req.SeniorMode = false;  
+req.HiredDate = 1597573616828L;    
+req.ManagerUserid = "001";             
+OapiV2UserCreateResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | エラーコード。0 は成功を表します。 |
+| errmsg | String | ok | エラーメッセージ。 |
+| result | Object |  | 戻り結果。 |
+| userid | String | zhangsan | 社員の userId。 |
+| unionId | String | xxxx | 社員の unionId。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode":"0",
+  "result":{
+    "unionId":"xxxx",
+    "userid":"zhangsan"
+  },
+  "errmsg":"ok"
+}
+```
+
+### エラーコード
+
+本 API の呼び出し時にエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントから解決策をご確認ください。

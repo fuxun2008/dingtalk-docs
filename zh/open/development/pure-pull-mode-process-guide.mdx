@@ -1,0 +1,95 @@
+---
+title: "实现置顶卡片纯拉模式"
+---
+
+## 预期效果
+
+- 置顶卡片纯拉模式
+
+  每次打开会话时，都会回调开发者设置的callbackUrl地址去获取私有数据，并更新到卡片上。![p520631](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9071678661/p521595.png)
+- 消息卡片纯拉模式
+
+  每次打开会话拉取消息时，都会回调开发者设置的callbackUrl地址去获取私有数据，并更新到卡片上。![11111](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/0882678661/p521687.png)
+
+## 接入流程简介
+
+步骤四：更新卡片内容。
+
+### 1.创建吊顶卡片类型模板
+
+<Note>
+设置卡片模板的内容，详情请参考文档创建消息模板。
+</Note>
+
+![11111](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/0724118561/p466977.png)
+
+### 说明
+
+- 使用互动卡片实现用户与卡片的交互，详情请参考文档使用互动卡片。
+- 纯拉模式只能拉取互动卡片消息模板中的私有变量对应的数据。
+
+在卡片模板编辑器上，可以设置私有变量。![iShot2022-07-15_14](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/0724118561/p467139.png)![222](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/0724118561/p467140.png)
+
+在卡片模板编辑器上，您可以通过不同的组件组合来实现您的业务需求。当卡片搭建完成之后，单击**保存**或**发布**后即可使用该卡片。![iShot2022-07-15_14](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/1724118561/p467137.png)
+
+卡片纯拉模式需调用接口注册卡片回调地址，获取参数**callbackRouteKey**。
+
+<Note>
+将参数**pullStrategy**设置为**true**，开启卡片纯拉模式。
+</Note>
+
+## 步骤四：更新卡片内容
+
+<Note>
+用户每次打开会话，都会回调开发者设置的callbackUrl地址去获取私有变量对应的数据；非私有变量对应的数据无法通过纯拉模式获取。
+</Note>
+
+### 1.拉取私有数据
+
+用户打开会话的行为，会通过HTTP post method 请求的形式回调给开发者注册的HTTP地址，来拉取私有数据。请求内容会以 contentType="application/json" 形式将如下参数传递给开发者。
+
+<Note>
+其中 content 字段包含了卡片中非私有数据的内容。
+</Note>
+
+```json
+{
+    "corpId": "dingXXXXXX",
+    "outTrackId": "XXXXXX",
+    "userId": "XXXXXX",
+    "content": "{\"cardData\":{\"cardParamMap\":{\"xxx\":\"xxx\"}}}",
+    ...
+}
+```
+
+### 2.同步更新卡片私有数据
+
+在纯拉模式下，您需要同步更新卡片的私有数据内容，那么您可以在接收到回调请求后，在该请求里面返回最新的卡片私有数据回去，这样就能实现用户每次看到卡片时，都能够获取到最新的私有数据。返回的具体卡片数据格式如下。
+
+<Note>
+不需要返回非私有变量对应的数据，即使返回，也不会更新卡片上非私有变量对应的数据。
+</Note>
+
+```json
+{
+ "outTrackId": "XXXXXX(用于更新卡片的唯一ID)",
+ "cardOptions": {
+  "updatePrivateDataByKey": true/false,
+ },
+ "userPrivateData": {
+  "cardParamMap": {
+   "key1": "value1",
+   "key2": "value2",
+   "变量N": "变量值N"
+  },
+  "cardMediaIdParamMap": {
+   "image1": "mediaIdXXXXX1",
+   "image2": "mediaIdXXXXX2"
+  }
+ }
+}
+```
+
+### 3.置顶卡片纯拉模式实现效果
+
+每次打开会话时，卡片效果如下图所示。![p520631](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9071678661/p521595.png)

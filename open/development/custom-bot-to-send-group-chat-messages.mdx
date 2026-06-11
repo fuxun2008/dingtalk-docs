@@ -1,0 +1,145 @@
+---
+title: "Send group chat messages with a custom bot"
+---
+
+This document describes how to send group chat messages using a Custom bot.
+
+## Define the requirements
+
+Before you start development, note that this document helps you send group chat messages by calling the [Custom bot sends group messages](/open/development/custom-robots-send-group-messages) API through the Webhook of a Custom bot. The demo uses the sign request method. To help you get started quickly, run the sample demo provided in the Quickstart section. This gives you an intuitive experience of using a Custom bot.
+
+## Prerequisites
+
+1. Complete the [Create a Custom bot](/open/dingstart/custom-bot-creation-and-installation) procedure.
+
+   > Select **sign request** as the security setting for the Custom bot. For details, see [Custom bot security settings](/open/dingstart/customize-robot-security-settings).
+2. Complete the [Get the Webhook URL of a Custom bot](/open/dingstart/obtain-the-webhook-address-of-a-custom-robot) procedure.
+3. Prepare the development environment:
+
+   | **Development environment** | **Description** |
+   | --- | --- |
+   | Java | - JDK 1.8 or later installed - Maven 3 installed |
+   | Python | - Python 3 |
+
+## Quickstart
+
+1. Download the sample demo:
+
+   | **Sample** | **Description** |
+   | --- | --- |
+   | Java | [custom-robot-group-message-quick-start-java.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/cvzdoy/custom-robot-group-message-quick-start-java.zip) |
+   | Python | [custom-robot-group-message-quick-start-python.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/qspdnf/custom-robot-group-message-quick-start-python.zip) |
+2. Start the sample demo:
+
+   | **Type** | **Description** |
+   | --- | --- |
+   | Java | 1. Modify the main method parameters in customRobotGroupMessage.java:  - CUSTOM_ROBOT_TOKEN: the access_token value of the bot app. For details, see [Get the Webhook URL of a Custom bot](/open/dingstart/obtain-the-webhook-address-of-a-custom-robot).  **Note**  Enter only the access_token value from the Webhook URL, not the full Webhook URL.  - SECRET: the sign request secret in the security settings. For details, see [Custom bot security settings](/open/dingstart/customize-robot-security-settings). - (Optional) USER_ID: the userId of the user. For details, see [User userId](/open/dingstart/basic-concepts-beta).  Internal Group: Enter the userId of the user to enable the @ feature.  External Chat: When a bot calls the OpenAPI to send messages, the @ feature is not supported. 2. Start the main method.  3. The message sent by the Custom bot then appears in the group. |
+   | Python | 1. In the directory of the current file, run the following command: `python3 send_custom_robot_group_message.py --access_token="your custom robot token" --secret="your custom robot secret" --userid="you need @ group user's userid"`.  Replace the access_token of the bot Webhook, the sign request secret of the bot, and the user userid. For how to obtain these parameters, see the description in the Java section.  2. The message sent by the Custom bot then appears in the group. |
+
+## Procedure
+
+> The following is a Java example. For the Python example, download the demo above.
+
+1. Add the dependencies to the `pom.xml` file of the project.
+
+   ```xml lines
+    <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>commons-codec</groupId>
+               <artifactId>commons-codec</artifactId>
+               <version>1.11</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Create the main method and start it.
+
+   ```java lines
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiRobotSendRequest;
+   import com.dingtalk.api.response.OapiRobotSendResponse;
+   import com.taobao.api.ApiException;
+   import org.apache.commons.codec.binary.Base64;
+
+   import javax.crypto.Mac;
+   import javax.crypto.spec.SecretKeySpec;
+   import java.io.UnsupportedEncodingException;
+   import java.net.URLEncoder;
+   import java.security.InvalidKeyException;
+   import java.security.NoSuchAlgorithmException;
+   import java.util.Arrays;
+
+   public class customRobotGroupMessage {
+
+       public static final String CUSTOM_ROBOT_TOKEN = "<your custom robot token>";
+
+       public static final String USER_ID= "<you need @ group user's userId>";
+
+       public static final String SECRET = "<your custom robot SECRET>";
+
+       public static void main(String[] args) {
+           try {
+               Long timestamp = System.currentTimeMillis();
+               System.out.println(timestamp);
+               String secret = SECRET;
+               String stringToSign = timestamp + "\n" + secret;
+               Mac mac = Mac.getInstance("HmacSHA256");
+               mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+               byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+               String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+               System.out.println(sign);
+
+               //The sign and timestamp fields must be appended to the request URL. Otherwise, error 310000 occurs.
+               DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send?sign="+sign+"&timestamp="+timestamp);
+               OapiRobotSendRequest req = new OapiRobotSendRequest();
+               /**
+                * Send a text message
+                */
+               //Define the text content
+               OapiRobotSendRequest.Text text = new OapiRobotSendRequest.Text();
+               text.setContent("DingTalk, where progress happens");
+               //Define the @ targets
+               OapiRobotSendRequest.At at = new OapiRobotSendRequest.At();
+               at.setAtUserIds(Arrays.asList(USER_ID));
+               //Set the message type
+               req.setMsgtype("text");
+               req.setText(text);
+               req.setAt(at);
+               OapiRobotSendResponse rsp = client.execute(req, CUSTOM_ROBOT_TOKEN);
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               e.printStackTrace();
+           } catch (UnsupportedEncodingException e) {
+               throw new RuntimeException(e);
+           } catch (NoSuchAlgorithmException e) {
+               throw new RuntimeException(e);
+           } catch (InvalidKeyException e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   The message sent by the Custom bot then appears in the group.
+
+## FAQ
+
+### Rate limit
+
+To prevent sending messages too frequently from degrading the group chat experience, the rate limit for messages sent by a Custom bot is as follows:
+
+### Each bot can send a maximum of 20 messages per minute to a group. If the limit is exceeded, the bot is rate-limited for 10 minutes.
+
+> If you have scenarios with a large volume of messages, such as system monitoring alerts, consolidate the messages and send them as a summary to the group using markdown messages.
+
+## Related documents
+
+- [Custom bot security settings](/open/dingstart/customize-robot-security-settings)
+- [Message send and receive types](/open/development/robot-message-type)
+- [Custom bot sends group messages](/open/development/custom-robots-send-group-messages)

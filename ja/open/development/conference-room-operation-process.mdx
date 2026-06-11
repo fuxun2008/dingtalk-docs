@@ -1,0 +1,250 @@
+---
+title: "会議室の作成、更新、照会、削除"
+---
+
+本ドキュメントでは、社内アプリを作成し、スマート会議室が提供する API を使用して会議室の作成、更新、照会、削除を行う一連のフローを紹介します。
+
+## 想定される効果
+
+会議室の表示効果は以下のとおりです。
+
+## フロー概要
+
+前提条件：[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application)のフローを完了していること。
+
+ステップ 1：アプリ認証情報を取得し、クライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限をリクエストし、スマート会議室関連の API 権限を申請します。
+
+ステップ 3：アプリのアクセス認証情報を取得します。[社内アプリのアクセストークン取得](/ja/open/development/obtain-the-access-token-of-an-internal-app)を参照してください。API を呼び出す際は、アクセストークンによって呼び出し元の身元を認証します。
+
+ステップ 4：会議室関連の API を呼び出します。
+
+1. サーバー API の [会議室の作成](/ja/open/development/create-a-meeting-room) インターフェースを呼び出し、会議室の戻り値 `result` フィールド、すなわち会議室 ID を取得します。
+2. 会議室 ID に基づき、サーバー API の [会議室情報の更新](/ja/open/development/update-meeting-room-information) インターフェースを呼び出し、会議室情報の更新操作を実行します。
+3. サーバー API の [会議室リストの照会](/ja/open/development/check-the-meeting-room-list) インターフェースを呼び出し、会議室リストのコンテンツを取得します。
+4. 会議室 ID に基づき、サーバー API の [会議室詳細の照会](/ja/open/development/check-meeting-room-details) インターフェースを呼び出し、特定の会議室の詳細情報を取得します。
+5. 会議室 ID に基づき、サーバー API の [会議室の削除](/ja/open/development/delete-a-meeting-room) インターフェースを呼び出し、会議室の削除操作を実行します。
+
+## 前提条件
+
+[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application)のフローを完了していること。
+
+## ステップ 1：アプリ認証情報の取得
+
+1. 対象アプリを選択してアプリ詳細ページに入り、**ベーシック情報** > **認証情報とベーシック情報** をクリックします。
+2. クライアント ID と Client Secret を取得します。
+
+## ステップ 2：API 権限の追加
+
+**開発設定** > **権限管理** をクリックし、権限検索ボックスに `VideoConference.Conference.Write` と `VideoConference.Conference.Read` をそれぞれ入力し、権限をリクエストします。
+
+## ステップ 3：アプリのアクセス認証情報（アクセストークン）の取得
+
+<Warning>
+サーバー API の差異の詳細は、旧版 API VS 新版 API を参照してください。以下の API はすべてサーバー API を使用しています。SDK のダウンロード詳細はサーバーサイド SDK ダウンロードを参照してください。
+</Warning>
+
+ステップ 1 で取得したクライアント ID と Client Secret を使用し、アプリのアクセス認証情報を取得します。[社内アプリのアクセストークン取得](/ja/open/development/obtain-the-access-token-of-an-internal-app)を参照してください。
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## ステップ 4：会議室関連 API の呼び出し
+
+1. サーバー API の [会議室の作成](/ja/open/development/create-a-meeting-room) インターフェースを呼び出し、会議室の戻り値 `result` フィールド、すなわち会議室 ID を取得します。
+
+   ```java lines
+   public void createMeetingRoom() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomHeaders createMeetingRoomHeaders = new com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomHeaders();
+           createMeetingRoomHeaders.xAcsDingtalkAccessToken = "acccessToken";
+           com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomRequest.CreateMeetingRoomRequestRoomLocation roomLocation = new com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomRequest.CreateMeetingRoomRequestRoomLocation()
+                   .setTitle("***テスト")
+                   .setDesc("xx市xx区xx路xx号");
+           com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomRequest createMeetingRoomRequest = new com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE")
+                   .setRoomName("テスト会議室")
+                   .setRoomCapacity(10)
+                   .setRoomPicture("https://example/k/dingtalk-image1.png")
+                   .setRoomStatus(0)
+                   .setRoomLocation(roomLocation)
+                   .setRoomLabelIds(java.util.Arrays.asList(
+                           1L
+                   ))
+                   .setIsvRoomId("dingTalk1001");
+           try {
+               CreateMeetingRoomResponse meetingRoomWithOptions = client.createMeetingRoomWithOptions(createMeetingRoomRequest, createMeetingRoomHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(meetingRoomWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. 会議室 ID に基づき、サーバー API の [会議室情報の更新](/ja/open/development/update-meeting-room-information) インターフェースを呼び出し、会議室情報の更新操作を実行します。
+
+   ```java lines
+   public void  updateMeetingRooms() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomHeaders updateMeetingRoomHeaders = new com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomHeaders();
+           updateMeetingRoomHeaders.xAcsDingtalkAccessToken = "acccessToken";
+           com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomRequest.UpdateMeetingRoomRequestRoomLocation roomLocation = new com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomRequest.UpdateMeetingRoomRequestRoomLocation()
+                   .setTitle("Alibaba***A棟")
+                   .setDesc("**市**区");
+           com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomRequest updateMeetingRoomRequest = new com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE")
+                   .setRoomId("9d5356997e44f******0ab267c05d6b3a14")
+                   .setRoomName("会議室テスト")
+                   .setRoomCapacity(10)
+                   .setRoomPicture("https://example/k/dingtalk-image1.png")
+                   .setRoomStatus(0)
+                   .setRoomLocation(roomLocation)
+                   .setRoomLabelIds(java.util.Arrays.asList(
+                           1L
+                   ))
+                   .setIsvRoomId("dingTalk1001");
+           try {
+               UpdateMeetingRoomResponse updateMeetingRoomResponse = client.updateMeetingRoomWithOptions(updateMeetingRoomRequest, updateMeetingRoomHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(updateMeetingRoomResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+3. サーバー API の [会議室リストの照会](/ja/open/development/check-the-meeting-room-list) インターフェースを呼び出し、会議室リストのコンテンツを取得します。
+
+   ```java lines
+   public void meetingRoomsList() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomListHeaders queryMeetingRoomListHeaders = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomListHeaders();
+           queryMeetingRoomListHeaders.xAcsDingtalkAccessToken = "acccessToken";
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomListRequest queryMeetingRoomListRequest = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomListRequest()
+                   .setMaxResults(20)
+                   .setUnionId("E9CS6X*******eN7QiEiE");
+           try {
+               QueryMeetingRoomListResponse queryMeetingRoomListResponse = client.queryMeetingRoomListWithOptions(queryMeetingRoomListRequest, queryMeetingRoomListHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryMeetingRoomListResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+4. 会議室 ID に基づき、サーバー API の [会議室詳細の照会](/ja/open/development/check-meeting-room-details) インターフェースを呼び出し、特定の会議室の詳細情報を取得します。
+
+   ```java lines
+    public void  meetingRoomsInfo() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomHeaders queryMeetingRoomHeaders = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomHeaders();
+           queryMeetingRoomHeaders.xAcsDingtalkAccessToken = "acccessToken";
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomRequest queryMeetingRoomRequest = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE");
+           try {
+               QueryMeetingRoomResponse queryMeetingRoomResponse = client.queryMeetingRoomWithOptions("9d5356997e44f******0ab267c05d6b3a14", queryMeetingRoomRequest, queryMeetingRoomHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryMeetingRoomResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+5. 会議室 ID に基づき、サーバー API の [会議室の削除](/ja/open/development/delete-a-meeting-room) インターフェースを呼び出し、会議室の削除操作を実行します。
+
+### 説明
+
+   会議室を削除するには、スマート会議室アプリの管理権限が必要です。
+
+   ```java lines
+    public void  deleteMeetingRoom() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomHeaders deleteMeetingRoomHeaders = new com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomHeaders();
+           deleteMeetingRoomHeaders.xAcsDingtalkAccessToken = "acccessToken";
+           com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomRequest deleteMeetingRoomRequest = new com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE");
+           try {
+               DeleteMeetingRoomResponse deleteMeetingRoomResponse = client.deleteMeetingRoomWithOptions("9d5356997e44f******0ab267c05d6b3a14", deleteMeetingRoomRequest, deleteMeetingRoomHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(deleteMeetingRoomResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes, which help in locating issues
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```

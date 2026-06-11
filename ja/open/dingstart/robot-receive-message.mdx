@@ -1,0 +1,211 @@
+---
+title: "ボットでメッセージを受信する"
+---
+
+ボットでメッセージを受信する機能を開発する場合、本ドキュメントの手順に沿ってサーバーサイドの開発を行うことができます。
+
+## 背景情報
+
+ボットでメッセージを受信するモードは、Stream モードと HTTP モードの 2 種類に分かれます。以下では、それぞれのモードでボットがメッセージを受信する方法を紹介します。
+
+## 前提条件
+
+1. [アプリの作成](/ja/open/dingstart/create-and-configure-an-application) を完了している必要があります。
+2. アプリ機能の追加フローを完了している必要があります。
+
+## 操作手順
+
+### Stream モード（推奨）
+
+> その他の言語については、サーバーサイドの Stream モードを参照してください。
+
+1. Java 開発環境の準備：
+
+- 実行環境：JDK 1.8 以上
+- Java SDK のインストール：
+
+  プロジェクトの `pom.xml` ファイルに依存関係を追加するか、対応する jar パッケージをダウンロードしてください。最新の SDK バージョンは [こちら](https://s01.oss.sonatype.org/?spm=openapi-amp.sdkpublish.0.0.78cefAyIfAyImO#nexus-search;quick~app-stream-client) で確認・ダウンロードできます。
+
+  ```xml lines
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>app-stream-client</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+
+2. サーバーサイドの接続例：
+
+   ```java lines
+   public class BotExample {
+
+     public static void main(String[] args) {
+       OpenDingTalkClient client = OpenDingTalkStreamClientBuilder
+                   .custom()
+                   .credential(new AuthClientCredential("${ClientId}", "${ClientSecret}"))
+                   .registerCallbackListener("${topic}", new RobotMsgCallbackConsumer())
+                   .build();
+        client.start();
+     }
+
+     public static class RobotMsgCallbackConsumer implements OpenDingTalkCallbackListener<JSONObject, JSONObject> {
+
+       /*
+        * @param request
+        * @return
+        */
+       @Override
+       public JSONObject execute(JSONObject request) {
+           System.out.println(JSON.toJSONString(request));
+           try {
+               JSONObject text = request.getJSONObject("text");
+               if (text != null) {
+                   // ボットが受信したメッセージのコンテンツ
+                   String msg = text.getString("content").trim();
+                   String openConversationId = request.getString("conversationId");
+               }
+           } catch (Exception e) {
+               log.error("receive group message by robot error:" +e.getMessage(), e);
+           }
+           return new JSONObject();
+       }
+     } 
+   }
+   ```
+
+   | **パラメータ名** | **説明** |
+   | --- | --- |
+   | ClientId | 社内アプリのアプリ認証情報 ClientId。 |
+   | ClientSecret | 社内アプリのアプリ認証情報 ClientSecret。 |
+   | topic | ボットのコールバック名。固定値：`/v1.0/im/bot/messages/get`。 |
+3. 開発完了後、[ボットをグループに追加](/ja/open/dingstart/add-robot-to-group) する必要があります。ボットを @メンバーして「こんにちは」を送信すると、サーバーサイドが受信するメッセージのフォーマットは以下のとおりです：
+
+   ```json lines
+   {
+     "conversationId": "cidjMOsz******AhS4Jg==",
+     "atUsers": [
+       {
+         "dingtalkId": "$:LWCP_v1:$v*********f1+2ow21Zzg"
+       }
+     ],
+     "chatbotCorpId": "ding9f50*****6741",
+     "chatbotUserId": "$:LWCP_v1:$v*********1+2ow21Zzg",
+     "msgId": "msg2*****p+w==",
+     "senderNick": "山田太郎",
+     "isAdmin": true,
+     "senderStaffId": "452523285939877041",
+     "sessionWebhookExpiredTime": 1695204671648,
+     "createAt": 1695199269062,
+     "senderCorpId": "ding9f50*****6741",
+     "conversationType": "2",
+     "senderId": "$:LWCP_v1:$C*********pnNGsP0HS+",
+     "conversationTitle": "統合アプリモデル-テストグループ",
+     "isInAtList": true,
+     "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=c610ee93e4d96899d9236bd4bea185dd",
+     "text": {
+       "content": " こんにちは"
+     },
+     "robotCode": "ding1f*******dabddc",
+     "msgtype": "text"
+   }
+   ```
+
+   | **パラメータ名** | **説明** |
+   | --- | --- |
+   | conversationId | 会話 ID。 |
+   | atUsers | @メンバーされたユーザーの情報：  - **dingtalkId**：暗号化された送信者 ID。 |
+   | chatbotCorpId | ボットが所属する企業の corpId。 |
+   | chatbotUserId | 暗号化されたボット ID。現時点で利用シーンはなく、無視して構いません。 |
+   | msgId | 暗号化されたチャット ID。現時点で利用シーンはなく、無視して構いません。 |
+   | senderNick | 送信者の名前。 |
+   | isAdmin | 管理者かどうか。 |
+   | senderStaffId | 社内グループにおいて、このボットを @メンバーしたユーザー ID。 |
+   | sessionWebhookExpiredTime | 現在のチャットの Webhook アドレスの有効期限。 |
+   | createAt | チャットのタイムスタンプ（ミリ秒）。 |
+   | senderCorpId | 内部グループにおける送信者の現在のグループの企業 corpId。 |
+   | conversationType | 会話タイプ：  - **1**：個別チャット - **2**：グループチャット |
+   | senderId | 暗号化された送信者 ID。  **説明**  送信者の userId 値として senderStaffId を使用します。 |
+   | conversationTitle | グループチャットの場合のみ存在する会話の見出し。 |
+   | isInAtList | @リストに含まれているかどうか。 |
+   | sessionWebhook | 現在のチャットの Webhook アドレス。 |
+   | text | テキストメッセージ：  - content：テキストコンテンツ |
+   | robotCode | ボットコード。 |
+   | msgtype | チャットタイプ。 |
+
+### HTTP モード
+
+1. Java 開発環境の準備：
+
+   - 実行環境：JDK 1.7 以上
+2. サーバーサイドの接続例：
+
+   ```java lines
+   @RestController
+   public class RobotsController {
+     	// 下記の value = "/robots" は、設定するボットメッセージ受信アドレスを決定します。例：https://example.com/robots
+       @RequestMapping(value = "/robots", method = RequestMethod.POST)
+       public String helloRobots(@RequestBody(required = false) JSONObject json) {
+           System.out.println(json);
+         	// ボットが受信したメッセージのコンテンツ
+           String content = json.getJSONObject("text").get("content").toString().replaceAll(" ", "");
+
+           return null;
+       }
+   }
+   ```
+3. 開発完了後、[ボットをグループに追加](/ja/open/dingstart/add-robot-to-group) する必要があります。ボットを @メンバーして「こんにちは」を送信すると、サーバーサイドが受信するメッセージのフォーマットは以下のとおりです：
+
+   ```json lines
+   {
+     "conversationId": "cidjMOsz******AhS4Jg==",
+     "atUsers": [
+       {
+         "dingtalkId": "$:LWCP_v1:$v*********f1+2ow21Zzg",
+         "staffId": "452523285939877041"
+       }
+     ],
+     "chatbotCorpId": "ding9f50*****6741",
+     "chatbotUserId": "$:LWCP_v1:$v*********1+2ow21Zzg",
+     "msgId": "msg2*****p+w==",
+     "senderNick": "山田太郎",
+     "isAdmin": true,
+     "senderStaffId": "452523285939877041",
+     "sessionWebhookExpiredTime": 1695204671648,
+     "createAt": 1695199269062,
+     "senderCorpId": "ding9f50*****6741",
+     "conversationType": "2",
+     "senderId": "$:LWCP_v1:$C*********pnNGsP0HS+",
+     "conversationTitle": "統合アプリモデル-テストグループ",
+     "isInAtList": true,
+     "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=c610ee93e4d96899d9236bd4bea185dd",
+     "content": " こんにちは"
+     "msgtype": "text"
+   }
+   ```
+
+   | **パラメータ名** | **説明** |
+   | --- | --- |
+   | conversationId | 会話 ID。 |
+   | atUsers | @メンバーされたユーザーの情報：  - **dingtalkId**：暗号化された送信者 ID。 - **staffId**：現在の社内グループにおける社員の userId 値。 |
+   | chatbotCorpId | ボットが所属する企業の corpId。 |
+   | chatbotUserId | 暗号化されたボット ID。現時点で利用シーンはなく、無視して構いません。 |
+   | msgId | 暗号化されたチャット ID。現時点で利用シーンはなく、無視して構いません。 |
+   | senderNick | 送信者の名前。 |
+   | isAdmin | 管理者かどうか。 |
+   | senderStaffId | 社内グループにおいて、このボットを @メンバーしたユーザー ID。 |
+   | sessionWebhookExpiredTime | 現在のチャットの Webhook アドレスの有効期限。 |
+   | createAt | チャットのタイムスタンプ（ミリ秒）。 |
+   | senderCorpId | 内部グループにおける送信者の現在のグループの企業 corpId。 |
+   | conversationType | 会話タイプ：  - **1**：個別チャット - **2**：グループチャット |
+   | senderId | 暗号化された送信者 ID。  **説明**  送信者の userId 値として senderStaffId を使用します。 |
+   | conversationTitle | グループチャットの場合のみ存在する会話の見出し。 |
+   | isInAtList | @リストに含まれているかどうか。 |
+   | sessionWebhook | 現在のチャットの Webhook アドレス。 |
+   | content | チャットのテキスト。 |
+   | msgtype | チャットタイプ。 |
+
+## 次のステップ
+
+ボットでメッセージを受信する開発が完了したら、受信したメッセージへの返信や送信を行うことができます。以下の操作に進んでください：
+
+- [ボットでメッセージを返信／送信する](/ja/open/dingstart/robot-reply-and-send-messages)

@@ -1,0 +1,165 @@
+---
+title: "Bot FAQs"
+description: "This article describes frequently asked questions about DingTalk IM."
+---
+
+# FAQs
+
+## Chat management
+
+### Does the group URL have a validity period? What should I do after it expires?
+
+A: Yes. The group URL is valid for 365 days by default. Changes to the group owner, group name, and other settings cause the group URL to expire.
+
+### What is the UUID used for when creating a group?
+
+A: The UUID controls the idempotency of group creation requests, preventing accidental duplicate group chats caused by misclicks or retries.
+
+### How do I retrieve member or group name information of a group chat?
+
+A: For an Internal Group, call the [Query group information](/open/development/obtain-a-group-session) API.
+
+### Is there an automated solution to remove a user from a Standard Group when they leave the organization?
+
+A: No solution is available for Standard Groups because members of a Standard Group are not bound by any other association. Currently, only Internal Groups support automatic removal of users from groups under their organization when they leave.
+
+## Message notifications
+
+### Why does sending an OA message via Work Notifications prompt that the number of recipients cannot exceed 5?
+
+A: When you send an OA message with the message status bar configured, the system needs to prepare for future status bar updates. Because this processing takes time, each request can be sent to a maximum of 5 users. For more information, see [Message notification types - OA messages](/open/development/message-types-and-data-format).
+
+### How do I find out why a work notification failed to send?
+
+A: Use the work notification query API to check the delivery result. The result indicates why the message was not received, such as an invalid userId or sending too frequently. For more information, see [Get the result of sending work notification messages](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise).
+
+### Why does querying or updating work notification delivery results occasionally fail?
+
+A: The most common cause is that the query or update time exceeds the work notification delivery time limit (24 hours). Verify that the query and update occur within the valid sending window.
+
+### How do I control whether a link opens inside DingTalk or in a browser?
+
+A: Use the `pc_slide` attribute to control whether the link opens inside DingTalk.
+
+- Open in browser: `dingtalk://dingtalkclient/page/link?url=https%3A%2F%2Fwww.baidu.com&pc_slide=false&title=title`.
+- Open inside DingTalk: `dingtalk://dingtalkclient/page/link?url=https%3A%2F%2Fwww.baidu.com&pc_slide=true&title=title`.
+
+### Description
+
+- **url**: The target URL. It must be URL-encoded.
+- **pc_slide**: Controls whether the link opens in a browser or inside DingTalk.
+- **title**: The text displayed in the upper-left corner when the link is opened inside DingTalk. The default value is "Details".
+
+### Work notification message API call failed
+
+When the work notification message API call fails, troubleshoot as follows:
+
+1. First, confirm whether the failure is caused by API rate limits:
+
+   - The same user can receive the same message content from the same app only once per day.
+   - For internal app development, a Micro app can send messages to the same user up to 500 times per day.
+   - When `to_all_user` is set to push messages to all users, a maximum of 3 times per day is allowed.
+   - For a Third-party enterprise app, a Micro app can send messages to the same user up to 100 times per day.
+2. Call [Get the sending progress of work notification messages](/open/development/obtain-the-sending-progress-of-asynchronous-sending-of-enterprise-session) to confirm that the work message has been successfully sent.
+3. Call [Get the result of sending work notification messages](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise). If a recipient appears in `forbidden_user_id_list`, the work message sending limit has been exceeded. If a recipient appears in `failed_user_id_list`, delivery failed and you should resend.
+4. The "Open message link in the PC workbench" redirection is only supported for mobile redirection to the app when the work message type is OA message.
+
+### What are the image format standards for work notifications versus Bot messages?
+
+A: See the table below.
+
+| **Image messages sent by Bots (unit: px)** | | **Image messages sent via Work Notifications (unit: px)** | |
+| --- | --- | --- | --- |
+| **Width** | **Height** | **Width** | **Height** |
+| Width ≤ 358 | Height ≤ 350 | Width ≤ 338 | Height ≤ 677 |
+|  | | **Display size after sending:** 336 × 189 | |
+
+### Work notification was sent without errors, but recipients did not receive it
+
+A: Possible causes for recipients not receiving a [work notification](/open/development/asynchronous-sending-of-enterprise-session-messages) include, but are not limited to:
+
+- An Internal app can send messages to a maximum of 5,000 users per request.
+- Only one message notification with identical content can be sent to the same employee per day.
+- An Internal app can send a maximum of 500 message notifications to each employee per day.
+- An Internal app can deliver messages to a maximum of 5,000 users per minute.
+
+You can also use [Get the result of sending work notification messages](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) to check the delivery result.
+
+### What should I be aware of when sending work notifications?
+
+A: Note the following:
+
+- The same user can receive the same message content from the same app only once per day.
+- For internal app development, a Micro app can send messages to the same user up to 500 times per day.
+- When `to_all_user` is set to push messages to all users, a maximum of 3 times per day is allowed.
+- For a Third-party enterprise app, a Micro app can send messages to the same user up to 100 times per day.
+- Call the API to get the sending progress of work notification messages and confirm that the work message has been successfully sent.
+- Call the API to get the result of sending work notification messages. If a recipient appears in `forbidden_user_id_list`, the work message sending limit has been exceeded. If a recipient appears in `failed_user_id_list`, delivery failed and you should resend.
+- The "Open message link in the PC workbench" redirection is only supported for mobile redirection to the app when the work message type is OA message.
+
+### How do I open a PC message link in the sidebar?
+
+A: To open a URL link in the PC Client-side instead of redirecting to an external browser, see [Message link description](/open/development/message-link-description).
+
+Example: `dingtalk://dingtalkclient/page/link?url=http%3A%2F%2Fwww.dingtalk.io&pc_slide=true`
+
+**Parameter description**: The URL passed in must be URL-encoded. When `pc_slide` is `true`, the link opens in the PC Client-side sidebar. When set to `false` or omitted, the link opens in a browser.
+
+## Bots
+
+### How do I edit or delete a group plugin?
+
+A: Group plugins do not currently support editing or deletion.
+
+### How do changes to a Bot name take effect?
+
+A: Bot name changes take effect as follows:
+
+- Once the Bot name is changed, the new name takes effect for Bots added to formal group chats.
+- For the test group "xxxxxxxx-TEST" entered via Debug, you must click Debug again after changing the Bot name. Otherwise, the change does not take effect.
+
+### A Bot avatar uploaded on Windows appears blurry
+
+A: This may be caused by the following:
+
+The display effect varies depending on the screen resolution of the PC device.
+
+### How do I add spaces and line breaks when sending markdown messages via a Bot?
+
+A: Use the following formats:
+
+- **Spaces**: `&nbsp`, `&#160`, or `&#xA0`
+- **Line breaks**: `\n`
+
+### Important
+
+  Add a space before and after `\n`.
+
+### How do I obtain the `robotCode` of an Internal app Bot?
+
+A: Sign in to the [Developer Console](https://open-dev.dingtalk.io). After saving and publishing the Bot, you can view its `robotCode`.
+
+### How do I add an Internal app Bot to a group?
+
+### Description
+
+1. The Internal app Bot has been saved and published. For more information, see [Configure an Enterprise bot](/open/dingstart/configure-the-robot-application).
+2. The Internal app has been published. Otherwise, other users in the organization cannot view the Bot. For more information, see Publish an app.
+
+A: Add the Bot to a group as follows:
+
+### How do I obtain the `access_token` for the Webhook of an Internal app Bot?
+
+<Note>
+The `access_token` value of the Bot Webhook is only visible after the Bot has been added to a group.
+</Note>
+
+A: Obtain the Webhook `access_token` value as follows:
+
+### How do I manually create an Internal Group in the DingTalk Client-side?
+
+Create an Internal Group within the organization where the Bot resides. If an Internal Group already exists for this organization, skip this step.
+
+<Note>
+For example, if the Bot belongs to the organization "Test Organization Demo", the Internal Group must be named "Test Organization Demo [Internal Group]".
+</Note>

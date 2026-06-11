@@ -1,0 +1,211 @@
+---
+title: "Receive messages with a Bot"
+---
+
+To develop a Bot that receives messages, follow the steps in this document to complete the server-side development for message reception.
+
+## Background
+
+Bots can receive messages in two modes: Stream mode and HTTP mode. This document describes how to receive messages in both modes.
+
+## Prerequisites
+
+1. Complete the [Create an app](/open/dingstart/create-and-configure-an-application) process.
+2. Complete the process of adding app capabilities.
+
+## Procedure
+
+### Stream mode (recommended)
+
+> For more languages, refer to the Server-side Stream mode documentation.
+
+1. Prepare the Java development environment:
+
+- Runtime: JDK 1.8 or later
+- Install the Java SDK:
+
+  Add the dependency to your project's `pom.xml` file or download the corresponding JAR package. You can view and download the latest SDK version [here](https://s01.oss.sonatype.org/?spm=openapi-amp.sdkpublish.0.0.78cefAyIfAyImO#nexus-search;quick~app-stream-client).
+
+  ```xml lines
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>app-stream-client</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+
+2. Server-side integration example:
+
+   ```java lines
+   public class BotExample {
+
+     public static void main(String[] args) {
+       OpenDingTalkClient client = OpenDingTalkStreamClientBuilder
+                   .custom()
+                   .credential(new AuthClientCredential("${ClientId}", "${ClientSecret}"))
+                   .registerCallbackListener("${topic}", new RobotMsgCallbackConsumer())
+                   .build();
+        client.start();
+     }
+
+     public static class RobotMsgCallbackConsumer implements OpenDingTalkCallbackListener<JSONObject, JSONObject> {
+
+       /*
+        * @param request
+        * @return
+        */
+       @Override
+       public JSONObject execute(JSONObject request) {
+           System.out.println(JSON.toJSONString(request));
+           try {
+               JSONObject text = request.getJSONObject("text");
+               if (text != null) {
+                   // Content of the message received by the Bot
+                   String msg = text.getString("content").trim();
+                   String openConversationId = request.getString("conversationId");
+               }
+           } catch (Exception e) {
+               log.error("receive group message by robot error:" +e.getMessage(), e);
+           }
+           return new JSONObject();
+       }
+     } 
+   }
+   ```
+
+   | **Name** | **Description** |
+   | --- | --- |
+   | ClientId | The ClientId of the Internal app credential. |
+   | ClientSecret | The ClientSecret of the Internal app credential. |
+   | topic | The Bot callback name. Fixed value: `/v1.0/im/bot/messages/get`. |
+3. After the development is complete, [add the Bot to a group](/open/dingstart/add-robot-to-group). When you send "Hello" by @ the Bot, the server receives a message in the following format:
+
+   ```json lines
+   {
+     "conversationId": "cidjMOsz******AhS4Jg==",
+     "atUsers": [
+       {
+         "dingtalkId": "$:LWCP_v1:$v*********f1+2ow21Zzg"
+       }
+     ],
+     "chatbotCorpId": "ding9f50*****6741",
+     "chatbotUserId": "$:LWCP_v1:$v*********1+2ow21Zzg",
+     "msgId": "msg2*****p+w==",
+     "senderNick": "DingTalk Bot",
+     "isAdmin": true,
+     "senderStaffId": "452523285939877041",
+     "sessionWebhookExpiredTime": 1695204671648,
+     "createAt": 1695199269062,
+     "senderCorpId": "ding9f50*****6741",
+     "conversationType": "2",
+     "senderId": "$:LWCP_v1:$C*********pnNGsP0HS+",
+     "conversationTitle": "Unified App Model - Test Group",
+     "isInAtList": true,
+     "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=c610ee93e4d96899d9236bd4bea185dd",
+     "text": {
+       "content": " Hello"
+     },
+     "robotCode": "ding1f*******dabddc",
+     "msgtype": "text"
+   }
+   ```
+
+   | **Name** | **Description** |
+   | --- | --- |
+   | conversationId | The conversation ID. |
+   | atUsers | Information about the @ mentioned users:  - **dingtalkId**: The encrypted sender ID. |
+   | chatbotCorpId | The organization ID where the Bot resides. |
+   | chatbotUserId | The encrypted Bot ID. No use case for now; can be ignored. |
+   | msgId | The encrypted message ID. No use case for now; can be ignored. |
+   | senderNick | The sender's name. |
+   | isAdmin | Whether the sender is an Admin. |
+   | senderStaffId | The user ID of the person who @ the Bot in the internal group. |
+   | sessionWebhookExpiredTime | The expiration time of the Webhook URL for the current chat. |
+   | createAt | The message timestamp, in milliseconds. |
+   | senderCorpId | The organization ID of the sender's current group, available only in internal groups. |
+   | conversationType | The conversation type:  - **1**: Direct Message - **2**: Group Chat |
+   | senderId | The encrypted sender ID.  **Note**  Use senderStaffId, which is the sender's userId value. |
+   | conversationTitle | The chat title, available only in group chats. |
+   | isInAtList | Whether the user is in the @ list. |
+   | sessionWebhook | The Webhook URL for the current chat. |
+   | text | The text message:  - content: The text content. |
+   | robotCode | The Bot code. |
+   | msgtype | The message type. |
+
+### HTTP mode
+
+1. Prepare the Java development environment:
+
+   - Runtime: JDK 1.7 or later
+2. Server-side integration example:
+
+   ```java lines
+   @RestController
+   public class RobotsController {
+     	// The value = "/robots" below determines the Bot message receiving URL configured later, for example: https://example.com/robots
+       @RequestMapping(value = "/robots", method = RequestMethod.POST)
+       public String helloRobots(@RequestBody(required = false) JSONObject json) {
+           System.out.println(json);
+         	// Content of the message received by the Bot
+           String content = json.getJSONObject("text").get("content").toString().replaceAll(" ", "");
+
+           return null;
+       }
+   }
+   ```
+3. After the development is complete, [add the Bot to a group](/open/dingstart/add-robot-to-group). When you send "Hello" by @ the Bot, the server receives a message in the following format:
+
+   ```json lines
+   {
+     "conversationId": "cidjMOsz******AhS4Jg==",
+     "atUsers": [
+       {
+         "dingtalkId": "$:LWCP_v1:$v*********f1+2ow21Zzg",
+         "staffId": "452523285939877041"
+       }
+     ],
+     "chatbotCorpId": "ding9f50*****6741",
+     "chatbotUserId": "$:LWCP_v1:$v*********1+2ow21Zzg",
+     "msgId": "msg2*****p+w==",
+     "senderNick": "DingTalk Bot",
+     "isAdmin": true,
+     "senderStaffId": "452523285939877041",
+     "sessionWebhookExpiredTime": 1695204671648,
+     "createAt": 1695199269062,
+     "senderCorpId": "ding9f50*****6741",
+     "conversationType": "2",
+     "senderId": "$:LWCP_v1:$C*********pnNGsP0HS+",
+     "conversationTitle": "Unified App Model - Test Group",
+     "isInAtList": true,
+     "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=c610ee93e4d96899d9236bd4bea185dd",
+     "content": " Hello"
+     "msgtype": "text"
+   }
+   ```
+
+   | **Name** | **Description** |
+   | --- | --- |
+   | conversationId | The conversation ID. |
+   | atUsers | Information about the @ mentioned users:  - **dingtalkId**: The encrypted sender ID. - **staffId**: The userId value of the Employee in the current internal group. |
+   | chatbotCorpId | The organization ID where the Bot resides. |
+   | chatbotUserId | The encrypted Bot ID. No use case for now; can be ignored. |
+   | msgId | The encrypted message ID. No use case for now; can be ignored. |
+   | senderNick | The sender's name. |
+   | isAdmin | Whether the sender is an Admin. |
+   | senderStaffId | The user ID of the person who @ the Bot in the internal group. |
+   | sessionWebhookExpiredTime | The expiration time of the Webhook URL for the current chat. |
+   | createAt | The message timestamp, in milliseconds. |
+   | senderCorpId | The organization ID of the sender's current group, available only in internal groups. |
+   | conversationType | The conversation type:  - **1**: Direct Message - **2**: Group Chat |
+   | senderId | The encrypted sender ID.  **Note**  Use senderStaffId, which is the sender's userId value. |
+   | conversationTitle | The chat title, available only in group chats. |
+   | isInAtList | Whether the user is in the @ list. |
+   | sessionWebhook | The Webhook URL for the current chat. |
+   | content | The message text. |
+   | msgtype | The message type. |
+
+## Next steps
+
+After completing the development of message reception by the Bot, you can reply to the received messages or send messages. Continue with the following:
+
+- [Bot reply and send messages](/open/dingstart/robot-reply-and-send-messages)

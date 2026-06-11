@@ -1,0 +1,283 @@
+---
+title: "予定参加者の追加、取得、削除"
+---
+
+本ドキュメントでは、予定関連 API を呼び出して予定参加者に関するフローを実現する方法について説明します。まず社内アプリを作成し、予定が提供する API を使用して、予定を作成、予定参加者を追加、予定参加者を取得、予定の招待レスポンスステータスを設定、予定参加者を削除するフローを実現します。
+
+## 期待される効果
+
+- 予定の作成に成功すると、以下のように表示されます。
+
+- 予定参加者の追加画面は以下のとおりです。
+
+- 予定のレスポンスステータスの確認画面は以下のとおりです。
+
+## 統合フローの概要
+
+本ドキュメントでは、社内アプリを作成し、予定が提供する API を使用して、予定参加者に関する操作フローを実現する方法を示します。
+
+前提条件：[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application) のフローを完了していること。
+
+ステップ 1：アプリ認証情報を取得し、クライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限をリクエストし、予定関連 API の権限を申請します。
+
+ステップ 3：アプリのアクセス認証情報 [社内アプリの アクセストークン を取得](/ja/open/development/obtain-the-access-token-of-an-internal-app) を取得します。API を呼び出す際に、アクセストークン により呼び出し元の身元を認証します。
+
+ステップ 4：サーバーサイドの予定関連 API を呼び出します。
+
+1. サーバー API の [予定を作成](/ja/open/development/create-schedule) を呼び出して予定を作成し、予定の `id` を取得します。
+2. 予定の `id` に基づき、サーバー API の [予定参加者を追加](/ja/open/development/add-schedule-participant) を呼び出して予定参加者を追加します。
+3. 予定の `id` に基づき、サーバー API の [予定参加者を取得](/ja/open/development/get-the-participants-of-a-schedule) を呼び出して予定参加者の情報を取得します。
+4. 予定の `id` に基づき、サーバー API の [予定の招待レスポンスステータスを設定](/ja/open/development/configure-response-status) を呼び出して、予定参加者の招待レスポンスステータスを設定します。
+5. 予定の `id` に基づき、サーバー API の [予定参加者を削除](/ja/open/development/delete-schedule-participant) を呼び出して予定参加者を削除します。
+
+## 前提条件
+
+[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application) のフローを完了していること。
+
+## ステップ 1：アプリ認証情報を取得する
+
+1. 対象アプリを選択し、アプリ詳細ページに移動して、**ベーシック情報** > **認証情報とベーシック情報** をクリックします。
+2. クライアント ID と Client Secret を取得します。
+
+## ステップ 2：API 権限を追加する
+
+**開発設定** > **権限管理** をクリックし、権限検索ボックスに `Calendar.Event.Write` と `Calendar.Event.Read` をそれぞれ入力して、権限をリクエストします。
+
+## ステップ 3：アプリのアクセス認証情報 アクセストークン を取得する
+
+<Warning>
+サーバー API の差異の詳細については、旧版 API VS 新版 API を参照してください。以下の API はすべてサーバー API を使用しており、SDK のダウンロード詳細はサーバーサイド SDK ダウンロードを参照してください。
+</Warning>
+
+ステップ 1 で取得したクライアント ID と Client Secret に基づき、社内アプリの access_token を取得します。
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("ding*********hgn")
+                .setAppSecret("9G_O**********xamBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## ステップ 4：サーバーサイドの予定関連 API を呼び出す
+
+1. サーバー API の [予定を作成](/ja/open/development/create-schedule) を呼び出して予定を作成し、予定の `id` を取得します。
+
+   ```java lines
+   public void createCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           CreateEventHeaders createEventHeaders = new CreateEventHeaders();
+           createEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           java.util.Map<String, String> extra = TeaConverter.buildMap(
+                   new TeaPair("noChatNotification", "false"),
+                   new TeaPair("noPushNotification","false")
+           );
+           CreateEventRequest.CreateEventRequestOnlineMeetingInfo onlineMeetingInfo = new CreateEventRequest.CreateEventRequestOnlineMeetingInfo()
+                   .setType("dingtalk");
+           CreateEventRequest.CreateEventRequestReminders reminders0 = new CreateEventRequest.CreateEventRequestReminders()
+                   .setMethod("dingtalk")
+                   .setMinutes(15);
+           CreateEventRequest.CreateEventRequestLocation location = new CreateEventRequest.CreateEventRequestLocation()
+                   .setDisplayName("********A座9F");
+           CreateEventRequest.CreateEventRequestAttendees attendees0 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("予定参加者unionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestRecurrenceRange recurrenceRange = new CreateEventRequest.CreateEventRequestRecurrenceRange()
+                   .setType("numbered")
+                   .setNumberOfOccurrences(1);
+           CreateEventRequest.CreateEventRequestRecurrencePattern recurrencePattern = new CreateEventRequest.CreateEventRequestRecurrencePattern()
+                   .setType("daily")
+                   .setInterval(1);
+           CreateEventRequest.CreateEventRequestRecurrence recurrence = new CreateEventRequest.CreateEventRequestRecurrence()
+                   .setPattern(recurrencePattern)
+                   .setRange(recurrenceRange);
+           CreateEventRequest.CreateEventRequestEnd end = new CreateEventRequest.CreateEventRequestEnd()
+                   .setDate("2022-09-07");
+   //                .setDateTime("2021-09-20T10:15:30+08:00")
+   //                .setTimeZone("Asia/Shanghai");
+           CreateEventRequest.CreateEventRequestStart start = new CreateEventRequest.CreateEventRequestStart()
+                   .setDate("2022-09-07");
+   //                .setDateTime("2021-09-20T10:15:30+08:00")
+   //                .setTimeZone("Asia/Shanghai");
+           CreateEventRequest createEventRequest = new CreateEventRequest()
+                   .setSummary("予定を作成")
+                   .setDescription("これは作成された予定です")
+                   .setStart(start)
+                   .setEnd(end)
+                   .setIsAllDay(true)
+                   .setRecurrence(recurrence)
+                   .setAttendees(java.util.Arrays.asList(
+                           attendees0
+                   ))
+                   .setLocation(location)
+                   .setReminders(java.util.Arrays.asList(
+                           reminders0
+                   ))
+                   .setOnlineMeetingInfo(onlineMeetingInfo)
+                   .setExtra(extra);
+           try {
+               CreateEventResponse eventWithOptions = client.createEventWithOptions("予定の主催者unionId", "primary", createEventRequest, createEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(eventWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. 予定の `id` に基づき、サーバー API の [予定参加者を追加](/ja/open/development/add-schedule-participant) を呼び出して予定参加者を追加します。
+
+   ```java lines
+   public void addCalendarParticipants() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client  = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           AddAttendeeHeaders addAttendeeHeaders = new AddAttendeeHeaders();
+           addAttendeeHeaders.xAcsDingtalkAccessToken = "accessToken";
+           AddAttendeeRequest.AddAttendeeRequestAttendeesToAdd attendeesToAdd0 = new AddAttendeeRequest.AddAttendeeRequestAttendeesToAdd()
+                   .setId("予定参加者unionId")
+                   .setIsOptional(false);
+           AddAttendeeRequest.AddAttendeeRequestAttendeesToAdd attendeesToAdd1 = new AddAttendeeRequest.AddAttendeeRequestAttendeesToAdd()
+                   .setId("予定参加者unionId")
+                   .setIsOptional(false);
+           AddAttendeeRequest addAttendeeRequest = new AddAttendeeRequest()
+                   .setAttendeesToAdd(java.util.Arrays.asList(
+                           attendeesToAdd0,
+                           attendeesToAdd1
+                   ));
+           try {
+               client.addAttendeeWithOptions("予定の主催者unionId", "primary", "予定id", addAttendeeRequest, addAttendeeHeaders, new RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+3. 予定の `id` に基づき、サーバー API の [予定参加者を取得](/ja/open/development/get-the-participants-of-a-schedule) を呼び出して予定参加者の情報を取得します。
+
+   ```java lines
+   public void getCalendarParticipants() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client  = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           ListAttendeesHeaders listAttendeesHeaders = new ListAttendeesHeaders();
+           listAttendeesHeaders.xAcsDingtalkAccessToken = "accessToken";
+           ListAttendeesRequest listAttendeesRequest = new ListAttendeesRequest()
+                   .setMaxResults(100);
+           try {
+               ListAttendeesResponse listAttendeesResponse = client.listAttendeesWithOptions("予定の主催者unionId", "primary", "予定id", listAttendeesRequest, listAttendeesHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(listAttendeesResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+4. 予定の `id` に基づき、サーバー API の [予定の招待レスポンスステータスを設定](/ja/open/development/configure-response-status) を呼び出して、予定参加者の招待レスポンスステータスを設定します。
+
+   ```java lines
+   public void setCalendarResponseStatus() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client  = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           RespondEventHeaders respondEventHeaders = new RespondEventHeaders();
+           respondEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           RespondEventRequest respondEventRequest = new RespondEventRequest()
+                   .setResponseStatus("accepted");
+           try {
+               client.respondEventWithOptions("予定参加者unionId", "primary", "予定id", respondEventRequest, respondEventHeaders, new RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+5. 予定の `id` に基づき、サーバー API の [予定参加者を削除](/ja/open/development/delete-schedule-participant) を呼び出して予定参加者を削除します。
+
+   ```java lines
+   public void deleteCalendarParticipants() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client  = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           RemoveAttendeeHeaders removeAttendeeHeaders = new RemoveAttendeeHeaders();
+           removeAttendeeHeaders.xAcsDingtalkAccessToken = "accessToken";
+           RemoveAttendeeRequest.RemoveAttendeeRequestAttendeesToRemove attendeesToRemove0 = new RemoveAttendeeRequest.RemoveAttendeeRequestAttendeesToRemove()
+                   .setId("予定参加者unionId");
+           RemoveAttendeeRequest removeAttendeeRequest = new RemoveAttendeeRequest()
+                   .setAttendeesToRemove(java.util.Arrays.asList(
+                           attendeesToRemove0
+                   ));
+           try {
+               client.removeAttendeeWithOptions("予定の主催者unionId", "primary", "予定id", removeAttendeeRequest, removeAttendeeHeaders, new RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```

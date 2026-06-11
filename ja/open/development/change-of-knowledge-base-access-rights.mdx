@@ -1,0 +1,243 @@
+---
+title: "ナレッジベースの権限変更"
+---
+
+本ドキュメントでは、ナレッジベース内のドキュメント、ファイル、フォルダーに対する権限変更操作について詳しく説明します。
+
+## 機能説明
+
+本ドキュメントでは、ナレッジベース内のドキュメント、ファイル、フォルダーに対する権限変更操作について説明します。内容は以下のとおりです。
+
+- **権限の追加** — ユーザーにファイル / フォルダーへのアクセス権限を付与します
+- **権限の削除** — ユーザーのファイル / フォルダーへのアクセス権限を削除します
+- **権限の変更** — ユーザーのファイル / フォルダーに対する権限ロールを変更します
+- **権限継承モードの設定** — ファイル / フォルダーが親ノードの権限を継承するかどうかを制御します
+- **権限継承モードの取得** — 現在のファイル / フォルダーの権限継承モードを照会します
+
+> **コアコンセプト**：すべての権限操作はファイルの `dentryUuid`（ファイル一意識別子）に基づいて実行され、操作者は対象ファイルの権限管理能力を備えている必要があります。
+
+## 権限説明
+
+以下では、さまざまなユーザータイプと権限ロールについて、および各ロールに対応する能力について説明します。
+
+### 権限ロール（roleId）
+
+権限を変更する際は、権限ロールを指定する必要があります。
+
+| roleId | ロール名 | 能力説明 |
+| --- | --- | --- |
+| **OWNER** | オーナー | 最上位権限。読み取り / 書き込み、権限管理、権限割り当てが可能 |
+| **MANAGER** | 管理者 | 読み取り / 書き込み、権限管理が可能（権限割り当ては不可） |
+| **EDITOR** | 編集者 | 閲覧、編集、ダウンロード、追加が可能 |
+| **DOWNLOADER** | ダウンロード可能な閲覧者 | 閲覧、ダウンロードが可能 |
+| **READER** | 閲覧のみ | 閲覧のみ可能（ダウンロード不可） |
+
+### 権限ユーザータイプ（members.type）
+
+| type 値 | 説明 | members.id の意味 |
+| --- | --- | --- |
+| **USER** | ユーザー | 社員の userId |
+| **ORG** | 企業 | 企業 ID |
+| **DEPT** | 部門 | 部門 ID |
+| **TAG** | カスタムタグ | タグ ID |
+| **CONVERSATION** | チャット | 会話 ID |
+
+## 機能実装：権限の追加
+
+API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` を呼び出して、指定したユーザーにファイル / フォルダーへのアクセス権限を付与します。
+
+<Note>
+API については [権限の追加](/ja/open/development/add-permissions-file) ドキュメントを参照してください。呼び出し方法はサーバー API の呼び出し方ドキュメントを参照してください。
+</Note>
+
+### 渡す必要があるパラメータ：
+
+- `dentryUuid`（Path）：対象ファイル / フォルダーの一意識別子。[ファイル検索](/ja/open/development/search-for-files) API で取得します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出して取得できます。
+- `roleId`（Body）：付与する権限ロール（例：**EDITOR**）。
+- `members`（Body）：権限を付与するユーザーリスト。各ユーザーには `type`（ユーザータイプ）と `id`（ユーザー ID）を指定する必要があります。
+
+**HTTP の例**：
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "userUserId",
+      "corpId": "corpCorpId"
+    }
+  ]
+}
+```
+
+## 機能実装：権限の変更
+
+API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` を呼び出して、指定したユーザーの権限ロールを新しいロールに変更します。
+
+**権限を下げる際の重要な制限**：ユーザーの現在の権限が**親ノードから継承**されており、親ノードから継承された権限ロールが今回設定しようとする目標ロールよりも**高い**場合、変更は反映されません。
+
+- **例**：親ディレクトリで特定のユーザーに **EDITOR** 権限を付与している場合、サブフォルダー上でそのユーザーを **READER** に変更しようとしても失敗します。継承された **EDITOR** 権限が引き続き有効だからです。
+- **解決策**：先に対象のファイル / フォルダーに対して [権限継承モードの設定](/ja/open/development/set-permission-inheritance-mode) API を呼び出し、継承モードを **BREAK**（打ち切り）に設定して親ノード権限の伝播を遮断してから、権限を変更してください。
+
+<Note>
+API については [権限の変更](/ja/open/development/modify-permissions-file) ドキュメントを参照してください。呼び出し方法はサーバー API の呼び出し方ドキュメントを参照してください。
+</Note>
+
+### 渡す必要があるパラメータ：
+
+- `dentryUuid`（Path）：対象ファイル / フォルダーの一意識別子。[ファイル検索](/ja/open/development/search-for-files) API で取得します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出して取得できます。
+- `roleId`（Body）：変更後の目標権限ロール（例：**EDITOR** から **READER** へ変更）。
+- `members`（Body）：権限を変更するユーザーリスト。
+
+**HTTP の例**：
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    {
+      "type": "USER",
+      "id": "userUserId",
+      "corpId": "corpCorpId"
+    }
+  ]
+}
+```
+
+## 機能実装：権限の削除
+
+API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove` を呼び出して、指定したユーザーのファイル / フォルダーへのアクセス権限を削除します。
+
+<Note>
+API については [権限の削除](/ja/open/development/delete-permissions-file) ドキュメントを参照してください。呼び出し方法はサーバー API の呼び出し方ドキュメントを参照してください。
+</Note>
+
+### 渡す必要があるパラメータ：
+
+- `dentryUuid`（Path）：対象ファイル / フォルダーの一意識別子。[ファイル検索](/ja/open/development/search-for-files) API で取得します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出して取得できます。
+- `roleId`（Body）：削除する権限ロール（ユーザーが現在実際に保持しているロールと一致している必要があります）。
+- `members`（Body）：権限を削除するユーザーリスト。
+
+**HTTP の例**：
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "userUserId",
+      "corpId": "corpCorpId"
+    }
+  ]
+}
+```
+
+## 機能実装：権限継承モードの設定
+
+API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` を呼び出して、ファイル / フォルダーが親ノードの権限を継承するかどうかを制御します。
+
+### 2 種類の継承モード：
+
+- **PASS_ON**（伝達）：現在のノードがすべての親ノードの権限を継承し、同一ユーザーの権限は最大値が採用されます（**デフォルトモード**）。
+- **BREAK**（打ち切り）：現在のノードで権限の伝達を打ち切り、親ノードの権限を継承しません。個別に独立した権限を設定する必要があるシーンに適しています。
+
+### 説明
+
+- `BREAK` モードでは、`OWNER` および `MANAGER` ロールの継承を打ち切ることはできません。
+- API については [権限継承モードの設定](/ja/open/development/set-permission-inheritance-mode) ドキュメントを参照してください。呼び出し方法はサーバー API の呼び出し方ドキュメントを参照してください。
+
+### 渡す必要があるパラメータ：
+
+- `dentryUuid`（Path）：対象ファイル / フォルダーの一意識別子。[ファイル検索](/ja/open/development/search-for-files) API で取得します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出して取得できます。
+- `inheritance`（Body）：継承モード **PASS_ON** または **BREAK**。
+
+**HTTP の例**：
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "inheritance": "BREAK"
+}
+```
+
+## 機能実装：権限継承モードの取得
+
+API `GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` を呼び出して、現在のファイル / フォルダーの権限継承モードを照会します。
+
+### 説明
+
+- API は `inheritance` フィールドを返します。値は **PASS_ON**（伝達）または **BREAK**（打ち切り）です。
+- API については [権限継承モードの取得](/ja/open/development/get-permission-inheritance-mode) ドキュメントを参照してください。呼び出し方法はサーバー API の呼び出し方ドキュメントを参照してください。
+
+### 渡す必要があるパラメータ：
+
+- `dentryUuid`（Path）：対象ファイル / フォルダーの一意識別子。[ファイル検索](/ja/open/development/search-for-files) API で取得します。
+- `unionId`（Query）：操作者の unionId。[ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出して取得できます。
+
+**HTTP の例**：
+
+```http
+GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+```
+
+## 典型的なシーンと操作手順
+
+### シーン 1：特定ユーザーにファイル編集権限を追加する
+
+1. [ファイル検索](/ja/open/development/search-for-files) API を使用して、対象ファイルの `dentryUuid` を取得します。
+2. [ユーザー詳細の照会](/ja/open/development/query-user-details) API を使用して、対象ユーザーの `userId` と操作者の `unionId` を取得します。
+3. [権限の追加](/ja/open/development/add-permissions-file) API を呼び出します。`roleId = "EDITOR"`、`members[0].type = "USER"`、`members[0].id = 対象ユーザー userId` を指定します。
+
+### シーン 2：特定ユーザーの権限を編集者から閲覧のみに降格する
+
+1. [ファイル検索](/ja/open/development/search-for-files) API を使用して、対象ファイルの `dentryUuid` を取得します。
+2. [ユーザー詳細の照会](/ja/open/development/query-user-details) API を使用して、対象ユーザーの `userId` を取得します。
+3. [権限の変更](/ja/open/development/modify-permissions-file) API を呼び出します。`roleId = "READER"` を指定し、`members` に対象ユーザーを指定します。
+
+### シーン 3：特定ユーザーのファイルに対するすべての権限を削除する
+
+1. [ファイル検索](/ja/open/development/search-for-files) API を使用して、対象ファイルの `dentryUuid` を取得します。
+2. [ユーザー詳細の照会](/ja/open/development/query-user-details) API を使用して、対象ユーザーの `userId` を取得します。
+3. [権限の削除](/ja/open/development/delete-permissions-file) API を呼び出します。`roleId` には該当ユーザーが現在保持している権限ロールを指定し、`members` に対象ユーザーを指定します。
+
+### シーン 4：特定のサブフォルダーに独立した権限を設定する（親ディレクトリから継承しない）
+
+1. [ファイル検索](/ja/open/development/search-for-files) API を使用して、サブフォルダーの `dentryUuid` を取得します。
+2. [権限継承モードの設定](/ja/open/development/set-permission-inheritance-mode) API を呼び出し、`inheritance = "BREAK"` で権限継承を打ち切ります。
+3. さらに [権限の追加](/ja/open/development/add-permissions-file) API を呼び出し、該当フォルダーに必要な権限ユーザーとロールを個別に設定します。
+
+## 注意事項
+
+- 操作者（`unionId`）は対象ファイルの権限管理能力を備えている必要があります。そうでない場合、権限不足のエラーが返されます。
+- 権限を削除する際、`roleId` はユーザーが現在実際に保持している権限ロールと一致している必要があります。一致しない場合、操作は無効になります。
+- **OWNER** および **MANAGER** ロールの権限は、**BREAK** モードによる継承の打ち切りには対応していません。
+- `members` リストは 1 回につき最大 30 ユーザーまで指定できます。超過する場合は分割して呼び出してください。
+- 現在、すべての権限 API は社内アプリのみ対応しており、サードパーティアプリは未対応です。
