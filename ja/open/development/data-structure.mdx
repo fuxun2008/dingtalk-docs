@@ -1,0 +1,86 @@
+---
+title: "データの説明"
+description: "AIテーブルには以下の基本構造が含まれます。"
+---
+
+## データ構造
+
+- Base（AIテーブルドキュメント）
+
+  - `baseId` は AIテーブルドキュメントを一意に識別します。`baseId` は以下の方法で取得できます。
+
+    | **URL から取得** | **ドキュメント情報パネルから取得** | **その他の API から取得**  - [ノードリストを取得](/ja/open/development/get-node-list) インターフェースで取得できます。 **説明**  AIテーブル作成時、`docType` の値は `BASE` です。 |
+    | --- | --- | --- |
+- Sheet（データテーブル）。1 つの AIテーブルドキュメントには通常複数のデータテーブルが存在し、少なくとも 1 つのデータテーブルが必要です。
+
+  - sheet にアクセスするすべてのインターフェースは、`sheetId` または `sheetName` を入力パラメータとして使用できます。
+  - sheetId は [すべてのデータテーブルを取得](/ja/open/development/api-notable-getallsheets) インターフェースで取得できます。
+
+### 説明
+
+    sheetId はドキュメント内で一意であることのみ保証され、グローバルに一意であることは保証されません。
+  - sheetName はフロントエンドで表示される sheet 名で、下図の `タスク管理` のような名称です。
+- Field（フィールド）。データテーブルの各列が 1 つのフィールドであり、1 つのデータテーブルには通常複数のフィールドがあります。
+
+  - field にアクセスするすべてのインターフェースは、`fieldId` または `fieldName` を入力パラメータとして使用できます。
+  - fieldId は [すべてのフィールドを取得](/ja/open/development/api-noatable-getallfields) インターフェースで取得できます。
+
+### 説明
+
+    fieldId はドキュメント内で一意であることのみ保証され、グローバルに一意であることは保証されません。
+  - fieldName はフロントエンドで表示される field 名で、下図の `重要度` のような名称です。
+  - 各 sheet の最初の列は「メインフィールド」で、特定のフォールド種類のみサポートし、削除できません。サポートされるフォールド種類は以下の方法で確認できます。
+
+    - 任意の AIテーブルを開きます
+    - メインフィールドを編集します
+    - 設定可能なフォールド種類を確認します
+- Record（レコード）。データテーブルの各行が 1 つのレコードであり、1 つのデータテーブルには通常複数のレコードがあります。
+
+  - record にアクセスするすべてのインターフェースは `recordId` を使用する必要があります。
+  - recordId は [レコードを新規作成](/ja/open/development/api-notable-insertrecords) または [複数行のレコードをリスト表示](/ja/open/development/api-notable-listrecords) などのインターフェースで取得できます。
+
+### 説明
+
+    recordId はドキュメント内で一意であることのみ保証され、グローバルに一意であることは保証されません。
+
+## フィールド属性
+
+フィールド属性エリアは下図のとおりです。
+
+異なるフォールド種類でサポートされる属性については、下表を参照してください。
+
+| **フィールド名** | **タイプ (type)** | **属性 (property)** |
+| --- | --- | --- |
+| テキスト | text | なし |
+| 数値 | number | `formatter` の値：`INT` / `FLOAT_1` / `FLOAT_2` / `FLOAT_3` / `FLOAT_4`（N 桁の小数を保持）/ `THOUSAND` / `THOUSAND_FLOAT`（千分位）/ `PERCENT` / `PERCENT_FLOAT`（パーセント） |
+| 通貨 | currency | `currencyType`：`CNY` / `HKD` / `USD` / `EUR` / `GBP` / `MOP` / `VND` / `JPY` / `KRW` / `AED` / `AUD` / `BRL` / `CAD` / `CHF` / `INR` / `IDR` / `MXN` / `MYR` / `PHP` / `PLN` / `RUB` / `SGD` / `THB` / `TRY` / `TWD`；`formatter` の値：`INT` / `FLOAT_1` … `FLOAT_4` |
+| 単一選択 | singleSelect | `{ choices: [{ name: "optionName1" }, { name: "optionName2" }] }` |
+| 複数選択 | multipleSelect | 「単一選択」と同じ |
+| 日付 | date | `formatter` の値：`YYYY-MM-DD` / `YYYY-MM-DD HH:mm` / `YYYY/MM/DD` / `YYYY/MM/DD HH:mm` |
+| メンバー | user | `{ multiple: boolean }`（複数選択をサポート、デフォルトは true） |
+| 部門 | department | `{ multiple: boolean }`（複数選択をサポート、デフォルトは true） |
+| 添付 | attachment | なし |
+| 片方向関連 | unidirectionalLink | `{ multiple: boolean, linkedSheetId: "xxx" }`（`linkedSheetId` は関連済みデータテーブル ID） |
+| 双方向関連 | bidirectionalLink | `{ multiple: boolean, linkedSheetId: "xxx", linkedFieldId: "yyy" }`（フィールド作成時には `linkedFieldId` を渡しません） |
+| リンク | url | なし |
+
+## レコード値の形式
+
+レコード値（フィールド値とも呼ばれる）の表示は下図のとおりです。
+
+異なるフォールド種類で使用される形式については、下表を参照してください。
+
+| **フィールド名** | **タイプ (type)** | **設定値（レコード新規作成 / 更新時に使用する形式）** | **戻り値（レコード値を返す際の形式）** |
+| --- | --- | --- | --- |
+| テキスト | text | `"TextString"`（文字列） | `"TextString"`（文字列） |
+| 数値 | number | `123`（整数 / 浮動小数点数 / 文字列をサポート） | `"123"`（数値を文字列として返す） |
+| 通貨 | currency | `123`（整数 / 浮動小数点数 / 文字列をサポート） | `"123"`（数値を文字列として返す） |
+| 単一選択 | singleSelect | `"optionName1"`（単一選択オプション名） | `{ "id": "id", "name": "optionName1" }`（id はオプション ID、name はオプション名） |
+| 複数選択 | multipleSelect | `["optionName1", "optionName2"]`（複数選択オプション名） | `[{ "id": "id1", "name": "optionName1" }, { "id": "id2", "name": "optionName2" }]` |
+| 日付 | date | `1688601600000`（タイムスタンプ）または `"2023-12-20 03:00"`（ISO 8601 文字列） | `1688601600000`（タイムスタンプ） |
+| メンバー | user | `[{ unionId: "xxx" }]` | `[{ unionId: "xxx" }]` |
+| 部門 | department | `[{ deptId: "xxx" }]` | `[{ deptId: "xxx" }]` |
+| 添付 | attachment | 詳細は [添付のアップロード](/ja/open/development/upload-attachment) を参照してください。 | `[{ "filename": "image.xlsx", "size": 92250, "type": "xls", "url": "xxx" }]`  **説明**  url は添付のアクセスリンクです。- 添付がオンラインドキュメントの場合、オンラインドキュメントのリンクとなり、アクセス有効期限はありません。- 添付がその他のファイルの場合、**アクセス有効期限のある** ダウンロードリンクとなり、一定時間経過後はアクセスできなくなります。 |
+| 片方向関連 | unidirectionalLink | `{ "linkedRecordIds": ["xxx", "yyy"] }` | `{ "linkedRecordIds": ["xxx", "yyy"] }`  **説明**  field property には関連済みの sheetId が含まれており、ここで返される recordId と組み合わせて [レコードを取得](/ja/open/development/api-getrecord) インターフェースを呼び出すことで、関連レコードの値を取得できます。 |
+| 双方向関連 | bidirectionalLink | `{ "linkedRecordIds": ["xxx", "yyy"] }` | `{ "linkedRecordIds": ["xxx", "yyy"] }` |
+| リンク | url | `{ "text": "Dingtalk", "link": "https://dingtalk.io" }` | `{ "text": "Dingtalk", "link": "https://dingtalk.io" }` |

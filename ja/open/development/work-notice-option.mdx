@@ -1,0 +1,197 @@
+---
+title: "業務通知の送信、照会、送信取消"
+---
+
+本記事では、業務通知チャット関連 API を呼び出して、送信、照会、送信取消などの操作を実装する方法について説明します。
+
+## 想定される効果
+
+業務通知の送信効果は以下のとおりです。
+
+## 統合フロー概要
+
+本ドキュメントでは、社内アプリを作成し、勤怠関連 API を使用して業務通知チャットを送信する一連のフローを示します。
+
+前提条件：[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application)のフローを完了していること。
+
+ステップ 1：アプリ認証情報を取得し、クライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限を申請し、業務通知関連 API の権限を申請します。
+
+ステップ 3：アプリのアクセス認証情報を取得し、社内アプリの access_token を取得します。API を呼び出す際は、アクセストークンで呼び出し元の身元を認証します。
+
+ステップ 4：業務通知関連 API を呼び出します。
+
+1. サーバー API の [業務通知を送信する](/ja/open/development/asynchronous-sending-of-enterprise-session-messages) API を呼び出して業務通知を送信し、業務通知チャットの一意のタスク ID `task_id` を取得します。
+2. 一意のタスク ID `task_id` に基づいて、サーバー API の [業務通知チャットの送信進捗を取得する](/ja/open/development/obtain-the-sending-progress-of-asynchronous-sending-of-enterprise-session) API を呼び出し、送信進捗を取得します。
+3. 一意のタスク ID `task_id` に基づいて、サーバー API の [業務通知チャットの送信結果を取得する](/ja/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) API を呼び出し、送信結果を確認します。
+4. 一意のタスク ID `task_id` に基づいて、サーバー API の [業務通知のステータスバーを更新する](/ja/open/development/update-work-notification-status-bar) API を呼び出し、業務通知を更新します。
+5. 一意のタスク ID `task_id` に基づいて、サーバー API の [業務通知チャットを送信取消する](/ja/open/development/notification-of-work-withdrawal) API を呼び出し、業務通知を送信取消します。
+
+## 前提条件
+
+[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application)のフローを完了していること。
+
+## ステップ 1：アプリ認証情報を取得する
+
+1. 対象のアプリを選択し、アプリの詳細ページに移動して、**ベーシック情報** > **認証情報とベーシック情報** をクリックします。
+2. クライアント ID と Client Secret を取得します。
+
+## ステップ 2：API 権限を追加する
+
+API 権限はデフォルトで開通されており、申請は不要です。
+
+## ステップ 3：アプリのアクセス認証情報 アクセストークン を取得する
+
+<Warning>
+サーバー API の差異の詳細は、旧版 API VS 新版 API を参照してください。以下の API はすべてサーバー API を使用しています。SDK のダウンロード詳細は、サーバーサイド SDK ダウンロードを参照してください。
+</Warning>
+
+ステップ 1 で取得したクライアント ID と Client Secret を使用して、アプリのアクセス認証情報である社内アプリの access_token を取得します。
+
+```java
+public void getAccessToken() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+        OapiGettokenRequest req = new OapiGettokenRequest();
+        req.setAppkey("dingxxxxxxxxxhgn");
+        req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+        req.setHttpMethod("GET");
+        OapiGettokenResponse rsp = client.execute(req);
+        System.out.println(rsp.getBody());
+}
+```
+
+## ステップ 4：サーバーサイド関連 API を呼び出す
+
+1. サーバー API の [業務通知を送信する](/ja/open/development/asynchronous-sending-of-enterprise-session-messages) API を呼び出して業務通知を送信し、業務通知チャットの一意のタスク ID task_id を取得します。
+
+```java
+public void OAWorkNotice() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+        OapiMessageCorpconversationAsyncsendV2Request request = new OapiMessageCorpconversationAsyncsendV2Request();
+        request.setAgentId(1185599675L);
+        request.setUseridList("manager7675");
+        request.setToAllUser(false);
+
+        OapiMessageCorpconversationAsyncsendV2Request.Msg msg = new OapiMessageCorpconversationAsyncsendV2Request.Msg();
+        OapiMessageCorpconversationAsyncsendV2Request.OA oa = new OapiMessageCorpconversationAsyncsendV2Request.OA();
+
+        OapiMessageCorpconversationAsyncsendV2Request.Head head = new OapiMessageCorpconversationAsyncsendV2Request.Head();
+        head.setBgcolor("FFFF6A00");
+        head.setText("テスト");
+        OapiMessageCorpconversationAsyncsendV2Request.Body body = new OapiMessageCorpconversationAsyncsendV2Request.Body();
+        List<OapiMessageCorpconversationAsyncsendV2Request.Form> list = new ArrayList<>();
+        OapiMessageCorpconversationAsyncsendV2Request.Form form1 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form1.setKey("名前:");
+        form1.setValue("山田太郎");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form2 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form2.setKey("年齢:");
+        form2.setValue("21");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form3 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form3.setKey("身長:");
+        form3.setValue("1.8m");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form4 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form4.setKey("体重:");
+        form4.setValue("65kg");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form5 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form5.setKey("学歴:");
+        form5.setValue("学士");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form6 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form6.setKey("趣味:");
+        form6.setValue("球技、音楽鑑賞");
+
+        OapiMessageCorpconversationAsyncsendV2Request.Rich rich = new OapiMessageCorpconversationAsyncsendV2Request.Rich();
+        rich.setNum("10.6");
+        rich.setUnit("円");
+
+        list.add(form1);
+        list.add(form2);
+        list.add(form3);
+        list.add(form4);
+        list.add(form5);
+        list.add(form6);
+
+        body.setForm(list);
+        body.setRich(rich);
+        body.setTitle("本文タイトル5");
+        body.setImage("@lADOADmaWMzazQKA");
+        body.setFileCount("3");
+        body.setAuthor("佐藤花子");
+
+        OapiMessageCorpconversationAsyncsendV2Request.StatusBar statusBar = new OapiMessageCorpconversationAsyncsendV2Request.StatusBar();
+        statusBar.setStatusBg("0xFFFF6A00");
+        statusBar.setStatusValue("進行中");
+
+        oa.setMessageUrl("https://dingtalk.io");
+        oa.setHead(head);
+        oa.setBody(body);
+        oa.setStatusBar(statusBar);
+        msg.setOa(oa);
+        msg.setMsgtype("oa");
+        msg.setOa(oa);
+        request.setMsg(msg);
+        OapiMessageCorpconversationAsyncsendV2Response rsp = client.execute(request, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```
+
+2. 一意のタスク ID task_id に基づいて、サーバー API の [業務通知チャットの送信進捗を取得する](/ja/open/development/obtain-the-sending-progress-of-asynchronous-sending-of-enterprise-session) API を呼び出し、送信進捗を取得します。
+
+```java
+public void workNoticeSendProgress() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendprogress");
+        OapiMessageCorpconversationGetsendprogressRequest req = new OapiMessageCorpconversationGetsendprogressRequest();
+        req.setAgentId(123L);
+        req.setTaskId(456L);
+        OapiMessageCorpconversationGetsendprogressResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```
+
+3. 一意のタスク ID task_id に基づいて、サーバー API の [業務通知チャットの送信結果を取得する](/ja/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) API を呼び出し、送信結果を確認します。
+
+```java
+public void workNoticeSendResult() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+        OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+        req.setAgentId(123L);
+        req.setTaskId(456L);
+        OapiMessageCorpconversationGetsendresultResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```
+
+4. 一意のタスク ID task_id に基づいて、サーバー API の [業務通知のステータスバーを更新する](/ja/open/development/update-work-notification-status-bar) API を呼び出し、業務通知を更新します。
+
+```java
+/**
+ * 承認ステータスの色参考
+ * 承認済み 0xFF78C06E
+ * 辞退 0xFFF65E5E
+ * 取消済み 0xFF858E99
+ * 承認待ち 0xFFFF9D46
+ */
+ public void updateWorkNoticeStatus() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/status_bar/update");
+        OapiMessageCorpconversationStatusBarUpdateRequest request = new OapiMessageCorpconversationStatusBarUpdateRequest();
+        request.setAgentId(1068622214L);
+        request.setStatusValue("承認済み");
+        request.setStatusBg("0xFF78C06E");
+        request.setTaskId(313382528774L);
+        OapiMessageCorpconversationStatusBarUpdateResponse response = client.execute(request, "access_token");
+        System.out.println(JSON.toJSONString(response));
+    }
+```
+
+5. 一意のタスク ID task_id に基づいて、サーバー API の [業務通知チャットを送信取消する](/ja/open/development/notification-of-work-withdrawal) API を呼び出し、業務通知を送信取消します。
+
+```java
+ public void recallWorkNotice() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/recall");
+        OapiMessageCorpconversationRecallRequest req = new OapiMessageCorpconversationRecallRequest();
+        req.setAgentId(1000L);
+        req.setMsgTaskId(2000L);
+        OapiMessageCorpconversationRecallResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```

@@ -1,0 +1,511 @@
+---
+title: "ユーザートークンの取得"
+description: "本 API はユーザーの accessToken を取得するために使用され、ユーザー認証を実現する重要な手順です。主な利用シーンは以下のとおりです。"
+---
+
+## 利用シーン
+
+本 API はユーザーの `accessToken` を取得するために使用され、ユーザー認証を実現する重要な手順です。主な利用シーンは以下のとおりです。
+
+- ユーザーログイン後、認可コード（`code`）を使用して有効なアクセス認証情報と交換します。
+- `accessToken` の有効期限が切れる前に、`refreshToken` を使用して自動的に更新し、頻繁な再認可を回避します。
+- サードパーティ社内アプリが DingTalk の統一ログインシステムに連携し、シングルサインオン（SSO）を実現します。
+- 社内アプリがバックエンドサービスにおいて、ユーザーに代わって保護された API を呼び出します。
+
+開発者は `accessToken` のライフサイクルを適切に管理する必要があります。ローカルにキャッシュし、自動更新の仕組みを設定して、呼び出しの安定性を確保することをおすすめします。
+
+<Note>
+accessToken を使用する際は、以下の点にご注意ください。
+</Note>
+
+- `accessToken` の有効期間は 7200 秒（2 時間）です。有効期間内に繰り返し取得した場合、同じ結果が返され、有効期間が自動的に更新されます。期限切れ後に取得すると、新しい `accessToken` が返されます。
+- アプリごとの `accessToken` は互いに独立しています。混同を防ぐため、キャッシュはアプリ単位で保存してください。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/oauth2/userAccessToken |
+| HTTP Method | POST |
+| サポートするアプリタイプ | appType-社内アプリappType-サードパーティ社内アプリappType-サードパーティ個人アプリ |
+| 必要な権限 | permission-open_app_api_base-DingTalk オープン API のユーザーアクセス認証情報を取得するためのベーシック権限 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| clientId | String | はい | dingxxx | アプリ ID。QRコードでログインアプリまたはサードパーティ個人ミニプログラムの appId を使用できます。   - 社内アプリの場合は **AppKey** を指定 - サードパーティ社内アプリの場合は **SuiteKey** を指定 - サードパーティ個人アプリの場合は **AppId** を指定 |
+| clientSecret | String | はい | 1234 | アプリシークレット。   - 社内アプリの場合は **AppSecret** を指定 - サードパーティ社内アプリの場合は **SuiteSecret** を指定 - サードパーティ個人アプリの場合は **AppSecret** を指定 |
+| code | String | いいえ | abcd | OAuth 2.0 の一時認可コード。サードパーティ社内アプリは統一認可スイート / [ログインユーザーのアクセス認証情報を取得](/ja/open/development/obtain-identity-credentials) を連携して、一時認可コード authCode を取得する必要があります。 |
+| refreshToken | String | いいえ | abcd | OAuth 2.0 のリフレッシュトークン。前回の API レスポンス結果から取得します。有効期間は 30 日です。 |
+| grantType | String | はい | authorization_code | - 認可コードでトークンを交換する場合：`authorization_code` を指定し、`code` パラメータを必ず入力します。 - リフレッシュトークンで新しいトークンを交換する場合：`refresh_token` を指定し、`refreshToken` パラメータを必ず入力します。 |
+
+### リクエスト例
+
+```curl
+curl -X POST 'https://api.dingtalk.io/v1.0/oauth2/userAccessToken' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "clientId": "dingxxx",
+    "clientSecret": "1234",
+    "code": "abcd",
+    "refreshToken": "abcd",
+    "grantType": "authorization_code"
+  }'
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.dingtalkoauth2_1_0.*;
+import com.aliyun.dingtalkoauth2_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * トークンを使用してアカウントクライアントを初期化する
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkoauth2_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkoauth2_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkoauth2_1_0.Client client = Sample.createClient();
+        GetUserTokenRequest getUserTokenRequest = new GetUserTokenRequest()
+                .setClientId("dingxxx")
+                .setClientSecret("1234")
+                .setCode("abcd")
+                .setRefreshToken("abcd")
+                .setGrantType("authorization_code");
+        try {
+            client.getUserToken(getUserTokenRequest);
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.oauth2_1_0.client import Client as dingtalkoauth2_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.oauth2_1_0 import models as dingtalkoauth_2__1__0_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkoauth2_1_0Client:
+        """
+        トークンを使用してアカウントクライアントを初期化する
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkoauth2_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_user_token_request = dingtalkoauth_2__1__0_models.GetUserTokenRequest(
+            client_id='dingxxx',
+            client_secret='1234',
+            code='abcd',
+            refresh_token='abcd',
+            grant_type='authorization_code'
+        )
+        try:
+            client.get_user_token(get_user_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_user_token_request = dingtalkoauth_2__1__0_models.GetUserTokenRequest(
+            client_id='dingxxx',
+            client_secret='1234',
+            code='abcd',
+            refresh_token='abcd',
+            grant_type='authorization_code'
+        )
+        try:
+            await client.get_user_token_async(get_user_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Voauth2_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Voauth2_1_0\Models\GetUserTokenRequest;
+
+class Sample {
+
+    /**
+     * トークンを使用してアカウントクライアントを初期化する
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $getUserTokenRequest = new GetUserTokenRequest([
+            "clientId" => "dingxxx",
+            "clientSecret" => "1234",
+            "code" => "abcd",
+            "refreshToken" => "abcd",
+            "grantType" => "authorization_code"
+        ]);
+        try {
+            $client->getUserToken($getUserTokenRequest);
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkoauth2_1_0  "github.com/alibabacloud-go/dingtalk/oauth2_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * トークンを使用してアカウントクライアントを初期化する
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkoauth2_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkoauth2_1_0.Client{}
+  _result, _err = dingtalkoauth2_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  getUserTokenRequest := &dingtalkoauth2_1_0.GetUserTokenRequest{
+    ClientId: tea.String("dingxxx"),
+    ClientSecret: tea.String("1234"),
+    Code: tea.String("abcd"),
+    RefreshToken: tea.String("abcd"),
+    GrantType: tea.String("authorization_code"),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.GetUserToken(getUserTokenRequest)
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util from '@alicloud/tea-util';
+import dingtalkoauth2_1_0, * as $dingtalkoauth2_1_0 from '@alicloud/dingtalk/oauth2_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * トークンを使用してアカウントクライアントを初期化する
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkoauth2_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkoauth2_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let getUserTokenRequest = new $dingtalkoauth2_1_0.GetUserTokenRequest({
+      clientId: "dingxxx",
+      clientSecret: "1234",
+      code: "abcd",
+      refreshToken: "abcd",
+      grantType: "authorization_code",
+    });
+    try {
+      await client.getUserToken(getUserTokenRequest);
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * トークンを使用してアカウントクライアントを初期化する
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkoauth2_1_0.Models.GetUserTokenRequest getUserTokenRequest = new AlibabaCloud.SDK.Dingtalkoauth2_1_0.Models.GetUserTokenRequest
+            {
+                ClientId = "dingxxx",
+                ClientSecret = "1234",
+                Code = "abcd",
+                RefreshToken = "abcd",
+                GrantType = "authorization_code",
+            };
+            try
+            {
+                client.GetUserToken(getUserTokenRequest);
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+C
+
+```cpp
+// This file is auto-generated, don't edit it. Thanks.
+
+#include <alibabacloud/dingtalkoauth_2__1__0.hpp>
+#include <alibabacloud/open_api.hpp>
+#include <boost/any.hpp>
+#include <darabonba/core.hpp>
+#include <darabonba/util.hpp>
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+Alibabacloud_Dingtalkoauth2_1_0::Client createClient() {
+  shared_ptr<Alibabacloud_OpenApi::Config> config = make_shared<Alibabacloud_OpenApi::Config>();
+  config->protocol = make_shared<string>("https");
+  config->regionId = make_shared<string>("central");
+  return Alibabacloud_Dingtalkoauth2_1_0::Client(config);
+}
+
+int main(int argc, char *args[]) {
+  args;
+  shared_ptr<Alibabacloud_Dingtalkoauth2_1_0::Client> client = make_shared<Alibabacloud_Dingtalkoauth2_1_0::Client>(createClient());
+  shared_ptr<Alibabacloud_Dingtalkoauth2_1_0::GetUserTokenRequest> getUserTokenRequest = make_shared<Alibabacloud_Dingtalkoauth2_1_0::GetUserTokenRequest>(map<string, boost::any>({
+    {"clientId", boost::any(string("dingxxx"))},
+    {"clientSecret", boost::any(string("1234"))},
+    {"code", boost::any(string("abcd"))},
+    {"refreshToken", boost::any(string("abcd"))},
+    {"grantType", boost::any(string("authorization_code"))}
+  }));
+  try {
+    client->getUserToken(getUserTokenRequest);
+  }
+  catch (std::exception &err) {
+    if (!Darabonba_Util::Client::empty(err.code) && !Darabonba_Util::Client::empty(err.message)) {
+      // err には code と message 属性が含まれており、開発時の問題特定に役立ちます
+    }
+  }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| accessToken | String | abcd | 生成された accessToken。以降の API 呼び出しの認証に使用します。 |
+| refreshToken | String | abcd | 生成された refresh_token。このリフレッシュトークンを使用して、ユーザーの accessToken を定期的に取得できます。 |
+| expireIn | Long | 7200 | タイムアウト時間。単位は秒です。 |
+| corpId | String | corpxxxx | 選択した企業の corpId。 |
+
+### レスポンス例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "accessToken" : "abcd",
+  "refreshToken" : "abcd",
+  "expireIn" : 7200,
+  "corpId" : "corpxxxx"
+}
+```
+
+### エラーコード
+
+本 API の呼び出しでエラーが発生した場合は、エラーメッセージを基に [エラーコード（旧版サーバーサイド）](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を検索してください。

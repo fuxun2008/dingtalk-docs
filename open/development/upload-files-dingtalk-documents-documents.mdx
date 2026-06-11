@@ -1,0 +1,285 @@
+---
+title: "Upload a local file to DingTalk Docs (My Docs)"
+---
+
+This document guides you through uploading a local file to the My Docs directory in DingTalk Docs.
+
+## Overview
+
+### What you will learn
+
+This tutorial shows developers how to upload a local file to the My Docs directory in DingTalk Docs.
+
+### Goal
+
+Help developers quickly master uploading local files to the My Docs directory in DingTalk Docs.
+
+### Audience
+
+All DingTalk developers.
+
+## Prerequisites
+
+- You have obtained developer permissions.
+- You have installed an IDE or other development tools.
+- You have installed [Node.js](https://nodejs.org/en/download) and completed the [environment setup](https://m.runoob.com/nodejs/nodejs-install-setup.html).
+- You have installed [Maven](https://maven.apache.org/) and completed the [environment setup](https://maven.apache.org/install.html).
+- You have installed the [JDK](https://www.oracle.com/java/technologies/downloads/?er=221886) and completed the [environment setup](https://docs.oracle.com/en/java/javase/24/install/overview-jdk-installation.html).
+
+## Development workflow
+
+1. Call the [Get My Docs Knowledge Base information](/open/development/get-my-documents) API to obtain the root node ID of My Docs, that is, the response parameter `rootNodeId` (parentDentryUuid).
+2. Call the [Get file upload information](/open/development/obtain-file-upload-informations) API to obtain the `resourceUrls` and `headers` parameter values required for uploading the file.
+3. Upload the file using the OSS header sign request method:
+
+   Java
+
+   ```java lines
+   import java.io.*;
+   import java.net.HttpURLConnection;
+   import java.net.URL;
+   public void test(){
+                  // Get resourceUrls from the API response
+                   String resourceUrl = "resourceUrls returned by the API above";
+                 // Get headers from the API response
+                   Map<String, String> headers = "headers returned by the API above";
+                   URL url = new URL(resourceUrl);
+                   HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+                  if (headers != null) {
+                   for (Map.Entry<String, String> entry : headers.entrySet()) {
+                       connection.setRequestProperty(entry.getKey(), entry.getValue());
+                   }
+               }
+                   connection.setDoOutput(true);
+                   connection.setRequestMethod("PUT");
+                   connection.setUseCaches(false);
+                   connection.setReadTimeout(10000);
+                   connection.setConnectTimeout(10000);
+                   connection.connect();
+                   OutputStream out = connection.getOutputStream();
+                   InputStream is = new FileInputStream(new File("/Users/xxxxx/Desktop/test-file.xls"));
+                   byte[] b =new byte[1024];
+                   int temp;
+                   while ((temp=is.read(b))!=-1){
+                          out.write(b,0,temp);
+                   }
+                   out.flush();
+                   out.close();
+                   int responseCode = connection.getResponseCode();
+                   connection.disconnect();
+                   if (responseCode == 200) {
+                       System.out.println("Upload succeeded");
+                    } else {
+                       System.out.println("Upload failed");
+                    }
+   }
+   ```
+
+   Python
+
+   ```python lines
+   #!/usr/bin/env python
+
+   import requests
+
+   url = '<resourceUrl obtained from the API in step 1>'
+   headers = <headers returned by the API in step 1>
+   result = requests.put(url, data=open('<path_to_file>', 'rb'), headers=headers)
+   print(result)
+   ```
+
+   C#
+
+   ```java lines
+   public static string HttpRequest(string url, string filePath, Dictionary<string, string> headers) {
+
+       FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+       BinaryReader reader = new BinaryReader(fileStream);
+       reader.BaseStream.Seek(0, SeekOrigin.Begin);
+       byte[] datas = reader.ReadBytes((int)reader.BaseStream.Length);
+       HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+       request.Method = "PUT";
+       request.Timeout = 150000;
+       foreach (var header in headers) {
+           request.Headers.Add($"{header.Key}", $"{header.Value}");
+       }
+       Stream requestStream = null;
+       string responseStr = null;
+       try {
+           if (datas != null) {
+               request.ContentLength = datas.Length;
+               requestStream = request.GetRequestStream();
+               requestStream.Write(datas, 0, datas.Length);
+               requestStream.Close();
+           } else {
+               request.ContentLength = 0;
+           }
+           HttpWebResponse response = request.GetResponse() as HttpWebResponse;
+           responseStr = response.Headers.GetValues("x-oss-request-id")[0];
+       } catch (Exception ex) {
+           Console.WriteLine("error");
+       } finally {
+           request = null;
+           requestStream = null;
+       }
+       return responseStr;
+   }
+   ```
+
+   PHP
+
+   ```text lines
+   $url = $result->body->headerSignatureInfo->resourceUrls[0];
+   $headersSource = $result->body->headerSignatureInfo->headers;
+   foreach ($headersSource as $key => $value) {
+   $headers[] = $key . ': ' . $value;
+   }
+   // You must explicitly set content-type to empty
+   $headers['Content-Type'] = '';
+
+   $file = '/Users/dengxian.ldx/Desktop/test.txt';
+
+   $ch = curl_init();
+   curl_setopt_array($ch, array(
+   CURLOPT_URL => $url,
+   CURLOPT_RETURNTRANSFER => true,
+   CURLOPT_HEADER => true,
+   CURLOPT_TIMEOUT => 100,
+   CURLOPT_CONNECTTIMEOUT => 100,
+   CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+   CURLOPT_PUT => true,
+   CURLOPT_HTTPHEADER => $headers,
+   CURLOPT_SSL_VERIFYPEER => false,
+   CURLOPT_SSL_VERIFYHOST => false,
+   ));
+   curl_setopt($ch, CURLOPT_INFILE, fopen($file , 'rb'));
+   curl_setopt($ch, CURLOPT_INFILESIZE, filesize($file) );
+   curl_setopt($ch, CURLOPT_UPLOAD, true);
+
+   $response = curl_exec($ch);
+   curl_close($ch);
+
+   echo $response .PHP_EOL;
+   ```
+
+   Node.js
+
+   ```javascript lines
+   const fs = require('fs');
+   const request = require('request-promise');
+
+   url = <url>;
+   header = <headers>;
+
+   // Note: You must explicitly set content-type to empty
+   headers['content-type']='';
+
+   var options = {
+     method: 'PUT',
+     url: url,
+     headers: headers
+   };
+
+   fs.createReadStream('/Users/dengxian.ldx/temp/test/a.txt').pipe(request(options)).then(body =>{
+     console.log(body);
+   }).catch(err => {
+     console.log(err);
+   });
+   ```
+4. Call the [Submit file](/open/development/submittal-file) API to upload the file to the My Docs directory in DingTalk Docs.
+
+## Step 1: Create an app
+
+1. Sign in to the [Developer Console](https://open-dev.dingtalk.io/#/).
+2. Click **App Development** > **Internal app** > **DingTalk App** > **Create App**.
+3. Fill in the app information.
+
+   | **Item** | **Required** | **Description** |
+   | --- | --- | --- |
+   | **App name** | Yes | Enter the app name. The minimum length is 2 characters. |
+   | **App description** | Yes | Briefly describe the product or service the app provides. The minimum length is 4 characters. |
+   | **App icon** | No | Upload the app icon. The icon must be in JPG or PNG format, at least 240 px \* 240 px, with a 1:1 aspect ratio, no rounded corners, and within 2 MB. |
+4. Click **Save** to enter the app details page.
+
+After creation, click **Basic Information** > **Credentials and Basic Information** to view the Client ID and Client Secret.
+
+> *Note: Save the Client ID and Client Secret for later use.*
+
+## Step 2: Configure the web app
+
+1. On the app details page, click **App Capabilities** > **Add App Capability**.
+2. Select to add a web app.
+3. Configure the web app (H5) information:
+
+   | **Item** | **Description** |
+   | --- | --- |
+   | App home URL | Enter the home URL. This example uses: `http://localhost:5173?corpid=$CORPID$` for subsequent testing. This example is for local testing only. |
+   | PC home URL | |
+
+   After configuration, click Save.
+
+## Step 3: Request API permissions
+
+1. On the app details page, click **Development Configuration** > **Manage permissions** to enter the permission request page.
+2. In the permission search box, enter `Wiki.Workspace.Read`, `Storage.UploadInfo.Read`, and `Storage.File.Write` separately, and request each API permission.
+
+   > If you are not an Organization Admin or do not have app development permissions, the permission request requires approval from an Organization Admin.
+
+## Step 4: Publish the app
+
+1. After configuring the app, publish it. On the app details page, click **App Release** > **Version Management and Release**.
+2. Click **Create New Version** to enter the version details page.
+3. Configure the version information:
+
+   | **Item** | **Description** |
+   | --- | --- |
+   | App version number | Enter the app version number. The default value is acceptable. |
+   | Version description | Enter the version description. You can customize it. |
+   | Content to publish | App capabilities displayed in the Workbench: <br /> - Select the web app |
+
+   After configuration, click Save below.
+4. In the success dialog, click Publish Directly.
+
+   > *If you are not an Organization Admin, publishing the app requires approval from an Organization Admin. Publishing only to yourself does not require admin approval.*
+
+## Step 5: Build the service
+
+1. Make sure the steps above are complete and you have obtained the parameters required to run the demo below.
+2. Download the [doc-demo.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250704/bpihcw/doc-demo.zip) demo.
+3. Open your IDE and import the downloaded demo.
+
+   > The sample code is split into backend (backend code directory) and frontend (frontend code directory).
+
+4. Open the backend code directory. In the resources directory, edit the `application.properties` file, and enter the `clientId (app Client ID)` and `clientSecret (app Client Secret)`.
+
+5. Click to start the backend service.
+
+   **Note**
+   - Before starting the backend service, make sure Maven and the JDK are properly installed and the related environment is configured. If you are installing the IDE for the first time, edit the related configuration files in the IDE.
+   - Make sure ports 5173 and 8080 are not in use.
+
+6. Open the frontend code directory, edit `vite.config.ts`, and enter the correct `clientId (app Client ID)`.
+
+7. Right-click the frontend project file and select **Terminal** to open it.
+
+8. In the terminal window, run the following commands:
+
+   1. `npm install`
+   2. `npm run dev`
+
+      > Note: On Windows, use `npm run dev:raw` when starting.
+9. The frontend and backend services are now running successfully.
+
+## Step 6: Test the app
+
+1. Sign in to the DingTalk client and select the organization where the app belongs.
+
+2. Click **Workbench** > **Add**, search for the organization app you created above, and add it.
+
+3. Open the app in the Workbench, then click **Select Local File** to upload.
+
+   > The file must be smaller than 50 MB.
+
+4. After selecting the file, click **Submit** to complete the upload.
+
+5. After the upload completes, open the file to view the uploaded content.

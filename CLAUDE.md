@@ -24,7 +24,7 @@ mint login
 git push origin main
 ```
 
-文档专用 skill（12 个，按流水线顺序）：
+文档专用 skill（13 个，按流水线顺序）：
 
 | # | Skill | 用途 |
 |---|---|---|
@@ -36,10 +36,11 @@ git push origin main
 | 6 | `/docs-translate-polish <slug> --lang <en\|ja>` | 阶段 7-bis：en/ja 翻译润色（10 项 review checklist 强约束 + 词库注入 + 断点续跑） |
 | 7 | `/docs-glossary-sync` | 翻译词库同步：把语言同学维护的官方词库 csv 合并进项目（`import/*.csv` → `official/*.json` → 最终 `zh-en.json` / `zh-ja.json`） |
 | 8 | `/docs-audit-mdx` | 阶段 6 / 8d：MDX 语法审计（`++text++` / 破碎粗体 / 废占位 URL）+ 钉钉外链死链探针（og:title SSR 检测）；两阶段 dry-run → `--apply` |
-| 9 | `/docs-nav-edit <action> <product>` | 阶段 9：`docs.json` 三语 navigation 安全编辑（`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
-| 10 | `/docs-preview` | 阶段 9 验收：后台启 mint dev + 死链检查 + playwright 三语首页截图 |
-| 11 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
-| 12 | `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
+| 9 | `/docs-open-platform-cleanup` | **开放平台专项**：zh/open 开发者文档导入后 7 类瑕疵批清（"支持与帮助"段 / URL `{param}` 实体 / `Map<>` 泛型 / `\_` 转义 / 代码块 ` lines` 后缀 / 空表头三明治 / 空粗体）；与 audit-mdx 互补。基准 6 commit / 382 篇 |
+| 10 | `/docs-nav-edit <action> <product>` | 阶段 9：`docs.json` 三语 navigation 安全编辑（`add-product` / `add-group` / `add-page` / `reorder` / `verify`），强制 Edit 禁 Write |
+| 11 | `/docs-preview` | 阶段 9 验收：后台启 mint dev + 死链检查 + playwright 三语首页截图 |
+| 12 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
+| 13 | `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
 
 通用 skill（8 个，项目级，与 docs-* 同目录，**无需依赖个人 `~/.claude/commands/`**）：
 

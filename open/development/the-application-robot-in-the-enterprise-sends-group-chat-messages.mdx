@@ -1,0 +1,194 @@
+---
+title: "Send group chat messages with an Enterprise bot"
+---
+
+To send messages to a group via an Enterprise bot, follow the steps in this document.
+
+## Clarify your requirements
+
+Before development, note that this document helps you set up the following scenario in Stream mode: when you @ mention an Enterprise bot in a group, the bot replies to your message by calling the [Bot sends group chat messages](/open/development/the-robot-sends-a-group-message) API. You can run the sample demo provided in "Quick start" to get a hands-on experience of using an Enterprise bot.
+
+## Prerequisites
+
+1. Complete the [Configure an Enterprise bot](/open/dingstart/configure-the-robot-application) process (select Stream mode as the message receiving mode).
+2. After the bot is created, [add the bot to a group](/open/dingstart/add-robot-to-group).
+3. Complete the [API permission request](/open/development/add-api-permission) for the OpenAPI. You need to request the `Permission to send messages with an internal Enterprise bot`.
+4. Prepare the development environment:
+
+   | **Development environment** | **Description** |
+   | --- | --- |
+   | Java | - JDK 1.8 or later installed - Maven 3 installed |
+   | Python | - Python 3 |
+
+## Quick start
+
+1. Download the sample demo:
+
+   | **Sample** | **Description** |
+   | --- | --- |
+   | Java | [stream-robot-group-message-quick-start-java.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/vbadtr/stream-robot-group-message-quick-start-java.zip) |
+   | Python | [stream-robot-group-message-quick-start-python.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/xifjds/stream-robot-group-message-quick-start-python.zip) |
+2. Start the sample demo:
+
+   | **Type** | **Description** |
+   | --- | --- |
+   | Java | 1. Modify the parameters in the application.properties configuration file: - app.appKey: the Client ID of the app. For more information, see [Client ID](/open/dingstart/basic-concepts-beta). - app.appSecret: the Client Secret of the app. For more information, see [Client Secret](/open/dingstart/basic-concepts-beta). - robot.code: the code of the bot. For more information, see [Bot ID](/open/development/development-robot-overview). 2. Start the Application.java file. 3. @ mention the bot in the group and send a message. For example, @ mention the bot and send "Hello". The bot replies with the message content.​ |
+   | Python | 1. Install dependencies: `pip install alibabacloud-dingtalk dingtalk-stream`. 2. Run the start command in the current file directory: `python3 send_robot_group_message.py --client_id="your app client id" --client_secret="your app client secret" --robot_code="your robot code"`. Replace client_id, client_secret, and robot_code. For details on how to obtain these parameters, see the Java instructions. 3. @ mention the bot in the group and send a message. For example, @ mention the bot and send "Hello". |
+
+## Procedure
+
+> The following is a Java example. For the Python example, download the demo above.
+
+1. Add the dependencies to the `pom.xml` file of your project.
+
+   ```xml lines
+    <dependencies>
+           <dependency>
+               <groupId>com.dingtalk.open</groupId>
+               <artifactId>dingtalk-stream</artifactId>
+               <version>1.1.0</version>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-web</artifactId>
+               <version>2.7.4</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>dingtalk</artifactId>
+               <version>2.0.76</version>
+           </dependency>
+
+           <dependency>
+               <groupId>org.projectlombok</groupId>
+               <artifactId>lombok</artifactId>
+               <version>1.18.26</version>
+               <optional>true</optional>
+           </dependency>
+
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>fastjson</artifactId>
+               <version>1.2.68</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Create the main method and start it.
+
+   ```java lines
+   import com.alibaba.fastjson.JSONObject;
+
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
+   import com.aliyun.dingtalkrobot_1_0.Client;
+   import com.aliyun.dingtalkrobot_1_0.models.OrgGroupSendHeaders;
+   import com.aliyun.dingtalkrobot_1_0.models.OrgGroupSendRequest;
+   import com.aliyun.dingtalkrobot_1_0.models.OrgGroupSendResponse;
+   import com.aliyun.tea.TeaException;
+   import com.aliyun.teaopenapi.models.Config;
+   import com.dingtalk.open.app.api.OpenDingTalkClient;
+   import com.dingtalk.open.app.api.OpenDingTalkStreamClientBuilder;
+   import com.dingtalk.open.app.api.callback.OpenDingTalkCallbackListener;
+   import com.dingtalk.open.app.api.security.AuthClientCredential;
+   import lombok.extern.slf4j.Slf4j;
+
+   import java.util.Objects;
+
+   @Slf4j
+   public class sendGroupMessage {
+
+       public static final String CLIENT_ID = "< your client id>";
+
+       public static final String CLIENT_SECRET = "<your client secret>";
+
+       public static void main(String[] args) throws Exception {
+           OpenDingTalkClient client = OpenDingTalkStreamClientBuilder
+                   .custom()
+                   .credential(new AuthClientCredential(CLIENT_ID, CLIENT_SECRET))
+                   .registerCallbackListener("/v1.0/im/bot/messages/get", new RobotMsgCallbackConsumer())
+                   .build();
+           client.start();
+       }
+
+       public static class RobotMsgCallbackConsumer implements OpenDingTalkCallbackListener<JSONObject, JSONObject> {
+
+           /*
+            * @param request
+            * @return
+            */
+           @Override
+           public JSONObject execute(JSONObject request) {
+               String userId = request.get("senderStaffId").toString();
+               String content = request.getJSONObject("text").getString("content");
+               String openConversationId = request.get("conversationId").toString();
+               String robotCode = request.get("robotCode").toString();
+               log.info("receive bot message from user={}, msg={},openConversationId={},robotCode={} ", userId, content, openConversationId, robotCode);
+
+               OrgGroupSendHeaders orgGroupSendHeaders = new OrgGroupSendHeaders();
+               orgGroupSendHeaders.setXAcsDingtalkAccessToken(getToken());
+
+               OrgGroupSendRequest orgGroupSendRequest = new OrgGroupSendRequest();
+               orgGroupSendRequest.setMsgKey("sampleText");
+               orgGroupSendRequest.setRobotCode(robotCode);
+
+               orgGroupSendRequest.setOpenConversationId(openConversationId);
+
+               JSONObject msgParam = new JSONObject();
+               msgParam.put("content", "java-getting-start say : " + "hello");
+               orgGroupSendRequest.setMsgParam(msgParam.toJSONString());
+               try {
+                   Config config = new Config();
+                   config.protocol = "https";
+                   config.regionId = "central";
+                   com.aliyun.dingtalkrobot_1_0.Client client = new Client(config);
+                   OrgGroupSendResponse orgGroupSendResponse = client.orgGroupSendWithOptions(orgGroupSendRequest,
+                           orgGroupSendHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+                   if (Objects.isNull(orgGroupSendResponse) || Objects.isNull(orgGroupSendResponse.getBody())) {
+                       log.error("RobotGroupMessagesService_send orgGroupSendWithOptions return error, response={}",
+                               orgGroupSendResponse);
+                       return null;
+                   }
+                   return new JSONObject();
+               } catch (TeaException e) {
+                   log.error("RobotGroupMessagesService_send orgGroupSendWithOptions throw TeaException, errCode={}, " +
+                           "errorMessage={}", e.getCode(), e.getMessage(), e);
+                   throw e;
+               } catch (Exception e) {
+                   log.error("RobotGroupMessagesService_send orgGroupSendWithOptions throw Exception", e);
+                   try {
+                       throw e;
+                   } catch (Exception ex) {
+                       throw new RuntimeException(ex);
+                   }
+               }
+           }
+
+           public static String getToken() {
+               GetAccessTokenRequest getAccessTokenRequest = new GetAccessTokenRequest();
+               getAccessTokenRequest.setAppKey(CLIENT_ID);
+               getAccessTokenRequest.setAppSecret(CLIENT_SECRET);
+               Config config = new Config();
+               config.protocol = "https";
+               config.regionId = "central";
+               try {
+                   com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+                   GetAccessTokenResponse accessToken = client.getAccessToken(getAccessTokenRequest);
+                   return accessToken.getBody().getAccessToken();
+               } catch (Exception e) {
+                   throw new RuntimeException(e);
+               }
+           }
+       }
+   }
+   ```
+3. @ mention the bot in the group and send a message.
+
+   The bot replies with the message content.​
+
+## Related documents
+
+- [Bot receives messages](/open/dingstart/robot-receive-message)
+- Server-side Stream mode
+- [Bot sends group chat messages](/open/development/the-robot-sends-a-group-message)
+- Message types supported by an Enterprise bot

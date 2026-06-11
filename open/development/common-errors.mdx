@@ -1,0 +1,146 @@
+---
+title: "Common error codes"
+description: "This article describes common errors that occur when calling DingTalk Server APIs for Contacts."
+---
+
+## Differences between userId and unionId
+
+A: The differences between userId and unionId in specific scenarios are as follows:
+
+1. A user's userid is globally unique within the same organization and is never duplicated.
+2. A user's unionId is globally unique within the same app service. For example, if Xiaoding belongs to three organizations that share the same Third-party enterprise app, the unionId returned by that Third-party enterprise app for Xiaoding is the same across all three organizations.
+3. You can query the corresponding unionId by userId. See [Query user details](/open/development/query-user-details). Conversely, you can also query the corresponding userId by unionId. See [Get a user's userid by unionid](/open/development/query-a-user-by-the-union-id).
+
+## The Get user token API does not return corpId
+
+A: When calling the [Get user token](/open/development/obtain-user-token) API, the issue above may be caused by the following:
+
+When [obtaining the Access credential of a signed-in user](/open/development/obtain-identity-credentials), you must pass `scope=openid%20corpid` in the constructed sign-in authorization page. After Authorization, retrieve the authCode and then call the Get user token API to receive the corpid.
+
+## How to get information about all employees in an organization
+
+A: DingTalk does not provide an API that returns all employees in an organization at once. Developers can obtain this information through the following steps. For the detailed flow, refer to the use case for obtaining information about all employees in an organization.
+
+1. First, call the Get department list API to obtain all department IDs in the organization.
+2. Iterate through each department by calling the [Get the userid list of a department](/open/development/query-the-list-of-department-userids) API.
+
+   Ensure that the Contacts API permission scope is set to **All employees**.
+
+## The Get user profile API does not return the email address
+
+A: When calling the [Get user profile](/open/development/dingtalk-retrieve-user-information) API, the issue above may be caused by the following:
+
+The email address is returned only if it has been configured under DingTalk Client-side > Mail (as shown below).
+
+<Warning>
+Email addresses provided by DingTalk (for example, xxx@dingtalk.io) are not returned.
+</Warning>
+
+## How to clear a department manager from user information
+
+A: To clear a department manager when calling the [Update user information](/open/development/user-information-update) API, do the following:
+
+To clear a department manager, set `dept_manager_userid_list` (department manager) in `force_update_fields` (fields to force-update). Do not pass an empty value for `dept_manager_userid_list`, otherwise an error will occur.
+
+## Cannot retrieve a user's mobile number when calling the Query user details API
+
+A: When calling the [Query user details](/open/development/query-user-details) API, the error above may be caused by insufficient permissions.
+
+Solution: In the [DingTalk Developer Console](https://open-dev.dingtalk.io/#/), open the details page of the app, find the API permission entry, and apply for the permission to retrieve mobile number information.
+
+## About the error "The requested userid/department id is not within the authorized scope"
+
+- For an Internal app: In the Developer Console, go to the Manage permissions page of the corresponding app and confirm that the relevant department or user has been added to the authorized permission scope.
+- For a Third-party enterprise app: The authorized organization (the organization that has activated the app) must go to the [DingTalk Admin Console](https://oa.dingtalk.io/) **> Workbench > App Management**, select the corresponding third-party app, and click the Settings button. In the dialog box that appears, confirm that the relevant user has been added to the visible scope.
+
+## Calling a Contacts API returns `errcode 50002 The requested employee userid is not within the authorized scope`
+
+A: The app corresponding to the access_token used to call the API does not include this employee in the authorized scope on the **Manage permissions** page of the Developer Console.
+
+Solution: Click the **Add** button on the Manage permissions page and add the user to the **Authorized users** list.
+
+## Calling a Contacts API returns `errcode 50004 The requested department id is not within the authorized scope`
+
+A: The app corresponding to the access_token used to call the API does not include this department in the authorized scope on the **Manage permissions** page of the Developer Console.
+
+Solution: Click the **Add** button on the Manage permissions page and add the department to be changed to the **Authorized users** list.
+
+## Calling Update user information returns `errcode 40022 The mobile number in the organization does not match the mobile number used to sign in to DingTalk`
+
+A: When calling the [Update user information](/open/development/user-information-update) API, this error occurs because the API does not currently support modifying a user's mobile number. You can delete the user and add them again.
+
+## Calling Query user by mobile number returns `errmsg No permission to call`
+
+A: When calling the [Query user by mobile number](/open/development/query-users-by-phone-number) API, this error may be caused by an outdated app Version (an app that uses corpId and Corpsecret to obtain access_token).
+
+Solution: Create a new app to obtain the access_token.
+
+## Calling Create user returns `errmsg System is busy`
+
+A: When calling the [Create user](/open/development/user-information-creation) API, this error may be caused by the following:
+
+The organization may have exceeded the Weekly limit for adding employees, or exceeded the total limit for the organization.
+
+## Calling Create user returns `errcode 60103 Invalid mobile number`
+
+A: When calling the [Create user](/open/development/user-information-creation) API, this error may be caused by, but is not limited to, the following:
+
+- The Company Region configured in DingTalk is outside the Chinese mainland. If the mobile number is from the Chinese mainland, use the format +86-xxxxxx.
+- The Company Region configured in DingTalk is the Chinese mainland. If the mobile number is from outside the Chinese mainland, use the format +86-xxxxxx.
+
+## Calling Create user returns "errcode: 40103, errmsg: Invitation sent. The user can Join Organization after accepting it"
+
+A: When calling the [Create user](/open/development/user-information-creation) API to invite a user to Join Organization, this response may be caused by, but is not limited to, the following:
+
+- Security rule triggered: If an employee already belongs to an authenticated organization A, the above message appears when organization B tries to add the same employee. On the Client-side, search for the team invitation or check the corresponding invitation on the Contacts page and handle it accordingly.
+- The invited user has enabled "Require verification when a team adds me" under DingTalk mobile Client-side > Me > Settings > Privacy > Team and Members. After this option is enabled, search for the team invitation on the Client-side or check the corresponding invitation on the Contacts page and handle it accordingly.
+
+<Warning>
+After a user accepts the invitation and successfully joins the organization, if the organization deletes the user on the same day, the same error will be returned when the API is called again to invite the user within 24 hours after the deletion.
+</Warning>
+
+## Calling Add External Contact returns `errmsg System is busy errcode 40001`
+
+A: When calling [Add External Contact](/open/development/add-enterprise-external-contacts), this error may be caused by a Custom Field that the organization has added for External contacts and marked as Required. You can change the Required option of this Custom Field to "No", or include this Field when adding the External Contact.
+
+## Calling Get user profile returns `Forbidden.AccessDenied.AccessTokenPermissionDenied No permission to call this API`
+
+A: When calling the [Get user profile](/open/development/dingtalk-retrieve-user-information) API, this error may be caused by, but is not limited to, the following:
+
+- Permissions issue: Check whether the "Read Contacts Profile" and "Personal mobile number" permissions have been applied for.
+
+- Incorrect access token: The Access credential for this API is the access token of an individual user. Passing an incorrect access token also triggers this error. To obtain the access token of an individual user:
+
+  **Step 1**: Obtain the authCode. In a browser, visit the constructed sign-in authorization page URL: https://login.dingtalk.io/oauth2/auth?redirect_uri=https%3A%2F%2Fwww.aaaaa.com%2Fa%2Fb (this URI is an example, not a fixed value) // The callback URL after Authorization is approved or declined. Make sure it has been added to Sign-in and Share > callback Domain in the corresponding app in the Developer Console. &response_type=code // Fixed value `code`. The authCode is returned after Authorization is approved.
+
+  &client_id=dingbbbbbbb // The appkey of the app
+
+  &scope=openid%2Bcorpid
+
+  &state=dddd
+
+  &prompt=consent
+
+  After the user grants Authorization, the page redirects to https://www.aaaaa.com/a/b?authCode=xxxx&state=dddd, from which you can obtain the authCode.
+
+  **Step 2**: After obtaining the authCode, call [Get user token](/open/development/obtain-user-token) to obtain the access token of the individual user. For details, see [Obtain the Access credential of a signed-in user](/open/development/obtain-identity-credentials).
+
+## Calling Update/Delete/Query user returns `errcode 60121 User not found`
+
+A: This error may be caused by, but is not limited to, the following:
+
+- The userId (the unique identifier of the user within the organization) and the access_token (the Server API Access credential) passed in do not belong to apps under the same organization.
+- The user identified by the userId has resigned or has not yet onboarded.
+- The organization has invited the user, but the user has not yet accepted the invitation to Join Organization.
+
+## Calling Get department details returns `errcode 40009 Invalid department id`
+
+A: When calling the [Get department details](/open/development/query-department-details0-v2) API, this error may be caused by the following:
+
+The `dept_id` passed in is -7 (the Department ID of the school-parent contacts). The school-parent Contacts dept_id=-7 is not supported in the Contacts management scenario documentation.
+
+## Calling Update user information returns `errcode 12150 Smart HR Job Title management is enabled`
+
+A: When calling the [Update user information](/open/development/user-information-update) API, this error may be caused by the following:
+
+When Smart HR Job Title management is enabled, to update the Job Title (`title`) or Department (`deptid`) fields in the user information, you must update them through the Smart HR employee transfer flow.

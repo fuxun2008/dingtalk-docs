@@ -1,0 +1,250 @@
+---
+title: "チャットの受信"
+---
+
+ユーザーがグループボットに @ メンションするか、ボットと個別チャットでチャットを送信すると、DingTalk はボット開発者の HTTPS サービスアドレスを通じてチャットコンテンツを送信します。本書では、ボットのチャット受信プロトコルについて説明します。
+
+## HTTP header パラメータ
+
+```json
+{
+  "Content-Type": "application/json; charset=utf-8",
+  "timestamp": "1577262236757",
+  "sign":"xxxxxxxxxx"
+}
+```
+
+| **パラメータ** | **説明** |
+| --- | --- |
+| timestamp | チャット送信のタイムスタンプ（ミリ秒）。 |
+| sign | 署名値。 |
+
+開発者は header 内の timestamp と sign を検証し、DingTalk からの正規のリクエストであるかを判定する必要があります。これにより、第三者が DingTalk を装って開発者の HTTPS サービスを呼び出しデータを送信することを防止できます。具体的な検証ロジックは以下のとおりです。
+
+- timestamp とシステムの現在のタイムスタンプの差が 1 時間を超える場合、不正なリクエストと見なします。
+- sign が開発者自身の計算結果と一致しない場合、不正なリクエストと見なします。
+
+timestamp と sign の両方の検証に通過した場合のみ、DingTalk からの正規のリクエストと見なせます。
+
+### sign の計算方法
+
+header 内の timestamp + "\n" + ボットの appSecret を署名文字列とし、HmacSHA256 アルゴリズムで署名を計算し、Base64 encode を行って最終的な署名値を取得します。
+
+署名計算のコード例（Java）
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Base64;
+
+public class Test {
+    public static void main(String[] args) throws Exception {
+        Long timestamp = 1577262236757L;
+        String appSecret = "this is a secret";
+        String stringToSign = timestamp + "\n" + appSecret;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(appSecret.getBytes("UTF-8"), "HmacSHA256"));
+        byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+        String sign = new String(Base64.encodeBase64(signData));
+        System.out.println(sign);
+    }
+}
+```
+
+## HTTP Body
+
+```json
+{
+    "conversationId": "xxx",
+    "atUsers": [
+        {
+            "dingtalkId": "xxx",
+            "staffId":"xxx",
+            "unionId":"edxxx34"
+        }
+    ],
+    "chatbotCorpId": "dinge8a565xxxx",
+    "chatbotUserId": "$:LWCP_v1:$Cxxxxx",
+    "msgId": "msg0xxxxx",
+    "senderNick": "山田太郎",
+    "isAdmin": true,
+    "senderStaffId": "user123",
+    "sessionWebhookExpiredTime": 1613635652738,
+    "createAt": 1613630252678,
+    "senderCorpId": "dinge8a565xxxx",
+    "conversationType": "2",
+    "senderId": "$:LWCP_v1:$Ff09GIxxxxx",
+    "conversationTitle": "ボットテスト-TEST",
+    "isInAtList": true,
+    "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=xxxxx",
+    "text": {
+        "content": "こんにちは"
+    },
+    "msgtype": "text"
+}
+```
+
+### パラメータの説明
+
+| **パラメータ** | **必須** | **タイプ** | **説明** |
+| --- | --- | --- | --- |
+| msgtype | はい | String | チャットタイプ。 |
+| content | はい | String | チャットテキスト。 |
+| msgId | はい | String | 暗号化されたチャット ID。 |
+| createAt | はい | String | チャットのタイムスタンプ（ミリ秒）。 |
+| conversationType | はい | String | **1**：個別チャット  **2**：グループチャット |
+| conversationId | はい | String | チャット ID。 |
+| conversationTitle | いいえ | String | グループチャットの場合のみ存在するチャットの見出し。 |
+| senderId | はい | String | 暗号化された送信者 ID。  **説明**  送信者の userid 値としては senderStaffId を使用してください。 |
+| senderNick | はい | String | 送信者の名前。 |
+| senderCorpId | いいえ | String | 社内グループの場合、送信者の現在のグループの企業 corpId。 |
+| sessionWebhook | はい | String | 現在のチャットの Webhook アドレス。 |
+| sessionWebhookExpiredTime | はい | Long | 現在のチャットの Webhook アドレスの有効期限。 |
+| isAdmin | いいえ | boolean | 管理者かどうか。  **説明**  ボットの公開後に有効となります。 |
+| chatbotCorpId | いいえ | String | 暗号化されたボット所属企業の corpId。 |
+| isInAtList | いいえ | boolean | @ リストに含まれているかどうか。 |
+| senderStaffId | いいえ | String | 社内グループでボットを @ したユーザーの userid。  **説明**  このフィールドはボットの本番バージョン公開後にのみ返されます。 |
+| senderUnionId | いいえ | String | 送信者の unionid。 |
+| chatbotUserId | はい | String | 暗号化されたボット ID。 |
+| atUsers | いいえ | Array | @ されたユーザーの情報。   - **dingtalkId**：暗号化された @ されたユーザーの id。 - **staffId**：@ されたユーザーの userId。外部グループの外部ユーザーの場合、このフィールドは空となります。 - **unionId**：@ されたユーザーの unionid。 |
+
+## 受信可能なチャットタイプ
+
+ボットは現在、テキスト、音声、画像、ファイル、動画、リッチテキストタイプのチャットを受信できます。下表は、ボットが各種チャットタイプを受信する際のフィールド説明です。チャットタイプとチャット本文のフィールド以外は、上表のパラメータフィールドと同じです。
+
+### 重要
+
+- グループチャット内：グループメンバーがボットを @ する場合、ボットは音声、ファイル、動画タイプを**受信できません**。
+- 個人間のチャットでは、ボットは音声、ファイル、動画タイプを**受信できません**。
+- 個人とボットのチャットでは、ボットは音声、ファイル、動画タイプを**受信できます**。
+
+### テキストチャット
+
+```json
+{
+  "msgtype": "text",
+  "text": {
+    "content": "こんにちは"
+  }
+}
+```
+
+### パラメータの説明：
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **text**：テキストチャット |
+| content | String | テキストチャットのコンテンツ。 |
+
+### 音声チャット
+
+```json
+{
+  "msgtype": "audio",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/+m+Nn***********geqPd7xpJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "recognition": "DingTalk、進化を起こそう"
+  }
+}
+```
+
+### パラメータの説明：
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **audio**：音声チャット |
+| downloadCode | String | 音声ファイルのダウンロードコード。音声のバイナリファイルをダウンロードするために使用し、サーバー API-[ボット受信チャットのファイルコンテンツをダウンロード](/ja/open/development/download-the-file-content-of-the-robot-receiving-message)を呼び出して、一時ダウンロードリンクを取得します。 |
+| recognition | String | 音声認識後のテキスト。 |
+| duration | Long | 音声の長さ（ミリ秒）。 |
+
+### 画像チャット
+
+```json
+{
+  "msgtype": "picture",
+  "content": {
+    "downloadCode": "mIofN681YE3f/+m+**********8rs4RGdQAwyVs3B75N7boKf8ep0FBB122u9YY/novFAM9BQrirm4/+avZaCV+6nnZ0Zk="
+  }
+}
+```
+
+### パラメータの説明：
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - picture：画像チャット |
+| downloadCode | String | 画像ファイルのダウンロードコード。画像のバイナリファイルをダウンロードするために使用し、サーバー API-[ボット受信チャットのファイルコンテンツをダウンロード](/ja/open/development/download-the-file-content-of-the-robot-receiving-message)を呼び出して、一時ダウンロードリンクを取得します。 |
+
+### 動画チャット
+
+```json
+{
+  "msgtype": "video",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/****************OAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "videoType": "mp4"
+  }
+}
+```
+
+### パラメータの説明：
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **video**：動画チャット |
+| downloadCode | String | 動画ファイルのダウンロードコード。動画のバイナリファイルをダウンロードするために使用し、サーバー API-[ボット受信チャットのファイルコンテンツをダウンロード](/ja/open/development/download-the-file-content-of-the-robot-receiving-message)を呼び出して、一時ダウンロードリンクを取得します。 |
+| videoType | String | 動画ファイルタイプ。 |
+| duration | Long | 動画の長さ（ミリ秒）。 |
+
+### ファイルチャット
+
+```json
+{
+  "msgtype": "file",
+  "content": {
+    "downloadCode": "mIofN681YE3f*************pJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "fileName": "DingTalk進化を起こそう.pdf"
+  }
+}
+```
+
+### パラメータの説明：
+
+| **パラメータ** | **タイプ** | **説明** |
+| --- | --- | --- |
+| msgtype | String | チャットタイプ：   - **video**：ファイルチャット |
+| downloadCode | String | ファイルのダウンロードコード。ファイルのバイナリファイルをダウンロードするために使用し、サーバー API-[ボット受信チャットのファイルコンテンツをダウンロード](/ja/open/development/download-the-file-content-of-the-robot-receiving-message)を呼び出して、一時ダウンロードリンクを取得します。 |
+| fileName | String | ファイル名。 |
+
+### リッチテキストチャット
+
+```json
+{
+  "msgtype": "richText",
+  "content": {
+    "richText": [
+      {
+        "text": "こんにちは"
+      },
+      {
+        "downloadCode": "mIofN681YE3f*************JkVBG2vhj4Q9TsmsNCHy0Phdd2tn/t6XxjaB6U8oEst1JVnFR2QRaLqsGyuWPhEvzhIDEpfQYEvexbwdKCCpMOVnYYbn1aMT/n3JFgb4i64X3TFXxXCdaH1+NLRM/B6kGWxJPR/egKS8syvGzaZpzVI+hHQbCjLOO/FYLor2Q==",
+        "type": "picture"
+      }
+    ]
+  }
+}
+```
+
+### パラメータの説明：
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| msgtype | String | はい | チャットタイプ：   - **richText**：リッチテキスト |
+| content | Object | はい | チャットコンテンツ。 |
+| richText | Array | はい | リッチテキストリスト。  **説明**  チャットリストには以下を含めることができます。   - **text：** テキストチャット - **picture**：画像チャット |
+
+## HTTP レスポンス形式
+
+開発者は業務ニーズに応じて、返信メッセージを選択できます。現在、text、markdown、全体ジャンプ actionCard タイプ、独立ジャンプ actionCard タイプ、feedCard の 5 つの[チャットタイプ](/ja/open/development/robot-message-type)に対応しています。

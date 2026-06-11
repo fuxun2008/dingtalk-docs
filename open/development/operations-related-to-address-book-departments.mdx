@@ -1,0 +1,146 @@
+---
+title: "Create, retrieve, update, and delete departments"
+---
+
+This topic describes how to create an internal app and use the department management APIs provided by Contacts to create, retrieve, update, and delete departments in your organization.
+
+## Expected result
+
+The department information is displayed as follows:
+
+## Integration flow
+
+1. Obtain the app credential to get the client ID and Client Secret.
+2. Request the API permissions related to Contacts management.
+3. Obtain the access credential to get the `access_token` of the internal app. When you call an API, the access token is used to authenticate the caller.
+4. Call the Contacts APIs:
+
+   1. Call the Server API [Create a department](/open/development/address-book-creation-department-established-department) to create a department and obtain the `dept_id`.
+
+      - To create a sub-department under the root department, set `parent_id` to 1. This example creates a sub-department under the root department.
+      - To create a sub-department under another department, first call [Get the department list](/open/development/user-management-acquires-the-list-departments) to obtain the department ID, and then pass it as the value of `parent_id`.
+   2. Call the Server API [Get department details](/open/development/query-department-details0-v2) with the `dept_id` to retrieve department details.
+   3. Call the Server API [Update a department](/open/development/address-book-update-department) with the `dept_id` to update department information.
+   4. Call the Server API [Delete a department](/open/development/address-book-deletion-department) with the `dept_id` to delete a department.
+
+## Prerequisites
+
+The [Create and configure an app](/open/dingstart/create-and-configure-an-application) flow is completed.
+
+## Step 1: Obtain the app credential
+
+1. Select the target app and go to the app details page. Click **Basic information** > **Credentials and basic information**.
+2. Get the client ID and Client Secret.
+
+## Step 2: Add API permissions
+
+Click **Development configuration** > **Manage permissions**. In the permission search box, enter `qyapi_manage_addresslist` and `qyapi_get_department_list`, and then request the permissions.
+
+## Step 3: Obtain the access token
+
+### Important
+
+- For details about the differences between the legacy and new Server APIs, see Legacy API vs. new API.
+- To download the Server API SDK, see Download the Server-side SDK.
+
+Use the client ID and Client Secret obtained in Step 1 to get the `access_token` of the internal app.
+
+```java
+public void getAccessToken() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+        OapiGettokenRequest req = new OapiGettokenRequest();
+        req.setAppkey("dingxxxxxxxxxhgn");
+        req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+        req.setHttpMethod("GET");
+        OapiGettokenResponse rsp = client.execute(req);
+        System.out.println(rsp.getBody());
+    }
+```
+
+## Step 4: Call the Contacts APIs
+
+1. Call the Server API [Create a department](/open/development/address-book-creation-department-established-department) to create a department and obtain the `dept_id`.
+
+   ```java lines
+   public void deptCreate() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/create");
+           OapiV2DepartmentCreateRequest req = new OapiV2DepartmentCreateRequest();
+           req.setParentId(1L);
+           req.setOuterDept(true);
+           req.setHideDept(false);
+           req.setCreateDeptGroup(true);
+           req.setOrder(1L);
+           req.setName("1019 Test Department");
+           req.setSourceIdentifier("1019 Test Department");
+           req.setOuterPermitUsers("manager7675,01472825524039877041");
+           req.setOuterDeptOnlySelf(true);
+           OapiV2DepartmentCreateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+
+   - To create a sub-department under the root department, set `parent_id` to 1. This example creates a sub-department under the root department.
+   - To create a sub-department under another department, first call [Get the department list](/open/development/user-management-acquires-the-list-departments) to obtain the department ID, and then pass it as the value of `parent_id`.
+
+     ```java lines
+     public void departmentList() throws ApiException {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/listsub");
+             OapiV2DepartmentListsubRequest req = new OapiV2DepartmentListsubRequest();
+             req.setDeptId(1L);
+             req.setLanguage("zh_CN");
+             OapiV2DepartmentListsubResponse rsp = client.execute(req, "access_token");
+             System.out.println(rsp.getBody());
+         }
+     ```
+2. Call the Server API [Get department details](/open/development/query-department-details0-v2) with the `dept_id` to retrieve department details.
+
+   ```java lines
+   public void deptInfo() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/get");
+           OapiV2DepartmentGetRequest req = new OapiV2DepartmentGetRequest();
+           req.setDeptId(724960197L);
+           req.setLanguage("zh_CN");
+           OapiV2DepartmentGetResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+3. Call the Server API [Update a department](/open/development/address-book-update-department) with the `dept_id` to update department information.
+
+   ```java lines
+   public void deptModify() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/update");
+           OapiV2DepartmentUpdateRequest req = new OapiV2DepartmentUpdateRequest();
+           req.setDeptId(724960197L);
+           req.setParentId(1L);
+           req.setOuterDept(true);
+           req.setHideDept(false);
+           req.setCreateDeptGroup(true);
+           req.setOrder(1L);
+           req.setName("1019 Test Department");
+           req.setSourceIdentifier("1019 Test Department");
+           req.setOuterPermitUsers("manager7675,01472825524039877041");
+           req.setOuterDeptOnlySelf(true);
+           req.setLanguage("zh_CN");
+           req.setAutoAddUser(true);
+           req.setAutoApproveApply(true);
+           req.setOrgDeptOwner("manager7675");
+           OapiV2DepartmentUpdateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+4. Call the Server API [Delete a department](/open/development/address-book-deletion-department) with the `dept_id` to delete a department.
+
+   ```java lines
+    public void deptDelete() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/delete");
+           OapiV2DepartmentDeleteRequest req = new OapiV2DepartmentDeleteRequest();
+           req.setDeptId(724960197L);
+           OapiV2DepartmentDeleteResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+
+   **Note**
+   - A department cannot be deleted if it contains users or if any of its sub-departments contain users.
+   - The department and all of its sub-departments will be deleted.
+   - After a department is deleted, its corresponding Department Chat is automatically dismissed.

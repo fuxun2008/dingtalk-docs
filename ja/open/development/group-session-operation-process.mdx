@@ -1,0 +1,231 @@
+---
+title: "グループチャットの作成、取得、更新および管理"
+---
+
+本ドキュメントでは、グループチャット関連 API を呼び出してグループチャット操作を実装する方法について説明します。まず社内アプリを作成し、次にグループチャットが提供する API を使用して、グループチャットの作成、グループチャット情報の取得、グループチャット管理操作、およびグループチャットの更新を行います。
+
+## フロー概要
+
+ステップ 1：クライアント ID と Client Secret を取得します。
+
+ステップ 3：アプリのアクセス認証情報を取得します。[社内アプリの access_token を取得](/ja/open/development/obtain-the-access-token-of-an-internal-app)。
+
+ステップ 4：サーバーサイドのグループチャット関連 API を呼び出します。
+
+1. サーバー API のグループ作成 API を呼び出してグループチャットを作成し、グループチャットの `chatId` を取得します。
+2. グループチャットの `chatId` に基づき、サーバー API の [グループ情報の取得](/ja/open/development/obtain-a-group-session) API を呼び出して、グループチャット情報を取得します。
+3. グループチャットの chatId に基づき、グループチャット管理操作を行います。
+
+   - グループチャットの `chatId` に基づき、新版サーバー API の [グループチャットの OpenConversationId を取得](/ja/open/development/obtain-group-openconversationid) API を呼び出して、グループチャットの `openConversationId` を取得します。
+
+     - グループチャットの `openConversationId` に基づき、新版サーバー API の企業グループ管理者一括設定 API を呼び出して、グループ管理者を一括で設定します。
+   - グループチャットの `chatId` に基づき、サーバー API のグループ管理者更新 API を呼び出して、グループチャットの管理者を設定します。
+   - グループチャットの `chatId` に基づき、サーバー API の [メンバー間の個別チャットを禁止](/ja/open/development/set-private-chat) API を呼び出して、グループチャットメンバー間の個別チャットの可否を設定します。
+   - グループチャットの `chatId` に基づき、サーバー API の [グループメンバーのグループ名を更新](/ja/open/development/set-a-group-nickname) API を呼び出して、グループチャットメンバーの名前を設定します。
+   - グループチャットの `chatId` に基づき、サーバー API の [グループ参加 QR コードリンクの取得](/ja/open/development/obtain-a-qr-code-link) API を呼び出します。他の企業メンバーはそのリンクをクリックすることで、グループチャットへの参加をリクエストできます。
+4. グループチャットの `chatId` に基づき、サーバー API のグループ更新 API を呼び出して、グループチャット情報を更新します。
+
+## 前提条件
+
+[アプリの作成と設定](/ja/open/dingstart/create-and-configure-an-application) のフローを完了していること。
+
+## ステップ 1：アプリ認証情報を取得する
+
+1. 対象のアプリを選択し、アプリ詳細ページに進み、**ベーシック情報** > **認証情報とベーシック情報** をクリックします。
+2. クライアント ID と Client Secret を取得します。
+
+## ステップ 2：API 権限を追加する
+
+**開発設定** > **権限管理** をクリックし、権限検索ボックスに `qyapi_chat_manage`、`qyapi_chat_read`、`qyapi_chat_base_read` をそれぞれ入力し、権限をリクエストします。
+
+## ステップ 3：アプリのアクセス認証情報 access_token を取得する
+
+<Warning>
+サーバー API の差異の詳細については、旧版 API と新版 API の比較を参照してください。以下の API はすべて新版サーバー API を使用しています。SDK のダウンロードの詳細については、サーバーサイド SDK ダウンロードを参照してください。
+</Warning>
+
+ステップ 1 で取得したクライアント ID と Client Secret に基づき、アプリのアクセス認証情報を取得します。[社内アプリの access_token を取得](/ja/open/development/obtain-the-access-token-of-an-internal-app)。
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## ステップ 4：サーバーサイドのグループチャット関連 API を呼び出す
+
+1. サーバー API のグループ作成 API を呼び出してグループチャットを作成し、グループチャットの chatId を取得します。
+
+   ```java lines
+   public void createChat() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/create");
+           OapiChatCreateRequest req = new OapiChatCreateRequest();
+           req.setName("全員グループ");
+           req.setOwner("manager4220");
+           req.setUseridlist(Arrays.asList("userid1","userid2"));
+           OapiChatCreateResponse rsp = client.execute(req, access_token);
+           System.out.println(rsp);
+       }
+   ```
+2. グループチャットの chatId に基づき、サーバー API の [グループ情報の取得](/ja/open/development/obtain-a-group-session) API を呼び出して、グループチャット情報を取得します。
+
+   ```java lines
+   public void getChatInfo() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/get");
+           OapiChatGetRequest req = new OapiChatGetRequest();
+           req.setChatid("chate39f540dxxxx");
+           req.setHttpMethod("GET");
+           OapiChatGetResponse rsp = client.execute(req, access_token);
+           System.out.println(rsp.getChatInfo());
+       }
+   ```
+3. グループチャットの chatId に基づき、グループチャット管理操作を行います。
+
+   - グループチャットの `chatId` に基づき、新版サーバー API の [グループチャットの OpenConversationId を取得](/ja/open/development/obtain-group-openconversationid) API を呼び出して、グループチャットの `openConversationId` を取得します。
+
+     ```java lines
+     public void ConversationId() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkim_1_0.Client client = new com.aliyun.dingtalkim_1_0.Client(config);
+             ChatIdToOpenConversationIdHeaders chatIdToOpenConversationIdHeaders = new ChatIdToOpenConversationIdHeaders();
+             chatIdToOpenConversationIdHeaders.xAcsDingtalkAccessToken = "accessToken";
+             try {
+                 ChatIdToOpenConversationIdResponse response = client.chatIdToOpenConversationIdWithOptions("chatId", chatIdToOpenConversationIdHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(response.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+     - グループチャットの `openConversationId` に基づき、新版サーバー API の企業グループ管理者一括設定 API を呼び出して、グループ管理者を一括で設定します。
+
+       ```java lines
+       public void subAdministrators() throws Exception {
+               Config config = new Config();
+               config.protocol = "https";
+               config.regionId = "central";
+               com.aliyun.dingtalkim_1_0.Client client = new com.aliyun.dingtalkim_1_0.Client(config);
+               ChatSubAdminUpdateHeaders chatSubAdminUpdateHeaders = new ChatSubAdminUpdateHeaders();
+               chatSubAdminUpdateHeaders.xAcsDingtalkAccessToken = "accessToken";
+               ChatSubAdminUpdateRequest chatSubAdminUpdateRequest = new ChatSubAdminUpdateRequest()
+                       .setOpenConversationId("cid55SzIIO********=")
+                       .setUserIds(java.util.Arrays.asList(
+                               "0147********7041"
+                       ))
+                       .setRole(2);
+               try {
+                   ChatSubAdminUpdateResponse chatSubAdminUpdateResponse = client.chatSubAdminUpdateWithOptions(chatSubAdminUpdateRequest, chatSubAdminUpdateHeaders, new RuntimeOptions());
+                   System.out.println(JSON.toJSONString(chatSubAdminUpdateResponse.getBody()));
+               } catch (TeaException err) {
+                   if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                       // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                       System.out.println(err.code);
+                       System.out.println(err.message);
+                   }
+               } catch (Exception _err) {
+                   TeaException err = new TeaException(_err.getMessage(), _err);
+                   if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                       // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                       System.out.println(err.code);
+                       System.out.println(err.message);
+                   }
+               }
+           }
+       ```
+   - グループチャットの `chatId` に基づき、サーバー API のグループ管理者更新 API を呼び出して、グループチャットの管理者を設定します。
+
+     ```java lines
+     public void setChatAdmin() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/subadmin/update");
+             OapiChatSubadminUpdateRequest req = new OapiChatSubadminUpdateRequest();
+             req.setChatid("chat14432xxxx");
+             req.setUserids("userid1");
+             req.setRole(2L);
+             OapiChatSubadminUpdateResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - グループチャットの `chatId` に基づき、サーバー API の [メンバー間の個別チャットを禁止](/ja/open/development/set-private-chat) API を呼び出して、グループチャットメンバー間の個別チャットの可否を設定します。
+
+     ```java lines
+     public void updateChatMemberFriendswitch() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/member/friendswitch/update");
+             OapiChatMemberFriendswitchUpdateRequest req = new OapiChatMemberFriendswitchUpdateRequest();
+             req.setChatid("chatdafe234xxxx");
+             req.setIsProhibit(true);
+             OapiChatMemberFriendswitchUpdateResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - グループチャットの `chatId` に基づき、サーバー API の [グループメンバーのグループ名を更新](/ja/open/development/set-a-group-nickname) API を呼び出して、グループチャットメンバーの名前を設定します。
+
+     ```java lines
+     public void updateChatMemberNick() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/updategroupnick");
+             OapiChatUpdategroupnickRequest req = new OapiChatUpdategroupnickRequest();
+             req.setUserid("user123");
+             req.setChatid("chate39f540d572b71cf97a556d95929fxxxx");
+             req.setGroupNick("DingTalk サポート");
+             OapiChatUpdategroupnickResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - グループチャットの `chatId` に基づき、サーバー API の [グループ参加 QR コードリンクの取得](/ja/open/development/obtain-a-qr-code-link) API を呼び出します。他の企業メンバーはそのリンクをクリックすることで、グループチャットへの参加をリクエストできます。
+
+     ```java lines
+     public void getChatURL() {
+             DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/chat/qrcode/get");
+             OapiChatQrcodeGetRequest req = new OapiChatQrcodeGetRequest();
+             req.setChatid("chat32****3a");
+             req.setUserid("manager4220");
+             OapiChatQrcodeGetResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+4. グループチャットの `chatId` に基づき、サーバー API のグループ更新 API を呼び出して、グループチャット情報を更新します。
+
+   ```java lines
+   public void updateChat() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/update");
+           OapiChatUpdateRequest req = new OapiChatUpdateRequest();
+           req.setChatid("chatxxxx");
+           req.setName("グループ名 1");
+           req.setOwner("04201724372xxxx");
+           req.setOwnerType("emp");
+           req.setAddUseridlist(Arrays.asList("userid2"));
+           req.setDelUseridlist(Arrays.asList("userid1"));
+           req.setIcon("@mediaId");
+           req.setIsBan(true);
+           req.setSearchable(0L);
+           req.setValidationType(0L);
+           req.setMentionAllAuthority(0L);
+           req.setManagementType(0L);
+           req.setChatBannedType(0L);
+           req.setShowHistoryType(0L);
+           OapiChatUpdateResponse rsp = client.execute(req,access_token);
+           System.out.println(rsp.getBody());
+       }
+   ```

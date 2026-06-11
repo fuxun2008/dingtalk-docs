@@ -1,0 +1,217 @@
+---
+title: "Download partial content by specifying Range"
+description: "This topic describes how to download partial content by specifying Range."
+---
+
+# Download partial content by specifying Range
+
+## What is HTTP Range download
+
+When downloading a large file (over 100 MB) from OSS, the transfer may fail due to network conditions. In this case, use an HTTP Range request to retrieve partial content of the large file, as shown in the following example.
+
+```text
+Get /ObjectName HTTP/1.1
+Host:xxxx.oss-cn-hangzhou.aliyuncs.com
+Date:Tue, 17 Nov 2015 17:27:45 GMT
+Authorization:SignatureValue
+Range:bytes=[$ByteRange]
+```
+
+<Note>
+[$ByteRange] indicates the range of the requested resource, in bytes. Examples are shown below.
+</Note>
+
+- `Range: bytes=0-499` indicates the content from byte 0 to byte 499.
+- `Range: bytes=500-999` indicates the content from byte 500 to byte 999.
+- `Range: bytes=-500` indicates the last 500 bytes.
+- `Range: bytes=500-` indicates the content from byte 500 to the end of the file.
+- `Range: bytes=0-` indicates the content from the first byte to the last byte, that is, the entire file.
+- OSS does not support multiple Range parameters, that is, you cannot specify multiple ranges. If multiple ranges are specified, OSS returns only the data of the first Range. For example, for `Range:bytes=0-499,500-999`, OSS returns only the content from byte 0 to byte 499.
+- The valid interval of [$ByteRange] is from 0 to `content-length - 1`.
+
+If the HTTP Range request is valid, the response returns `206` and includes `Content-Range` in the response header. If the HTTP Range request is invalid, or the specified range is outside the valid interval, the Range does not take effect, the response returns `200`, and the entire Object content is transferred. The following are examples of invalid HTTP Range requests and the corresponding error descriptions.
+
+<Note>
+Assume that the Object resource size is 1000 bytes, and the valid Range interval is from 0 to 999.
+</Note>
+
+- `Range: byte=0-499`: Format error. `byte` should be `bytes`.
+- `Range: bytes=0-1000`: The last byte 1000 exceeds the valid interval.
+- `Range: bytes=1000-2000`: The specified range exceeds the valid interval.
+- `Range: bytes=1000-`: The first byte exceeds the valid interval.
+- `Range: bytes=-2000`: The specified range exceeds the valid interval.
+
+### Compatible behavior
+
+When using HTTP Range, add the request header `x-oss-range-behavior:standard` to change the OSS behavior when the specified range is outside the valid interval. The following examples illustrate the changed behavior:
+
+<Note>
+Assume that the Object resource size is 1000 bytes, and the valid Range interval is from 0 to 999. When retrieving partial content of a large file by HTTP Range request, if an invalid range is selected, OSS returns the InvalidRange error code. The detailed error message is as follows: `The requested range cannot be satisfied`
+</Note>
+
+- `Range: bytes=500-2000`: The last byte exceeds the valid interval. Returns the content from byte 500 to byte 999.
+- `Range: bytes=1000-2000`: The first byte exceeds the valid interval. Returns the error `416 (InvalidRange)`.
+- `Range: bytes=1000-`: The first byte exceeds the valid interval. Returns the error `416 (InvalidRange)`.
+- `Range: bytes=-2000`: The specified range exceeds the valid interval. Returns bytes 0 to 999, that is, the entire file.
+
+## Examples
+
+Based on the above content, this topic provides the following HTTP Range request examples.
+
+<Note>
+Assume that the Object resource size is 1000 bytes, and the valid Range interval is from 0 to 999.
+</Note>
+
+### Normal request examples
+
+- Request the content from byte 0 to byte 499 of the Object resource.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-499
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:51:30 GMT
+  Authorization: Sigature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 0-499/1000
+  connection: keep-alive
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA928B227D52731327DE078
+  date: Fri, 18 Oct 2019 02:51:30 GMT
+  [500 bytes of object data]
+  ```
+- Request the content from byte 500 to the end of the Object resource.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=500-
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:24:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9307750EBE33332E3720A
+  date: Fri, 18 Oct 2019 03:24:39 GMT
+  [500 bytes of object data]
+  ```
+- Request the last 500 bytes of the Object resource.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=-500
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:23:22 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9302A6646AC37397F7039
+  date: Fri, 18 Oct 2019 03:23:22 GMT
+  [500 bytes of object data]
+  ```
+
+### Out-of-range request examples
+
+- The last byte 1000 exceeds the valid interval, so Range does not take effect. The response returns `200` and transfers the entire Object content.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-1000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:00:02 GMT
+  Authorization: Signature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA92AB204321E36347F3E7D
+  date: Fri, 18 Oct 2019 03:00:02 GMT
+  [1000 bytes of object data]
+  ```
+- The specified range exceeds the valid interval, so Range does not take effect. The response returns `200` and transfers the entire Object content.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:56:24 GMT
+  Authorization: Sigature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA929D9CCCC823835CBE134
+  date: Fri, 18 Oct 2019 02:56:25 GMT
+  [1000 bytes of object data]
+  ```
+
+### Compatible behavior request examples
+
+- Add the `x-oss-range-behavior:standard` request header. The last byte exceeds the valid interval, so the content from byte 500 to byte 999 is returned.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=500-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:02:23 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9637FB3B1C73234CC59EB
+  date: Fri, 18 Oct 2019 07:02:23 GMT
+  [500 bytes of object data]
+  ```
+- Add the `x-oss-range-behavior:standard` request header. The first byte exceeds the valid interval, so the `416` error is returned.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:04:23 GMT
+  Authorization: Signature
+
+  416 (Requested Range Not Satisfiable)
+  content-length: 345
+  x-oss-request-id: 5DA963F7CEBFAA3931BF91F5
+  date: Fri, 18 Oct 2019 07:04:23 GMT
+  content-type: application/xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <Error>
+    <Code>InvalidRange</Code>
+    <Message>The requested range cannot be satisfied</Message>
+    <RequestId>5DA963F7CEBFAA3931BF91F5</RequestId>
+    <HostId>bucket.oss-cn-hangzhou.aliyuncs.com</HostId>
+    <ActualObjectSize>1000</ActualObjectSize>
+    <RangeRequested>bytes=1000-2000</RangeRequested>
+  </Error>
+  ```
+- Add the `x-oss-range-behavior:standard` request header. The specified range exceeds the valid interval, so bytes 0 to 999 are returned, that is, the entire file.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:06:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 1000
+  content-range: bytes 0-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9647FC4334F3534AF9A83
+  date: Fri, 18 Oct 2019 07:06:39 GMT
+  [1000 bytes of object data]
+  ```

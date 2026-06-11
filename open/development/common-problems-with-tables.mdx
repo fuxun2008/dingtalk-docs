@@ -1,0 +1,145 @@
+---
+title: "FAQ"
+description: "Each DingTalk Spreadsheet has a unique workbookId. You can obtain it in the following ways:"
+---
+
+## Onboarding
+
+### How to obtain the workbookId of a Spreadsheet
+
+Each DingTalk Spreadsheet has a unique `workbookId`. You can obtain it in the following ways:
+
+- **From the Spreadsheet URL**: Open the Spreadsheet. The Document ID contained in the URL is the `workbookId`.
+
+- **From the document information**: In the upper-left corner of the Spreadsheet, click **Menu** → **Spreadsheet** → **Document Information**. The Document ID shown there is the `workbookId`.
+
+- **Through the Knowledge Base API**: Call the [Get node](/open/development/get-knowledge-base-acquisition-node) API. The returned `nodeId` (`dentryUuid`) is the `workbookId`.
+
+### How to obtain the operatorId
+
+The `operatorId` is the `unionId` of the operator. Obtain it as follows:
+
+1. **Get the userId by phone number**: Call the [Query users by phone number](/open/development/query-users-by-phone-number) API.
+2. **Get the unionId by userId**: Call the [Query user details](/open/development/query-user-details) API. The returned `unionId` is the `operatorId`.
+
+<Warning>
+You may need to apply for the **Contacts** permissions in your app before the first call. After obtaining the `operatorId`, save it (for example, as an environment variable) to avoid fetching it through the API every time.
+</Warning>
+
+### What to do when the access token expires
+
+The access token is valid for **7,200 seconds (2 hours)**. After it expires, call the [Get the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app) API again to obtain a new token.
+
+We recommend implementing token caching and an auto-refresh mechanism in your app:
+
+- Cache the token and its expiration time.
+- Proactively refresh the token 5 minutes before it expires.
+- When the API returns a token-invalid error, refresh immediately and retry.
+
+---
+
+### How to resolve the error "The operator has no permission" when calling an API
+
+This error indicates that the user identified by `operatorId` does not have permission to operate on the target Spreadsheet. Check the following:
+
+- **Whether the user has access to the Spreadsheet**: Make sure the user has been added as a Collaborator of the Spreadsheet, or that the Knowledge Base hosting the Spreadsheet has granted permissions to the user.
+- **Whether the permission type matches**:
+
+  - Read operations such as `GetAllSheets`, `GetSheet`, and `GetRange` require the `Document.Workbook.Read` permission.
+  - Write operations such as `AppendRows`, `UpdateRange`, and `CreateSheet` require the `Document.Workbook.Write` permission.
+- **Whether the app has applied for the required permissions**: In App Management on the [DingTalk Open Platform](https://open-dev.dingtalk.io/), verify that the corresponding permission scopes have been applied for and approved.
+
+---
+
+## API usage
+
+### Can the sheetId parameter accept a Worksheet name
+
+Yes. The `sheetId` parameter accepts either the **ID** or the **name (title)** of the Worksheet. For example:
+
+- Pass the ID: `Sheet1`, which is system-generated.
+- Pass the name: `Sales Data`, which is a user-defined Worksheet title.
+
+> **Recommendation**: Use the Worksheet ID whenever possible, because the name can be modified by users. You can call the `GetAllSheets` API to obtain the IDs and names of all Worksheets.
+
+---
+
+### Where is data written when AppendRows appends data
+
+`AppendRows` automatically locates the **last row that contains data** in the Worksheet and appends new rows below it.
+
+- If the Worksheet is empty, data is written starting from the first row.
+- The number of appended Columns should match the existing data to keep the data aligned.
+
+---
+
+### What is the format of rangeAddress when using UpdateRange to update Cells
+
+`rangeAddress` uses **A1 notation**. Common formats are listed below:
+
+| Format | Meaning | Example |
+| --- | --- | --- |
+| A1 | A single Cell | Row 1, Column 1. |
+| A1:C3 | A rectangular range | 9 Cells from A1 to C3. |
+| A:A | An entire Column | All Cells in Column A. |
+| 1:1 | An entire Record | All Cells in Row 1. |
+| A1:ZZ99999 | A large range | Used for full-sheet operations. |
+
+---
+
+### What is the difference between GetRange and UpdateRange
+
+| Item | GetRange | UpdateRange |
+| --- | --- | --- |
+| HTTP method | GET | PUT |
+| Function | Reads values, styles, and other Attributes of a Cell range | Updates values, styles, and other Attributes of a Cell range |
+| Required permission | `Document.Workbook.Read` | `Document.Workbook.Write` |
+| Documentation | [Get Cell properties](/open/development/get-cell-properties) | [Update Cell properties](/open/development/update-cell-properties) |
+
+`GetRange` is suitable for verifying results after writing data, or for reading Spreadsheet data in an Automation flow for downstream processing. Both APIs use the same `rangeAddress` parameter (A1 notation) to specify the target Cell range.
+
+---
+
+### How to troubleshoot the error invalidRequest.resource.notFound
+
+This error indicates that the requested resource does not exist. Common causes:
+
+| Scenario | Possible cause | Solution |
+| --- | --- | --- |
+| Invalid workbookId | The Spreadsheet has been deleted, or the ID is misspelled | Obtain the workbookId again. |
+| Invalid sheetId | The Worksheet has been deleted, or its name has been modified | Call `GetAllSheets` to get the latest Worksheet List. |
+| Invalid rangeAddress | The Cell address is malformed or out of range | Check the A1 notation format and ensure it is within the Spreadsheet range. |
+
+### What are the usage limits of the DingTalk Spreadsheet API
+
+| Limit | Value | Description |
+| --- | --- | --- |
+| rate limit | Recommended ≤ 100 calls/minute | Call frequency of a single app against the same Spreadsheet. |
+| AppendRows per call | Recommended ≤ 5,000 rows | Exceeding this may cause timeouts. |
+| Cell content length | Subject to Spreadsheet limits | Overly long Text may be truncated. |
+| Access token validity | 7,200 seconds (2 hours) | A new token must be obtained after expiration. |
+
+### How to handle API call failures in code
+
+We recommend the following error handling strategies:
+
+- **Auto-refresh on token expiration**: Catch token-invalid errors, refresh the token automatically, and retry.
+- **Retry on rate limiting**: When a 429 error is returned, wait before retrying (we recommend an exponential backoff strategy).
+- **Idempotency handling**: For write operations such as `AppendRows`, note that retries may cause duplicate data writes. Include a unique identifier in the data and verify it with `GetRange` after writing.
+- **Timeout handling**: Set a reasonable timeout for network requests (we recommend 30 seconds), and retry after a timeout.
+
+```python
+import time
+
+def call_api_with_retry(func, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except TokenExpiredError:
+            refresh_token()
+        except RateLimitError:
+            time.sleep(2 ** attempt)
+        except TimeoutError:
+            time.sleep(1)
+    raise Exception("The API call failed. The maximum number of retries has been reached.")
+```

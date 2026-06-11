@@ -1,0 +1,125 @@
+---
+title: "Basic concepts"
+---
+
+This document is a **basic concepts guide** for development on the DingTalk Open Platform. It is intended for developers new to DingTalk development, and helps you understand core terms, identity identifiers, and the permission system.
+
+## Key admin consoles
+
+This document covers three primary consoles. Use the right one based on your role:
+
+### Developer Console
+
+The [DingTalk Developer Console](https://open-dev.dingtalk.io/#/index) is the platform for managing app development. Developers can configure app information and monitor app runtime status.
+
+<Warning>
+Only Organization Admins and Sub Admins granted both **Developer permissions** and **Workbench Management** permissions can access the Developer Console. Configure Sub Admin permissions in the [DingTalk Admin Console](https://oa.dingtalk.io/).
+</Warning>
+
+### Admin Console
+
+The [DingTalk Admin Console](https://oa.dingtalk.io/) is the core platform where Organization Admins manage the organization structure, user permissions, and workbench configuration. From this console, admins can import contacts, set up approval processes, grant Sub Admin authorization, and more.
+
+## Core identity identifiers (ID system)
+
+In DingTalk development, distinguishing "who" from "which app" is critical. The following key IDs are defined:
+
+### CorpId
+
+The unique identifier for an organization in DingTalk. Most organization-level API calls require this ID for authentication.
+
+**Where to find it**: Sign in to the [DingTalk Developer Console](http://open-dev.dingtalk.io/) and view the organization's `CorpId` on the **Home** page.
+
+### UserId
+
+The unique identifier of a specific employee in an organization. It is used in APIs such as sending messages, querying profiles, and approvals. It cannot be changed.
+
+**Where to find it**: Sign in to the [DingTalk Admin Console](http://oa.dingtalk.io/), go to **Contacts > User Management**, and click an employee name to view the `UserId`.
+
+### UnionId
+
+A unified user identifier across apps. The same user has the same UnionId across all apps under the same Open Platform account. It is used to integrate data across apps.
+
+**Where to find it**: Call the [Query user details](/open/development/query-user-details) API with the user's userId to retrieve the `unionid` parameter value.
+
+### Unified App ID
+
+A globally unique ID assigned by DingTalk to all types of apps. It simplifies cross-system integration and is gradually replacing the legacy AgentId/AppId system.
+
+**Where to find it**: Sign in to the [DingTalk Developer Console](http://open-dev.dingtalk.io/), open the app details page, and view it under **Credentials and Basic Information**.
+
+### AgentId
+
+The capability identifier for internal apps (such as H5 apps and mini programs). It is mainly used for workbench management APIs (for example, configuring the home page).
+
+**Where to find it**:
+
+- AgentId for an internal H5 app
+
+- AgentId for an internal mini program
+
+## Security credentials and permissions (Auth system)
+
+This section covers the most error-prone parts of development, including API call authentication and silent login logic.
+
+### Client ID / Client Secret
+
+- **Definition**: The identity credential pair of an app (similar to a username and password).
+- **Purpose**: Used to obtain an `access_token`. Both internal apps and third-party apps use this mechanism.
+- **Note**: The `Client Secret` is a private key. Keep it safe and never expose it.
+- **How to obtain**: After you create an internal app or a third-party enterprise app in the [DingTalk Developer Console](http://open-dev.dingtalk.io/), a Client ID and Client Secret pair is automatically generated.
+
+### Note
+
+  If an internal app is authorized for a service provider to develop, the service provider must obtain authorization using the **CustomKey** and **CustomSecret**.
+
+### access_token
+
+- **Definition**: The "ticket" for calling the OpenAPI.
+- **Purpose**: This credential must be included in every call to a protected API to verify the request.
+- **Note**: The token is typically valid for 7,200 seconds (2 hours). Requesting it again within the validity period automatically renews it.
+- **How to obtain**:
+
+  - For internal apps, call the [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app) API to obtain the access_token.
+  - For third-party enterprise apps, call the API for obtaining the access token of an organization authorized by a third-party app to obtain the access_token.
+- **Differences**:
+
+  - The `access_token` of an internal app has all permissions requested by the app.
+  - The `access_token` of a third-party app is limited to the scope authorized by the organization.
+
+### authCode
+
+**Definition**: A key credential used for user identity authentication.
+
+**Purpose**: Used to exchange for user identity information (such as `userid`).
+
+**Note**: The validity period is only 5 minutes. It becomes invalid after one use and cannot be reused.
+
+**How to obtain**: Obtain it by calling APIs such as getAuthCode and requestAuthCode. For details, see [Identity authentication (silent login)](/open/development/sso-overview).
+
+### jsapi_ticket
+
+**Definition**: Used to generate signatures for frontend JS APIs.
+
+**Purpose**: H5 micro apps require it to securely call various JSAPI capabilities provided by DingTalk (such as retrieving user information, starting chats, and calling native components).
+
+**Note**: The validity period is 2 hours. If it expires or the parameters are inconsistent, errors such as "Failed to read jsapi ticket" or "Signature verification failed" will occur.
+
+**How to obtain**: Use the `access_token` to call the [Create a JSAPI ticket](/open/development/create-a-jsapi-ticket) API to obtain it.
+
+## Quickstart
+
+The following pseudo-code shows how to use `CorpId` and `access_token` to make the simplest possible API call, and verify that your environment is configured correctly:
+
+```text
+GET https://oapi.dingtalk.io/topapi/v2/user/get?access_token=ACCESS_TOKEN&userid=USERID
+```
+
+**Steps**:
+
+1. **Obtain credentials**: Use the `Client ID` and `Client Secret` to call the API and obtain an `access_token`.
+2. **Prepare parameters**: Find the `UserId` of any user in the Admin Console.
+3. **Replace parameters**: Construct the request above by replacing `ACCESS_TOKEN` and `USERID`.
+4. **Send a test request**: If the response returns `"errcode": 0, "errmsg": "ok"`, the configuration is successful and you can continue with further development.
+
+> Tip: In production, use HTTPS and implement proper error handling and a retry mechanism.

@@ -1,0 +1,638 @@
+---
+title: "予定ビューの照会"
+---
+
+本 API を呼び出すことで、特定ユーザーの一定期間内の予定リストを照会し、予定の見出し、開始日、開始時刻、終了日、終了時刻などの情報を取得できます。
+
+## API 呼び出し説明
+
+- 本 API と**予定リストの照会** API との違いは、繰り返し予定の取り扱いにあります。本 API は繰り返しルールに基づき、照会期間内のすべての繰り返し予定を展開しますが、データベース内に実際のインスタンスを生成することはありません。例えば、1月1日から開始される毎日繰り返しの予定がある場合、照会時点が1月4日で、照会期間が1月1日から1月10日であるとき、本 API は1月1日から1月10日までのすべての繰り返し予定を返しますが、[予定リストの照会](/ja/open/development/query-an-event-list#) API では1月4日以降の予定は返されません。
+- 返された予定オブジェクトの seriesMasterId が空かどうかにより、その予定が繰り返し予定のインスタンスであるかを判断できます。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | `https://api.dingtalk.io/v1.0/calendar/users/{userId}/calendars/{calendarId}/eventsview` |
+| HTTP Method | GET |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ　appType-サードパーティ個人アプリ |
+| 必要な権限 | permission-Calendar.Event.Read-カレンダーアプリにおける予定の読み取り権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | 本 API を呼び出すためのアクセス認証情報。以下の方法で取得します。   - 社内アプリの場合、[社内アプリの accessToken を取得](/ja/open/development/obtain-the-access-token-of-an-internal-app#) API を呼び出して取得します。 - サードパーティ社内アプリの場合、[サードパーティアプリ認可企業の accessToken を取得](https://open.dingtalk.com/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#) API を呼び出して取得します。 - サードパーティ個人アプリの場合、[ユーザートークンを取得](/ja/open/development/obtain-user-token#) API を呼び出して取得します。 |
+
+### パスパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| userId | String | はい | 照会対象ユーザーの unionId。   - 社内アプリおよびサードパーティ社内アプリの場合、[ユーザー詳細の照会](/ja/open/development/query-user-details#) API を呼び出して unionid パラメータ値を取得します。 - サードパーティ個人アプリの場合、[ユーザーの連絡先プロフィールを取得](/ja/open/development/dingtalk-retrieve-user-information#) API を呼び出して unionId パラメータ値を取得します。 |
+| calendarId | String | はい | 予定が属するカレンダー ID。[カレンダーの照会](/ja/open/development/query-a-calendar#) API を呼び出して現在のユーザーの予定を照会します。**primary** キーワードを使用すると、現在のユーザーのプライマリカレンダーを表します。 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| timeMin | String | いいえ | 予定終了時刻 >= TimeMin を照会します。ISO-8601 の date-time 形式です。 |
+| timeMax | String | いいえ | 予定開始時刻 `< timeMax` を照会します。ISO-8601 の date-time 形式です。 |
+| maxResults | Integer | いいえ | 最大返却レコード数。最大値 100、デフォルト 100。 |
+| maxAttendees | Integer | いいえ | 各予定の参加者照会件数。デフォルト 100、最大 100。参加人数が 100 人を超え、すべての参加者を取得する必要がある場合は、[予定参加者の取得](/ja/open/development/get-the-participants-of-a-schedule#) API を使用して取得してください。 |
+| nextToken | String | いいえ | ページングカーソル。1 回の照会条件ですべての結果を返せない場合、ページングトークンが返されます。次回の照会時にそのトークンを付与すると、後続のデータが返されます。ページングトークンが null になるまで、すべてのデータが照会完了したことを意味します。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+GET /v1.0/calendar/users/iiiP35sJadxxx/calendars/primary/eventsview?timeMin=2022-11-27T00:00:00+08:00&timeMax=2022-11-28T00:00:00+08:00&maxResults=100&maxAttendees=100&nextToken=cnNTbW1xxx HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:dd43888xxx
+Content-Type:application/json
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Token を使用してアカウント Client を初期化</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkcalendar_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkcalendar_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkcalendar_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkcalendar_1_0.models.ListEventsViewHeaders listEventsViewHeaders = new com.aliyun.dingtalkcalendar_1_0.models.ListEventsViewHeaders();
+        listEventsViewHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkcalendar_1_0.models.ListEventsViewRequest listEventsViewRequest = new com.aliyun.dingtalkcalendar_1_0.models.ListEventsViewRequest()
+                .setTimeMin("2022-11-27T00:00:00+08:00")
+                .setTimeMax("2022-11-28T00:00:00+08:00")
+                .setMaxResults(100)
+                .setMaxAttendees(100)
+                .setNextToken("cnNTbW1xxx");
+        try {
+            client.listEventsViewWithOptions("iiiP35sJadxxx", "primary", listEventsViewRequest, listEventsViewHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.calendar_1_0.client import Client as dingtalkcalendar_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.calendar_1_0 import models as dingtalkcalendar__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkcalendar_1_0Client:
+        """
+        Token を使用してアカウント Client を初期化
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkcalendar_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        list_events_view_headers = dingtalkcalendar__1__0_models.ListEventsViewHeaders()
+        list_events_view_headers.x_acs_dingtalk_access_token = '<your access token>'
+        list_events_view_request = dingtalkcalendar__1__0_models.ListEventsViewRequest(
+            time_min='2022-11-27T00:00:00+08:00',
+            time_max='2022-11-28T00:00:00+08:00',
+            max_results=100,
+            max_attendees=100,
+            next_token='cnNTbW1xxx'
+        )
+        try:
+            client.list_events_view_with_options('iiiP35sJadxxx', 'primary', list_events_view_request, list_events_view_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        list_events_view_headers = dingtalkcalendar__1__0_models.ListEventsViewHeaders()
+        list_events_view_headers.x_acs_dingtalk_access_token = '<your access token>'
+        list_events_view_request = dingtalkcalendar__1__0_models.ListEventsViewRequest(
+            time_min='2022-11-27T00:00:00+08:00',
+            time_max='2022-11-28T00:00:00+08:00',
+            max_results=100,
+            max_attendees=100,
+            next_token='cnNTbW1xxx'
+        )
+        try:
+            await client.list_events_view_with_options_async('iiiP35sJadxxx', 'primary', list_events_view_request, list_events_view_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\ListEventsViewHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\ListEventsViewRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $listEventsViewHeaders = new ListEventsViewHeaders([]);
+        $listEventsViewHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $listEventsViewRequest = new ListEventsViewRequest([
+            "timeMin" => "2022-11-27T00:00:00+08:00",
+            "timeMax" => "2022-11-28T00:00:00+08:00",
+            "maxResults" => 100,
+            "maxAttendees" => 100,
+            "nextToken" => "cnNTbW1xxx"
+        ]);
+        try {
+            $client->listEventsViewWithOptions("iiiP35sJadxxx", "primary", $listEventsViewRequest, $listEventsViewHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkcalendar_1_0  "github.com/alibabacloud-go/dingtalk/calendar_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Description:
+// 
+// Token を使用してアカウント Client を初期化
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkcalendar_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkcalendar_1_0.Client{}
+  _result, _err = dingtalkcalendar_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  listEventsViewHeaders := &dingtalkcalendar_1_0.ListEventsViewHeaders{}
+  listEventsViewHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  listEventsViewRequest := &dingtalkcalendar_1_0.ListEventsViewRequest{
+    TimeMin: tea.String("2022-11-27T00:00:00+08:00"),
+    TimeMax: tea.String("2022-11-28T00:00:00+08:00"),
+    MaxResults: tea.Int32(100),
+    MaxAttendees: tea.Int32(100),
+    NextToken: tea.String("cnNTbW1xxx"),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ListEventsViewWithOptions(tea.String("iiiP35sJadxxx"), tea.String("primary"), listEventsViewRequest, listEventsViewHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```text
+'use strict';
+// This file is auto-generated, don't edit it
+const Util = require('@alicloud/tea-util');
+const dingtalkcalendar_1_0 = require('@alicloud/dingtalk/calendar_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Token を使用してアカウント Client を初期化
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkcalendar_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let listEventsViewHeaders = new dingtalkcalendar_1_0.ListEventsViewHeaders({ });
+    listEventsViewHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let listEventsViewRequest = new dingtalkcalendar_1_0.ListEventsViewRequest({
+      timeMin: '2022-11-27T00:00:00+08:00',
+      timeMax: '2022-11-28T00:00:00+08:00',
+      maxResults: 100,
+      maxAttendees: 100,
+      nextToken: 'cnNTbW1xxx',
+    });
+    try {
+      await client.listEventsViewWithOptions('iiiP35sJadxxx', 'primary', listEventsViewRequest, listEventsViewHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Description:</b></term>
+        /// <description>
+        /// <para>Token を使用してアカウント Client を初期化</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.ListEventsViewHeaders listEventsViewHeaders = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.ListEventsViewHeaders();
+            listEventsViewHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.ListEventsViewRequest listEventsViewRequest = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.ListEventsViewRequest
+            {
+                TimeMin = "2022-11-27T00:00:00+08:00",
+                TimeMax = "2022-11-28T00:00:00+08:00",
+                MaxResults = 100,
+                MaxAttendees = 100,
+                NextToken = "cnNTbW1xxx",
+            };
+            try
+            {
+                client.ListEventsViewWithOptions("iiiP35sJadxxx", "primary", listEventsViewRequest, listEventsViewHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code と message 属性が含まれており、開発者が問題を特定するのに役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| nextToken | String | ページングトークン。 |
+| events | Array | 予定リスト。 |
+| id | String | 予定イベント ID。 |
+| summary | String | 予定の見出し。 |
+| description | String | 予定の説明。 |
+| start | Object | 予定の開始日。 |
+| date | String | 予定の開始日。形式：yyyy-MM-dd。 |
+| dateTime | String | 予定の開始時刻。ISO-8601 の date-time 形式。 |
+| timeZone | String | 予定の開始時刻が属するタイムゾーン。`tz database name` 形式。 |
+| originStart | Object | 繰り返しシーケンスにおいて最初に作成された際の開始時刻を表します。通常の単一予定の場合、本属性は返されません。 |
+| dateTime | String | 日付と時刻情報は ISO 8601 形式で表され、常に UTC で表記されます。例：`2023 年 1 月 1 日午前 0 時 UTC は 2023-01-01T00:00:00Z` です。 |
+| end | Object | 予定の終了時刻。 |
+| date | String | 予定の終了日。形式：yyyy-MM-dd。 |
+| dateTime | String | 予定の終了時刻。ISO-8601 の date-time 形式。 |
+| timeZone | String | 予定の終了時刻が属するタイムゾーン。開始時刻が属するタイムゾーンと同じである必要があります。`tz database name` 形式。 |
+| isAllDay | Boolean | 終日予定であるかどうか。   - **true**：はい - **false**：いいえ |
+| recurrence | Object | 予定の繰り返しルール。 |
+| pattern | Object | 繰り返しパターン。 |
+| type | String | 繰り返しルールのタイプ。   - **daily**：**interval** 日ごとに繰り返し - **weekly**：**interval** 週ごとの **daysOfWeek** 曜日に繰り返し - **absoluteMonthly**：**interval** か月ごとの **dayOfMonth** 日に繰り返し - **relativeMonthly**：**interval** か月ごとの第 **index** 週の **daysOfWeek** 曜日に繰り返し - **absoluteYearly**：**interval** 年ごとに繰り返し |
+| dayOfMonth | Integer | **type** が **absoluteMonthly** の場合、毎月の何日目かを指定します。 |
+| daysOfWeek | String | 英語小文字で曜日を指定します。複数の値がある場合はカンマで区切ります。 |
+| index | String | **type** = **relativeMonthly** の場合、毎月の第何週かを指定します。   - **first**：第 1 週 - **second**：第 2 週 - **third**：第 3 週 - **fourth**：第 4 週 - **last**：最終週 |
+| interval | Integer | 繰り返し間隔。**type** によって単位が異なります。例えば **type** が **daily** の場合は N 日ごとを意味し、**absoluteYearly** の場合は N 年ごとを意味します。 |
+| firstDayOfWeek | String | 週の起点日。指定可能な値：sunday、monday、tuesday、wednesday、thursday、friday、saturday。デフォルト値は "sunday" です。 |
+| range | Object | 繰り返し範囲。 |
+| type | String | 繰り返し範囲のタイプ。   - **noEnd**：終了なし - **endDate**：指定日まで繰り返し - **numbered**：指定回数繰り返した後終了 |
+| endDate | String | 繰り返し終了日。 |
+| numberOfOccurrences | Integer | 繰り返し回数。 |
+| attendees | Array | 予定参加者。 |
+| id | String | ユーザーの unionId。 |
+| displayName | String | ユーザー名。 |
+| responseStatus | String | 返信ステータス。 |
+| self | Boolean | 現在のログインユーザーであるかどうか。   - **true**：はい - **false**：いいえ |
+| isOptional | Boolean | 任意参加者であるかどうか。   - **true**：はい - **false**：いいえ |
+| organizer | Object | 予定主催者。 |
+| id | String | ユーザーの unionId。 |
+| displayName | String | ユーザー名。 |
+| responseStatus | String | 返信ステータス。 |
+| self | Boolean | 現在のログインユーザーであるかどうか。   - **true**：はい - **false**：いいえ |
+| location | Object | 予定の場所。 |
+| displayName | String | 表示名。 |
+| meetingRooms | Array of String | 会議室を追加。 |
+| seriesMasterId | String | 繰り返し予定のマスター予定 ID。繰り返し予定でない場合は空。 |
+| createTime | String | 作成時間。 |
+| updateTime | String | 更新時間。 |
+| status | String | 予定ステータス。 |
+| extendedProperties | Object | 予定の拡張属性。 |
+| sharedProperties | Object | 共有属性。 |
+| sourceOpenCid | String | 予定が特定のグループ内で発起された場合、本フィールドは予定発起の追加元グループを表します。 |
+| belongCorpId | String | 予定が帰属する企業の組織 ID。 |
+| privateProperties | Object | プライベート特性。 |
+| dingtalkDetailUrl | String | 詳細アドレス。 |
+| onlineMeetingInfo | Object | オンライン会議。 |
+| type | String | オンライン会議タイプ。現在のサポート対象：   - **dingtalk**：DingTalk ビデオ会議 |
+| conferenceId | String | 会議 ID。 |
+| url | String | 参加 URL アドレス。 |
+| extraInfo | Map | その他の拡張情報。 |
+| categories | Array | 予定タイプ。 |
+| displayName | String | 予定タイプ名。 |
+| richTextDescription | Object | リッチテキスト説明。 |
+| text | String | リッチテキスト説明コンテンツ。 |
+| meetingRooms | Array | 会議室を追加。 |
+| roomId | String | 会議室 roomId。 |
+| responseStatus | String | 会議室の返信ステータス。   - **accepted**：承認 - **tentative**：承認中 - **declined**：承認却下 |
+| displayName | String | 会議室名。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "nextToken" : "cnNTbWxxx",
+  "events" : [ {
+    "id" : "cnNTbxxx",
+    "summary" : "test event",
+    "description" : "something about this event",
+    "start" : {
+      "date" : "2020-01-01",
+      "dateTime" : "2020-01-01T10:15:30+08:00",
+      "timeZone" : "Asia/Shanghai"
+    },
+    "originStart" : {
+      "dateTime" : "2023-01-01T00:00:00Z"
+    },
+    "end" : {
+      "date" : "2020-01-01",
+      "dateTime" : "2020-01-01T10:15:30+08:00",
+      "timeZone" : "Asia/Shanghai"
+    },
+    "isAllDay" : false,
+    "recurrence" : {
+      "pattern" : {
+        "type" : "daily",
+        "dayOfMonth" : 14,
+        "daysOfWeek" : "sunday",
+        "index" : "first",
+        "interval" : 1,
+        "firstDayOfWeek" : "monday"
+      },
+      "range" : {
+        "type" : "noEnd",
+        "endDate" : "2020-01-01T10:15:30+08:00",
+        "numberOfOccurrences" : 5
+      }
+    },
+    "attendees" : [ {
+      "id" : "iiiP35xxx",
+      "displayName" : "tony",
+      "responseStatus" : "accepted",
+      "self" : false,
+      "isOptional" : false
+    } ],
+    "organizer" : {
+      "id" : "iiiP35xxx",
+      "displayName" : "jack",
+      "responseStatus" : "accepted",
+      "self" : false
+    },
+    "location" : {
+      "displayName" : "room 1-2-3",
+      "meetingRooms" : [ "会議室" ]
+    },
+    "seriesMasterId" : "cnNTbxxx",
+    "createTime" : "2020-01-01T10:15:30+08:00",
+    "updateTime" : "2020-01-01T10:15:30+08:00",
+    "status" : "confirmed",
+    "extendedProperties" : {
+      "sharedProperties" : {
+        "sourceOpenCid" : "zxcvasdfa123===",
+        "belongCorpId" : "dingd8*****1231"
+      },
+      "privateProperties" : {
+        "dingtalkDetailUrl" : "https://example.com"
+      }
+    },
+    "onlineMeetingInfo" : {
+      "type" : "dingtalk",
+      "conferenceId" : "5c4df2xxx",
+      "url" : "dingtalk://dingtalkclient/page/xxx?confId=xxx&calendarId=xxx"
+    },
+    "categories" : [ {
+      "displayName" : "隔週ミーティング"
+    } ],
+    "richTextDescription" : {
+      "text" : ""
+    },
+    "meetingRooms" : [ {
+      "roomId" : "c10315a8b4e740a317813ab6fxxxxxx",
+      "responseStatus" : "accepted",
+      "displayName" : "1号会議室"
+    } ]
+  } ]
+}
+```
+
+### エラーコード
+
+本 API の呼び出し時にエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントから解決策を検索してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | invalidParameter | forwardErrorMessage | パラメータエラー |

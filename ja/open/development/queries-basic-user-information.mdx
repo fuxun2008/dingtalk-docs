@@ -1,0 +1,110 @@
+---
+title: "ユーザーのベーシック情報を取得する"
+---
+
+本インターフェースを呼び出し、サイレントログインの認可コードを使用してユーザーのベーシック情報を取得します。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/sns/getuserinfo_bycode |
+| HTTP Method | POST |
+| 対応アプリタイプ | appType-社内アプリappType-サードパーティ社内アプリ |
+| 必要な権限 | permission-open_app_api_base-DingTalk オープンインターフェースのユーザーアクセス認証情報を取得するベーシック権限 |
+
+### クエリパラメータ
+
+| パラメータ | **タイプ** | 必須 | 説明 |
+| --- | --- | --- | --- |
+| accessKey | String | 必須 | アプリの AppId。 |
+| timestamp | String | 必須 | 現在のタイムスタンプ（ミリ秒単位）。 |
+| signature | String | 必須 | timestamp+"\n"+AppSecret を署名文字列とし、AppSecret を署名キーとして、HmacSHA256 アルゴリズムで計算した署名値。 |
+
+### リクエストボディ
+
+| パラメータ | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| tmp_auth_code | String | 必須 | ユーザーが DingTalk オープンアプリに付与したサイレントログイン認可コード。JSAPI `dd.getAuthCode` を呼び出して取得します。サイレントログイン認可コードを参照してください。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/sns/getuserinfo_bycode" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'tmp_auth_code=abcdef'
+```
+
+Java
+
+```java
+DefaultDingTalkClient  client = new DefaultDingTalkClient("https://oapi.dingtalk.io/sns/getuserinfo_bycode");
+// お使いの SDK に該当クラスが存在しない場合は、最新の SDK をダウンロードしてください
+OapiSnsGetuserinfoBycodeRequest req = new OapiSnsGetuserinfoBycodeRequest();
+req.setTmpAuthCode("4a2c5695b78738d495f47b5fee9160cd");
+OapiSnsGetuserinfoBycodeResponse response = client.execute(req,"yourAppId","yourAppSecret");
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req = dingtalk.api.OapiSnsGetuserinfoBycodeRequest("https://oapi.dingtalk.io/sns/getuserinfo_bycode")
+req.tmp_auth_code = "abcdef"
+try:
+  resp = req.getResponse("yourAppId", "yourAppSecret")
+  print(resp)
+except Exception as e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiSnsGetuserinfoBycodeRequest;
+$req->setTmpAuthCode("abcdef");
+$resp = $c->execute($req,"yourAppId","yourAppSecret", "https://oapi.dingtalk.io/sns/getuserinfo_bycode");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/sns/getuserinfo_bycode");
+OapiSnsGetuserinfoBycodeRequest req = new OapiSnsGetuserinfoBycodeRequest();
+req.TmpAuthCode = "abcdef";
+OapiSnsGetuserinfoBycodeResponse rsp = client.Execute(req, "yourAppId", "yourAppSecret");
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "errmsg": "ok",
+  "user_info": {
+    "nick": "山田太郎",
+    "unionid": "Wzh9KbyaCZxxx",
+    "openid": "EtiiaAu3Yf9Ruxxx",
+    "main_org_auth_high_level": true
+  }
+}
+```
+
+### エラーコード
+
+本インターフェースの呼び出しでエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を検索してください。
+
+| **エラーコード** | **説明** |
+| --- | --- |
+| 853002 | timestamp パラメータが不正です。当該パラメータ値が DingTalk サーバーの現在時刻と 1 分以上ずれています |
+| 853001 | timestamp パラメータの形式が正しくありません。現在時刻のミリ秒数である必要があります |
+| 853003 | accessKey パラメータが不正です。DingTalk オープンプラットフォームに存在する appId である必要があります |
+| 853004 | signature パラメータが正しくありません。DingTalk サーバーサイドで計算された署名と一致しません。当該パラメータを渡す際は必ず urlEncode してください |

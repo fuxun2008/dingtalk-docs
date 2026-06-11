@@ -1,0 +1,126 @@
+---
+title: "FAQs"
+---
+
+This article describes common issues with DingTalk silent login and their solutions, helping developers quickly diagnose and resolve errors during the authorization process.
+
+## Applicable scope
+
+This document applies to the following app types:
+
+- H5 micro apps
+- Mini program apps (including organizational mini programs)
+
+The silent login implementation varies slightly across app types. Choose the correct method to obtain the authorization code based on your actual scenario.
+
+To learn how to create the corresponding app type, see [Introduction to app types](https://open.dingtalk.com/document/development/introduction-to-application-types).
+
+## Overview of the silent login flow
+
+Identity verification through **silent login** allows users to enter an app without entering their DingTalk username or password. The app automatically obtains the current user's identity and completes the sign-in process.
+
+This flow is built on a temporary authorization code mechanism. The front end calls a JSAPI to obtain a one-time temporary authorization code `tmp_auth_code`, and the server uses this code to call the DingTalk Open Platform API to exchange it for identity information such as the user's `userId`.
+
+**Key terms**: `tmp_auth_code` is a one-time temporary authorization code obtained through a front-end JSAPI (such as `dd.getAuthCode` or `dd.runtime.permission.requestAuthCode`). It is valid for 5 minutes and can be used only once. The server must pass it to a DingTalk API (such as `/user/get`) to exchange it for the user's identity.
+
+## Runnable example
+
+### Front-end code (H5 micro app)
+
+```text
+// Use the dd SDK to obtain a temporary authorization code
+dd.ready(function() {
+  dd.runtime.permission.requestAuthCode({
+    corpId: "your_corp_id", // Replace with your organization ID
+    onSuccess: function(result) {
+      const code = result.code; // Get the tmp_auth_code
+      // Send it to your server
+      fetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ tmp_auth_code: code }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onFail: function(err) {
+      console.error('Failed to obtain the authorization code:', err);
+    }
+  });
+});
+```
+
+## Common error codes
+
+The following errors and their causes may occur in various silent login scenarios.
+
+### errcode=40078, errmsg=The temporary authorization code does not exist
+
+Possible causes:
+
+- **The silent login authorization code was not obtained correctly**
+
+  - For mini program apps, use `dd.getAuthCode`.
+  - For H5 micro apps, use `dd.runtime.permission.requestAuthCode` or `dd.runtime.permission.requestOperateAuthCode`.
+- **The authorization code has expired**
+
+  - A silent login authorization code is valid for **5 minutes** after it is generated. It becomes invalid after this period.
+- **The authorization code has been used**
+
+  - A silent login authorization code is a one-time credential. Once used, it becomes invalid and cannot be reused.
+- **Authorization code types are mixed**
+
+  - For example, passing a silent login authorization code from the admin console into an internal app API to obtain a user's `userId` causes this error.
+
+### errcode=41007, errmsg=Invalid ssoCode
+
+Possible causes:
+
+- **The ssoCode does not exist or is misspelled**
+
+  - Check that the `ssoCode` parameter passed from the front end is complete and not truncated.
+- **The ssoCode has expired**
+
+  - The ssoCode typically has a short validity period (about 5 minutes). Make sure to use it promptly.
+- **The ssoCode has been consumed**
+
+  - This code is for one-time use only. If it has already been used in another request, subsequent calls will fail.
+
+### errcode=41026, errmsg=Missing tmp_auth_code
+
+Possible causes:
+
+- The request parameters do not include the `tmp_auth_code` field.
+- The parameter name is misspelled (for example, `temp_auth_code` or `authCode`).
+- The parameter is not passed correctly through the query string (it should be in the form of `?tmp_auth_code=xxx`).
+- The front end did not return the authorization code successfully, so the server cannot construct a complete request.
+
+> Solution: Verify that the front end correctly handles the callback and passes the `code` value, and that the server is configured to receive the `tmp_auth_code` parameter.
+
+### errcode=40079, errmsg=Authorization information does not exist
+
+Possible causes:
+
+- The app has not completed the authorization flow, and the user has not completed sign-in confirmation.
+- The user is not within the app's visible scope (for example, the user is not in Contacts or has not been authorized to access the app).
+- App permissions are not configured correctly, and the silent login capability is not enabled.
+- The call was made too early, attempting to obtain the authorization code before the user context was ready.
+
+> Recommendation: Add validation logic before the call to ensure that the user has entered the app and that the client-side environment is ready.
+
+### errcode=40087, errmsg=Failed to create a persistent authorization code
+
+Possible causes:
+
+- The current app type does not support creating a persistent authorization code.
+- Required permissions are missing (for example, the "persistent authorization" permission is not enabled).
+- The API call frequency is too high and has triggered the rate limit.
+- The app is in an abnormal state (for example, disabled or under review).
+
+### errcode=40091, errmsg=Missing tmp_auth_code
+
+Possible causes:
+
+- No valid temporary authorization code (`tmp_auth_code`) was provided when creating the persistent authorization code.
+- The user did not complete the authorization action, so the temporary code is empty.
+- The parameter was not passed correctly to the creation API.
+
+> Solution: Prompt the user to authorize again, retrieve a new `authCode` from the front end, and submit it to the server to create a persistent authorization code.

@@ -1,0 +1,299 @@
+---
+title: "Send group chats using a custom bot"
+---
+
+Call this API to send group chats using a custom bot.
+
+## API call description
+
+- This API allows a custom bot to send chats in Internal Groups and Standard Groups within your organization. Before calling this API, create a custom bot. For details, see Develop bot apps.
+- If you have a large volume of chats to send (for example, system monitoring alerts), consolidate the information and send it to the group as a summary in a markdown chat.
+- If the custom bot uses the [custom bot security settings](/open/dingstart/customize-robot-security-settings), append the `timestamp` and `sign` parameters when calling this API. Example:
+
+  ```text
+  https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+  ```
+- **Each bot can send up to 20 chats per minute to a group. Exceeding 20 chats triggers a 10-minute rate limit.**
+
+## Request
+
+| **Basic information** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/robot/send |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app appType-Third-party enterprise app |
+| Required permissions | permission-qyapi_base-Basic permission to call enterprise APIs |
+
+### Query parameters
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| access_token | String | Yes | BE3xxxx | The credential used by the custom bot to call the API.  The `access_token` value from the Webhook URL generated after the custom bot is installed. For details, see [Obtain the Webhook URL of a custom bot](/open/dingstart/obtain-the-webhook-address-of-a-custom-robot). |
+
+### Request body
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| msgtype | String | Yes | text | The chat type. For chat types supported by custom bots, see Chat types supported by custom bots. |
+| msgUuid | String | No | 123 | The idempotency key for the chat, used to control idempotency.  **Note**  Typical use case: when an API call times out or returns an unknown error, retry with the same `msgUuid` to avoid sending duplicate chats. |
+| text | Object | No |  | A text chat. |
+| content | String | No | DingTalk makes progress happen | The content of the text chat. |
+| at | Object | No |  | Information about the group members mentioned with @. |
+| isAtAll | Boolean | No | false | Whether to mention @Everyone.   - true: Yes - false: No |
+| atMobiles | String[] | No | ["15xxx,18xxx"] | The mobile numbers of the group members to mention with @. |
+| atUserIds | String[] | No | ["user001","user002"] | The `userId` of the group members to mention with @.  **Note**  When mentioning group members with @, you can mention up to 50 members. |
+| link | Object | No |  | A link chat. |
+| messageUrl | String | No | https://www.dingtalk.io | The URL to redirect to when the chat is tapped. |
+| title | String | No | This is the title | The title of the link chat. |
+| picUrl | String | No | @aubHxxxxx | The image URL in the link chat. We recommend using the [Upload media files](/open/development/upload-media-files) API to obtain it. |
+| text | String | No | The content of the link chat | The content of the link chat. |
+| markdown | Object | No |  | A markdown chat. |
+| text | String | No | markdown chat content | The text content of the markdown chat. |
+| title | String | No | The title shown in the chat list | The title shown in the chat list, not the title of the chat body. |
+| actionCard | Object | No |  | An actionCard chat. |
+| hideAvatar | String | No | 1 | Whether to display the profile photo of the sender.   - 0: Display the sender's profile photo - 1: Hide the sender's profile photo |
+| btnOrientation | String | No | 1 | The button layout in the chat.   - 0: Buttons arranged vertically - 1: Buttons arranged horizontally |
+| singleURL | String | No | https://www.dingtalk.io | The URL triggered when the `singleTitle` button is tapped.  **Note**  Required when the chat contains only one button. |
+| singleTitle | String | No | This is a button | The single-button option. (When this and `singleURL` are set, `btns` does not take effect.)  **Note**  Required when the chat contains only one button. |
+| text | String | No | Chat content | The body content of the actionCard chat. Markdown syntax is supported. |
+| title | String | No | The title shown in the chat list | The title shown in the chat list, not the title of the chat body. |
+| btns | Object[] | No |  | The list of button information.  **Note**  Required when the chat contains more than one button. |
+| actionURL | String | No | https://www.dingtalk.io | The URL the button redirects to. |
+| title | String | No | This is a button | The text displayed on the button. |
+| feedCard | Object | No |  | A feedCard chat. |
+| links | Object[] | No |  | The content list of the feedCard chat. |
+| picURL | String | No | @aubHxxxxx | The image URL for each item in the feedCard chat. We recommend using the [Upload media files](/open/development/upload-media-files) API to obtain it. |
+| messageURL | String | No | https://www.dingtalk.io | The redirect URL for each item in the feedCard chat. |
+| title | String | No | Chat title | The title of each item in the feedCard chat. |
+
+### Request example
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/robot/send" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=c370586xxxxd65d506' \
+-d 'actionCard=null' \
+-d 'at=null' \
+-d 'feedCard=null' \
+-d 'link=null' \
+-d 'markdown=null' \
+-d 'msgtype=text' \
+-d 'text=null'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send");
+OapiRobotSendRequest req = new OapiRobotSendRequest();
+req.setMsgtype("text");
+Text obj1 = new Text();
+obj1.setContent("123");
+req.setText(obj1);
+At obj2 = new At();
+obj2.setIsAtAll(false);
+obj2.setAtMobiles("");
+obj2.setAtUserIds("");
+req.setAt(obj2);
+Link obj3 = new Link();
+obj3.setMessageUrl("1");
+obj3.setTitle("1");
+obj3.setPicUrl("1");
+obj3.setText("1");
+req.setLink(obj3);
+Markdown obj4 = new Markdown();
+obj4.setText("1");
+obj4.setTitle("1");
+req.setMarkdown(obj4);
+Actioncard obj5 = new Actioncard();
+obj5.setHideAvatar("1");
+obj5.setBtnOrientation("1");
+obj5.setSingleURL("1");
+obj5.setSingleTitle("1");
+obj5.setText("1");
+obj5.setTitle("1");
+List<Btns> list7 = new ArrayList<Btns>();
+Btns obj8 = new Btns();
+list7.add(obj8);
+obj8.setActionURL("1");
+obj8.setTitle("1");
+obj5.setBtns(list7);
+req.setActionCard(obj5);
+Feedcard obj9 = new Feedcard();
+List<Links> list11 = new ArrayList<Links>();
+Links obj12 = new Links();
+list11.add(obj12);
+obj12.setPicURL("1");
+obj12.setMessageURL("1");
+obj12.setTitle("1");
+obj9.setLinks(list11);
+req.setFeedCard(obj9);
+OapiRobotSendResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+import dingtalk.api
+
+req=dingtalk.api.OapiRobotSendRequest("https://oapi.dingtalk.io/robot/send")
+
+req.msgtype="text"
+req.text=""
+req.at=""
+req.link=""
+req.markdown=""
+req.actionCard=""
+req.feedCard=""
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiRobotSendRequest;
+$req->setMsgtype("text");
+$text = new Text;
+$text->content="123";
+$req->setText($text);
+$at = new At;
+$at->isAtAll="false";
+$at->atMobiles="[]";
+$at->atUserIds="[]";
+$req->setAt($at);
+$link = new Link;
+$link->messageUrl="1";
+$link->title="1";
+$link->picUrl="1";
+$link->text="1";
+$req->setLink($link);
+$markdown = new Markdown;
+$markdown->text="1";
+$markdown->title="1";
+$req->setMarkdown($markdown);
+$actionCard = new Actioncard;
+$actionCard->hideAvatar="1";
+$actionCard->btnOrientation="1";
+$actionCard->singleURL="1";
+$actionCard->singleTitle="1";
+$actionCard->text="1";
+$actionCard->title="1";
+$btns = new Btns;
+$btns->actionURL="1";
+$btns->title="1";
+$actionCard->btns = array($btns);
+$req->setActionCard($actionCard);
+$feedCard = new Feedcard;
+$links = new Links;
+$links->picURL="1";
+$links->messageURL="1";
+$links->title="1";
+$feedCard->links = array($links);
+$req->setFeedCard($feedCard);
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/robot/send");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send");
+OapiRobotSendRequest req = new OapiRobotSendRequest();
+req.Msgtype = "text";
+OapiRobotSendRequest.TextDomain obj1 = new OapiRobotSendRequest.TextDomain();
+obj1.Content = "123";
+req.Text_ = obj1;
+OapiRobotSendRequest.AtDomain obj2 = new OapiRobotSendRequest.AtDomain();
+obj2.IsAtAll = false;
+obj2.AtMobiles = "";
+obj2.AtUserIds = "";
+req.At_ = obj2;
+OapiRobotSendRequest.LinkDomain obj3 = new OapiRobotSendRequest.LinkDomain();
+obj3.MessageUrl = "1";
+obj3.Title = "1";
+obj3.PicUrl = "1";
+obj3.Text = "1";
+req.Link_ = obj3;
+OapiRobotSendRequest.MarkdownDomain obj4 = new OapiRobotSendRequest.MarkdownDomain();
+obj4.Text = "1";
+obj4.Title = "1";
+req.Markdown_ = obj4;
+OapiRobotSendRequest.ActioncardDomain obj5 = new OapiRobotSendRequest.ActioncardDomain();
+obj5.HideAvatar = "1";
+obj5.BtnOrientation = "1";
+obj5.SingleURL = "1";
+obj5.SingleTitle = "1";
+obj5.Text = "1";
+obj5.Title = "1";
+List<OapiRobotSendRequest.BtnsDomain> list7 = new List<OapiRobotSendRequest.BtnsDomain>();
+OapiRobotSendRequest.BtnsDomain obj8 = new OapiRobotSendRequest.BtnsDomain();
+list7.Add(obj8);
+obj8.ActionURL = "1";
+obj8.Title = "1";
+obj5.Btns= list7;
+req.ActionCard_ = obj5;
+OapiRobotSendRequest.FeedcardDomain obj9 = new OapiRobotSendRequest.FeedcardDomain();
+List<OapiRobotSendRequest.LinksDomain> list11 = new List<OapiRobotSendRequest.LinksDomain>();
+OapiRobotSendRequest.LinksDomain obj12 = new OapiRobotSendRequest.LinksDomain();
+list11.Add(obj12);
+obj12.PicURL = "1";
+obj12.MessageURL = "1";
+obj12.Title = "1";
+obj9.Links= list11;
+req.FeedCard_ = obj9;
+OapiRobotSendResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| errmsg | String | ok | The error code description. |
+| errcode | Number | 0 | The error code. |
+
+### Response body example
+
+```json
+{
+  "errcode":"0",
+  "errmsg":"ok"
+}
+```
+
+### Error codes
+
+If an error is returned when calling this API, look up the solution in the [Global error codes](/open/development/server-api-error-codes-1) documentation based on the error message.
+
+| Error code (errorcode) | Error description (errmsg) | Solution |
+| --- | --- | --- |
+| -1 | System busy | Try again later |
+| 40035 | Missing parameter json | Add the chat json |
+| 43004 | Invalid HTTP HEADER Content-Type | Set the specific chat parameters |
+| 400013 | The group has been disbanded | Send the chat to another group |
+| 400101 | access_token does not exist | Verify that the access_token is spelled correctly |
+| 400102 | The bot is disabled | Contact the admin to enable the bot |
+| 400105 | Unsupported chat type | Use a chat type supported in the documentation |
+| 400106 | The bot does not exist | Verify that the bot is in the group |
+| 410100 | Rate limit triggered by sending too fast | Reduce the sending rate |
+| 430101 | Contains an unsafe external link | Verify that the content sent is compliant |
+| 430102 | Contains inappropriate text | Verify that the content sent is compliant |
+| 430103 | Contains an inappropriate image | Verify that the content sent is compliant |
+| 430104 | Contains inappropriate content | Verify that the content sent is compliant |
+
+When the following errors occur, the chat failed validation. Check the bot's security settings.
+
+| Error code (errorcode) | Error description (errmsg) | Solution |
+| --- | --- | --- |
+| 310000 | - keywords not in content - invalid timestamp - sign not match - ip X.X.X.X not in whitelist | - The chat content does not contain any keywords - The timestamp is invalid - The signature does not match - The IP address is not in the allowlist |

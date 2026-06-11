@@ -1,0 +1,157 @@
+---
+title: "業務通知の送信結果を取得する"
+---
+
+このAPIを呼び出して、業務通知の送信結果を照会します。
+
+## API 呼び出し説明
+
+このAPIは、業務通知が特定のメンバーに正常に届いたかを確認する必要があるシーン（例：企業の人事部門が重要な通知を送信した後、社員の受信状況を確認する場合など）に適しています。
+
+### 説明
+
+- このAPIで取得できるのは、24時間以内に送信された業務通知の送信結果のみです。
+- 受信者リストが100人を超える場合、このAPIは呼び出せません。呼び出した場合、システムは **呼び出しタイムアウト** を返します。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult |
+| HTTP Method | POST |
+| サポートされるアプリタイプ | appType-社内アプリappType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_base-企業APIを呼び出す際に必要な基本権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | このAPIを呼び出すためのアプリ認証情報です。   - 社内アプリの場合は、社内アプリの access_token を取得するAPIで取得します。 - サードパーティ社内アプリの場合は、サードパーティ企業の access_token を取得するAPIで取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| agent_id | Number | はい | 836390886 | チャットを送信するときに使用するマイクロアプリの AgentId です。   - 社内アプリの場合は、[開発者バックエンド](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1)のアプリ詳細ページで確認できます。 - サードパーティ社内アプリの場合は、企業の権限付与情報を取得するAPIで取得できます。 |
+| task_id | Number | はい | 256271667526 | チャットを送信したときに DingTalk から返されたタスクIDです。[業務通知を送信する](/ja/open/development/asynchronous-sending-of-enterprise-session-messages)APIを呼び出して task_id パラメータの値を取得します。  **説明**  24時間以内のタスクのみ照会できます。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=cfe36xxxxd8dbce' \
+-d 'agent_id=123' \
+-d 'task_id=456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+req.setAgentId(123L);
+req.setTaskId(456L);
+OapiMessageCorpconversationGetsendresultResponse rsp = client.execute(req, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationGetsendresultRequest("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult")
+
+req.agent_id=123
+req.task_id=456
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationGetsendresultRequest;
+$req->setAgentId("123");
+$req->setTaskId("456");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+req.AgentId = 123L;
+req.TaskId = 456L;
+OapiMessageCorpconversationGetsendresultResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| send_result | AsyncSendResult |  | 戻り結果。 |
+| invalid_user_id_list | String[] | ["manager4220",user123"] | 無効な userid。 |
+| forbidden_user_id_list | String[] | ["manager4220",user123"] | チャットの送信頻度が高すぎる、または送信量が超過したためにフロー制御でフィルタリングされ、実際には送信されなかった userid です。  レート制限を受けていない受信者には引き続き正常に送信されます。  レート制限ルールは以下の通りです：   - 同一ユーザーに同一コンテンツのチャットを送信できるのは1日1回までです。 - 同一アプリから同一ユーザーへのチャット送信について：    - サードパーティ企業向けの接続方式の場合、同一ユーザーに対する1日のチャット送信回数は100回までです。   - 企業向けの接続方式の場合、この上限は500回です。 |
+| failed_user_id_list | String[] | ["manager4220",user123"] | 送信に失敗した userid。 |
+| read_user_id_list | String[] | ["manager4220",user123"] | チャットを既読にした userid。 |
+| unread_user_id_list | String[] | ["manager4220",user123"] | チャットを未読のままの userid。 |
+| invalid_dept_id_list | Number[] | [1,2,3] | 無効な部門ID。 |
+| forbidden_list | SendForbiddenModel[] |  | プッシュが禁止された具体的な理由。 |
+| code | String | 143105 | フロー制御コード。   - 143105 は、社内自社開発アプリが1日にユーザーへプッシュしたチャットが上限を超えたことを示します。 - 143106 は、社内自社開発アプリがユーザーへプッシュしたチャットが重複していることを示します。 |
+| count | Number | 1 | フロー制御の閾値。 |
+| userid | String | user123 | レート制限を受けた社員の userid。 |
+| errcode | Number | 0 | 戻りコード。 |
+| errmsg | String | ok | 戻りコードの説明。 |
+| request_id | String | 6pcvwp6jcows | リクエストID。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "send_result": {
+    "failed_user_id_list": [],
+    "forbidden_list": [],
+    "invalid_dept_id_list": [],
+    "invalid_user_id_list": [],
+    "read_user_id_list": [
+      "manager4220"
+    ],
+    "unread_user_id_list": []
+  },
+  "request_id": "6pcvwp6jcows"
+}
+```
+
+### エラーコード
+
+このAPIの呼び出し時にエラーが発生した場合、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントから解決策を検索してください。
+
+| エラーコード | 説明 | 解決策 |
+| --- | --- | --- |
+| 143103 | 企業の単一アプリのチャット送信人数のQPMが上限を超えました | API 呼び出しが速すぎます。後で再試行してください。 |
+| 143104 | 企業の1分あたりの送信人数のQPMが上限を超えました | API 呼び出しが速すぎます。後で再試行してください。 |
+| 143105 | 単一アプリから単一ユーザーへの1日のプッシュ量が上限を超えました | 企業は毎日各社員に対して最大500件のメッセージ通知を送信できます。ISV は最大50件まで送信できます。 |
+| 143106 | 単一アプリから単一ユーザーへの重複チャットのプッシュが上限を超えました | 同一社員に対して、1日に同一コンテンツのメッセージ通知を1件のみ送信できます。 |
+| 143203 | ISV の単一アプリから単一企業への送信人数のQPMが上限を超えました | API 呼び出しが速すぎます。後で再試行してください。 |
+| 143204 | ISV の単一アプリから全企業への送信人数のQPMが上限を超えました | API 呼び出しが速すぎます。後で再試行してください。 |
+| 143205 | 単一アプリから単一ユーザーへの1日のプッシュ量が上限を超えました | 企業は毎日各社員に対して最大500件のメッセージ通知を送信できます。ISV は最大50件まで送信できます。 |
+| 143206 | 単一アプリから単一ユーザーへの重複チャットのプッシュが上限を超えました | 同一社員に対して、1日に同一コンテンツのメッセージ通知を1件のみ送信できます。 |
+| 1430000 | 受信者が空です | 受信者は空にできません。チャットの受信者が空でないか確認してください。 |
+| 1430001 | 認識できない grantType です | なし。 |
+| 1430002 | 禁止コンテンツが含まれています | チャットテキストに不適切な内容や反社会的な表現などが含まれていないか確認してください。 |
+| 1430003 | OAPI システム保護がトリガーされました | なし。 |
+| 1430004 | スーパー経営層保護 | 経営層保護を閉じてください。 |

@@ -1,0 +1,145 @@
+---
+title: "カスタムボットでグループチャットメッセージを送信する"
+---
+
+本ドキュメントでは、カスタムボットを使用してグループチャットメッセージを送信する手順について説明します。
+
+## ニーズの明確化
+
+本格的な開発に入る前に、事前に把握しておきましょう。本ドキュメントでは、カスタムボットの Webhook に対応する [カスタムボットによるグループチャットメッセージ送信](/ja/open/development/custom-robots-send-group-messages) インターフェースを使用して、グループチャットメッセージを送信する方法を解説します。リクエスト署名方式でカスタムボットの利用方法を説明します。クイックスタートとして、「クイック体験」で提供しているサンプル demo を実行してみてください。これにより、カスタムボットの利用方法を直感的に体験できます。
+
+## 前提条件
+
+1. [カスタムボットを作成する](/ja/open/dingstart/custom-bot-creation-and-installation) フローを完了している。
+
+   > カスタムボットの安全設定では **リクエスト署名** 方式を選択します。詳細は [カスタムボットの安全設定](/ja/open/dingstart/customize-robot-security-settings) を参照してください。
+2. [カスタムボットの Webhook アドレスを取得する](/ja/open/dingstart/obtain-the-webhook-address-of-a-custom-robot) フローを完了している。
+3. 開発環境の準備：
+
+   | **開発環境** | **説明** |
+   | --- | --- |
+   | Java | - JDK 1.8 以上がインストール済み - Maven 3 がインストール済み |
+   | Python | - Python 3 |
+
+## クイック体験
+
+1. サンプル demo をダウンロードできます：
+
+   | **サンプル** | **説明** |
+   | --- | --- |
+   | Java | [custom-robot-group-message-quick-start-java.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/cvzdoy/custom-robot-group-message-quick-start-java.zip) |
+   | Python | [custom-robot-group-message-quick-start-python.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/qspdnf/custom-robot-group-message-quick-start-python.zip) |
+2. サンプル demo を起動する：
+
+   | **タイプ** | **説明** |
+   | --- | --- |
+   | Java | 1. customRobotGroupMessage.java の main メソッドのパラメータを修正します。  - CUSTOM_ROBOT_TOKEN：ボットアプリの access_token の値。詳細は [カスタムボットの Webhook アドレスを取得する](/ja/open/dingstart/obtain-the-webhook-address-of-a-custom-robot) を参照してください。  **説明**  Webhook アドレスの access_token の値のみを入力します。Webhook アドレス全体ではありません。 - SECRET：安全設定のリクエスト署名キー。詳細は [カスタムボットの安全設定](/ja/open/dingstart/customize-robot-security-settings) を参照してください。 - （オプション）USER_ID：ユーザーの userId 情報。詳細は [ユーザー UserId](/ja/open/dingstart/basic-concepts-beta) を参照してください。  内部グループ：ユーザーの UserId を入力することで @ 機能を実現できます。  外部グループ：ボットが OpenAPI を呼び出してメッセージを送信する際、@ 機能は実現できません。 2. main メソッドを起動します。  3. グループ内でカスタムボットが送信したメッセージを確認できます。 |
+   | Python | 1. 現在のファイルのディレクトリで起動コマンドを入力します：`python3 send_custom_robot_group_message.py --access_token="your custom robot token" --secret="your custom robot secret" --userid="you need @ group user's userid"`。  ボット Webhook の access_token、ボットのリクエスト署名 secret、ユーザー userid を置き換えてください。パラメータの取得方法は Java の説明を参照してください。  2. グループ内でカスタムボットが送信したメッセージを確認できます。 |
+
+## 操作手順
+
+> 以下は Java のサンプルです。Python のサンプルは、上記の体験 demo をダウンロードしてください。
+
+1. プロジェクトの `pom.xml` ファイルに依存関係を追加します。
+
+   ```xml lines
+    <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>commons-codec</groupId>
+               <artifactId>commons-codec</artifactId>
+               <version>1.11</version>
+           </dependency>
+       </dependencies>
+   ```
+2. main メソッドを作成して起動します。
+
+   ```java lines
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiRobotSendRequest;
+   import com.dingtalk.api.response.OapiRobotSendResponse;
+   import com.taobao.api.ApiException;
+   import org.apache.commons.codec.binary.Base64;
+
+   import javax.crypto.Mac;
+   import javax.crypto.spec.SecretKeySpec;
+   import java.io.UnsupportedEncodingException;
+   import java.net.URLEncoder;
+   import java.security.InvalidKeyException;
+   import java.security.NoSuchAlgorithmException;
+   import java.util.Arrays;
+
+   public class customRobotGroupMessage {
+
+       public static final String CUSTOM_ROBOT_TOKEN = "<your custom robot token>";
+
+       public static final String USER_ID= "<you need @ group user's userId>";
+
+       public static final String SECRET = "<your custom robot SECRET>";
+
+       public static void main(String[] args) {
+           try {
+               Long timestamp = System.currentTimeMillis();
+               System.out.println(timestamp);
+               String secret = SECRET;
+               String stringToSign = timestamp + "\n" + secret;
+               Mac mac = Mac.getInstance("HmacSHA256");
+               mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+               byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+               String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+               System.out.println(sign);
+
+               //sign フィールドと timestamp フィールドはリクエスト URL に連結する必要があります。そうでない場合は 310000 のエラーメッセージが表示されます
+               DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send?sign="+sign+"&timestamp="+timestamp);
+               OapiRobotSendRequest req = new OapiRobotSendRequest();
+               /**
+                * テキストメッセージを送信
+                */
+               //テキストの内容を定義
+               OapiRobotSendRequest.Text text = new OapiRobotSendRequest.Text();
+               text.setContent("DingTalk、進歩を生み出す");
+               //@ オブジェクトを定義
+               OapiRobotSendRequest.At at = new OapiRobotSendRequest.At();
+               at.setAtUserIds(Arrays.asList(USER_ID));
+               //メッセージタイプを設定
+               req.setMsgtype("text");
+               req.setText(text);
+               req.setAt(at);
+               OapiRobotSendResponse rsp = client.execute(req, CUSTOM_ROBOT_TOKEN);
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               e.printStackTrace();
+           } catch (UnsupportedEncodingException e) {
+               throw new RuntimeException(e);
+           } catch (NoSuchAlgorithmException e) {
+               throw new RuntimeException(e);
+           } catch (InvalidKeyException e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   グループ内でカスタムボットが送信したメッセージを確認できます。
+
+## よくある質問
+
+### レート制限
+
+メッセージ送信が頻繁すぎるとグループの利用体験に深刻な影響を与えるため、カスタムボットのメッセージ送信頻度は以下のように制限されています：
+
+### 1 つのボットあたり 1 分間に最大 20 件までグループにメッセージを送信できます。20 件を超えた場合、10 分間レート制限がかかります。
+
+> 大量にメッセージを送信するシーン（システム監視アラートなど）では、これらの情報を統合し、markdown メッセージとして要約形式でグループに送信することをおすすめします。
+
+## 関連ドキュメント
+
+- [カスタムボットの安全設定](/ja/open/dingstart/customize-robot-security-settings)
+- [メッセージ送受信タイプ](/ja/open/development/robot-message-type)
+- [カスタムボットによるグループチャットメッセージ送信](/ja/open/development/custom-robots-send-group-messages)

@@ -1,0 +1,52 @@
+---
+title: "ファイルアップロード問題のセルフチェックマニュアル"
+---
+
+本ドキュメントでは、ファイルアップロード時によく発生する問題のセルフチェック方法について説明します。
+
+## ファイル送信失敗
+
+ファイルのアップロードには3つのステップがあります。[ファイルアップロード情報の取得](/ja/open/development/obtain-file-upload-informations) ドキュメントの手順を参照してください。
+
+1. ファイルアップロード情報を取得します。
+2. HTTP 経由でファイルを OSS にアップロードします。
+3. ファイルを送信します。
+
+### ステップ2で OSS へのファイルアップロードが 200 を正常に返したかをご確認ください。
+
+## OSS へのファイルアップロード失敗問題
+
+コードに問題がないか確認するため、`<authorization>`、`<x-oss-date>`、`<url>` をステップ1で取得したファイルアップロード情報インターフェースの戻り値に置換してください。a.txt はローカルに存在するファイルに置換し、以下のコマンドを実行します。
+
+```bash
+curl -v -T a.txt \
+--header "Authorization: <authorization>" \
+--header "x-oss-date: <x-oss-date>" \
+--url "<url>"
+```
+
+- curl が RequestTimeTooSkewed エラーを返した場合、アップロード情報の有効期限切れを意味します。ファイルアップロード情報を再取得してください。
+- curl が 200 を返した場合、コードの問題です。ドキュメントには対応する言語のデモが用意されていますので、該当サンプルを参照してコードの問題を調査してください。
+- コードからのアップロードで SignatureDoesNotMatch が返された場合、HTTP リクエストの headers に contentType が余分に渡されている可能性が高いため、明示的に空に設定してください（リクエスト header を印刷し、headers 内の contentType を確認できます）。
+- curl が 200 を返さなかった場合。
+
+  - ドメイン解決失敗または接続失敗のメッセージが表示された場合、以下の方法で調査してください。
+
+    - `ping <対応するドメインまたは IP>`
+    - `telnet <対応するドメインまたは IP> 443`
+    - スマートフォンのテザリングに接続して ping と telnet を実行し、別のネットワークに切り替えて ping と telnet を実行します
+    - PC のファイアウォールを閉じて ping と telnet を実行します
+    - IT 担当者に連絡し、OSS ストレージのパブリックドメインをホワイトリストに追加してもらいます。ドメインは本ドキュメント下部の **付録 I** を参照してください
+    - 専有ストレージの場合は、専有ストレージの運用担当者に連絡し、ネットワーク接続性の問題を確認してください
+
+## 付録 I OSS ストレージのパブリックドメイン
+
+- sz.trans.dingtalk.io
+- sh.trans.dingtalk.io
+- zjk.trans.dingtalk.io
+- lippi-space-zjk.oss-cn-zhangjiakou.aliyuncs.com
+- lippi-space-sh.oss-cn-shanghai.aliyuncs.com
+- lippi-space-sz.oss-cn-shenzhen.aliyuncs.com
+- cdn-zjk-trans.dingtalk.io
+- cdn-sh-trans.dingtalk.io
+- cdn-sz-trans.dingtalk.io

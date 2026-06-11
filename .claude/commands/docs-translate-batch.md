@@ -202,6 +202,18 @@ input tokens 走原价，不要试图缓存 system prompt。脚本已按原价�
 
 `--force` 会覆盖所有已译文件（包括人工已校对过的）。只在中文母版大幅更新时用，并且**先做 git 备份分支**。
 
+### Pitfall 6: 代码块内中文字面量必须区分翻译（2026-06-11 prompt 升级）
+
+历史问题：早期 prompt 铁律 3 / 开放平台铁律 H 写「保留所有代码块内容完全不动」，导致 JSON 示例的 `"title": "测试"` / `"content": "月会通知"` / 表单 example 列里的 `"姓名"/"张三"` / ```text``` 块内的整段中文 markdown 语法说明全部漏译。开放平台首批 416×2 实测残留 351 篇·4186 行。
+
+**新铁律**（已在 `translate_mdx_batch.py` 落地）：代码块按 4 类区分：
+- **3a API 契约不动**：字段名 / HTTP 方法 / 状态码 / 函数名 / URL / 已是英文的 enum
+- **3b 示例字面量必译**：JSON example 里 user-facing 字段（title/content/text/key/value）的中文值；表格 example 列中文示例值
+- **3c 注释 + markdown 语法示例必译**：`//` `#` 行内注释；```text``` 块内中文语法说明
+- **3d enum 必传中文值**：保留中文 + 加目标语言行内注释（如 sticker name `"灯泡"  // Lightbulb`）
+
+**回补旧批次方法**：扫出有残留的 mdx 直接 `rm`，再跑 `translate_mdx_batch.py`（不存在的目标会重译，等价 `--force` 但只动残留篇，不打扰已干净的）。残留扫描脚本可参考 `/tmp/scan_cjk_in_code.py`（区分日文假名混排 vs 纯汉字残留）。
+
 ## 与其他 skill 的协作
 
 - `/docs-glossary-sync` — 词库更新后再跑本 skill，让翻译用上最新术语

@@ -1,0 +1,243 @@
+---
+title: "Change Knowledge Base permissions"
+---
+
+This document explains how to change permissions for documents, files, or folders in the Knowledge Base.
+
+## Overview
+
+This document describes how to change permissions for documents, files, or folders in the Knowledge Base, including:
+
+- **Add permissions** — Grant users access to a file or folder.
+- **Delete permissions** — Revoke users' access to a file or folder.
+- **Modify permissions** — Change users' permission role on a file or folder.
+- **Set permission inheritance mode** — Control whether a file or folder inherits permissions from its parent node.
+- **Get permission inheritance mode** — Query the current permission inheritance mode of a file or folder.
+
+> **Core concept**: All permission operations are based on the file's `dentryUuid` (the unique file identifier). The operator must have permission management capability on the target file.
+
+## Permission overview
+
+The following describes the different user types and permission roles, along with the capabilities each role grants.
+
+### Permission roles (roleId)
+
+When changing permissions, you must specify a permission role:
+
+| roleId | Role name | Capabilities |
+| --- | --- | --- |
+| **OWNER** | Owner | Highest permission. Read, write, manage permissions, and assign permissions. |
+| **MANAGER** | Manager | Read, write, and manage permissions (cannot assign permissions). |
+| **EDITOR** | Editor | View, edit, download, and add. |
+| **DOWNLOADER** | Viewer with download | View and download. |
+| **READER** | View only | View only. Cannot download. |
+
+### Member types (members.type)
+
+| type value | Description | Meaning of members.id |
+| --- | --- | --- |
+| **USER** | User | Employee userId |
+| **ORG** | Organization | Organization ID |
+| **DEPT** | Department | Department ID |
+| **TAG** | Custom tag | Tag ID |
+| **CONVERSATION** | Chat | Conversation ID |
+
+## Implementation: Add permissions
+
+Call the API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` to grant specified members access to a file or folder.
+
+<Note>
+For API details, see the [Add permissions](/open/development/add-permissions-file) document. For how to call the API, see the documentation on calling Server APIs.
+</Note>
+
+### Required parameters
+
+- `dentryUuid` (Path): The unique identifier of the target file or folder. Obtain it through the [File Search](/open/development/search-for-files) API.
+- `unionId` (Query): The operator's unionId. Obtain it by calling the [Query user details](/open/development/query-user-details) API.
+- `roleId` (Body): The permission role to grant, for example **EDITOR**.
+- `members` (Body): The list of members to authorize. For each member, specify `type` (member type) and `id` (member ID).
+
+**HTTP example**:
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Implementation: Modify permissions
+
+Call the API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` to change the permission role of specified members to a new role.
+
+**Important restriction when downgrading permissions**: If a member's current permission is **inherited from a parent node**, and the inherited role is **higher than** the target role you want to set, the modification will not take effect.
+
+- **Example**: If a parent folder grants a user **EDITOR** permission, modifying the user to **READER** on a subfolder will fail because the inherited **EDITOR** permission still applies.
+- **Solution**: First call the [Set permission inheritance mode](/open/development/set-permission-inheritance-mode) API on the file or folder, set the inheritance mode to **BREAK** to stop inheriting parent permissions, and then modify the permissions.
+
+<Note>
+For API details, see the [Modify permissions](/open/development/modify-permissions-file) document. For how to call the API, see the documentation on calling Server APIs.
+</Note>
+
+### Required parameters
+
+- `dentryUuid` (Path): The unique identifier of the target file or folder. Obtain it through the [File Search](/open/development/search-for-files) API.
+- `unionId` (Query): The operator's unionId. Obtain it by calling the [Query user details](/open/development/query-user-details) API.
+- `roleId` (Body): The target permission role after modification (for example, changing from **EDITOR** to **READER**).
+- `members` (Body): The list of members whose permissions will be modified.
+
+**HTTP example**:
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Implementation: Delete permissions
+
+Call the API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove` to remove specified members' access to a file or folder.
+
+<Note>
+For API details, see the [Delete permissions](/open/development/delete-permissions-file) document. For how to call the API, see the documentation on calling Server APIs.
+</Note>
+
+### Required parameters
+
+- `dentryUuid` (Path): The unique identifier of the target file or folder. Obtain it through the [File Search](/open/development/search-for-files) API.
+- `unionId` (Query): The operator's unionId. Obtain it by calling the [Query user details](/open/development/query-user-details) API.
+- `roleId` (Body): The permission role to delete (must match the role the member currently holds).
+- `members` (Body): The list of members whose permissions will be deleted.
+
+**HTTP example**:
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Implementation: Set permission inheritance mode
+
+Call the API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` to control whether a file or folder inherits permissions from its parent node.
+
+### Two inheritance modes
+
+- **PASS_ON** (Pass on): The current node inherits all permissions from its parent nodes. For the same member, the highest role applies. (**Default mode**)
+- **BREAK** (Break): Permission inheritance is broken at the current node, and the node no longer inherits parent permissions. Use this mode when you need independent permissions on a node.
+
+### Notes
+
+- **BREAK** mode cannot be applied to the **OWNER** or **MANAGER** role.
+- For API details, see the [Set permission inheritance mode](/open/development/set-permission-inheritance-mode) document. For how to call the API, see the documentation on calling Server APIs.
+
+### Required parameters
+
+- `dentryUuid` (Path): The unique identifier of the target file or folder. Obtain it through the [File Search](/open/development/search-for-files) API.
+- `unionId` (Query): The operator's unionId. Obtain it by calling the [Query user details](/open/development/query-user-details) API.
+- `inheritance` (Body): The inheritance mode, either **PASS_ON** or **BREAK**.
+
+**HTTP example**:
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "inheritance": "BREAK"
+}
+```
+
+## Implementation: Get permission inheritance mode
+
+Call the API `GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` to query the current permission inheritance mode of a file or folder.
+
+### Notes
+
+- The API returns the `inheritance` field, with a value of **PASS_ON** (Pass on) or **BREAK** (Break).
+- For API details, see the [Get permission inheritance mode](/open/development/get-permission-inheritance-mode) document. For how to call the API, see the documentation on calling Server APIs.
+
+### Required parameters
+
+- `dentryUuid` (Path): The unique identifier of the target file or folder. Obtain it through the [File Search](/open/development/search-for-files) API.
+- `unionId` (Query): The operator's unionId. Obtain it by calling the [Query user details](/open/development/query-user-details) API.
+
+**HTTP example**:
+
+```http
+GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+```
+
+## Typical scenarios and steps
+
+### Scenario 1: Grant edit permission on a file to a user
+
+1. Call the [File Search](/open/development/search-for-files) API to obtain the `dentryUuid` of the target file.
+2. Call the [Query user details](/open/development/query-user-details) API to obtain the target user's `userId` and the operator's `unionId`.
+3. Call the [Add permissions](/open/development/add-permissions-file) API with `roleId = "EDITOR"`, `members[0].type = "USER"`, and `members[0].id = target user userId`.
+
+### Scenario 2: Downgrade a user's permission from Editor to Read-only
+
+1. Call the [File Search](/open/development/search-for-files) API to obtain the `dentryUuid` of the target file.
+2. Call the [Query user details](/open/development/query-user-details) API to obtain the target user's `userId`.
+3. Call the [Modify permissions](/open/development/modify-permissions-file) API with `roleId = "READER"`, and specify the target user in `members`.
+
+### Scenario 3: Remove all permissions of a user on a file
+
+1. Call the [File Search](/open/development/search-for-files) API to obtain the `dentryUuid` of the target file.
+2. Call the [Query user details](/open/development/query-user-details) API to obtain the target user's `userId`.
+3. Call the [Delete permissions](/open/development/delete-permissions-file) API with `roleId` set to the permission role the user currently holds, and specify the target user in `members`.
+
+### Scenario 4: Set independent permissions for a subfolder (without inheriting from the parent folder)
+
+1. Call the [File Search](/open/development/search-for-files) API to obtain the `dentryUuid` of the subfolder.
+2. Call the [Set permission inheritance mode](/open/development/set-permission-inheritance-mode) API with `inheritance = "BREAK"` to break permission inheritance.
+3. Call the [Add permissions](/open/development/add-permissions-file) API to configure the required permission members and roles for the folder independently.
+
+## Notes
+
+- The operator (`unionId`) must have permission management capability on the target file. Otherwise, an insufficient permissions error will be returned.
+- When deleting permissions, `roleId` must match the permission role the member currently holds. Otherwise, the operation will be invalid.
+- Inheritance of the **OWNER** and **MANAGER** roles cannot be broken using **BREAK** mode.
+- The `members` list supports up to 30 members per call. For more members, send the request in batches.
+- Currently, all permission APIs are supported only by internal apps. Third-party apps are not supported.

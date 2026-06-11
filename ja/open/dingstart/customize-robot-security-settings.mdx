@@ -1,0 +1,100 @@
+---
+title: "カスタムボットの安全設定"
+---
+
+カスタムボットの安全設定について知りたい場合は、本ドキュメントを参考にしてください。
+
+## 背景情報
+
+カスタムボットの利用過程における安全性を確保するため、カスタムボットの安全な運用を保障する 3 種類の保護措置を提供しています。これらの措置には、**カスタムキーワード**、**リクエスト署名**（署名による暗号化）、IP アドレス（セグメント）の設定が含まれます。これらの方法により、ボットを悪意のある攻撃から効果的に保護できます。
+
+## 前提条件
+
+[カスタムボットの作成](/ja/open/dingstart/custom-bot-creation-and-installation)フローを完了していること。
+
+## カスタムキーワード
+
+最大 10 個のキーワードを設定でき、チャットにそのうち 1 個以上のキーワードが含まれている場合のみ送信が成功します。
+
+例えば、**監視アラート**というカスタムキーワードを 1 つ追加した場合、このボットが送信するチャットには **監視アラート** というワードが含まれていなければ送信に成功しません。
+
+## リクエスト署名
+
+リクエスト署名は、DingTalk ボットと開発者が双方向で安全認証を行い、安全性を検証する方式です。具体的な署名計算手順は以下のとおりです。
+
+1. タイムスタンプ timestamp と秘密鍵 secret を署名文字列とし、HmacSHA256 アルゴリズムで署名を計算した後、Base64 エンコードを行い、最後に署名パラメータを urlEncode して最終的な署名を取得します（UTF-8 文字セットを使用する必要があります）。
+
+   | **パラメータ** | **説明** |
+   | --- | --- |
+   | timestamp | 開発者サービス内の現在のシステムタイムスタンプ（単位：ミリ秒）。リクエスト呼び出し時刻との誤差は 1 時間を超えてはなりません。 |
+   | secret | 秘密鍵。ボットの安全設定ページのリクエスト署名欄に表示される SEC で始まる文字列です。 |
+
+   - 署名計算サンプルコード（Java）
+
+     ```java lines
+     import javax.crypto.Mac;
+     import javax.crypto.spec.SecretKeySpec;
+     import org.apache.commons.codec.binary.Base64;
+     import java.net.URLEncoder;
+
+     public class Test{
+         public static void main(String[] args) throws Exception{
+             Long timestamp = System.currentTimeMillis();
+             String secret = "this is secret";
+
+             String stringToSign = timestamp + "\n" + secret;
+             Mac mac = Mac.getInstance("HmacSHA256");
+             mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+             String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+             System.out.println(sign);
+         }
+
+     }
+     ```
+   - 署名計算サンプルコード（Python）
+
+     ```python lines
+     #python 3.8
+     import time
+     import hmac
+     import hashlib
+     import base64
+     import urllib.parse
+
+     timestamp = str(round(time.time() * 1000))
+     secret = 'this is secret'
+     secret_enc = secret.encode('utf-8')
+     string_to_sign = '{}\n{}'.format(timestamp, secret)
+     string_to_sign_enc = string_to_sign.encode('utf-8')
+     hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
+     sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+     print(timestamp)
+     print(sign)
+     ```
+2. 開発サービス内の現在のシステム timestamp と暗号化された sign 署名値を取得し、timestamp と sign を URL に連結します。
+
+   ```text
+   https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+   ```
+
+   | パラメータ | 説明 |
+   | --- | --- |
+   | timestamp | 開発者が sign 署名値を計算する際に使用したタイムスタンプ。 |
+   | sign | 手順 1 で取得した署名値。 |
+
+   詳細は「カスタムボットによるグループチャット送信」を参照してください。
+
+## IP アドレス（セグメント）
+
+設定後は、指定された IP アドレス範囲からのリクエストのみが正常に処理されます。設定方式は IP アドレスと IP アドレスセグメントの 2 種類をサポートしており、IPv6 アドレスのホワイトリストには現在対応していません。フォーマットは以下のとおりです。
+
+| フォーマット | 説明 |
+| --- | --- |
+| 1.1.1.1 | 開発者の出口パブリック IP アドレス（LAN アドレスではない） |
+| 1.1.1.0/24 | CIDR で表されるネットワークセグメント |
+
+## 関連ドキュメント
+
+- カスタムボットによるグループチャット送信
+- [カスタムボットによるグループチャット送信 OpenAPI](/ja/open/development/custom-robots-send-group-messages)

@@ -1,0 +1,170 @@
+---
+title: "Upload, preview, and download files in Drive"
+---
+
+This document describes how to upload, preview, and download files in Drive through the Document and File APIs. It helps developers quickly understand and integrate Drive-related API capabilities.
+
+## Overview
+
+### What you will learn
+
+This tutorial walks you through the steps and examples to help organization developers quickly upload, download, and preview files in Drive.
+
+### Learning objectives
+
+Help developers quickly build their own app and integrate Drive file upload, preview, and download capabilities by calling DingTalk basic APIs.
+
+### Target audience
+
+All DingTalk developers.
+
+## Prerequisites
+
+- You have obtained developer permissions.
+- You have installed an IDE or other development tools.
+- You have created a folder named "Test Folder" in Drive for testing purposes only.
+- You have installed [Node.js](https://nodejs.org/en/download) and completed the [environment configuration](https://m.runoob.com/nodejs/nodejs-install-setup.html).
+- You have installed [Maven](https://maven.apache.org/) and completed the [environment configuration](https://maven.apache.org/install.html).
+- You have installed [JDK](https://www.oracle.com/java/technologies/downloads/?er=221886) and completed the [environment configuration](https://docs.oracle.com/en/java/javase/24/install/overview-jdk-installation.html).
+
+## Development process
+
+1. Use silent login to obtain the name and role of the currently signed-in user. For sign-in, refer to silent login for web apps (H5 micro apps).
+2. Upload files to Drive.
+
+   1. Call the [File Search](/open/development/search-for-files) API to search for the folder named "Test Folder" in Drive and return the `dentryUuid` of the folder.
+
+### Note
+
+      Before calling this API, make sure there is only one folder named "Test Folder" in Drive. Otherwise, an error may occur.
+   2. Call the [Get File Upload Information](/open/development/obtain-file-upload-informations) API with the `dentryUuid` to obtain the file upload information, including the `resourceUrls` and `headers` parameter values.
+   3. Upload the file using the OSS header sign request method. For details, refer to step 2 in the [Get File Upload Information](/open/development/obtain-file-upload-informations) API.
+   4. Call the [Submit File](/open/development/submittal-file) API to submit the file to Drive and obtain the returned `spaceId`, `parentId`, `path`, and `uuid` parameter values.
+3. Preview files in Drive.
+
+   1. Use the `uuid` obtained from the last submission during file upload to construct a URL and open the file for preview.
+4. Download files from Drive.
+
+   1. Call the [Get Space List](/open/development/queries-a-space-list) API to obtain Drive space information, including the `spaceId`.
+   2. Call the [Get File or Folder List](/open/development/get-a-list-of-files-or-folders) API with the `spaceId` to obtain the `fileId` and file name `name`.
+   3. Call the [Get File Download Information](/open/development/obtains-the-download-information-about-a-file) API with the `fileId` and `name` to obtain the file download information, including the `internalResourceUrls` and `headers` parameter values.
+   4. Use the information above to perform the download. For the download code, refer to step 2 of [Get File Download Information](/open/development/obtains-the-download-information-about-a-file).
+
+      Note
+
+### Note
+
+      The file path is the current project path plus the file name. Therefore, after the file is downloaded, it is automatically saved to the project directory. Check it accordingly.
+
+## Step 1: Create an app
+
+1. Sign in to the [Developer Console](https://open-dev.dingtalk.io/#/).
+2. Click **App Development** > **Internal App** > **DingTalk App** > **Create App**.
+
+3. Enter app information.
+
+   | **Item** | **Required** | **Description** |
+   | --- | --- | --- |
+   | App name | Yes | Enter the app name. The minimum length is 2 characters. |
+   | App description | Yes | Briefly describe the product or service provided by the app. The minimum length is 4 characters. |
+   | **App icon** | No | Upload the app icon. The icon must be in JPG/PNG format, at least 240 px \* 240 px, with a 1:1 aspect ratio, no rounded corners, and no larger than 2 MB. |
+4. Click **Save** to enter the app details page.
+
+   After creation, click **Basic Information** > **Credentials and Basic Information** to view the Client ID, Client Secret, and Agent ID of the app.
+
+## Step 2: Configure the web app
+
+1. On the app details page, click **App Capabilities** > **Add App Capability**.
+2. Select Add web app.
+3. Configure the web app (H5) information:
+
+   | **Item** | **Description** |
+   | --- | --- |
+   | App home page URL | Enter the app home page URL. This example uses `http://localhost:5173?corpid=$CORPID$` for subsequent testing. This example is for local testing only. image |
+   | PC home page URL |
+4. After configuration, click **Save**.
+
+## Step 3: Add API permissions
+
+For formal testing, add the following permissions:
+
+- File Search permission: `Storage.Dentry.Search`
+- Organization storage file upload information read permission: `Storage.UploadInfo.Read`
+- Organization storage file write permission: `Storage.File.Write`
+- Drive app space read permission: `Drive.Space.Read`
+- Organization storage file read permission: `Storage.File.Read`
+- Organization storage file download information read permission: `Storage.DownloadInfo.Read`
+
+## Step 4: Release the app
+
+1. After app configuration, you need to release the app. On the app details page, click **App Release** > **Version Management and Release**.
+
+2. Click **Create New Version** to enter the version details page.
+3. Configure version information:
+
+   | **Item** | **Description** |
+   | --- | --- |
+   | App version number | Enter the app version number. Use the default version. |
+   | Version description | Enter the version description. Customize as needed. |
+   | Content to release | App capabilities displayed on the workbench: - Select web app |
+
+   After configuration, click Save at the bottom.
+4. On the success dialog page, click Publish directly.
+
+   > *If you are not an Organization Admin, releasing the app requires approval from an Organization Admin. Releasing for visibility to yourself only does not require admin approval.*
+
+## Step 5: Build the service
+
+1. Make sure you have completed the steps above and obtained the parameter information required to run the demo below.
+2. Download the [file-demo.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250807/zkuhco/file-demo.zip) demo.
+3. Open the IDE and import the downloaded demo.
+
+   > The sample code is divided into backend (backend code directory) and frontend (frontend code directory).
+
+4. Open the backend code directory. In the resources directory, edit the `application.properties` file and enter the `clientId (app Client ID)` and `clientSecret (app Client Secret)` parameters.
+
+5. Click to start the backend service.
+
+   **Note**
+   - Before starting the backend service, make sure Maven and JDK are installed correctly and the relevant environment is configured. If this is your first time installing the IDE, modify the relevant configuration files in the IDE.
+   - Make sure ports 5173 and 8080 are not in use.
+
+6. Open the frontend code directory, edit `vite.config.ts`, and enter the correct `clientId (app Client ID)`.
+
+7. Click the frontend project file, right-click, and select **Terminal** to open it.
+
+8. In the terminal window, run the following commands:
+
+   1. `npm install`
+   2. `npm run dev`
+
+      > Note: On Windows, use `npm run dev:raw` to start.
+9. The frontend and backend services have now started successfully.
+
+## Step 6: Test the app
+
+1. Sign in to the DingTalk Client-side and select the organization where the app is located.
+
+2. Click **Workbench** > **Add**, search for the organization app you created above, and add it.
+
+3. Open the app and click **Select Local File** to upload a local file to Drive.
+
+   After selecting the file, click **Submit**. On the file information confirmation page, you can see the user ID, File Name, and File Size.
+
+4. After successful upload, the result is shown below:
+
+### Note
+
+   You can click the link to open the file directly, or click the **Open File** button to view the file.
+
+   After successful upload, you can view the uploaded file in the "Test Folder" of Drive.
+
+5. Click the file download button to download the file.
+
+### Important
+
+   If the error message "**auth level of org is not enough**" appears during file download, it indicates that the current organization authentication level is too low and needs to be upgraded before use. For details, refer to the error code description in the [Get File Download Information](/open/development/obtains-the-download-information-about-a-file) API.
+
+   After successful download, you can view the downloaded file in the project directory.
+
+6. You have now completed all operations for uploading, previewing, and downloading files in Drive.

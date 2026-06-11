@@ -1,0 +1,156 @@
+---
+title: "ナレッジベースのメンバー管理"
+---
+
+企業ナレッジベースの日常運用では、チームコラボレーションのニーズの変化に伴い、管理者がナレッジベースのアクセス権限を柔軟に調整する必要が頻繁にあります。たとえば、新入社員の入社時にナレッジベースへの参加、メンバーロールの調整、退職後のアクセス権限の元に戻すなどです。ナレッジベースメンバー管理 API を利用すると、これらの操作をプログラムで実行でき、ナレッジベース権限の自動化管理を実現できます。
+
+## 利用シーン
+
+以下のシーンから、適切なフローを選択して接続してください。
+
+- **シーン 1**：新入社員の入社、外部共同編集者の参加、または特定の部門 / グループがナレッジベースにアクセスする必要がある場合、管理者はこのフローでメンバーを一括追加し、ロールを指定できます。
+- **シーン 2**：メンバーが管理者に昇格する、または特定メンバーの操作権限を制限する必要がある場合、このフローでロールを変更できます。
+- **シーン 3**：メンバーの退職、プロジェクト終了、または特定の個人 / 部門のアクセス権限を元に戻す必要がある場合、このフローでナレッジベースから削除します。
+- **シーン 4**：特定のナレッジベース（企業の規程、製品マニュアルなど）を全社員に公開し、個別にメンバーを追加する手間を省きたい場合に利用します。
+- **シーン 5**：ナレッジベース権限の監査、権限問題の調査、または一括操作の前にメンバーの現在のロールを確認する場合に利用します。
+
+## 権限説明
+
+### 権限ロール（roleId）
+
+| roleId | ロール名 | 機能説明 |
+| --- | --- | --- |
+| **OWNER** | 所有者 | 最高権限。読み書き、メンバー管理、ナレッジベースの譲渡が可能 |
+| **MANAGER** | 管理者 | 読み書き、メンバー管理が可能（譲渡は不可） |
+| **EDITOR** | 編集者 | コンテンツの閲覧、編集、アップロードが可能 |
+| **DOWNLOADER** | 閲覧 / ダウンロード者 | コンテンツの閲覧およびダウンロードが可能 |
+| **READER** | 閲覧のみ者 | コンテンツの閲覧のみ可能。ダウンロード不可 |
+
+> **説明**：**OWNER** ロールは API で追加 / 削除できません。ナレッジベースの作成者がデフォルトで所有者となります。
+
+### メンバータイプ（members.type）
+
+| type 値 | 説明 | members.id の意味 |
+| --- | --- | --- |
+| **USER** | ユーザー | 社員の userId |
+| **DEPT** | 部門 | 部門の deptId。corpId も同時に渡す必要あり |
+| **CONVERSATION** | グループチャット | DingTalk グループの chatId |
+| **ORG** | 全社員 | 企業の corpId。**EDITOR**、**DOWNLOADER**、**READER** ロールのみサポート |
+
+---
+
+## シーン 1：新規メンバーにナレッジベースのアクセス権限を付与する
+
+1. [ナレッジベースリストの取得](/ja/open/development/get-knowledge-base-list) API を呼び出し、戻り値から対象ナレッジベースの `rootNodeId` フィールド（ナレッジベースのルートノードの `dentryUuid`）を取得します。
+2. メンバー ID を取得します。
+
+   - **ユーザー**を追加：[ユーザー詳細のクエリ](/ja/open/development/query-user-details) API を呼び出して `userId` を取得するか、[部門ユーザー userid リストの取得](/ja/open/development/query-the-list-of-department-userids) で一括取得します。
+   - **部門**を追加：[部門リストの取得](/ja/open/development/user-management-acquires-the-list-departments) API を呼び出して `deptId` を取得します。
+   - **グループチャット**を追加：グループの `chatId` を使用します。
+3. [権限の追加](/ja/open/development/add-permissions-file) API を呼び出し、業務ニーズに応じて適切なロール（共同編集なら **EDITOR**、閲覧のみなら **READER** など）を選択し、メンバーをナレッジベースに追加します。
+
+   > **お知らせ**：1 回のリクエストで最大 30 件のメンバーを渡せます。超過する場合は分割して呼び出してください。
+
+   ```http lines
+   POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={操作者のunionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "EDITOR",
+     "members": [
+       { "type": "USER", "id": "社員のuserId" },
+       { "type": "DEPT", "id": "部門のdeptId", "corpId": "企業のcorpId" }
+     ]
+   }
+   ```
+
+## シーン 2：メンバーのナレッジベース内ロールを変更する
+
+1. メンバーの現在のロールを確認したい場合は、先に [権限リストの取得](/ja/open/development/get-permission-list) API を呼び出して確認します。
+2. [権限の変更](/ja/open/development/modify-permissions-file) API を呼び出し、メンバーと目的のロールを指定してロール変更を完了します。
+
+   > **説明**：同一メンバーは同一ナレッジベース内で 1 つのロールしか持てません。変更後、旧ロールは自動的に置換されます。
+
+   ```http lines
+   PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={操作者のunionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "MANAGER",
+     "members": [
+       { "type": "USER", "id": "社員のuserId" }
+     ]
+   }
+   ```
+
+## シーン 3：メンバーのナレッジベースアクセス権限を削除する
+
+1. メンバーが現在保有しているロールを確認します。[権限リストの取得](/ja/open/development/get-permission-list) API を呼び出して、当該メンバーの現在のロール（`roleId`）を取得してください。削除時は実際に保有しているロールと一致させる必要があります。
+2. [権限の削除](/ja/open/development/delete-permissions-file) API を呼び出します。
+
+   > **注意**：`roleId` はメンバーが現在実際に保有しているロールと一致している必要があります。一致しない場合、操作は無効となります。**OWNER** ロールは削除できません。
+
+   ```http lines
+   POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId={操作者のunionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "EDITOR",
+     "members": [
+       { "type": "USER", "id": "社員のuserId" }
+     ]
+   }
+   ```
+
+## シーン 4：ナレッジベースを全社員アクセス可能に設定する
+
+[権限の追加](/ja/open/development/add-permissions-file) API を呼び出し、メンバータイプを **ORG** に設定し、対応する公開ロールを指定します。
+
+> **説明**：**ORG** タイプで権限付与後、全社員が指定されたロールで当該ナレッジベースにアクセスできます。**ORG** タイプのメンバーは、メンバーリストのクエリ結果には表示されません。全社員アクセスを元に戻す場合も同様に削除 API を呼び出し、`type` に **ORG** を渡してください。
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={操作者のunionId} HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    { "type": "ORG" }
+  ]
+}
+```
+
+## シーン 5：ナレッジベースの現在のメンバーリストをクエリする
+
+[権限リストの取得](/ja/open/development/get-permission-list) API を呼び出します。ロールによるフィルタリングをサポートし、結果はページングに対応しています。
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/query?unionId={操作者のunionId} HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+Content-Type: application/json
+
+{
+  "option": {
+    "maxResults": 30,
+    "filterRoleIds": ["MANAGER", "EDITOR"]
+  }
+}
+```
+
+戻り値の各レコードには、メンバーのタイプ、ID、名前、およびロール情報が含まれます。`nextToken` が空でない場合、さらにデータがあることを示します。`nextToken` を次回のリクエストに渡して取得を続けてください。
+
+## 注意事項
+
+- 操作者はナレッジベースの **OWNER** または **MANAGER** 権限を保有している必要があります。そうでない場合、API は権限不足エラーを返します。
+- **OWNER** ロールは API で追加 / 削除できません。ナレッジベースの作成者がデフォルトで所有者となります。
+- メンバーを削除する際、`roleId` はメンバーが現在実際に保有しているロールと一致している必要があります。一致しない場合、操作は無効となります。
+- 1 回のリクエストで `members` リストに最大 30 件のメンバーを渡せます。超過する場合は分割して呼び出してください。
