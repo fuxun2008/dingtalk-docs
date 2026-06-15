@@ -60,6 +60,19 @@ TITLE_OVERRIDES: dict[str, str] = {
     'ai-minutes': 'AI 听记总览',
 }
 
+# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段截断。
+# 长度 < 200 chars，覆盖各页 H2 章节范围。
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'ai-minutes': "钉钉 AI 听记产品总览：基于通义大模型的智能记录工具，覆盖会议、培训、访谈、客户拜访等场景，提供实时转写、智能纪要、章节拆分、发言人识别、多语言翻译等能力。",
+    'start-ai-minutes': "5 种发起 AI 听记的方式：一键发起录音、模板发起、上传本地音视频、视频会议中发起、从钉钉文档发起；支持手机/Pad/电脑（Windows 与 Mac）多端使用。",
+    'view-ai-minutes': "查看 AI 听记的 5 个入口：导航栏搜索、AI 听记助手、历史会议、会议详情页、会议结束页，方便快速找到已生成的听记文件。",
+    'use-ai-minutes': "AI 听记文件内的常用功能：智能纪要、章节片段、发言人区分、多语言翻译、关键词搜索、文字编辑、字号调整、文件导出、公开与分享。",
+    'voiceprint-recognition': "开启声纹识别后，AI 听记可基于声纹自动识别会上各发言人，让转写原文、待办事项、纪要中的发言人标注准确；含录入流程、应用场景与常见问题。",
+    'face-to-face-translation': "AI 听记面对面翻译：实时将双方对话翻译为各自语言，支持双语分屏、语音播报、自动语言识别，适配会议、咖啡厅、商务洽谈等场景；含目标语言设置与 FAQ。",
+    'billing-overview': "AI 听记计费方案概览：标准版每月赠 300 分钟转写时长，高级版/旗舰版会员、企业/个人购买、企业时长包等多档选择，配合不同人数与使用场景。",
+    'membership-gifts': "AI 听记会员礼包与兑换码使用方式：从「更多 > 我的权益 > 兑换会员」入口激活，包含礼品卡有效期、共享限制、与现有会员叠加的常见问题。",
+}
+
 # 8 篇 → 3 group（对齐其他产品都有 Getting Started 第一 group 的惯例）
 # 三元组: (slug, source_basename, expected_title)
 # source_basename 相对源根目录
@@ -182,7 +195,7 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     body = demote_body_h1(body)
 
     title = TITLE_OVERRIDES.get(expected_slug) or parsed_title or expected_title
-    description = extract_clean_description(body, fallback=title)
+    description = DESCRIPTION_OVERRIDES.get(expected_slug) or extract_clean_description(body, fallback=title)
 
     escaped = escape_mdx(body)
     mdx = (

@@ -60,6 +60,19 @@ TITLE_OVERRIDES: dict[str, str] = {
     'ai-minutes': 'AI Minutes Overview',
 }
 
+# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段截断。
+# 长度 < 200 chars（mintlify 副标题不截断的实用上限），覆盖各页 H2 章节范围。
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'ai-minutes': "DingTalk's AI-powered transcription tool covering meetings, training, interviews, and offline recording—with smart summaries, speaker recognition, chapter splitting, and 19-language translation.",
+    'start-ai-minutes': "Five ways to launch AI Minutes on desktop and mobile: quick recording, template-based start, local file upload, in-video-meeting capture, and direct start from DingTalk Docs.",
+    'view-ai-minutes': "Locate and open AI Minutes recordings via the AI Minutes Assistant, meeting history, the meeting end page, the navigation list, or direct search.",
+    'use-ai-minutes': "Tools available inside an AI Minutes recording: smart summaries and chapters, speaker tagging, multilingual translation, keyword search, text editing, font controls, export, and sharing.",
+    'voiceprint-recognition': "Enable voiceprint recognition so AI Minutes can identify who said what across transcripts, To Dos, and minutes summaries—covers enrollment flow, scenarios, and FAQs.",
+    'face-to-face-translation': "Real-time bilingual translation for offline conversations: split-screen subtitles, voice broadcast, automatic language detection, conversation records, and target-language setup.",
+    'billing-overview': "AI Minutes plans at a glance: free Standard tier (300 min/person/month), Premium and Ultimate memberships, organization vs individual purchase, and shared time packages.",
+    'membership-gifts': "How to redeem an AI Minutes membership gift card or activation code in-app, plus FAQs on validity, sharing rules, and combining with existing memberships.",
+}
+
 # 8 篇 → 3 group（对齐其他产品都有 Getting Started 第一 group 的惯例）
 # 三元组: (slug, source_basename, expected_title)
 # source_basename 相对源根目录 (含 'AI听记英文版/' 前缀)
@@ -187,7 +200,7 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     body = demote_body_h1(body)
 
     title = TITLE_OVERRIDES.get(expected_slug) or parsed_title or expected_title
-    description = extract_clean_description(body, fallback=title)
+    description = DESCRIPTION_OVERRIDES.get(expected_slug) or extract_clean_description(body, fallback=title)
 
     escaped = escape_mdx(body)
     mdx = (
