@@ -6,7 +6,8 @@
   → GROUPS 升三元组 (slug, source_basename, expected_title)，find_source 直接按 source_basename 拼路径
 - 每篇 line 1 是 `# <Title>` canonical 形态（parse_frontmatter_data 自动抽 + 剥）
   + line 3 是 `---` 分隔线（body 开头残留，需手工剥避免 mdx 误判第二个 frontmatter 块）
-- 6 篇，3 group 手工划（无 README.adoc.md 当导航树）
+- 24 篇 / 4 group（按钉钉文档 hub 真实层级：3 顶层 + Employee User Guide 14（1 overview + 13 子）+ Administrator Guide 5（1 overview + 4 子）+ FAQ 2（1 overview + 1 子））
+- 嵌套源路径支持：source_basename 字段可含 `/`（如 `Employee User Guide.adoc/How to Upload Files or Folders.adoc.md`），Path / 操作符天然处理
 
 用法:
     python3 scripts/import_drive_en.py                    # 默认源 ~/Downloads/2026-06-15_DingTalk_Drive
@@ -14,7 +15,7 @@
     python3 scripts/import_drive_en.py --dry-run          # 只打印总结
 
 产物:
-  - drive/<slug>.mdx × 6
+  - drive/<slug>.mdx × 24
   - scripts/output/drive_en/{nav-fragment.json, slug-map.json, report.md}
 """
 from __future__ import annotations
@@ -40,8 +41,10 @@ MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
 
-# 6 篇 → 3 group（手工划，无 README）
+# 24 篇 → 4 group（按钉钉文档 hub 真实层级：3 顶层 + 3 个 file+hasChildren=True 父级各带子文档）
 # 三元组: (slug, source_basename, expected_title)
+# source_basename 支持嵌套路径形式 '<Parent>.adoc/<Child>.adoc.md'，find_source 用 Path / 拼即可
+# overview（父级文档自身）作为 group 第一个 page，对应钉钉文档 hub 折叠菜单的目录文档行为
 GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
     ('Getting Started', [
         ('what-is-dingtalk-drive',
@@ -54,18 +57,74 @@ GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
          'What Features Are Available on the DingTalk Drive Home Page_.adoc.md',
          'What Features Are Available on the DingTalk Drive Home Page?'),
     ]),
-    ('User Guides', [
+    ('Employee User Guide', [
         ('employee-user-guide',
          'Employee User Guide.adoc.md',
          'Employee User Guide'),
+        ('how-to-upload-files-or-folders',
+         'Employee User Guide.adoc/How to Upload Files or Folders.adoc.md',
+         'How to Upload Files or Folders'),
+        ('how-to-save-chat-files-to-dingtalk-drive',
+         'Employee User Guide.adoc/How to Save Chat Files to DingTalk Drive.adoc.md',
+         'How to Save Chat Files to DingTalk Drive'),
+        ('how-to-create-files-or-folders',
+         'Employee User Guide.adoc/How to Create Files or Folders.adoc.md',
+         'How to Create Files or Folders'),
+        ('how-to-set-or-change-member-permissions',
+         'Employee User Guide.adoc/How to Set or Change Member Permissions.adoc.md',
+         'How to Set or Change Member Permissions'),
+        ('how-to-edit-files-in-dingtalk-drive',
+         'Employee User Guide.adoc/How to Edit Files in DingTalk Drive.adoc.md',
+         'How to Edit Files in DingTalk Drive'),
+        ('how-to-share-files-with-external-people',
+         'Employee User Guide.adoc/How to Share Files with External People.adoc.md',
+         'How to Share Files with External People'),
+        ('how-to-cancel-or-leave-a-shared-folder',
+         'Employee User Guide.adoc/How to Cancel or Leave a Shared Folder.adoc.md',
+         'How to Cancel or Leave a Shared Folder'),
+        ('how-to-quickly-search-for-files-or-folders',
+         'Employee User Guide.adoc/How to Quickly Search for Files or Folders.adoc.md',
+         'How to Quickly Search for Files or Folders'),
+        ('how-to-quickly-find-files-or-folders-in-chats',
+         'Employee User Guide.adoc/How to Quickly Find Files or Folders in Chats.adoc.md',
+         'How to Quickly Find Files or Folders in Chats'),
+        ('how-to-batch-download-move-or-delete-files',
+         'Employee User Guide.adoc/How to Batch Download, Move, or Delete DingTalk Drive Files.adoc.md',
+         'How to Batch Download, Move, or Delete DingTalk Drive Files'),
+        ('how-to-delete-and-recover-files',
+         'Employee User Guide.adoc/How to Delete Files and Recover Deleted Files.adoc.md',
+         'How to Delete Files and Recover Deleted Files'),
+        ('how-to-use-file-picker',
+         'Employee User Guide.adoc/How to Use the DingTalk Drive File Picker to Send Files Efficiently.adoc.md',
+         'How to Use the DingTalk Drive File Picker to Send Files Efficiently'),
+        ('how-to-quickly-find-target-folder',
+         'Employee User Guide.adoc/How to Quickly Find the Target Folder.adoc.md',
+         'How to Quickly Find the Target Folder'),
+    ]),
+    ('Administrator Guide', [
         ('administrator-guide',
          'Administrator Guide.adoc.md',
          'Administrator Guide'),
+        ('how-to-view-enterprise-storage-space',
+         'Administrator Guide.adoc/How to View Enterprise Storage Space.adoc.md',
+         'How to View Enterprise Storage Space'),
+        ('how-to-manage-enterprise-storage-capacity',
+         'Administrator Guide.adoc/How to Manage Enterprise Storage Capacity.adoc.md',
+         'How to Manage Enterprise Storage Capacity'),
+        ('how-to-configure-capacity-management-by-role',
+         'Administrator Guide.adoc/How to Configure Capacity Management by Role in DingTalk Drive.adoc.md',
+         'How to Configure Capacity Management by Role in DingTalk Drive'),
+        ('how-to-allocate-dedicated-capacity-to-an-app',
+         'Administrator Guide.adoc/How to Allocate Dedicated Capacity to an App.adoc.md',
+         'How to Allocate Dedicated Capacity to an App'),
     ]),
     ('FAQ', [
         ('faq',
          'FAQ.adoc.md',
          'FAQ'),
+        ('dingtalk-drive-qa',
+         'FAQ.adoc/DingTalk Drive Q&A.adoc.md',
+         'DingTalk Drive Q&A'),
     ]),
 ]
 
