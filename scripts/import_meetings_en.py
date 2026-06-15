@@ -47,6 +47,10 @@ TRAILING_ORIGINAL_TITLE_RE = re.compile(
 )
 # H1 编号前缀：钉钉源 H1 形如 "# 1.1 How to..." / "# 2.12 ..."，剥后让 title 干净
 NUMBERED_PREFIX_RE = re.compile(r'^\d+(?:\.\d+)?\s+')
+# body heading 编号前缀：钉钉源 `## 2.9 How to ...` / `### 4.1 ...`，剥编号让 body 与 frontmatter title 一致
+BODY_HEADING_NUMBERED_RE = re.compile(r'^(#+)\s+\d+(?:\.\d+)?\s+(.+)$', re.MULTILINE)
+# 紧贴粗体不闭合：`**X：**Y` mintlify 不识别紧贴 `：` 的闭合 → 改 `**X**：Y`（冒号移外）
+PUNCT_CLOSE_BOLD_RE = re.compile(r'\*\*([^*\n]+?)([:：])\*\*(?=\S)')
 MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
@@ -297,6 +301,19 @@ def demote_body_h1(body: str) -> str:
     return '\n'.join(lines)
 
 
+def strip_numbered_prefix_in_headings(body: str) -> str:
+    """剥 body 内所有 heading 的编号前缀 `## 2.9 How to...` → `## How to...`。
+    与 frontmatter title 的 strip_numbered_prefix 一致；EN 12 处命中。"""
+    return BODY_HEADING_NUMBERED_RE.sub(r'\1 \2', body)
+
+
+def fix_punct_close_bold(body: str) -> str:
+    """`**X：**Y` 紧贴粗体不闭合 → `**X**：Y`（冒号移外）。
+    钉钉源里 `**免话费：**不需要付费` 这种 `：**` 闭合后紧贴正文文字，mintlify 不识别为 bold 闭合，
+    渲染成字面 `**X：**`。把冒号挪到 `**` 外面让闭合明确，渲染正常加粗。"""
+    return PUNCT_CLOSE_BOLD_RE.sub(r'**\1**\2', body)
+
+
 def extract_clean_description(body: str, fallback: str) -> str:
     text = MD_INLINE_IMAGE_RE.sub(' ', body)
     for raw_line in text.splitlines():
@@ -329,6 +346,8 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     parsed_title, _orig_desc, body = parse_frontmatter_data(cleaned, source.stem)
     body = strip_dup_leading_h1(body, parsed_title)
     body = demote_body_h1(body)
+    body = strip_numbered_prefix_in_headings(body)
+    body = fix_punct_close_bold(body)
 
     cleaned_title = strip_numbered_prefix(parsed_title)
     title = TITLE_OVERRIDES.get(expected_slug) or cleaned_title or expected_title

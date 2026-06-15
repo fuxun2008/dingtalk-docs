@@ -51,6 +51,10 @@ SOCIAL_PROMO_HEART_RE = re.compile(
 )
 # H1 编号前缀：`1.1 ` / `2.12 ` / `6.2 ` 等
 NUMBERED_PREFIX_RE = re.compile(r'^\d+(?:\.\d+)?\s+')
+# body heading 编号前缀：钉钉源 `### 1.1 为什么...` / `## 2.5 ...`，剥编号让 body 与 frontmatter title 一致
+BODY_HEADING_NUMBERED_RE = re.compile(r'^(#+)\s+\d+(?:\.\d+)?\s+(.+)$', re.MULTILINE)
+# 紧贴粗体不闭合：`**X：**Y` mintlify 不识别紧贴 `：` 的闭合 → 改 `**X**：Y`（冒号移外）
+PUNCT_CLOSE_BOLD_RE = re.compile(r'\*\*([^*\n]+?)([:：])\*\*(?=\S)')
 # H1 emoji 装饰前缀：钉钉编辑器 ✅⭐🌟🎯💻💼📱📅📌🔔📢 等装饰 emoji，剥后让 title 干净
 EMOJI_PREFIX_RE = re.compile(r'^[✅⭐🌟🎯💻💼📱📅📌🔔📢]+\s*')
 MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
@@ -60,6 +64,30 @@ MD_LIST_PREFIX_RE = re.compile(r'^\s*(?:\d+[.)]|[-*+])\s+')
 
 # slug title 强制覆盖（避免与所在 group 同名）
 TITLE_OVERRIDES: dict[str, str] = {}
+
+# alidocs 跨页引用 label 文字 → 本仓内链 slug 映射
+# 仅本仓有对应 slug 的 alidocs URL 转内链；其他外链（如「立即咨询」表单、跨产品引用「共享文档」）保留外链
+# label 形态包括：带编号 "1.1 ..."/带书名号 "《2.5 ...》"/带 ++装饰 "++X++"/裸 label
+# clean_label 去掉 +/《》/* 装饰后做 dict 查询，命中 → 改 /zh/meetings/<slug>
+ALIDOCS_LABEL_TO_SLUG: dict[str, str] = {
+    '如何发起/预约视频会议？': 'start-or-schedule-meeting',
+    '如何发起/预约会议？': 'start-or-schedule-meeting',   # 带 ++ 装饰的简称变体
+    '1.1 如何发起/预约视频会议？': 'start-or-schedule-meeting',
+    '如何使用等候室功能？': 'waiting-room',
+    '如何处理摄像头画面异常的问题': 'camera-abnormal',
+    '4.9 如何处理摄像头画面异常的问题': 'camera-abnormal',
+    '2.20 如何使用字幕？': 'captions',                     # 源 typo 编号（实际是 2.19）
+    '2.4 如何开启共享屏幕？': 'share-screen',
+    '2.5 如何录制视频会议？': 'record-meeting',
+    '2.8 如何切换视图？': 'switch-views',
+    '4.4 如何处理视频会议中的声音异常问题？': 'audio-abnormal',
+    # `2.12 如何保障会议安全？` 本仓无单一对应（hub 母文档 dead-end，下含 waiting-room + prevent-unrelated）→ 保留外链让 audit-mdx 判
+    # `了解详情` / `立即咨询` / `**如何使用共享文档？**` / `钉钉相关域名和IP列表` 均仓库外，保留外链
+}
+
+ALIDOCS_LINK_LABEL_RE = re.compile(
+    r'\[([^\]]+?)\]\(https://alidocs\.dingtalk\.com[^)]+\)'
+)
 
 # frontmatter description 手写覆盖（< 200 chars，覆盖各页 H2 章节范围）
 DESCRIPTION_OVERRIDES: dict[str, str] = {
@@ -306,6 +334,33 @@ def demote_body_h1(body: str) -> str:
     return '\n'.join(lines)
 
 
+def strip_numbered_prefix_in_headings(body: str) -> str:
+    """剥 body 内所有 heading 的编号前缀 `### 1.1 为什么...` → `### 为什么...`。
+    与 frontmatter title 的 clean_title 一致；ZH 7 处命中（video-abnormal 5+ 其他）。"""
+    return BODY_HEADING_NUMBERED_RE.sub(r'\1 \2', body)
+
+
+def fix_punct_close_bold(body: str) -> str:
+    """`**X：**Y` 紧贴粗体不闭合 → `**X**：Y`（冒号移外）。
+    钉钉源里 `**免话费：**不需要付费` 这种 `：**` 闭合后紧贴正文文字，mintlify 不识别为 bold 闭合，
+    渲染成字面 `**X：**`。把冒号挪到 `**` 外面让闭合明确，渲染正常加粗。voice-calls 5+ 处 + 其他多处。"""
+    return PUNCT_CLOSE_BOLD_RE.sub(r'**\1**\2', body)
+
+
+def rewrite_alidocs_internal_links(body: str) -> str:
+    """label 文字命中 ALIDOCS_LABEL_TO_SLUG → 改本仓内链 /zh/meetings/<slug>；不命中保留外链。
+    label 形态多样（裸 label / 带编号 / 带 ++装饰 / 带书名号 / 带 **粗体**），用 strip 剥装饰后查 dict。
+    10 处 ZH alidocs 内链命中（invite-others 2 / beauty-effects 1 / virtual-background 1 / video-abnormal 1 / important-meeting 4 / share-screen 1 / ai-meeting-notes 1）。"""
+    def repl(m: re.Match) -> str:
+        raw_label = m.group(1)
+        clean = raw_label.strip().lstrip('+').rstrip('+').strip('《》').strip('*').strip()
+        slug = ALIDOCS_LABEL_TO_SLUG.get(clean)
+        if slug:
+            return f'[{raw_label}](/zh/meetings/{slug})'
+        return m.group(0)
+    return ALIDOCS_LINK_LABEL_RE.sub(repl, body)
+
+
 def extract_clean_description(body: str, fallback: str) -> str:
     text = MD_INLINE_IMAGE_RE.sub(' ', body)
     for raw_line in text.splitlines():
@@ -338,7 +393,10 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     body = strip_dup_leading_h1(body, parsed_title)
     body = strip_admonition_markers(body)
     body = strip_trailing_back_to(body)
+    body = rewrite_alidocs_internal_links(body)
     body = demote_body_h1(body)
+    body = strip_numbered_prefix_in_headings(body)
+    body = fix_punct_close_bold(body)
 
     cleaned_title = clean_title(parsed_title)
     title = TITLE_OVERRIDES.get(expected_slug) or cleaned_title or expected_title
