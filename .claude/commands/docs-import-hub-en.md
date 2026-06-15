@@ -46,6 +46,8 @@ python3 crawl_hub.py \
 
 **已知坑 7 — file+hasChildren=True 嵌套层级**：钉钉文档 dentry 模型是 `dentryType` + `hasChildren` 双字段，**不是简单 file/folder 二分**。`dentryType=file` 的节点也可能 `hasChildren=True`（既是文档自身，也是子文档父级）。crawl_hub.py 2026-06-15 已修 fetch_children_api 用 hasChildren 决定递归。**下次接新产品需预期可能存在嵌套层级**：抓到的 manifest 包含 N 个顶层 + 各 parent 自身 + 各 parent 子文档；下载会按 `<parent>.adoc/<child>.adoc.md` 嵌套到源目录。
 
+**已知坑 8 — hub 子集型产品的 "Back to 母文档" 段**（2026-06-15 Drive 首次踩）：钉钉文档若 hub 是某 wiki 的子集（有"母文档"语义），所有 leaf 文档导出 markdown 时会在 body 末尾自动加 `---\n\nBack to [<hub-title>](<alidocs-url>)` 段。**mail/im 没有**（它们的 hub 无母文档语义）。**判别**：抓完 download 后 `grep -c '^Back to' <slug>/*.mdx` 看是否所有篇都有这种段。**有则在 import 脚本加** `TRAILING_BACK_TO_RE = re.compile(r'\n+---\s*\n+Back to \[[^\]]+\]\(https://alidocs\.dingtalk\.com[^)]+\)\s*\Z')` 在 process_one 里 sub 掉。
+
 ### 3. download.py 拉 markdown
 
 ```bash
