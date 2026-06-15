@@ -37,9 +37,33 @@ OUTPUT_DIR = REPO_ROOT / 'scripts' / 'output' / 'drive_en'
 INVISIBLE_CHARS_RE = re.compile(r'[\xa0​‌‍⁠﻿]')
 # body 开头残留的 "---" 分隔线（parse_frontmatter_data 剥 H1 后暴露出来）
 LEADING_HR_RE = re.compile(r'\A---\s*\n+')
+# body 末尾钉钉文档自动加的 "回到母文档" 段：含前置 "---" 横线 + "Back to [DingTalk Drive](<alidocs>)"
+# 23/24 篇都有此段（administrator-guide 唯一例外，其全文即 4 个跳转链接）
+TRAILING_BACK_TO_RE = re.compile(
+    r'\n+---\s*\n+Back to \[DingTalk Drive\]\(https://alidocs\.dingtalk\.com[^)]+\)\s*\Z'
+)
 MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
+
+# 3 个 overview 文档 title 强制覆盖（避免与所在 group 同名）
+# 不动 slug（避免外链断），只改 frontmatter title
+TITLE_OVERRIDES: dict[str, str] = {
+    'employee-user-guide': 'Employee User Guide Overview',
+    'administrator-guide': 'Administrator Guide Overview',
+    'faq': 'FAQ Overview',
+}
+
+# administrator-guide.mdx 4 个 alidocs 外链 → 改成 Drive 内链
+# 按 link text 精确匹配 GROUPS expected_title，映射到对应 slug
+# 其他 23 篇无此种内嵌跳转链接（grep 全 drive/ 验证）
+ADMIN_LINK_TEXT_TO_SLUG: dict[str, str] = {
+    'How to View Enterprise Storage Space': 'how-to-view-enterprise-storage-space',
+    'How to Manage Enterprise Storage Capacity': 'how-to-manage-enterprise-storage-capacity',
+    'How to Configure Capacity Management by Role in DingTalk Drive': 'how-to-configure-capacity-management-by-role',
+    'How to Allocate Dedicated Capacity to an App': 'how-to-allocate-dedicated-capacity-to-an-app',
+}
+ALIDOCS_MD_LINK_RE = re.compile(r'\[([^\]]+)\]\(https://alidocs\.dingtalk\.com[^)]+\)')
 
 # 24 篇 → 4 group（按钉钉文档 hub 真实层级：3 顶层 + 3 个 file+hasChildren=True 父级各带子文档）
 # 三元组: (slug, source_basename, expected_title)
@@ -139,6 +163,28 @@ def strip_leading_hr(text: str) -> str:
     return LEADING_HR_RE.sub('', text, count=1)
 
 
+def strip_trailing_back_to(text: str) -> str:
+    """剥 body 末尾钉钉文档自动加的 'Back to [DingTalk Drive](<alidocs>)' 段（含前置 --- 横线）。"""
+    return TRAILING_BACK_TO_RE.sub('', text)
+
+
+def rewrite_admin_alidocs_links(text: str) -> tuple[str, int]:
+    """administrator-guide.mdx 专项：alidocs 外链按 link text → slug 改成 /drive/<slug> 内链。
+
+    返回 (改写后 text, 改写计数)。link text 未在 ADMIN_LINK_TEXT_TO_SLUG 表的不动。
+    """
+    count = 0
+    def repl(m: re.Match) -> str:
+        nonlocal count
+        link_text = m.group(1)
+        slug = ADMIN_LINK_TEXT_TO_SLUG.get(link_text)
+        if slug:
+            count += 1
+            return f'[{link_text}](/drive/{slug})'
+        return m.group(0)
+    return ALIDOCS_MD_LINK_RE.sub(repl, text), count
+
+
 def extract_clean_description(body: str, fallback: str) -> str:
     text = MD_INLINE_IMAGE_RE.sub(' ', body)
     for raw_line in text.splitlines():
@@ -165,7 +211,15 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     cleaned = clean_invisible(raw)
     parsed_title, _orig_desc, body = parse_frontmatter_data(cleaned, source.stem)
     body = strip_leading_hr(body)
-    title = parsed_title or expected_title
+    body = strip_trailing_back_to(body)
+
+    # administrator-guide.mdx 4 个 alidocs 外链改 /drive/ 内链
+    admin_links_rewritten = 0
+    if expected_slug == 'administrator-guide':
+        body, admin_links_rewritten = rewrite_admin_alidocs_links(body)
+
+    # title override 优先于 H1 解析值（3 个 overview 文档避免与 group 同名）
+    title = TITLE_OVERRIDES.get(expected_slug) or parsed_title or expected_title
     description = extract_clean_description(body, fallback=title)
 
     escaped = escape_mdx(body)
@@ -183,10 +237,11 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
         'slug': expected_slug,
         'expected_title': expected_title,
         'actual_title': title,
-        'title_mismatch': title != expected_title,
+        'title_mismatch': title != expected_title and expected_slug not in TITLE_OVERRIDES,
         'description': description,
         'mdx': mdx,
         'source': str(source),
+        'admin_links_rewritten': admin_links_rewritten,
         'nbsp_before': nbsp_count,
         'nbsp_after': residual_nbsp,
         'mdx_size': len(mdx),
