@@ -24,7 +24,7 @@ mint login
 git push origin main
 ```
 
-文档专用 skill（13 个，按流水线顺序）：
+文档专用 skill（14 个，按流水线顺序）：
 
 | # | Skill | 用途 |
 |---|---|---|
@@ -41,6 +41,7 @@ git push origin main
 | 11 | `/docs-preview` | 阶段 9 验收：后台启 mint dev + 死链检查 + playwright 三语首页截图 |
 | 12 | `/docs-prune-orphan-images` | 删除不再被任何 mdx 引用的本地图片 |
 | 13 | `/docs-reorder-by-official-menu` | 按官方左侧菜单重排 `docs.json` 顺序 |
+| 14 | `/docs-import-hub-en <product-slug> <hub-url>` | **EN-direct 主入口**（与 #1 并列）：钉钉文档英文 hub 一键导入帮助中心子产品（hub crawl → download → 仿模板 import → 注册 en tab，跳过翻译）。基准 mail 22 / im 18 / drive 6 三次实操 |
 
 通用 skill（8 个，项目级，与 docs-* 同目录，**无需依赖个人 `~/.claude/commands/`**）：
 
