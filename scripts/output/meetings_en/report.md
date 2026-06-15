@@ -22,7 +22,7 @@
 | During a Meeting | `end-meeting` | How to End a Video Meeting? | 149 | 64 | 996 |
 | During a Meeting | `switch-devices` | How to Switch Between Devices? | 149 | 50 | 704 |
 | During a Meeting | `switch-views` | How to Switch Views? | 150 | 61 | 963 |
-| During a Meeting | `beauty-effects` | How to Turn On Beauty Effects? | 145 | 163 | 1875 |
+| During a Meeting | `beauty-effects` | How to Turn On Beauty Effects? | 145 | 163 | 1871 |
 | During a Meeting | `virtual-background` | How to Set a Virtual Background? | 158 | 129 | 1717 |
 | During a Meeting | `clearer-audio` | How to Make Meeting Audio Clearer? | 155 | 98 | 1079 |
 | During a Meeting | `waiting-room` | How to Use the Waiting Room? | 159 | 454 | 4417 |
@@ -30,23 +30,23 @@
 | During a Meeting | `focus-participant` | How to Set or Cancel Focus on One Participant? | 155 | 177 | 2444 |
 | During a Meeting | `host-cohost` | How to Set a Meeting Host or Co-host | 159 | 160 | 1808 |
 | During a Meeting | `rename-in-meeting` | How to Rename Yourself During a Meeting? | 136 | 290 | 3184 |
-| During a Meeting | `breakout-discussions` | How to Use Breakout Discussions? | 156 | 556 | 5662 |
+| During a Meeting | `breakout-discussions` | How to Use Breakout Discussions? | 156 | 556 | 5657 |
 | During a Meeting | `group-photo` | How to Take a Group Photo? | 148 | 57 | 789 |
-| During a Meeting | `chat-emoji` | In-meeting Chat and Emoji Interaction | 146 | 120 | 1510 |
-| During a Meeting | `entitlements` | How to View Current Meeting Entitlements | 144 | 112 | 1367 |
+| During a Meeting | `chat-emoji` | In-meeting Chat and Emoji Interaction | 146 | 120 | 1505 |
+| During a Meeting | `entitlements` | How to View Current Meeting Entitlements | 144 | 112 | 1362 |
 | During a Meeting | `captions` | How to Use Captions? | 149 | 341 | 4038 |
 | After the Meeting | `track-attendance` | How to Track Attendance? | 153 | 92 | 947 |
-| After the Meeting | `ai-meeting-notes` | How to View AI Meeting Notes? | 145 | 332 | 2827 |
-| Troubleshooting | `cannot-receive-meeting` | What to Do If You Cannot Receive a Video Meeting? | 155 | 154 | 1318 |
+| After the Meeting | `ai-meeting-notes` | How to View AI Meeting Notes? | 145 | 332 | 2823 |
+| Troubleshooting | `cannot-receive-meeting` | What to Do If You Cannot Receive a Video Meeting? | 155 | 154 | 1314 |
 | Troubleshooting | `screen-sharing-no-audio` | What If Screen Sharing Has No Computer Audio? | 155 | 121 | 1206 |
-| Troubleshooting | `video-abnormal` | What to Do If Video Is Abnormal During a Meeting? | 156 | 340 | 2481 |
-| Troubleshooting | `audio-abnormal` | What to Do If Audio Is Abnormal During a Video Meeting? | 155 | 898 | 9094 |
-| Troubleshooting | `participants-and-fees` | Video Meeting Participants and Fees | 135 | 209 | 1572 |
-| Troubleshooting | `higher-definition` | Is Higher Definition Supported If the Video Is Not Clear? | 142 | 146 | 1433 |
+| Troubleshooting | `video-abnormal` | What to Do If Video Is Abnormal During a Meeting? | 156 | 340 | 2477 |
+| Troubleshooting | `audio-abnormal` | What to Do If Audio Is Abnormal During a Video Meeting? | 155 | 898 | 9090 |
+| Troubleshooting | `participants-and-fees` | Video Meeting Participants and Fees | 135 | 209 | 1568 |
+| Troubleshooting | `higher-definition` | Is Higher Definition Supported If the Video Is Not Clear? | 142 | 146 | 1429 |
 | Troubleshooting | `video-lag` | Video Meeting Lag | 147 | 292 | 2409 |
 | Troubleshooting | `network-check` | How to Check Whether the Network Is Smooth | 138 | 209 | 2413 |
-| Troubleshooting | `camera-abnormal` | What to Do If the Camera Image Is Abnormal | 143 | 646 | 6312 |
-| Troubleshooting | `important-meeting` | How to Support an Important Meeting | 146 | 636 | 5081 |
+| Troubleshooting | `camera-abnormal` | What to Do If the Camera Image Is Abnormal | 143 | 646 | 6308 |
+| Troubleshooting | `important-meeting` | How to Support an Important Meeting | 146 | 636 | 5076 |
 | Troubleshooting | `network-metrics` | How to View and Understand Network Metrics | 154 | 196 | 2147 |
 | Purchase Guide | `purchase-guide` | How to Purchase | 187 | 226 | 2226 |
 | Purchase Guide | `usage-guide` | Usage Guide | 159 | 109 | 1525 |
