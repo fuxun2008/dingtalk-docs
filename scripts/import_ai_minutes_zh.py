@@ -36,21 +36,36 @@ OUTPUT_DIR = REPO_ROOT / 'scripts' / 'output' / 'ai_minutes_zh'
 INVISIBLE_CHARS_RE = re.compile(r'[\xa0​‌‍⁠﻿]')
 LEADING_H1_RE = re.compile(r'\A# (.+?)\n')
 ADMONITION_MARKER_RE = re.compile(r'^:::\s*$', re.MULTILINE)
+# body 末尾钉钉文档自动加的 "返回「[**<Group>**](alidocs)」目录" 段（含前置 --- 横线）
+# 当前仅 billing-overview 命中（AI 听记中文版 hub 子集型「购买指南」父级）；保留正则避免下游回归
+TRAILING_BACK_TO_RE = re.compile(
+    r'\n+---\s*\n+返回[「『]?\[\*\*[^\]]+\*\*\]\(https://alidocs\.dingtalk\.com[^)]+\)[」』]?\s*目录\s*\Z'
+)
+# 钉钉文档外链 → 仓库内链映射（按 dentry UUID 匹配）
+# 当前 1 处：use-ai-minutes 引用「声纹识别说明文档」外链 → 改 /zh/ai-minutes/voiceprint-recognition
+ALIDOCS_INTERNAL_LINK_MAP: dict[str, str] = {
+    'YndMj49yWjlAYoxjtXyrjDNnJ3pmz5aA': '/zh/ai-minutes/voiceprint-recognition',
+}
+ALIDOCS_LINK_RE = re.compile(
+    r'\(https://alidocs\.dingtalk\.com/i/(?:nodes|p/[^/]+/docs)/([A-Za-z0-9_]+)(?:\?[^)]*)?\)'
+)
 MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
+# list 行前缀（有序 `1.` / `1)` / 无序 `-` `*` `+`）；让 description 跳过 list-heavy 文档的列表首项
+MD_LIST_PREFIX_RE = re.compile(r'^\s*(?:\d+[.)]|[-*+])\s+')
 
 # overview slug title 强制覆盖（避免与所在 group 同名）
 TITLE_OVERRIDES: dict[str, str] = {
     'ai-minutes': 'AI 听记总览',
 }
 
-# 8 篇 → 2 group（slug 与 EN 对称，title/group 中文）
+# 8 篇 → 3 group（对齐其他产品都有 Getting Started 第一 group 的惯例）
 # 三元组: (slug, source_basename, expected_title)
 # source_basename 相对源根目录
-# 注意：expected_title 用钉钉文档源文件 H1 的字面值（无空格），避免误报 title_mismatch
+# expected_title 用钉钉文档源文件 H1 字面值（无空格），避免误报 title_mismatch
 GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
-    ('AI 听记', [
+    ('开始使用', [
         ('ai-minutes',
          'AI听记中文版.adoc.md',
          'AI听记中文版'),
@@ -60,6 +75,8 @@ GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ('view-ai-minutes',
          'AI听记中文版.adoc/查看AI听记.adoc.md',
          '查看AI听记'),
+    ]),
+    ('功能介绍', [
         ('use-ai-minutes',
          'AI听记中文版.adoc/使用AI听记.adoc.md',
          '使用AI听记'),
@@ -98,11 +115,46 @@ def strip_admonition_markers(body: str) -> str:
     return ADMONITION_MARKER_RE.sub('', body)
 
 
+def strip_trailing_back_to(body: str) -> str:
+    """剥 body 末尾钉钉文档自动加的 '返回「[**<Group>**](alidocs)」目录' 段（含前置 --- 横线）。"""
+    return TRAILING_BACK_TO_RE.sub('', body)
+
+
+def rewrite_alidocs_links(body: str) -> str:
+    """钉钉文档外链按 UUID → 仓库内链替换（仅 ALIDOCS_INTERNAL_LINK_MAP 命中的 UUID）。"""
+    def repl(m: re.Match) -> str:
+        uuid = m.group(1)
+        if uuid in ALIDOCS_INTERNAL_LINK_MAP:
+            return f'({ALIDOCS_INTERNAL_LINK_MAP[uuid]})'
+        return m.group(0)
+    return ALIDOCS_LINK_RE.sub(repl, body)
+
+
+def demote_body_h1(body: str) -> str:
+    """正文 H1 → H2（mintlify 把 frontmatter.title 视为唯一 H1）。跳过代码块。"""
+    lines = body.split('\n')
+    in_code = False
+    for i, l in enumerate(lines):
+        if l.startswith('```'):
+            in_code = not in_code
+            continue
+        if in_code:
+            continue
+        if re.match(r'^# .+', l):
+            lines[i] = '#' + l
+    return '\n'.join(lines)
+
+
 def extract_clean_description(body: str, fallback: str) -> str:
     text = MD_INLINE_IMAGE_RE.sub(' ', body)
     for raw_line in text.splitlines():
         s = raw_line.strip()
         if not s or s.startswith('#') or s.startswith('!['):
+            continue
+        if MD_LIST_PREFIX_RE.match(raw_line):
+            continue
+        # 跳过 markdown 表格行（行首 `|` 或全是 `---|---`）
+        if s.startswith('|') or set(s) <= set('-| :'):
             continue
         s = MD_INLINE_LINK_RE.sub(r'\1', s)
         s = MD_EMPHASIS_CHARS_RE.sub('', s)
@@ -125,6 +177,9 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     parsed_title, _orig_desc, body = parse_frontmatter_data(cleaned, source.stem)
     body = strip_dup_leading_h1(body, parsed_title)
     body = strip_admonition_markers(body)
+    body = strip_trailing_back_to(body)
+    body = rewrite_alidocs_links(body)
+    body = demote_body_h1(body)
 
     title = TITLE_OVERRIDES.get(expected_slug) or parsed_title or expected_title
     description = extract_clean_description(body, fallback=title)
