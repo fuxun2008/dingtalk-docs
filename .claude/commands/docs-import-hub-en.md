@@ -38,11 +38,13 @@ python3 crawl_hub.py \
     --output-dir ~/Downloads/$(date +%F)_DingTalk_<Product>/
 ```
 
-**已知坑 1 — CJK 阈值**：`crawl_hub.py:53` `MAX_CJK_RATIO = 0.05` 对帮助中心 hub 装饰元素（侧栏「目录」「新建」等本地化按钮）常 6-9%，会 EOFError 卡住。临时调 `0.15`，跑完**恢复 0.05**（不入仓）。
+**已知坑 1 — CJK 阈值**：`crawl_hub.py:53` `MAX_CJK_RATIO = 0.10`（2026-06-15 Drive 实操后从 0.05 固化到 0.10）。帮助中心 hub 装饰元素（侧栏「目录」「新建」等本地化按钮）常 6-9%，0.05 太严会卡 EOFError。若仍超 0.10 → 临时调 0.15 跑完**恢复 0.10**（不入仓）。
 
 **已知坑 2 — API 401 偶发**：第一次 fetch_children_api 可能 HTTP 401（cookie warm-up），再跑一次通常 200。若连续 2 次 401 → 用 `python3 /tmp/<product>_hub_diag.py` 一次性诊断脚本（仿 drive 实操，加载 storage_state 直接调 dentry/list API + DOM 抽链接 + 截图）。
 
 **已知坑 3 — Catalog 视图**：若 hub 渲染为 React DnD Catalog（无 `<a>` 标签），DOM fallback 必败。**API 路径必须能跑通**（dentryUuid 即 URL 末段 ID）；若 API 也不通，停下排查权限。
+
+**已知坑 7 — file+hasChildren=True 嵌套层级**：钉钉文档 dentry 模型是 `dentryType` + `hasChildren` 双字段，**不是简单 file/folder 二分**。`dentryType=file` 的节点也可能 `hasChildren=True`（既是文档自身，也是子文档父级）。crawl_hub.py 2026-06-15 已修 fetch_children_api 用 hasChildren 决定递归。**下次接新产品需预期可能存在嵌套层级**：抓到的 manifest 包含 N 个顶层 + 各 parent 自身 + 各 parent 子文档；下载会按 `<parent>.adoc/<child>.adoc.md` 嵌套到源目录。
 
 ### 3. download.py 拉 markdown
 
@@ -54,7 +56,7 @@ python3 download.py --headed --locale en-US
 
 **已知坑 5 — DOWNLOAD_TIMEOUT_MS**：`download.py:45` `DOWNLOAD_TIMEOUT_MS = 30_000` 对部分子节点偏短。若 timeout → 临时调 `120_000`，跑完**恢复 30_000**（不入仓）。
 
-**已知坑 6 — hub 节点本身失败**：manifest 第 1 条是 hub 节点自身，download 会失败（无导出菜单），退码 1 但 leaf 全 ✅ 即可继续。
+**已知坑 6 — hub 节点本身失败**：manifest 第 1 条是 hub 节点自身，download 会失败（无导出菜单），退码 1 但 leaf 全 ✅ 即可继续；若退码 1 后还有真实 leaf failed（如 timeout）→ `python3 download.py --retry-failed --headed --locale en-US` 重跑 failed 子集（建议先临时调 DOWNLOAD_TIMEOUT_MS=120_000，retry 完恢复 30_000）。
 
 ### 4. verify.py 验语言
 
@@ -81,8 +83,11 @@ GROUPS = [('<group>', [('<slug>', '<expected_title>'), ...]), ...]
 GROUPS = [('<group>', [('<slug>', '<expected_title>'), ...]), ...]
 
 # 形态 C: 文件名是 Title Case + 空格/标点（drive 风格，三元组 + find_source 按 basename 拼路径）
+# source_basename 支持嵌套形式 '<Parent>.adoc/<Child>.adoc.md'（应对 file+hasChildren=True 嵌套层级）
 GROUPS = [('<group>', [('<slug>', '<source_basename>', '<expected_title>'), ...]), ...]
 ```
+
+**嵌套层级的 group 编排**（hasChildren 父级文档的处理）：把 parent overview 作为 group 第一个 page、子文档紧随其后，对应钉钉文档 hub 折叠菜单"目录文档"的语义。Drive 实例 4 group：Getting Started(3 平铺) + Employee User Guide(1 overview + 13 子) + Administrator Guide(1 overview + 4 子) + FAQ(1 overview + 1 子)。
 
 ### 6. 写 `scripts/import_<slug>_en.py`
 
@@ -187,8 +192,8 @@ mint dev                                    # 启 :3000（被占则跳 :3001）
 
 ## 跑完恢复 checklist
 
-- [ ] `crawl_hub.py:53` `MAX_CJK_RATIO = 0.05`（若改过）
-- [ ] `download.py:45` `DOWNLOAD_TIMEOUT_MS = 30_000`（若改过）
+- [ ] `crawl_hub.py:53` `MAX_CJK_RATIO = 0.10`（默认值，若临时调到 0.15 要恢复）
+- [ ] `download.py:45` `DOWNLOAD_TIMEOUT_MS = 30_000`（默认值，若临时调到 120_000 要恢复）
 - [ ] `git diff .claude/import/dingtalk_downloader/` 应仅含 storage_state.json / manifest.json（这两个在 .gitignore），无 .py 改动
 
 ## 提交策略
