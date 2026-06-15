@@ -1,9 +1,9 @@
 # Drive EN Import Report
 
-- 成功: **24 / 24**
+- 成功: **23 / 23**
 - 缺失: 0
 - title 不一致: 0
-- NBSP 清洗: 4728（mdx 残留 0）
+- NBSP 清洗: 4690（mdx 残留 0）
 
 ## 全表
 | group | slug | title | desc_len | nbsp_cleaned | size |
@@ -25,7 +25,6 @@
 | Employee User Guide | `how-to-delete-and-recover-files` | How to Delete Files and Recover Deleted Files | 160 | 231 | 2410 |
 | Employee User Guide | `how-to-use-file-picker` | How to Use the DingTalk Drive File Picker to Send Files Efficiently | 154 | 41 | 835 |
 | Employee User Guide | `how-to-quickly-find-target-folder` | How to Quickly Find the Target Folder | 160 | 42 | 579 |
-| Administrator Guide | `administrator-guide` | Administrator Guide Overview | 75 | 38 | 614 |
 | Administrator Guide | `how-to-view-enterprise-storage-space` | How to View Enterprise Storage Space | 160 | 93 | 1429 |
 | Administrator Guide | `how-to-manage-enterprise-storage-capacity` | How to Manage Enterprise Storage Capacity | 160 | 239 | 3274 |
 | Administrator Guide | `how-to-configure-capacity-management-by-role` | How to Configure Capacity Management by Role in DingTalk Drive | 140 | 66 | 1026 |
