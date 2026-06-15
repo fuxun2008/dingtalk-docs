@@ -62,8 +62,37 @@ MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
 MD_LIST_PREFIX_RE = re.compile(r'^\s*(?:\d+[.)]|[-*+])\s+')
 
-# slug title 强制覆盖（避免与所在 group 同名）
-TITLE_OVERRIDES: dict[str, str] = {}
+# slug title 强制覆盖（避免与所在 group 同名 / 产品命名升级）
+TITLE_OVERRIDES: dict[str, str] = {
+    'meeting-ai': '视频会议AI',  # 产品命名升级（"会议AI" → "视频会议AI" 更明确指向"视频会议"）；body 内"会议AI听记"复合词与 UI 按钮文字不动
+}
+
+# 外链 URL 标准化重写：把钉钉运营版购买/营销 URL 统一替换为 OA 标准入口
+# 应用顺序：在 rewrite_alidocs_internal_links 之前先做（先标准化非 alidocs，再处理 alidocs 内链）
+EXTERNAL_URL_REWRITES: dict[str, str] = {
+    # 旧的 applink.dingtalk.com → n.dingtalk.com/dingding/av-order deeplink（PC 端"官网-钉钉会议购买页"）
+    'https://applink.dingtalk.com/page/link?url=dingtalk%3A%2F%2Fdingtalkclient%2Fpage%2Flink%3Furl%3Dhttps%253A%252F%252Fn.dingtalk.com%252Fdingding%252Fav-order%252Findex.html%253FarticleCode%253DDT_GOODS_HostAccountPersonal%2526dd_full_screen%253Dtrue%2526channel%253Dmeeting_helpmanual%2526dd_nav_translucent%253Dtrue%26popup_wnd%3Dtrue%26height%3D735%26width%3D784%26title%3D%25E9%2592%2589%25E9%2592%2589%25E4%25BC%259A%25E8%25AE%25AE': 'https://oa.dingtalk.io/plans',
+    # 旧的 oa.dingtalk.com/goods_order（管理后台购买入口）
+    'https://oa.dingtalk.com/goods_order?channel=meeting_helpmanual&goodsCode=DT_GOODS_29999C&mergeGoods=DT_MERGE_MEETING&defaultMeetingGoods=cloud_meeting#/orderCreate': 'https://oa.dingtalk.io/plans',
+}
+
+# 在特定 slug 文档末尾追加标准管理员入口章节（user 提供的 6 标准链接，A/B/C/D/E/F 全部覆盖）
+# D 已通过 EXTERNAL_URL_REWRITES 在 body 中替换；A/B/C/E/F 当前文档无对应位置 → 在 usage-guide / purchase-guide 末尾追加专章
+APPEND_SECTIONS: dict[str, str] = {
+    'usage-guide': (
+        '\n\n## 管理员配置入口\n\n'
+        '企业管理员可通过钉钉国际版 OA 后台直接管理视频会议权益与设置：\n\n'
+        '*   [视频会议权益用量](https://oa.dingtalk.io/meeting_oa#/resource/usage) — 查看本组织视频会议各档权益的用量明细\n\n'
+        '*   [视频会议权益配置](https://oa.dingtalk.io/meeting_oa#/resource/deploy) — 给指定主持人账号分配视频会议权益\n\n'
+        '*   [视频会议设置](https://oa.dingtalk.io/meeting_oa#/system/meeting) — 调整组织级视频会议默认行为\n'
+    ),
+    'purchase-guide': (
+        '\n\n## 管理员后续管理入口\n\n'
+        '购买后，企业管理员可在钉钉国际版 OA 后台查看订单与订阅状态：\n\n'
+        '*   [订单中心](https://oa.dingtalk.io/order-center) — 查看本组织已完成与待付款的订单\n\n'
+        '*   [订阅管理](https://oa.dingtalk.io/subscription-management) — 管理已开通的订阅与续费\n'
+    ),
+}
 
 # alidocs 跨页引用 label 文字 → 本仓内链 slug 映射
 # 仅本仓有对应 slug 的 alidocs URL 转内链；其他外链（如「立即咨询」表单、跨产品引用「共享文档」）保留外链
@@ -347,6 +376,14 @@ def fix_punct_close_bold(body: str) -> str:
     return PUNCT_CLOSE_BOLD_RE.sub(r'**\1**\2', body)
 
 
+def rewrite_external_urls(body: str) -> str:
+    """把钉钉运营版 deeplink / 老 oa 域名 URL 标准化为 oa.dingtalk.io 入口。
+    purchase-guide 命中 2 处（applink.dingtalk.com PC 端入口 + oa.dingtalk.com 管理后台入口 → 都换 oa.dingtalk.io/plans）。"""
+    for old, new in EXTERNAL_URL_REWRITES.items():
+        body = body.replace(old, new)
+    return body
+
+
 def rewrite_alidocs_internal_links(body: str) -> str:
     """label 文字命中 ALIDOCS_LABEL_TO_SLUG → 改本仓内链 /zh/meetings/<slug>；不命中保留外链。
     label 形态多样（裸 label / 带编号 / 带 ++装饰 / 带书名号 / 带 **粗体**），用 strip 剥装饰后查 dict。
@@ -393,10 +430,15 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     body = strip_dup_leading_h1(body, parsed_title)
     body = strip_admonition_markers(body)
     body = strip_trailing_back_to(body)
+    body = rewrite_external_urls(body)
     body = rewrite_alidocs_internal_links(body)
     body = demote_body_h1(body)
     body = strip_numbered_prefix_in_headings(body)
     body = fix_punct_close_bold(body)
+
+    append_md = APPEND_SECTIONS.get(expected_slug)
+    if append_md:
+        body = body.rstrip() + append_md
 
     cleaned_title = clean_title(parsed_title)
     title = TITLE_OVERRIDES.get(expected_slug) or cleaned_title or expected_title
