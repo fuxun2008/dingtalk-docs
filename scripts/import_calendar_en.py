@@ -49,6 +49,11 @@ DEMOTE_BODY_H1_RE = re.compile(r'^# ', re.MULTILINE)
 # 整行剥掉，前后空行自然合并
 IMAGE_PLACEHOLDER_RE = re.compile(r'^\\?\[Image placeholder\\?\]\s*$\n?', re.MULTILINE)
 
+# 粗体内仅含标点 / 空白（如 `**,**`、`** **`）—— 钉钉文档导出常见瑕疵
+# 把 `**X**` 中 X 仅由 ASCII/CJK 标点 + 空白构成的 bold 拆掉，保留裸标点
+# where-can-i-find-calendar.mdx:12 命中 1 处（`bottom menu**,**  tap`）
+BOLD_PUNCT_RE = re.compile(r'\*\*([\s\.,，。;；:：!！\?？、]+?)\*\*')
+
 # 尾段「Original title: <中文>\n\nSource: https://alidocs...」段（Delete an Event 一篇有）
 # 含前置 --- 分隔线
 TRAILING_ORIGINAL_TITLE_RE = re.compile(
@@ -60,6 +65,29 @@ TRAILING_HR_RE = re.compile(r'\n+---\s*\Z')
 MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
+
+# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段 160 字符截断。
+# 长度 < 200 chars（mintlify 副标题不截断的实用上限），每条覆盖该页所有主要 H2 章节。仿 ai-minutes / contacts 风格。
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'what-is-calendar': "DingTalk Calendar is a time-management tool linked to chats, mail, and To Do—covers precise event notifications, auto meeting-group creation, and day/week/month/three-day views.",
+    'where-can-i-find-calendar': "Quick access guide for DingTalk Calendar—tap the second icon in the mobile bottom menu, or click Calendar in the left navigation on desktop to start managing schedules.",
+    'what-is-on-calendar-home': "A tour of Calendar Home: create new events, toggle My Calendar visibility, open Calendar Settings, switch list/day/week/month/3-day views, view meeting minutes, and search events.",
+    'set-calendar-views': "Switch between list, day, week, month, and mobile three-day views with one click; customize the first day of the week; enable a secondary time zone for cross-border collaboration.",
+    'set-default-event-duration': "Set a default duration for new events under Calendar Settings → View so common lengths apply automatically—useful for HR, recruiting, training, and recurring meeting workflows.",
+    'change-calendar-colors': "Update the display color of a subscribed calendar on desktop or mobile—open My Calendars, tap the … icon next to a calendar, choose Change color, and pick the color you want.",
+    'search-events': "Find events fast on mobile and desktop—tap or click the search icon in DingTalk Calendar, type event or meeting keywords, and jump straight to the matching schedule entry.",
+    'create-an-event': "Two ways to add events on mobile or desktop—tap +, or click a date or drag on day/week view—then set title, time, participants, location, video meeting, agenda, attachments, and reminders.",
+    'export-calendar-events': "Export events as the creator on desktop—go to Calendar > My, click …, choose Export, pick a time range, and send events to AI Sheet, an online sheet, or a local download.",
+    'sync-mobile-events': "Combine events from DingTalk Mail, your phone, and Logs into one Calendar view—enable mobile-event sync and reminders in Calendar Settings so important schedules stay visible.",
+    'share-my-calendar': "Share your calendar with teammates so they see your availability—choose view-only or grant create / edit rights from Calendar Settings on mobile or desktop to avoid interruptions.",
+    'internal-organization-event-management': "Mark events as internal-organization-only so participants are scoped to your company; leavers exit automatically, external guests are flagged, and sharing stays inside the org.",
+    'snooze-an-event-reminder': "When a reminder pops up at a busy moment, tap Later to postpone it—useful for back-to-back meetings or focused work so reminders return when you can actually act on them.",
+    'optional-attendance-in-event-reminders': "Organizers can flag participants as Optional when creating an event; invitees see the Optional tag in the reminder card and can decide whether to attend without schedule conflicts.",
+    'create-dingtalk-mail-events-in-calendar': "For DingTalk Enterprise Mail users—send and receive mail-calendar events directly in Calendar; add Mail contacts when creating events on mobile or desktop to stay in sync.",
+    'sync-employee-care-events-to-calendar': "Auto-sync work anniversaries and birthdays into Calendar with a three-day-ahead reminder and optional AI-generated greetings—enable it under Calendar Settings → Sync.",
+    'delete-an-event': "Cancel or remove events you no longer need—organizers can cancel future multi-participant events from desktop or mobile, while participants can delete events from their own calendar.",
+    'set-a-repeating-event': "Create one event that recurs over weeks—open the new-event form, tap Does not repeat, and pick daily, weekly, monthly, or a custom cycle so future schedules are filled in automatically.",
+}
 
 # 18 篇 → 5 group（全按源 hub 折叠菜单顺序，用户明确"注意文档顺序"）
 # 三元组: (slug, source_basename, expected_title)
@@ -149,6 +177,13 @@ def strip_image_placeholders(text: str) -> str:
     return IMAGE_PLACEHOLDER_RE.sub('', text)
 
 
+def fix_bold_punct(text: str) -> str:
+    """把 bold 包裹的纯标点（含中英文逗号/句号/分号/冒号/叹号/问号/顿号、以及空白）剥成裸标点。
+    钉钉文档导出常见瑕疵：作者误把标点也加粗，mintlify 渲染异常。
+    where-can-i-find-calendar.mdx 命中 1 处（`bottom menu**,**  tap` → `bottom menu,  tap`）。"""
+    return BOLD_PUNCT_RE.sub(r'\1', text)
+
+
 def strip_trailing_trailers(text: str) -> str:
     """剥末尾「Original title: <中文>\\n\\nSource: <alidocs>」+ 裸 `---` 兜底。
     顺序：先 Original-title 段（含前置 ---），再裸 ---（兜底未匹配的）。"""
@@ -187,10 +222,11 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     parsed_title, _orig_desc, body = parse_frontmatter_data(cleaned, source.stem)
     body = demote_body_h1(body)
     body = strip_image_placeholders(body)
+    body = fix_bold_punct(body)
     body = strip_trailing_trailers(body)
 
     title = parsed_title or expected_title
-    description = extract_clean_description(body, fallback=title)
+    description = DESCRIPTION_OVERRIDES.get(expected_slug) or extract_clean_description(body, fallback=title)
 
     escaped = escape_mdx(body)
     mdx = (
