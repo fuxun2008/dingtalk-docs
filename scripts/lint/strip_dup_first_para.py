@@ -19,12 +19,13 @@ from pathlib import Path
 
 
 def normalize(s: str) -> str:
-    """归一化：去 _/\\_/反斜杠/空白，便于跨转义差异比较。"""
+    """归一化：去 _/\\_/反斜杠/markdown 强调符号/空白，便于跨转义与样式差异比较。"""
     s = s.strip()
     s = s.replace("\\_", "")
     s = s.replace("_", "")
     s = s.replace("\\\\", "")
     s = s.replace("\\", "")
+    s = re.sub(r"[*`~]", "", s)
     s = re.sub(r"\s+", "", s)
     return s
 
@@ -77,12 +78,21 @@ def process(path: Path):
             break
         para_end += 1
     para_text = " ".join(ln.strip() for ln in lines[para_start:para_end])
-    if normalize(para_text) != n_desc:
+    n_para = normalize(para_text)
+    # 完全相等 或 description 是 body 段落的前缀（description 被截断到 160 chars 时 import 端的常见形态）
+    if n_para != n_desc and not n_para.startswith(n_desc):
         return None
 
     delete_to = para_end
     if delete_to < len(lines) and lines[delete_to].strip() == "":
         delete_to += 1
+    # 顺手清掉紧跟的 `---` 水平线 + 其后空行
+    # 钉钉文档导出常在描述段后插一条 hr 分隔；删段后裸露的 hr 紧贴 frontmatter 关闭定界符，
+    # mintlify 会误判为第二段 frontmatter 起始 → 500 错
+    if delete_to < len(lines) and lines[delete_to].strip() == "---":
+        delete_to += 1
+        if delete_to < len(lines) and lines[delete_to].strip() == "":
+            delete_to += 1
     new_lines = lines[:para_start] + lines[delete_to:]
     return "\n".join(new_lines), lines[para_start:para_end]
 
