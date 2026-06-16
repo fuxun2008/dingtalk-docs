@@ -51,6 +51,7 @@ MANIFEST_PATH = HERE / 'manifest.json'
 # CJK 字符范围（汉字 + 假名）— 用于"是否英文"判定
 CJK_RE = re.compile(r'[぀-ヿ㐀-䶿一-鿿豈-﫿]')
 MAX_CJK_RATIO = 0.10         # 抽样校验阈值：正文 CJK 占比超过 10% 即视为未切到 EN（mail/im/drive 三次实操：hub 装饰元素 CJK 6-9% 是常态，0.05 太严会卡 ensure_english）
+MIN_ZH_CJK_RATIO = 0.30      # zh-CN 反向阈值：正文 CJK 至少 30% 视为已是中文页面（中文 hub 实操经验：装饰 + 链接文本拉低真实正文 CJK 占比）
 FILENAME_BAD_CHARS_RE = re.compile(r'[\\/:*?"<>|]')
 
 PAGE_TIMEOUT_MS = 30_000
@@ -139,10 +140,23 @@ async def try_switch_to_english(page: Page) -> tuple[bool, str]:
     return False, 'no language switch UI matched'
 
 
-async def ensure_english(page: Page) -> None:
-    """多阶段把页面切到英文；失败则抛错（main 翻成 exit code 2）。"""
+async def ensure_english(page: Page, lang: str = 'en-US') -> None:
+    """多阶段把页面切到目标语言；失败则抛错（main 翻成 exit code 2）。
+
+    - lang 以 'zh' 开头时反向校验：CJK >= MIN_ZH_CJK_RATIO 视为中文页面，直接通过
+    - 其他情况按原 EN 路径走（含 UI 切换 + 人工兜底）
+    """
     info = await detect_language(page)
     print(f'  html lang={info["html_lang"]!r}, CJK ratio={info["cjk_ratio"]:.1%}')
+
+    if lang and lang.lower().startswith('zh'):
+        if info['cjk_ratio'] >= MIN_ZH_CJK_RATIO:
+            print(f'  ✓ 已是中文 (CJK={info["cjk_ratio"]:.1%} ≥ {MIN_ZH_CJK_RATIO:.0%})')
+            return
+        raise RuntimeError(
+            f'目标 zh-CN 但 CJK 仅 {info["cjk_ratio"]:.1%} (< {MIN_ZH_CJK_RATIO:.0%}); '
+            f'确认 hub 是否有 ZH 版本'
+        )
 
     if info['cjk_ratio'] < MAX_CJK_RATIO:
         print('  ✓ 已是英文')
@@ -308,11 +322,18 @@ async def extract_tree(page: Page) -> list[dict]:
 # ===== 抽样校验 =====
 
 async def sample_verify(ctx: BrowserContext, items: list[dict], lang: str, sample_n: int) -> None:
-    """随机抽 N 个叶子，导航过去确认 CJK < MAX_CJK_RATIO；任一失败即抛错。"""
+    """随机抽 N 个叶子，按目标 lang 校验 CJK 比例；任一失败即抛错。
+
+    - lang 以 'zh' 开头：CJK >= MIN_ZH_CJK_RATIO 视为中文
+    - 其他：CJK < MAX_CJK_RATIO 视为英文
+    """
     if not items:
         raise RuntimeError('没有任何叶子节点可抽样')
+    is_zh = bool(lang and lang.lower().startswith('zh'))
     samples = items if len(items) <= sample_n else random.sample(items, sample_n)
-    print(f'  抽样校验 {len(samples)} / {len(items)} 个叶子是英文 (阈值 CJK < {MAX_CJK_RATIO:.0%}) ...')
+    rule = f'CJK ≥ {MIN_ZH_CJK_RATIO:.0%}' if is_zh else f'CJK < {MAX_CJK_RATIO:.0%}'
+    lang_label = '中文' if is_zh else '英文'
+    print(f'  抽样校验 {len(samples)} / {len(items)} 个叶子是{lang_label} (阈值 {rule}) ...')
     for s in samples:
         url = with_lang(s['href'], lang)
         p = await ctx.new_page()
@@ -324,11 +345,18 @@ async def sample_verify(ctx: BrowserContext, items: list[dict], lang: str, sampl
                 pass
             await p.wait_for_timeout(1_200)
             info = await detect_language(p)
-            if info['cjk_ratio'] >= MAX_CJK_RATIO:
-                raise RuntimeError(
-                    f'抽样页 CJK 比例 {info["cjk_ratio"]:.1%} ≥ {MAX_CJK_RATIO:.0%}; '
-                    f'title="{s["title"]}", url={url}'
-                )
+            if is_zh:
+                if info['cjk_ratio'] < MIN_ZH_CJK_RATIO:
+                    raise RuntimeError(
+                        f'抽样页 CJK 比例 {info["cjk_ratio"]:.1%} < {MIN_ZH_CJK_RATIO:.0%}; '
+                        f'title="{s["title"]}", url={url}'
+                    )
+            else:
+                if info['cjk_ratio'] >= MAX_CJK_RATIO:
+                    raise RuntimeError(
+                        f'抽样页 CJK 比例 {info["cjk_ratio"]:.1%} ≥ {MAX_CJK_RATIO:.0%}; '
+                        f'title="{s["title"]}", url={url}'
+                    )
             print(f'    ✓ {s["title"][:48]:<48} CJK={info["cjk_ratio"]:.1%}')
         finally:
             try:
@@ -461,9 +489,10 @@ async def main(args: argparse.Namespace) -> int:
             pass
         await page.wait_for_timeout(1_500)
 
-        print('\n[2/5] 确认页面为英文')
+        is_zh = args.lang.lower().startswith('zh')
+        print(f'\n[2/5] 确认页面为{"中文" if is_zh else "英文"}')
         try:
-            await ensure_english(page)
+            await ensure_english(page, args.lang)
         except RuntimeError as e:
             print(f'❌ {e}', file=sys.stderr)
             await browser.close()
