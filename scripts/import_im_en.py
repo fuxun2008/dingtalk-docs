@@ -72,6 +72,33 @@ GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
 ]
 
 
+# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段 160 字符截断
+# （多篇命中：chats-direct-message 末尾 "do not need" / chats-overview "past conversation" /
+# chats-rich-messages "materials, c" / chats-service-conversation-settings "the service" 等被切在词中）
+# 每条 < 200 chars（mintlify 副标题不截断的实用上限），覆盖该页主要 H2 章节范围
+# 与 zh/im 同篇 DESCRIPTION_OVERRIDES 语义镜像；术语遵循 scripts/glossary/zh-en.json
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'chats-overview': "Get started with Messages on desktop: open the conversation list, start direct messages or group chats, send formatted text and files, start video conferences, and search past chats.",
+    'chats-direct-message': "Start a direct message with a contact on desktop, search within the conversation, manage notifications and pinning, and start a video conference directly from the chat.",
+    'chats-send-message': "Send text messages with formatting, attach files or documents, send silently to avoid notifications, lock the message composer to prevent accidental sending, and use composer shortcuts.",
+    'chats-text-formatting': "Open the text formatting toolbar in the message composer, apply bold, italic, lists, code blocks or quotes, send formatted messages, and follow tips for clean formatting.",
+    'chats-rich-messages': "Send files and documents from a conversation, open the message composer shortcuts for quick actions, see shortcut examples, and browse all files shared in a chat.",
+    'chats-start-video-conference': "Start a video conference from the message composer in a direct message, or from the group chat toolbar to bring multiple group members into the meeting.",
+    'chats-search': "Search across all DingTalk content from the top search box, narrow the search to a specific conversation, browse files shared in a chat, and apply tips for better search results.",
+    'chats-message-actions': "Open the message actions menu to reply, edit, recall, copy or forward a message, view edit history, and use conversation list actions to manage chats from the sidebar.",
+    'chats-organize': "Organize the conversation list by pinning chats at the top, marking conversations as unread, muting notifications, hiding conversations, clearing local chat history, and choosing the right action.",
+    'chats-notifications': "Manage message notifications by muting or unmuting conversations, marking as unread, opening notification settings, and following tips to balance focus with availability.",
+    'chats-service-conversation-settings': "Manage service conversation settings: open the settings panel, mute notifications for service messages, and keep important service conversations at the top of the conversation list.",
+    'chats-group-chat': "Create a group chat with multiple contacts, add members directly or via Group Settings, open the Group Settings panel, manage group permissions, and leave a group.",
+    'chats-group-management': "View and add group members, appoint group admins, configure group permissions, manage how people join the group, clear messages, and quit a group when no longer needed.",
+    'chats-group-settings': "Configure group chat settings: view group information, adjust personal preferences such as nickname and notifications, open Group Management for advanced controls, clear messages, or quit the group.",
+    'chats-group-advanced-management': "Open Group Management for advanced group controls, explore the available advanced settings, and configure granular group permission settings.",
+    'chats-group-announcement': "Open group notices to view announcements pinned by admins, learn when to send a notice for a group, and configure related notification settings.",
+    'chats-mentions': "Manage @Everyone permissions in a group: change who can use @Everyone, understand what changes for members, and adjust related notification settings.",
+    'chats-faq': "Common questions about Messages, Group Settings, message notifications, and search — including how to start chats, manage groups, mute conversations, and find shared files.",
+}
+
+
 def clean_invisible(text: str) -> str:
     def repl(m: re.Match) -> str:
         return ' ' if m.group(0) == '\xa0' else ''
@@ -110,7 +137,7 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
 
     parsed_title, _orig_desc, body = parse_frontmatter_data(body_with_canonical_h1, source.stem)
     title = parsed_title or expected_title
-    description = extract_clean_description(body, fallback=title)
+    description = DESCRIPTION_OVERRIDES.get(expected_slug) or extract_clean_description(body, fallback=title)
 
     escaped = escape_mdx(body)
     mdx = (
