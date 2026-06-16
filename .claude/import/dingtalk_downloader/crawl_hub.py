@@ -50,7 +50,7 @@ MANIFEST_PATH = HERE / 'manifest.json'
 
 # CJK 字符范围（汉字 + 假名）— 用于"是否英文"判定
 CJK_RE = re.compile(r'[぀-ヿ㐀-䶿一-鿿豈-﫿]')
-MAX_CJK_RATIO = 0.05         # 抽样校验阈值：正文 CJK 占比超过 5% 即视为未切到 EN
+MAX_CJK_RATIO = 0.10         # 抽样校验阈值：正文 CJK 占比超过 10% 即视为未切到 EN（mail/im/drive 三次实操：hub 装饰元素 CJK 6-9% 是常态，0.05 太严会卡 ensure_english）
 FILENAME_BAD_CHARS_RE = re.compile(r'[\\/:*?"<>|]')
 
 PAGE_TIMEOUT_MS = 30_000
@@ -215,17 +215,17 @@ async def fetch_children_api(
         dtype = c.get('dentryType')
         if not uuid or not name:
             continue
+        # 钉钉文档 dentry 模型：dentryType + hasChildren 双字段（不是简单 file/folder 二分）
+        # - file/folder 节点都 append 自身（钉钉文档里所有 dentry 都可点击查看；folder/无内容节点 download 失败属预期）
+        # - hasChildren 决定是否递归子级（与 dentryType 无关：file+hasChildren=True 也有子节点，Drive 2026-06-15 实测）
+        if dtype not in ('file', 'folder'):
+            continue  # 忽略 shortcut / external link 等
         href = f'https://alidocs.dingtalk.com/i/nodes/{uuid}'
-        if dtype == 'file':
-            results.append({'href': href, 'title': name, 'parents': list(parent_names)})
-        elif dtype == 'folder':
+        results.append({'href': href, 'title': name, 'parents': list(parent_names)})
+        if c.get('hasChildren'):
             sub = await fetch_children_api(ctx, uuid, parent_names + [name], depth + 1)
-            if sub is None:
-                # 子调用失败 → 把 folder 自身作为 leaf 保留（download.py 对非文档节点会优雅跳过）
-                results.append({'href': href, 'title': name, 'parents': list(parent_names)})
-            else:
+            if sub:
                 results.extend(sub)
-        # 忽略其他类型（如 shortcut / external link）
     return results
 
 
