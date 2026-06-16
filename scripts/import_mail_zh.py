@@ -51,6 +51,14 @@ ALIDOCS_INTERNAL_LINK_MAP: dict[str, str] = {}
 ALIDOCS_LINK_RE = re.compile(
     r'\(https://alidocs\.dingtalk\.com/i/(?:nodes|p/[^/]+/docs)/([A-Za-z0-9_]+)(?:\?[^)]*)?\)'
 )
+# 钉钉 .com 域名 → .io 国际版品牌对齐（覆盖：oa.dingtalk.com / docs.dingtalk.com 等管理后台 / 文档外链；
+# 邮箱地址后缀 @dingtalk.com → @dingtalk.io 同步生效；适用 markdown link target + 裸字面）
+# 裸域名（无 https://）会补协议头，避免 mintlify 误判为本地相对路径死链
+BARE_DINGTALK_LINK_RE = re.compile(
+    r'\((?P<sub>[A-Za-z0-9-]+)\.dingtalk\.com(?P<path>[^)]*)\)'
+)
+DINGTALK_COM_RE = re.compile(r'\bdingtalk\.com\b')
+
 MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
@@ -64,27 +72,28 @@ TITLE_OVERRIDES: dict[str, str] = {}
 # 术语遵循 scripts/glossary/zh-en.json 反向中文原词
 # （钉钉企业邮箱 / 邮件 / 联系人 / 标签 / 群发 / 自动转发 / 自动回复 / 黑白名单 等）。
 DESCRIPTION_OVERRIDES: dict[str, str] = {
-    'dingtalk-enterprise-mail': "钉钉企业邮箱产品介绍：海量吞吐、多副本冗余存储的企业级邮件服务，覆盖管理侧域名管理、邮件组、安全审计与用户侧会话模式、附件管理等完整功能矩阵。",
-    'customer-story-xinfengwei': "客户案例：鑫蜂维如何借助钉钉企业邮箱打通组织协同与邮件沟通，提升日常办公与客户响应效率。",
-    'what-is-dingtalk-mail': "钉钉邮箱是钉钉为每位用户免费提供的邮件入口，并可在组织内开通钉钉企业邮箱，与聊天、文档等钉钉应用深度协同。",
-    'send-an-email': "在手机端钉钉「更多 - 邮箱」或电脑端钉钉左侧菜单「邮箱」中点击「+」号撰写并发送邮件，享受与聊天一样简单的邮件体验。",
-    'move-or-delete-emails': "在手机端长按或电脑端右键邮件，将邮件移动到指定文件夹或删除，对收件箱进行有效整理。",
-    'reply-to-or-forward-emails': "在邮件详情页点击「回复」「回复全部」或「转发」，可以快速对邮件进行回应或将内容转给其他收件人。",
-    'download-an-email': "在邮件详情页通过更多操作，将邮件以 .eml 格式下载到本地保存，便于归档或线下查看。",
-    'quickly-discuss-an-email': "在邮件详情页点击「快速讨论」，把邮件相关人一键拉到钉钉群中沟通，邮件场景无缝衔接到即时通讯。",
-    'set-up-automatic-email-replies': "在邮箱设置中开启自动回复，可针对休假、出差等场景预设回复内容，并设定生效时段。",
-    'add-labels-to-emails': "为邮件添加自定义标签，按项目、客户、优先级等维度对邮件进行分类管理，方便后续筛选与查找。",
-    'forward-an-email-to-chat-with-one-click': "通过邮件详情页的「转发到聊天」操作，把邮件内容一键发送给钉钉单聊或群聊，邮件与即时通讯协同。",
-    'set-up-new-email-notifications': "在邮箱设置中开启或调整新邮件提醒方式，包括手机端推送、电脑端弹窗、声音提示等，避免遗漏重要邮件。",
-    'add-contacts': "在邮箱通讯录中添加常用联系人，并可为联系人设置备注、分组，方便后续撰写邮件时快速选择收件人。",
-    'import-or-export-contacts': "通过通讯录的导入导出功能，可批量导入 CSV / vCard 格式联系人，或把现有联系人导出备份。",
-    'set-up-automatic-email-forwarding': "在邮箱设置中开启自动转发规则，将符合条件的来信自动转发到指定邮箱，便于多邮箱集中管理。",
-    'set-up-mail-allowlist-and-blocklist': "通过邮箱黑白名单设置，把指定发件人加入白名单确保来信不被拦截，或加入黑名单屏蔽骚扰邮件。",
-    'receive-emails-from-other-mailboxes': "在钉钉邮箱中绑定其他第三方邮箱账号，集中代收来自不同邮箱的邮件，统一在钉钉中查看与回复。",
-    'disable-group-members-from-sending-emails-to-a-group': "在群邮箱设置中关闭群成员发送权限，仅允许群主或管理员向群邮箱地址发信，避免群邮件被滥用。",
-    'activate-alibaba-enterprise-mail': "管理员通过钉钉管理后台开通阿里企业邮箱服务，按席位购买并完成域名验证，即可为组织成员分发企业邮箱账号。",
-    'link-an-existing-alibaba-cloud-mailbox': "把已有的阿里云企业邮箱账号绑定到钉钉，无需迁移即可在钉钉邮箱中收发原邮箱的邮件。",
-    'dingtalk-mail-faq': "关于钉钉邮箱的常见问题——包括邮箱开通、账号绑定、收发限制、附件大小、企业邮箱购买与续费等场景的解答。",
+    'dingtalk-enterprise-mail': "钉钉企业邮箱是基于钉钉打造的原生邮件服务，不限容量、高吞吐多副本冗余，覆盖管理员工具与用户协作的完整功能矩阵。",
+    'customer-story-xinfengwei': "客户案例：作为钉钉首位客户，鑫蜂维如何借助钉钉邮箱在移动端处理邮件，加速组织数字化转型与日常工作响应。",
+    'what-is-dingtalk-mail': "钉钉邮箱聚焦高效、安全的商务邮件沟通，包含钉钉个人邮箱、钉钉企业邮箱以及三方邮箱客户端三种形态。",
+    'send-an-email': "在手机端钉钉「更多 > 邮箱」或电脑端钉钉左侧菜单「邮箱 > + 撰写」中撰写并发送邮件，让邮件像聊天一样简单。",
+    'move-or-delete-emails': "在手机端长按邮件或在电脑端选中邮件，将邮件移动到其他文件夹或删除，保持收件箱整洁。",
+    'reply-to-or-forward-emails': "在手机端或电脑端打开邮件后选择「回复」或「转发」，快速对邮件作出回应或将邮件转给其他收件人。",
+    'download-an-email': "在钉钉电脑端打开邮件后下载到本地，便于离线阅读或归档备份。",
+    'quickly-discuss-an-email': "在手机端钉钉邮箱中把邮件转发到群聊或邮件参与人，即时在钉钉中围绕邮件展开讨论。",
+    'set-up-automatic-email-replies': "在电脑端钉钉邮箱的「休假回复设置」中开启自动回复，自定义回复内容并设定生效日期，休假期间自动响应来信。",
+    'add-labels-to-emails': "在电脑端钉钉邮箱中自定义标签，按项目、客户、优先级等维度对邮件分类，方便后续筛选与查找。",
+    'forward-an-email-to-chat-with-one-click': "通过「转发到聊天」一键把完整邮件发送到钉钉单聊或群聊，无需截图即可保留完整邮件内容。",
+    'set-up-new-email-notifications': "通过手机系统设置和钉钉邮箱应用内设置配置新邮件提醒，包括声音、推送和按账号开关，避免遗漏重要邮件。",
+    'add-contacts': "在电脑端钉钉邮箱的「邮件联系人」中添加常用联系人，撰写邮件时即可快速选择收件人。",
+    'create-a-contact-group': "在电脑端钉钉邮箱的「邮件联系人」中创建联系人组，把多个联系人按团队、项目或关系分组管理，发信时一次选择全员。",
+    'import-or-export-contacts': "将 CSV 或 vCard 格式的联系人导入到「邮件联系人」，或导出现有联系人作备份与迁移到其他邮件客户端。",
+    'set-up-automatic-email-forwarding': "在电脑端钉钉邮箱的「邮件设置 > 自动转发」中添加转发规则，将符合条件的来信自动转发到指定邮箱。",
+    'set-up-mail-allowlist-and-blocklist': "把发件人或域名加入白名单可绕过垃圾邮件文件夹，加入黑名单则直接进垃圾邮件，每项最多支持 500 条。",
+    'receive-emails-from-other-mailboxes': "在钉钉邮箱中绑定其他邮箱账号，无需逐个登录即可在统一钉钉收件箱中代收与回复多个邮箱的邮件。",
+    'disable-group-members-from-sending-emails-to-a-group': "在群设置中开启或关闭「群邮件组」，控制是否允许群成员向群邮箱地址发送邮件，避免群邮件被滥用。",
+    'activate-alibaba-enterprise-mail': "通过钉钉管理后台开通阿里企业邮箱——基于飞天云提供 7×24 高稳定服务，多层安全防护，日程同步与海内外专属通道。",
+    'link-an-existing-alibaba-cloud-mailbox': "主管理员或创建者可通过钉钉管理后台或手机端钉钉，把已有的阿里云企业邮箱域名绑定到钉钉邮箱使用。",
+    'dingtalk-mail-faq': "钉钉邮箱常见问题——通用设置项、单封邮件收件人上限、是否有 Web 版、存储容量、三方客户端登录限制、企业邮箱差异等。",
 }
 
 # 21 篇 → 6 group（对齐 en mail/ 的 6-group 划分，按 docs.json en Mail tab 顺序排列）
@@ -140,7 +149,9 @@ GROUPS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ('add-contacts',
          '如何添加联系人？.adoc.md',
          '如何添加联系人？'),
-        # 'create-a-contact-group' 暂无 ZH 源（en mail/ 22 篇 vs zh hub 21 leaf 唯一缺位）
+        # 'create-a-contact-group' 钉钉中文 hub 无对应源（en mail/ 22 篇 vs zh hub 21 leaf 唯一缺位）
+        # ZH 版手写 zh/mail/create-a-contact-group.mdx（参考 en 母版翻译，远程图复用 alicdn URL）
+        # 不走脚本，不在本 GROUPS 表里；docs.json zh 邮箱 tab「联系人」group 已直接注册
         ('import-or-export-contacts',
          '通讯录如何导入_导出？.adoc.md',
          '通讯录如何导入/导出？'),
@@ -193,6 +204,20 @@ def strip_admonition_markers(body: str) -> str:
 def strip_trailing_back_to(body: str) -> str:
     """剥 body 末尾钉钉文档自动加的「返回「[**<Group>**](url)」目录页」段（含前置 --- 横线 + 可选 ▍ 前缀）。"""
     return TRAILING_BACK_TO_RE.sub('', body)
+
+
+def fix_dingtalk_com_to_io(body: str) -> str:
+    """统一处理 dingtalk.com → dingtalk.io（国际版品牌对齐）：
+    1. markdown 裸域名链接 `(oa.dingtalk.com...)` → `(https://oa.dingtalk.io...)`（补协议头 + 改域名）
+    2. 其余字面 `dingtalk.com` → `dingtalk.io`（含邮箱后缀 @dingtalk.com）
+    顺序锁死：先做 (1)（已含 .com → .io 改写），再 (2) 兜底剩余字面。
+    """
+    body = BARE_DINGTALK_LINK_RE.sub(
+        lambda m: f'(https://{m.group("sub")}.dingtalk.io{m.group("path")})',
+        body,
+    )
+    body = DINGTALK_COM_RE.sub('dingtalk.io', body)
+    return body
 
 
 def rewrite_alidocs_links(body: str) -> str:
@@ -253,6 +278,7 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
     body = strip_admonition_markers(body)
     body = strip_trailing_back_to(body)
     body = rewrite_alidocs_links(body)
+    body = fix_dingtalk_com_to_io(body)
     body = demote_body_h1(body)
 
     title = TITLE_OVERRIDES.get(expected_slug) or parsed_title or expected_title
