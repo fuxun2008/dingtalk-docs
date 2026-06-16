@@ -45,6 +45,37 @@ MD_INLINE_IMAGE_RE = re.compile(r'!\[[^\]]*\]\([^)]+\)')
 MD_INLINE_LINK_RE = re.compile(r'\[([^\]]+)\]\([^)]+\)')
 MD_EMPHASIS_CHARS_RE = re.compile(r'[*_`~]')
 
+# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段截断
+# 22 条手写英文 AI 总结，每条 ≤ 200 chars 留 mintlify 副标题不截断的安全余量，覆盖该页主要 H2 章节范围。
+# 与 import_mail_zh.py DESCRIPTION_OVERRIDES 1:1 语义镜像；术语严格遵循 scripts/glossary/zh-en.json
+# （Mail / Contact / Tag / Allowlist / Blocklist / Auto Reply / Auto Forwarding / Admin / Super Admin /
+#   Enterprise Mail / DingTalk Personal Mail / Alibaba Enterprise Mail / Mail Contacts / Inbox 等）。
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'dingtalk-enterprise-mail': "DingTalk Enterprise Mail is a native email service on DingTalk with unlimited storage, high-volume throughput, and a feature set spanning admin tools and end-user collaboration.",
+    'customer-story-xinfengwei': "Customer story: how Xinfengwei, DingTalk's first customer, used DingTalk Mail to handle email on mobile and accelerate work response across its organizational digital transformation.",
+    'what-is-dingtalk-mail': "DingTalk Mail focuses on efficient, secure email for business communication, and includes DingTalk Personal Mail, DingTalk Enterprise Mail, and third-party email client integration.",
+    'send-an-email': "Compose and send an email from the DingTalk mobile app under More > Mail, or from the desktop app's left sidebar by clicking Mail > + Compose — making email as simple as chat.",
+    'move-or-delete-emails': "Long-press emails on mobile or select them on desktop to move them to another folder or delete them, keeping the Inbox organized on either device.",
+    'reply-to-or-forward-emails': "Open an email on mobile or desktop and choose Reply or Forward to respond quickly or pass the message on to other recipients.",
+    'download-an-email': "Download an email to your local device from the DingTalk desktop app for offline reading or archival.",
+    'quickly-discuss-an-email': "Forward an email from DingTalk Mail on mobile to a chat or to its participants, so you can discuss the message instantly in DingTalk.",
+    'set-up-automatic-email-replies': "Configure a vacation auto-reply on the DingTalk desktop app so DingTalk Mail responds automatically while you are away, with custom content and active dates.",
+    'add-labels-to-emails': "Create custom labels on the desktop app to categorize emails by project, customer, priority, or any other dimension that helps you filter and find them later.",
+    'forward-an-email-to-chat-with-one-click': "Use Forward to chat to send a complete email into a DingTalk single or group chat in one click — preserving the full content without taking repeated screenshots.",
+    'set-up-new-email-notifications': "Configure new-email notifications across mobile system settings and DingTalk Mail in-app settings, including sound, push, and per-account toggles, so no important email is missed.",
+    'add-contacts': "Add frequently used contacts to Mail Contacts on the DingTalk desktop app so you can quickly pick recipients when composing an email.",
+    'create-a-contact-group': "Group your Mail Contacts on the DingTalk desktop app so you can send to multiple recipients at once and keep contacts organized by team, project, or relationship.",
+    'import-or-export-contacts': "Import contacts in CSV or vCard format into Mail Contacts, or export your existing contacts for backup or migration to another mail client.",
+    'set-up-automatic-email-forwarding': "Add an Auto forward rule in Mail settings on desktop so matching incoming emails are automatically forwarded to another mailbox.",
+    'set-up-mail-allowlist-and-blocklist': "Add senders or domains to the Allowlist to bypass the spam folder, or to the Blocklist to send them to spam — up to 500 entries each.",
+    'receive-emails-from-other-mailboxes': "Link other mailboxes to DingTalk Mail so you can collect and reply to email from multiple accounts in a single DingTalk Inbox without signing in to each one.",
+    'disable-group-members-from-sending-emails-to-a-group': "Turn the group mailing list on or off in group settings so only authorized members can send to the group's mailing address, preventing misuse.",
+    'activate-alibaba-enterprise-mail': "Activate Alibaba Enterprise Mail through the DingTalk admin console — built on Apsara Cloud with around-the-clock stability, multi-layer security, calendar sync, and global delivery channels.",
+    'link-an-existing-alibaba-cloud-mailbox': "The Super Admin or creator can link an existing Alibaba Cloud Enterprise Mail domain to DingTalk Mail through either the admin console or the DingTalk mobile app.",
+    'dingtalk-mail-faq': "Frequently asked questions about DingTalk Mail — general settings, recipient limits, web version availability, storage capacity, third-party client sign-in, and Enterprise Mail differences.",
+}
+
+
 # 24 篇 → 6 group 映射（顺序 = docs.json pages[] 顺序 = 左侧导航顺序）
 GROUPS: list[tuple[str, list[tuple[int, str]]]] = [
     ('Getting Started', [
@@ -142,8 +173,9 @@ def process_one(source: Path, expected_slug: str) -> dict:
     body_with_canonical_h1 = strip_leading_numbered_h1(cleaned)
 
     title, _orig_desc, body = parse_frontmatter_data(body_with_canonical_h1, source.stem)
-    # 复用 parse_frontmatter_data 的 title + body（H1 已剥），description 用自己的清洁版抽取
-    description = extract_clean_description(body, fallback=title)
+    # 复用 parse_frontmatter_data 的 title + body（H1 已剥）
+    # description 优先级：DESCRIPTION_OVERRIDES（手写 AI 总结）→ extract_clean_description（body 段截断）
+    description = DESCRIPTION_OVERRIDES.get(expected_slug) or extract_clean_description(body, fallback=title)
 
     actual_slug = slugify(title)
     slug_mismatch = actual_slug != expected_slug
