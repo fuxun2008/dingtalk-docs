@@ -54,6 +54,58 @@ TITLE_OVERRIDES: dict[str, str] = {
     'faq': 'FAQ Overview',
 }
 
+# 23 篇 frontmatter description 手写 AI 总结（与 mail/contacts/ai-minutes 模式对齐）
+# 仿 mintlify 副标题需求：≤ 200 chars / 覆盖该页主要 H2 章节范围 / 不与 body 首段视觉重复
+# 缺省回落 extract_clean_description（body 首段 160 chars 截断 fallback）
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'what-is-dingtalk-drive':
+        "An Alibaba Cloud-based enterprise drive uniting file storage, management, and collaboration — save files in one click, set granular permissions, edit online anywhere, and collaborate effortlessly.",
+    'how-to-access-dingtalk-drive':
+        "Two ways to open DingTalk Drive on desktop — click the DingTalk Drive icon in the left-side menu, or use the alternative entry point — so you can quickly reach your files from anywhere in DingTalk.",
+    'dingtalk-drive-home-page-features':
+        "Search files, create or upload content, review recent activity, and browse My Files, Team Files, Chat Files, and Shared sections from the DingTalk Drive home page — your central hub for stored files.",
+    'employee-user-guide':
+        "Get started with DingTalk Drive as an employee — use Private Drive's 2 GB personal space across desktop and mobile, with real-time sync and encryption for safer file storage and access.",
+    'how-to-upload-files-or-folders':
+        "Upload files and folders to DingTalk Drive from desktop or mobile so important personal and team files are stored, organized, and easy to manage and share across devices.",
+    'how-to-save-chat-files-to-dingtalk-drive':
+        "Save chat files to DingTalk Drive on desktop or mobile — Enterprise Drive starts with 100 GB across My Files, Team Files, and Chat Files, so personal and team work files stay organized in one place.",
+    'how-to-create-files-or-folders':
+        "Create files and folders directly in DingTalk Drive on desktop or mobile, with multiple entry methods on each platform, so individuals and teams can organize and manage files independently.",
+    'how-to-edit-files-in-dingtalk-drive':
+        "Open the DingTalk Drive file list on desktop or mobile, click the online editing icon next to a file, or open the file directly to start collaborative editing without downloading or extra tools.",
+    'how-to-delete-and-recover-files':
+        "Delete unwanted files or folders in DingTalk Drive on desktop or mobile; deleted items go to the recycle bin where they can be restored, keeping file management both convenient and safer.",
+    'how-to-batch-download-move-or-delete-files':
+        "Select multiple DingTalk Drive files or folders on desktop to batch download, move, copy, or delete in one go — cutting repetitive work and making file organization and knowledge management faster.",
+    'how-to-set-or-change-member-permissions':
+        "Assign or change DingTalk Drive permissions precisely by file and by person on desktop or mobile, with notes on edge cases — protecting data assets while keeping the right people in collaboration.",
+    'how-to-share-files-with-external-people':
+        "Share files with external people safely from DingTalk Drive — configure granular permissions on desktop or send a secure link from mobile, with recommended steps for each method.",
+    'how-to-cancel-or-leave-a-shared-folder':
+        "As a folder creator, cancel sharing on desktop or mobile so the folder becomes private again; as a member, leave a shared folder you no longer need so it stops appearing in your DingTalk Drive.",
+    'how-to-quickly-find-target-folder':
+        "Batch-download multiple files from DingTalk Drive or a group file list — a local folder is auto-generated and named with the download date and the first file's name, making the target easy to locate.",
+    'how-to-quickly-search-for-files-or-folders':
+        "Use DingTalk Drive's fast search on desktop and mobile to quickly locate files or folders in a large drive — improving work efficiency by skipping manual browsing through deep folder trees.",
+    'how-to-quickly-find-files-or-folders-in-chats':
+        "Skip endless chat-history scrolling — use DingTalk Drive's quick lookup methods on desktop and mobile to locate files shared in chats by sender, file type, or chat session in seconds.",
+    'how-to-use-file-picker':
+        "Use the DingTalk Drive File Picker inside chat — click the send-file icon below the input box, choose Send DingTalk Drive File, and pick existing files from your Drive to send efficiently.",
+    'how-to-manage-enterprise-storage-capacity':
+        "Step-by-step administrator guide: open the Enterprise Storage Capacity page from DingTalk Drive, configure management details, delete unneeded files to reclaim space, and follow extra tips inside.",
+    'how-to-view-enterprise-storage-space':
+        "Check Enterprise Drive's free 100 GB usage in DingTalk Drive — when storage runs out, expand capacity, or clean up old files regularly to resolve capacity issues without additional cost.",
+    'how-to-allocate-dedicated-capacity-to-an-app':
+        "Administrator guide — open the Admin Console, go to Storage Management, click Allocate next to the target app, and assign dedicated DingTalk Drive capacity to keep that app's data separate.",
+    'how-to-configure-capacity-management-by-role':
+        "Open the Enterprise Admin Console, find DingTalk Drive via Workbench or search, and configure capacity quotas by role so different employee roles each receive the appropriate storage allocation.",
+    'faq':
+        "FAQs on one-on-one chat files in DingTalk Drive — when files expire, how to tell whether they are about to be cleaned up and back them up, and whether they can be recovered after expiration.",
+    'dingtalk-drive-qa':
+        "DingTalk Drive FAQs: free storage limits and Enterprise Drive location, saving chat files and managing or expanding capacity, multi-person collaboration on shared folders, and data security practices.",
+}
+
 # 24 篇 → 4 group（按钉钉文档 hub 真实层级：3 顶层 + 3 个 file+hasChildren=True 父级各带子文档）
 # 三元组: (slug, source_basename, expected_title)
 # source_basename 支持嵌套路径形式 '<Parent>.adoc/<Child>.adoc.md'，find_source 用 Path / 拼即可
@@ -185,7 +237,8 @@ def process_one(source: Path, expected_slug: str, expected_title: str) -> dict:
 
     # title override 优先于 H1 解析值（2 个 overview 文档避免与 group 同名）
     title = TITLE_OVERRIDES.get(expected_slug) or parsed_title or expected_title
-    description = extract_clean_description(body, fallback=title)
+    # description 优先用手写 AI 总结 overrides（≤ 200 chars 覆盖全页 H2 范围），fallback body 首段截断
+    description = DESCRIPTION_OVERRIDES.get(expected_slug) or extract_clean_description(body, fallback=title)
 
     escaped = escape_mdx(body)
     mdx = (
