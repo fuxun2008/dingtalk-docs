@@ -56,10 +56,31 @@ MD_LIST_PREFIX_RE = re.compile(r'^\s*(?:\d+[.)]|[-*+])\s+')
 # chats-overview 中文源标题「即时通讯快速入门」已是独立短语，与 group「开始使用」不撞，无需 override
 TITLE_OVERRIDES: dict[str, str] = {}
 
-# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段截断。
-# 长度 < 200 chars，覆盖各页 H2 章节范围。下载完后实测每篇 body 首段是否够干净，按需补 override。
-# 先全留空 → dry-run 后看哪些 description 截断不雅再补。
-DESCRIPTION_OVERRIDES: dict[str, str] = {}
+# frontmatter description 手写覆盖：让 mintlify 副标题是「全页 AI 总结」而非 body 首段重复
+# （首批 import 后 grep 实测：17/18 篇 description 与 body 首段完全相同字符串，副标题与正文段视觉重复，
+# 仅 chats-faq 因无简介段例外）。每条 < 200 chars，覆盖该页主要 H2 章节范围。
+# 与 en im/ 同篇 DESCRIPTION_OVERRIDES 语义镜像；术语遵循 scripts/glossary/zh-en.json 反向中文原词
+# （消息/单聊/群聊/会话/通知/管理员/权限/群公告/视频会议/文件/搜索/@所有人 等）。
+DESCRIPTION_OVERRIDES: dict[str, str] = {
+    'chats-overview': "在钉钉桌面端使用消息：打开会话列表、发起单聊或群聊、发送格式化文本和文件、发起视频会议，并搜索历史聊天记录。",
+    'chats-direct-message': "在桌面端发起与联系人的单聊、在会话内搜索历史、管理消息免打扰和置顶，并从聊天中直接发起视频会议。",
+    'chats-send-message': "发送带格式的文本消息、附加文件或文档、静默发送以避免打扰对方、锁定输入框防误发，并使用输入框快捷功能。",
+    'chats-text-formatting': "在输入框中打开文本格式工具栏，应用粗体、斜体、列表、代码块或引用等样式，发送格式化消息，并参考排版整洁的小技巧。",
+    'chats-rich-messages': "从会话中发送文件和文档、调出输入框快捷功能进行常用操作、查看快捷示例，并浏览聊天中分享的所有文件。",
+    'chats-start-video-conference': "在单聊的输入框中发起视频会议，或从群聊工具栏发起，把多名群成员同时拉入会议。",
+    'chats-search': "通过顶部搜索框跨全钉钉搜索内容、在特定会话内缩小搜索范围、浏览聊天中分享的文件，并参考提升搜索准确度的小技巧。",
+    'chats-message-actions': "打开消息操作菜单进行回复、编辑、撤回、复制或转发，查看消息编辑历史，并通过会话列表操作从侧边栏管理聊天。",
+    'chats-organize': "通过置顶、标为未读、消息免打扰、隐藏会话、清空本地聊天记录等方式管理会话列表，并按场景选择合适的操作。",
+    'chats-notifications': "通过对会话开启或关闭消息免打扰、标为未读、打开通知设置等方式管理消息通知，并参考在专注与响应间取得平衡的小技巧。",
+    'chats-service-conversation-settings': "管理服务会话设置：打开设置面板、对服务消息开启免打扰，并将重要的服务会话置顶在会话列表顶部。",
+    'chats-group-chat': "与多位联系人创建群聊、直接或从群设置添加成员、打开群设置面板、管理群权限，以及退出群聊。",
+    'chats-group-management': "查看和添加群成员、任命群管理员、配置群权限、管理加群方式、清空消息，以及在不再需要时退出群聊。",
+    'chats-group-settings': "配置群聊设置：查看群信息、调整群内昵称和通知等个人偏好、打开群管理使用高级权限，清空消息或退出群聊。",
+    'chats-group-advanced-management': "打开群管理使用高级群控制能力，了解可用的高级设置项，并配置精细化的群权限。",
+    'chats-group-announcement': "查看由管理员置顶的群公告，了解何时使用群公告通知群成员，并配置相关的提醒设置。",
+    'chats-mentions': "管理群内 @所有人 权限：更改谁可以使用 @所有人、了解成员侧的变化，并调整相关的通知设置。",
+    'chats-faq': "关于消息、群设置、消息通知和搜索的常见问题——包括如何发起聊天、管理群、消息免打扰，以及查找已分享的文件。",
+}
 
 # 19 篇 → 5 group（对齐 en im/ 的 5-group 划分，按业务相关性排序）
 # 三元组: (slug, source_basename, expected_title)
