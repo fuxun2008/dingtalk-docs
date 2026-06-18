@@ -51,7 +51,7 @@ MANIFEST_PATH = HERE / 'manifest.json'
 # CJK 字符范围（汉字 + 假名）— 用于"是否英文"判定
 CJK_RE = re.compile(r'[぀-ヿ㐀-䶿一-鿿豈-﫿]')
 MAX_CJK_RATIO = 0.10         # 抽样校验阈值：正文 CJK 占比超过 10% 即视为未切到 EN（mail/im/drive 三次实操：hub 装饰元素 CJK 6-9% 是常态，0.05 太严会卡 ensure_english）
-MIN_ZH_CJK_RATIO = 0.30      # zh-CN 反向阈值：正文 CJK 至少 30% 视为已是中文页面（中文 hub 实操经验：装饰 + 链接文本拉低真实正文 CJK 占比）
+MIN_ZH_CJK_RATIO = 0.15      # zh-CN 反向阈值：正文 CJK 至少 15% 视为已是中文页面（meetings 2026-06-18 实测：标题多「数字+中文短句」+ 英文 nav 导致 CJK 仅 20% 但确为中文 hub；放宽至 0.15 兜底）
 FILENAME_BAD_CHARS_RE = re.compile(r'[\\/:*?"<>|]')
 
 PAGE_TIMEOUT_MS = 30_000

@@ -36,7 +36,7 @@ from playwright.async_api import (
 )
 
 HERE = Path(__file__).parent
-MANIFEST_PATH = HERE / 'manifest.json'
+MANIFEST_PATH = HERE / 'manifest.json'   # 默认；可被 --manifest 覆盖（用于三产品并发）
 STATE_PATH = HERE / 'storage_state.json'
 LOG_DIR = Path.home() / 'Downloads' / 'dingtalk-docs-archive' / '.log'
 
@@ -528,11 +528,17 @@ def parse_args():
     ap.add_argument('--headed', action='store_true', help='显示浏览器（默认 headless）')
     ap.add_argument('--retry-failed', action='store_true', help='把 failed/permanent_failed 重置为 pending 后跑')
     ap.add_argument('--locale', default='zh-CN', help='浏览器 locale（默认 zh-CN；EN 文档抓取用 en-US）')
+    ap.add_argument('--manifest', default=None, help='manifest.json 路径（默认 dingtalk_downloader/manifest.json；多产品并发各自传一份）')
+    ap.add_argument('--timeout-ms', type=int, default=None, help='单篇下载等待事件超时（ms）；默认 30000；retry-failed 时建议 120000')
     return ap.parse_args()
 
 
 if __name__ == '__main__':
     args = parse_args()
+    if args.manifest:
+        MANIFEST_PATH = Path(args.manifest).resolve()
+    if args.timeout_ms:
+        DOWNLOAD_TIMEOUT_MS = args.timeout_ms
     try:
         sys.exit(asyncio.run(main(args)))
     except KeyboardInterrupt:
