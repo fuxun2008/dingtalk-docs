@@ -12,6 +12,9 @@ H. `**X****Y**` 破碎嵌套粗体（恰好 4 连星）→ 合并为单段 `**XY
 I. 同段内 ≥4 段独立 `**bold**` 行 → 建议 `<CardGroup>`（仅报告，人审）
 J. 连续 ≥2 张移动端截图（按 alt 文件名 lQDPKH/IMG_ 前缀或 URL crop 高瘦比例 h/w≥1.5）→ 建议 flex 容器（仅报告）
 K. `[xxx.mp4](alidocs.dingtalk.*/...)` 钉钉附件 mp4 链接 → 建议 `<video>` 标签（仅报告）
+L. CJK 字符紧贴粗体（`[CJK]**X**` 或 `**X**[CJK]`）→ 加空格分隔，否则 mdx 解析失败 ** 字符外露（auto-fix）
+M. CJK 标点紧贴粗体（仅 `「」，：。（）` 等全角标点，无 CJK 字符）→ 仅报告，部分 mdx 解析器会失败
+N. 图下方短文本（≤12 字符，紧邻 image / `</div>` 行）→ 建议包装为居中图说 div（仅报告，启发式）
 
 定向模式（仅 release-notes/）：钉钉编辑器导出 mdx 时把 `<Note>` 拆碎，icon/标题被强制分行
 F. `release-notes/` 下 `<Note>` 与 `</Note>` 标签行整段剥离（保留内部 markdown）
@@ -102,6 +105,25 @@ RE_DINGTALK_MP4_LINK = re.compile(
     r'\[([^\]]*\.mp4[^\]]*)\]\((https?://alidocs\.dingtalk\.[^)]+)\)',
     re.I,
 )
+
+# L/M: CJK 边界粗体破碎。CommonMark 规定 ** 作为 opener/closer 的判定依赖左右"flank"，
+#    CJK 字符（U+4E00-U+9FFF / U+3400-U+4DBF 等基本+扩展A）在 remark/mdx 中被视为
+#    "non-punctuation, non-whitespace"，紧贴时 ** 既不算 opener 也不算 closer → 渲染失败 `**` 字符外露。
+#    CJK 全角标点（「」，。：（）等 U+3000-U+303F / U+FF00-U+FFEF）按规范是 punctuation，bold 可识别，
+#    但实测部分版本 mintlify/remark 行为不稳 → 列 MED 仅报告。
+RE_CJK_CHAR = re.compile(r'[一-鿿㐀-䶿]')
+RE_CJK_PUNCT = re.compile(r'[　-〿＀-￯]')
+
+# L 自动修：opener `**` 前紧贴 CJK 字符 → 加空格分隔；closer `**` 后紧贴 CJK 字符 → 加空格。
+RE_BOLD_CJK_CHAR_LEFT = re.compile(r'([一-鿿㐀-䶿])(\*\*[^*\n]+?\*\*)')
+RE_BOLD_CJK_CHAR_RIGHT = re.compile(r'(\*\*[^*\n]+?\*\*)([一-鿿㐀-䶿])')
+
+# M 仅报告：opener `**` 前 / closer `**` 后是 CJK 标点，且另一侧不是 CJK 字符。
+#    扫描层用 classify_bold_flank() 精判，避免 L 已修过的也算 M。
+
+# N: 图下方短文本（≤12 字符，紧邻 image / `</div>` 行）→ 建议居中图说 div（仅报告）。
+#    启发式 pattern: image-line → blank → short-text-line（非 heading / 非 list / 非 image / 非 JSX）。
+RE_IMAGE_LINE_LIKE = re.compile(r'^\s*(?:!\[|<img\b|</div>)')
 
 
 def find_broken_bold_pairs(line: str) -> list[tuple[int, int, str]]:
@@ -246,6 +268,96 @@ def find_mobile_screenshot_groups(text: str) -> list[tuple[int, int]]:
             groups.append((run_start, run_count))
         i = max(j, i + 1)
     return groups
+
+
+def fix_bold_cjk_boundary(s: str) -> str:
+    """L: 粗体两侧紧贴 CJK 字符 → 自动插空格。
+    用配对扫描法（按行内 ** 出现顺序两两配对）避开 `** A ** ** B **` 这种相邻
+    粗体被贪婪 regex 当成单个粗体的误判。表格行（`|`-leading）整行跳过。
+    """
+    lines = s.split("\n")
+    cjk_re = re.compile(r"[一-鿿㐀-䶿]")
+    for idx, line in enumerate(lines):
+        if line.lstrip().startswith("|"):
+            continue
+        positions = [m.start() for m in re.finditer(r"\*\*", line)]
+        if len(positions) < 2 or len(positions) % 2:
+            continue
+        # 收集 insert 点（不立即改，避免位置漂移）
+        edits: list[int] = []
+        for i in range(0, len(positions), 2):
+            start = positions[i]
+            end = positions[i + 1] + 2  # closer 之后一格
+            inner = line[start + 2 : end - 2]
+            if not inner or inner.strip() != inner:
+                continue  # 内层带空白，留给 B 处理
+            left = line[start - 1] if start > 0 else ""
+            right = line[end] if end < len(line) else ""
+            if left and cjk_re.match(left):
+                edits.append(start)
+            if right and cjk_re.match(right):
+                edits.append(end)
+        if not edits:
+            continue
+        new_line = line
+        for pos in sorted(set(edits), reverse=True):
+            new_line = new_line[:pos] + " " + new_line[pos:]
+        lines[idx] = new_line
+    return "\n".join(lines)
+
+
+def classify_bold_flank(ch: str) -> str:
+    """单字符分类：'space' / 'cjk_char' / 'cjk_punct' / 'ascii' / 'other'。"""
+    if not ch or ch in " \t":
+        return "space"
+    if RE_CJK_CHAR.match(ch):
+        return "cjk_char"
+    if RE_CJK_PUNCT.match(ch):
+        return "cjk_punct"
+    if re.match(r"[A-Za-z0-9]", ch):
+        return "ascii"
+    return "other"
+
+
+def find_cjk_punct_bold_issues(text: str) -> list[tuple[int, str, str]]:
+    """M: 粗体紧贴 CJK 标点（但两侧都不是 CJK 字符——L 已自动修过的不重复报）。
+    返回 [(行号 1-based, 粗体片段, 'L=...,R=...')]。
+    """
+    out = []
+    for ln, line in enumerate(text.split("\n"), start=1):
+        if line.lstrip().startswith("|"):
+            continue
+        for m in re.finditer(r"\*\*([^*\n]+?)\*\*", line):
+            left = line[m.start() - 1] if m.start() > 0 else ""
+            right = line[m.end()] if m.end() < len(line) else ""
+            lc = classify_bold_flank(left)
+            rc = classify_bold_flank(right)
+            if lc == "cjk_char" or rc == "cjk_char":
+                continue  # L 范围
+            if lc == "cjk_punct" or rc == "cjk_punct":
+                out.append((ln, m.group(0), f"L={lc},R={rc}"))
+    return out
+
+
+def find_caption_candidates(text: str) -> list[tuple[int, str]]:
+    """N: 图下方短文本（≤12 字符，前一行空，前前行是 image / `</div>`）。
+    返回 [(行号 1-based, 文本)]。
+    """
+    lines = text.split("\n")
+    out = []
+    for i in range(2, len(lines)):
+        line = lines[i].strip()
+        if not line or len(line) > 12:
+            continue
+        if line.startswith(("#", "-", "*", "!", "<", "|", ">", "`", "[")):
+            continue
+        if lines[i - 1].strip() != "":
+            continue
+        upup = lines[i - 2]
+        if not RE_IMAGE_LINE_LIKE.match(upup):
+            continue
+        out.append((i + 1, line))
+    return out
 
 
 def find_card_candidate_sections(text: str) -> list[tuple[int, str, int]]:
@@ -436,10 +548,43 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
             context=src[max(0, m.start()-30):min(len(src), m.end()+30)].replace("\n", "\\n"),
         ))
 
-    # 修复（按 fix 顺序：A → H → B → C → E → F → G；D/I/J/K 不动）
+    # L: CJK 字符紧贴粗体（auto-fix，加空格）—— 用 fix 前后 diff 反推 issue
+    pre_l = src
+    post_l = fix_bold_cjk_boundary(src)
+    if pre_l != post_l:
+        # 逐行比对，定位变更行
+        pre_lines = pre_l.split("\n")
+        post_lines = post_l.split("\n")
+        for line_idx, (b, a) in enumerate(zip(pre_lines, post_lines), start=1):
+            if b != a:
+                issues.append(Issue(
+                    file=rel, line=line_idx, pattern="bold_cjk_char",
+                    before=b.strip()[:100],
+                    after=a.strip()[:100],
+                    context=b.strip()[:100],
+                ))
+
+    # M: CJK 标点紧贴粗体（仅报告，跳过 L 已修的）
+    for ln, bold, flank in find_cjk_punct_bold_issues(post_l):
+        issues.append(Issue(
+            file=rel, line=ln, pattern="bold_cjk_punct",
+            before=bold, after=f"建议加空格分隔（{flank}）",
+            context="",
+        ))
+
+    # N: 图下方短文本图说候选（仅报告）
+    for ln, text in find_caption_candidates(post_l):
+        issues.append(Issue(
+            file=rel, line=ln, pattern="caption_candidate",
+            before=text, after="建议包装居中图说 div（参考 zh/ai-minutes/start-ai-minutes:42-50）",
+            context="",
+        ))
+
+    # 修复（按 fix 顺序：A → H → L → B → C → E → F → G；D/I/J/K/M/N 不动）
     fixed = src
     fixed = fix_underline(fixed)
     fixed = fix_nested_bold(fixed)
+    fixed = fix_bold_cjk_boundary(fixed)
     fixed = fix_bold_whitespace(fixed)
     fixed = fix_bad_url_placeholder(fixed)
     fixed = fix_empty_note(fixed)
@@ -448,7 +593,10 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
     if is_release_notes_index(rel):
         fixed = fix_four_space_indent(fixed)
 
-    report_only_patterns = {"url_as_label", "card_candidate", "mobile_screenshot_group", "dingtalk_mp4_link"}
+    report_only_patterns = {
+        "url_as_label", "card_candidate", "mobile_screenshot_group",
+        "dingtalk_mp4_link", "bold_cjk_punct", "caption_candidate",
+    }
     has_changes = fixed != src and any(i.pattern not in report_only_patterns for i in issues)
     return issues, (fixed if has_changes else None)
 
@@ -501,6 +649,9 @@ PATTERN_LABEL = {
     "card_candidate": "I. 同段 ≥4 段 bold 段落（建议 CardGroup，人审）",
     "mobile_screenshot_group": "J. 连续 ≥2 张移动端截图（建议 flex 容器，人审）",
     "dingtalk_mp4_link": "K. 钉钉附件 .mp4 链接（建议 <video> 标签，人审）",
+    "bold_cjk_char": "L. CJK 字符紧贴粗体（加空格分隔，auto-fix）",
+    "bold_cjk_punct": "M. CJK 标点紧贴粗体（仅报告，人审）",
+    "caption_candidate": "N. 图下方短文本（建议居中图说 div，人审）",
 }
 
 
@@ -606,7 +757,10 @@ def main() -> int:
 
         actionable = [
             i for i in issues
-            if i.pattern not in {"url_as_label", "card_candidate", "mobile_screenshot_group", "dingtalk_mp4_link"}
+            if i.pattern not in {
+                "url_as_label", "card_candidate", "mobile_screenshot_group",
+                "dingtalk_mp4_link", "bold_cjk_punct", "caption_candidate",
+            }
         ]
         if args.apply and fixed is not None and actionable:
             path.write_text(fixed, encoding="utf-8")
