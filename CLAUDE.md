@@ -223,16 +223,60 @@ git push origin main
 - [ ] frontmatter 含 `title` + `description`
 - [ ] 单文件 ≤ 800 行
 
+## 统一文档任务 SOP（每次必走，不分子产品）
+
+**核心原则**：不管处理哪个子产品（mail / meetings / aitable / docs / ...）的新内容，都走**同一套**已确认过的经验，**不按上下文挑选应用**。这是项目级硬约束，违反等同于违反 CLAUDE.md。
+
+每次开始文档任务前自查这 8 项；任何一项遗漏都视为未完成：
+
+### 1. 远端动作必须授权
+- **commit / push / 创建 PR / 外发消息**：默认需用户**明确授权**，不"顺手"做
+- **不主动 push**：claude 不输出"要不要 push"建议；用户明确要求才推
+- 细节：[[feedback_commit_authorization]]、[[feedback_push_scope]]
+
+### 2. 本地优先开发
+- 先本地开发 → `mint dev` 预览 → 调试 → 确认无问题 → 再推送远端
+- 细节：[[feedback_local_first_workflow]]
+
+### 3. Commit message ≤ 200 字
+- 主体只留 **what + why**；验收/grep/文件清单移到 PR description
+- 末尾必带 `to #82317048`（aoneId）
+- 用 HEREDOC 传递 `commit -m` 保证格式
+- 细节：[[feedback_commit_message_brevity]]
+
+### 4. 文件操作 row-level
+- 删 mdx 章节 → 自动 `rm` 孤儿本地图，不单独询问
+- markdown 清洗禁整段删表格/列表，必须 **row/item 颗粒度** + 表头命中整表删
+- 细节：[[feedback_orphan_image_auto_cleanup]]、[[feedback_markdown_table_list_row_level_deletion]]
+
+### 5. 中间产物不入仓
+- staging mdx、manifest、url-map、download 输出等加 `.gitignore`
+- 用过的临时脚本如未来用不上 → **删除**，不保留"以防万一"
+
+### 6. Memory 存储要先确认
+- 主动扫一遍可入 memory 的事实并询问；**存 memory 前列复选清单**让用户确认
+- 细节：[[feedback_proactive_memory]]
+
+### 7. Skill 抽取 ≥3 次
+- 同一类操作重复 ≥3 次 → 主动提议封装为 skill
+- 细节：[[feedback_skill_extraction]]
+
+### 8. Git 高危操作四坑
+- `filter-repo` / `reset --hard` / `force-push` 前先确认 backup
+- 细节：[[feedback_filter_repo_pitfalls]]
+
+**遗漏 SOP = 未完成任务**。如果中途发现某条没走，立即补做并在响应中说明。
+
 ## Git 规范
 
-- **commit 格式**：`<type>: <description>。to #82317048`
+- **commit 格式**：`<type>: <description>。to #82317048`（主体 ≤ 200 字，见上方 SOP §3）
 - **type**：`feat` | `fix` | `refactor` | `docs` | `chore` | `perf`
 - **description**：中文，简洁
 - **末尾必带** `to #82317048`（aoneId，用于代码统计；可被 `/commit-flow` skill 自动填充）
 - 暂存用精确 add，**不用** `git add .` / `git add -A`
 - 不提交 `.env` / `credentials` 等敏感文件
 - `main` 是发布分支，push 即触发自动构建
-- **commit / push / 创建 PR 前需用户明确授权**（不要"顺手"提交）
+- **commit / push / 创建 PR 前需用户明确授权**（见上方 SOP §1）
 - 完整流程见 `/commit-flow` skill
 
 ## 相关资源
