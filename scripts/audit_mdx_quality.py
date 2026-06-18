@@ -8,6 +8,10 @@ B. `** text**` 粗体空白破坏（仅 LEADING-space 安全检测；TRAILING-sp
 C. `[label](https:xxx)` 形态废 URL（协议后跟纯字母≤8 字符，无 `//`）→ 去链留文案
 D. `[https://...full-url...](url)` label 含完整 URL → 仅报告，人审
 E. 空 `<Note>` 块（`<Note>---</Note>` / `<Note></Note>` / 跨行空 Note）→ 整段删除
+H. `**X****Y**` 破碎嵌套粗体（恰好 4 连星）→ 合并为单段 `**XY**`（auto-fix）
+I. 同段内 ≥4 段独立 `**bold**` 行 → 建议 `<CardGroup>`（仅报告，人审）
+J. 连续 ≥2 张移动端截图（按 alt 文件名 lQDPKH/IMG_ 前缀或 URL crop 高瘦比例 h/w≥1.5）→ 建议 flex 容器（仅报告）
+K. `[xxx.mp4](alidocs.dingtalk.*/...)` 钉钉附件 mp4 链接 → 建议 `<video>` 标签（仅报告）
 
 定向模式（仅 release-notes/）：钉钉编辑器导出 mdx 时把 `<Note>` 拆碎，icon/标题被强制分行
 F. `release-notes/` 下 `<Note>` 与 `</Note>` 标签行整段剥离（保留内部 markdown）
@@ -77,6 +81,28 @@ RE_NOTE_CLOSE_LINE = re.compile(r'^[ \t]*</Note>[ \t]*\r?\n', re.M)
 #    解析器吃掉了它的章节地位。任意以 4 个空格开头的非空行,统一夺为 0 缩进。
 RE_FOUR_SPACE_INDENT = re.compile(r'^    (?!\s)', re.M)
 
+# H: 破碎嵌套粗体 `**X****Y**` → `**XY**`。
+#    钉钉编辑器粗体内嵌套粗体导出残骸——`****`（恰好 4 个连续 `*`）在 `**…**` 内部
+#    把单段加粗截成 `**A** **B**` 三段紧挨。删掉 4 连星即合并。
+#    `(?<!\*)` / `(?!\*)` 锚定恰好 4 连，避开 `***italic-bold***` / `*****bold-italic*****`。
+RE_NESTED_BOLD = re.compile(r'(?<!\*)\*{4}(?!\*)')
+
+# I: 同段内 ≥4 段独立 `**bold**` 段落 → 建议 CardGroup（仅报告）。
+#    启发式：H1-H4 section 内统计 RE_BOLD_PARA_LINE 命中数，≥4 即报。
+RE_BOLD_PARA_LINE = re.compile(r'^\*\*[^*\n]+\*\*\s*$')
+
+# J: 连续 ≥2 张移动端截图 → 建议 flex 容器（仅报告）。
+#    移动端启发式：alt 文件名 `lQDPKH` / `IMG_\d+` 前缀，OR url crop 比例高瘦（h/w≥1.5），
+#    OR 文件名内嵌尺寸 `_1179_2556` 这类。
+RE_IMG_INLINE = re.compile(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)')
+
+# K: 钉钉附件链接当 mp4 视频 → 建议 video 标签（仅报告）。
+#    label 含 `.mp4`，url 是 alidocs.dingtalk.*。
+RE_DINGTALK_MP4_LINK = re.compile(
+    r'\[([^\]]*\.mp4[^\]]*)\]\((https?://alidocs\.dingtalk\.[^)]+)\)',
+    re.I,
+)
+
 
 def find_broken_bold_pairs(line: str) -> list[tuple[int, int, str]]:
     """单行扫破碎粗体。返回 [(start, end, inner)]，其中 inner 是 ** … ** 之间的原文。
@@ -144,6 +170,105 @@ def fix_four_space_indent(s: str) -> str:
     return RE_FOUR_SPACE_INDENT.sub("", s)
 
 
+def fix_nested_bold(s: str) -> str:
+    """4 连星 `****` 删除——合并 `**A****B**` 为 `**AB**`。"""
+    return RE_NESTED_BOLD.sub("", s)
+
+
+def is_mobile_screenshot(alt: str, url: str) -> bool:
+    """启发式判定一张图是否移动端截图。"""
+    alt = alt or ""
+    if re.match(r'(?:lQDPKH|IMG_\d+)', alt, re.I):
+        return True
+    # alt 文件名内嵌尺寸：_1179_2556 / _1320_2862 等高瘦
+    name_match = re.search(r'_(\d{3,4})_(\d{3,4})\.(?:png|jpg|jpeg)', alt, re.I)
+    if name_match:
+        w, h = int(name_match.group(1)), int(name_match.group(2))
+        if w > 0 and h > w * 1.5:
+            return True
+    # URL crop 参数：w_1320,h_2862 之类
+    crop_match = re.search(r'w_(\d+),h_(\d+)', url)
+    if crop_match:
+        w, h = int(crop_match.group(1)), int(crop_match.group(2))
+        if w > 0 and h > w * 1.5:
+            return True
+    return False
+
+
+def find_mobile_screenshot_groups(text: str) -> list[tuple[int, int]]:
+    """[(开始行号 1-based, 连续移动端截图张数)]。
+    "连续" 指相邻图行之间最多隔一个空白行，且不被非空非图行打断。
+    一行内多张图同样计入。
+    """
+    lines = text.split("\n")
+    groups: list[tuple[int, int]] = []
+    n = len(lines)
+    i = 0
+    while i < n:
+        imgs = RE_IMG_INLINE.findall(lines[i])
+        if not imgs:
+            i += 1
+            continue
+        mobile = [(a, u) for a, u in imgs if is_mobile_screenshot(a, u)]
+        if not mobile or len(mobile) != len(imgs):
+            i += 1
+            continue
+        run_start = i + 1
+        run_count = len(mobile)
+        j = i + 1
+        while j < n:
+            line_j = lines[j]
+            if line_j.strip() == "":
+                # 跳到下一非空行
+                k = j + 1
+                while k < n and lines[k].strip() == "":
+                    k += 1
+                if k >= n:
+                    break
+                imgs_k = RE_IMG_INLINE.findall(lines[k])
+                if not imgs_k:
+                    break
+                mobile_k = [(a, u) for a, u in imgs_k if is_mobile_screenshot(a, u)]
+                if not mobile_k or len(mobile_k) != len(imgs_k):
+                    break
+                run_count += len(mobile_k)
+                j = k + 1
+                continue
+            imgs_j = RE_IMG_INLINE.findall(line_j)
+            if not imgs_j:
+                break
+            mobile_j = [(a, u) for a, u in imgs_j if is_mobile_screenshot(a, u)]
+            if not mobile_j or len(mobile_j) != len(imgs_j):
+                break
+            run_count += len(mobile_j)
+            j += 1
+        if run_count >= 2:
+            groups.append((run_start, run_count))
+        i = max(j, i + 1)
+    return groups
+
+
+def find_card_candidate_sections(text: str) -> list[tuple[int, str, int]]:
+    """[(标题行号 1-based, section 标题, bold 段落数)]，bold 段落 ≥4 才返回。"""
+    lines = text.split("\n")
+    sections: list[tuple[int, str, int, int]] = []  # (heading_line_1based, title, start_idx, end_idx)
+    current_h: tuple[int, str, int] | None = None
+    for i, line in enumerate(lines):
+        if re.match(r'^#{1,4}\s', line):
+            if current_h is not None:
+                sections.append((current_h[0], current_h[1], current_h[2], i))
+            current_h = (i + 1, line.lstrip("#").strip(), i + 1)
+    if current_h is not None:
+        sections.append((current_h[0], current_h[1], current_h[2], len(lines)))
+
+    out: list[tuple[int, str, int]] = []
+    for h_line, h_text, start, end in sections:
+        count = sum(1 for j in range(start, end) if RE_BOLD_PARA_LINE.match(lines[j]))
+        if count >= 4:
+            out.append((h_line, h_text, count))
+    return out
+
+
 def is_release_notes(rel_path: str) -> bool:
     """`docs/release-notes/`、`zh/docs/release-notes/`、`ja/docs/release-notes/` 全覆盖。"""
     parts = Path(rel_path).parts
@@ -199,6 +324,16 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
             file=rel, line=find_line(src, m.start()), pattern="underline",
             before=before, after=after,
             context=src[max(0, m.start()-30):m.end()+30].replace("\n", "\\n"),
+        ))
+
+    # H: 破碎嵌套粗体 ****（auto-fix，剥 4 连星）
+    for m in RE_NESTED_BOLD.finditer(src):
+        ctx_start = max(0, m.start() - 30)
+        ctx_end = min(len(src), m.end() + 30)
+        issues.append(Issue(
+            file=rel, line=find_line(src, m.start()), pattern="nested_bold",
+            before="****", after="（删除）",
+            context=src[ctx_start:ctx_end].replace("\n", "\\n"),
         ))
 
     # B: bold whitespace — per-line 配对法。先模拟剥 ++ 让破碎粗体浮出来。
@@ -273,9 +408,38 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
                 context=line_text[:80],
             ))
 
-    # 修复（按 fix 顺序：A → B → C → E → F → G；D 不动）
+    # I: CardGroup 候选段（同段内 ≥4 段 bold 行，仅报告）
+    for h_line, h_text, n_bolds in find_card_candidate_sections(src):
+        issues.append(Issue(
+            file=rel, line=h_line, pattern="card_candidate",
+            before=f"section: {h_text[:60]}",
+            after=f"建议改 <CardGroup>（{n_bolds} 段 bold 标题）",
+            context=h_text[:120],
+        ))
+
+    # J: 连续 ≥2 张移动端截图（仅报告）
+    for start_line, count in find_mobile_screenshot_groups(src):
+        issues.append(Issue(
+            file=rel, line=start_line, pattern="mobile_screenshot_group",
+            before=f"{count} 张移动端截图连续",
+            after="建议用 flex 容器（参考 zh/ai-minutes/start-ai-minutes 范式）",
+            context="",
+        ))
+
+    # K: 钉钉附件 mp4 链接（仅报告）
+    for m in RE_DINGTALK_MP4_LINK.finditer(src):
+        before = m.group(0)
+        issues.append(Issue(
+            file=rel, line=find_line(src, m.start()), pattern="dingtalk_mp4_link",
+            before=before[:120] + ("…" if len(before) > 120 else ""),
+            after="建议改 <video> 标签（外联 mp4 直链）",
+            context=src[max(0, m.start()-30):min(len(src), m.end()+30)].replace("\n", "\\n"),
+        ))
+
+    # 修复（按 fix 顺序：A → H → B → C → E → F → G；D/I/J/K 不动）
     fixed = src
     fixed = fix_underline(fixed)
+    fixed = fix_nested_bold(fixed)
     fixed = fix_bold_whitespace(fixed)
     fixed = fix_bad_url_placeholder(fixed)
     fixed = fix_empty_note(fixed)
@@ -284,7 +448,8 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
     if is_release_notes_index(rel):
         fixed = fix_four_space_indent(fixed)
 
-    has_changes = fixed != src and any(i.pattern != "url_as_label" for i in issues)
+    report_only_patterns = {"url_as_label", "card_candidate", "mobile_screenshot_group", "dingtalk_mp4_link"}
+    has_changes = fixed != src and any(i.pattern not in report_only_patterns for i in issues)
     return issues, (fixed if has_changes else None)
 
 
@@ -332,6 +497,10 @@ PATTERN_LABEL = {
     "strip_note_open": "F1. release-notes `<Note>` 标签行（剥）",
     "strip_note_close": "F2. release-notes `</Note>` 标签行（剥）",
     "four_space_indent": "G. release-notes/index 4 空格缩进（夺为 0）",
+    "nested_bold": "H. `**X****Y**` 破碎嵌套粗体（剥 4 连星）",
+    "card_candidate": "I. 同段 ≥4 段 bold 段落（建议 CardGroup，人审）",
+    "mobile_screenshot_group": "J. 连续 ≥2 张移动端截图（建议 flex 容器，人审）",
+    "dingtalk_mp4_link": "K. 钉钉附件 .mp4 链接（建议 <video> 标签，人审）",
 }
 
 
@@ -435,7 +604,10 @@ def main() -> int:
         issues, fixed = scan_file(path)
         all_issues.extend(issues)
 
-        actionable = [i for i in issues if i.pattern != "url_as_label"]
+        actionable = [
+            i for i in issues
+            if i.pattern not in {"url_as_label", "card_candidate", "mobile_screenshot_group", "dingtalk_mp4_link"}
+        ]
         if args.apply and fixed is not None and actionable:
             path.write_text(fixed, encoding="utf-8")
             applied[str(path.relative_to(REPO_ROOT))] = len(actionable)

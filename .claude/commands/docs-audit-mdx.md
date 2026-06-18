@@ -38,11 +38,22 @@ python3 -c 'import httpx' 2>&1 || echo "[err] httpx 未装：pip install httpx"
 python3 scripts/audit_mdx_quality.py [--root <root>] [--lang <lang>] [--apply]
 ```
 
-脚本检测 4 类：
-- **A. `++text++`**：剥 `++` 留内层（auto-fix）
-- **B. `** X**` 破碎粗体**：修空格（auto-fix）
-- **C. `[label](https:xxx)` 废占位 URL**：去链留文（auto-fix）
-- **D. `[https://...](url)` URL-as-label**：仅报告，需人审
+脚本检测 8 类（A/B/C/E/F/G/H 自动修；D/I/J/K 仅报告人审）：
+
+**自动修（auto-fix）**
+- **A. `++text++`**：剥 `++` 留内层
+- **B. `** X**` 破碎粗体**：修空格
+- **C. `[label](https:xxx)` 废占位 URL**：去链留文
+- **E. 空 `<Note>` 块**：整段删
+- **F. release-notes 内 `<Note>` 标签行**：剥
+- **G. release-notes/index 4 空格缩进**：夺为 0
+- **H. `**X****Y**` 破碎嵌套粗体（恰好 4 连星）**：删 `****` 合并为单段 `**XY**`
+
+**仅报告人审**
+- **D. `[https://...](url)` URL-as-label**：label 是整段 URL，人工改文案
+- **I. 同段 ≥4 段独立 `**bold**` 行**：建议改 `<CardGroup>`（启发式，按 H1-H4 section 内统计）
+- **J. 连续 ≥2 张移动端截图**：建议 flex 容器；移动端启发式 = alt 含 `lQDPKH` / `IMG_` 前缀，或 URL crop / 文件名内嵌尺寸高瘦比 h/w≥1.5
+- **K. `[xxx.mp4](alidocs.dingtalk.*/...)`**：钉钉附件 mp4 链接，建议改 `<video>` 标签直引 OSS mp4
 
 跑完读 `scripts/output/audit_mdx/syntax-report.md` 头部回显：
 
@@ -123,6 +134,32 @@ python3 scripts/check_external_links.py [--root <root>] [--lang <lang>] \
 ### Pitfall 5: D 类（url_as_label）不自动改
 
 D 类是 `[https://full-url](url)` 形态——label 把整段 URL 当文案了。脚本不能机器判断该改成什么显示文字，**只报告**。修法：人工把 label 改成正常文案（章节标题 / 短描述），或直接删掉链接保留 URL 文本。
+
+### Pitfall 6: I/J/K 类是启发式建议
+
+- **I（CardGroup 候选）**：基于 H1-H4 section 内 `**bold**` 段落数 ≥4 触发。**会有假阳性**——`**Q:**` `**A:**` 这种 Q&A 段、`步骤一/步骤二` 这种自然有 4 段 bold 的章节都会被命中。判断时看是不是真"6 个并列场景描述"——这种适合用 `<CardGroup cols={2}>` + 每个 `<Card title icon>`；Q&A 段保持 bold 段落即可。
+- **J（移动端截图组）**：基于 alt 文件名前缀（`lQDPKH` / `IMG_`）+ URL crop / 文件名嵌尺寸高瘦比（h/w≥1.5）。命中后建议用：
+
+  ```mdx
+  <div style={{display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', margin: '16px 0'}}>
+    <img src="url1" alt="..." style={{width: '32%', minWidth: '180px', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)'}} />
+    <img src="url2" alt="..." style={{width: '32%', minWidth: '180px', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)'}} />
+    <img src="url3" alt="..." style={{width: '32%', minWidth: '180px', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)'}} />
+  </div>
+  ```
+
+  2 张图改 `width: '48%'` `minWidth: '200px'`。**PC 截图不应用此规则**——PC 横向截图本身就宽，并排会被压缩到看不清。
+
+- **K（钉钉附件 mp4）**：建议用：
+
+  ```mdx
+  <video controls width="100%" style={{borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', margin: '8px 0'}}>
+    <source src="https://alidocs2.oss-cn-zhangjiakou.aliyuncs.com/res/.../xxx.mp4?Expires=...&Signature=..." type="video/mp4" />
+    您的浏览器不支持 video 标签。
+  </video>
+  ```
+
+  注意 OSS 签名 URL 含 `Expires=` 会过期。优先拿不带签名的永久直链（资源 ID 直链），实在没有再用签名直链并记一笔过期时间。
 
 ## 与其他 skill 的协作
 
