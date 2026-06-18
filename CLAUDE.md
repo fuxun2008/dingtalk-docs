@@ -265,7 +265,36 @@ git push origin main
 - `filter-repo` / `reset --hard` / `force-push` 前先确认 backup
 - 细节：[[feedback_filter_repo_pitfalls]]
 
-**遗漏 SOP = 未完成任务**。如果中途发现某条没走，立即补做并在响应中说明。
+### 9. 场景 → Skill 路由表（命中必走 skill，不重新发明轮子）
+
+**强制约束**：命中场景必须走对应 skill；觉得不适用时先说明理由再绕开，让用户能即时纠正。绕过 skill 直接手工执行等同于违反 SOP。
+
+| 场景 | 必走 skill | 跳过条件 |
+|---|---|---|
+| commit | `/commit-flow` | 用户明确说"直接 commit" |
+| 创建 PR | `/pr` | 无 |
+| MDX 改动后（>5 篇） | `/docs-audit-mdx` | 仅图 URL 替换可豁免 |
+| 提交前 | `/security-scan-docs` | 仅本地脚本无 mdx 改动 |
+| 实现前（非 trivial） | `/plan` | 单行修复/已有明确指令 |
+| 加新页 | `/docs-add-page` | 无 |
+| nav 改动 | `/docs-nav-edit` | 无 |
+| 翻译（单篇/批量） | `/docs-translate` 或 `/docs-translate-batch` | 无 |
+| 翻译润色 | `/docs-translate-polish` | 无 |
+| 视觉验证 | `/docs-preview` | 命令行能验证的小改动 |
+| 子产品导入（zh） | `/docs-dingtalk-onboard` | 无 |
+| 子产品导入（en-direct） | `/docs-import-hub-en` | 无 |
+| 删 mdx 后 | `/docs-prune-orphan-images` | 自动判断本地图引用 |
+| 词库变更 | `/docs-glossary-sync` | 无 |
+| 大改动 review | `/code-review` | 单行修复 |
+| 删死码 | `/refactor-clean` | 无 |
+| build/type 错 | `/build-fix` | 无 |
+| 设置 hook | `/update-config` | 无 |
+| memory 扫描 | `/memory-scan` | 用户明确说"不存" |
+| 重排导航 | `/docs-reorder-by-official-menu` | 无 |
+| 开放平台批清 | `/docs-open-platform-cleanup` | 无 |
+| 钉钉归档下载 | `/docs-import-archive` | 无 |
+
+**遗漏 SOP（§1-§9 任一项） = 未完成任务**。如果中途发现某条没走，立即补做并在响应中说明。
 
 ## Git 规范
 
