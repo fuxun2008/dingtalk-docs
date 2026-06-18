@@ -223,16 +223,89 @@ git push origin main
 - [ ] frontmatter 含 `title` + `description`
 - [ ] 单文件 ≤ 800 行
 
+## 统一文档任务 SOP（每次必走，不分子产品）
+
+**核心原则**：不管处理哪个子产品（mail / meetings / aitable / docs / ...）的新内容，都走**同一套**已确认过的经验，**不按上下文挑选应用**。这是项目级硬约束，违反等同于违反 CLAUDE.md。
+
+每次开始文档任务前自查这 8 项；任何一项遗漏都视为未完成：
+
+### 1. 远端动作必须授权
+- **commit / push / 创建 PR / 外发消息**：默认需用户**明确授权**，不"顺手"做
+- **不主动 push**：claude 不输出"要不要 push"建议；用户明确要求才推
+- 细节：[[feedback_commit_authorization]]、[[feedback_push_scope]]
+
+### 2. 本地优先开发
+- 先本地开发 → `mint dev` 预览 → 调试 → 确认无问题 → 再推送远端
+- 细节：[[feedback_local_first_workflow]]
+
+### 3. Commit message ≤ 200 字
+- 主体只留 **what + why**；验收/grep/文件清单移到 PR description
+- 末尾必带 `to #82317048`（aoneId）
+- 用 HEREDOC 传递 `commit -m` 保证格式
+- 细节：[[feedback_commit_message_brevity]]
+
+### 4. 文件操作 row-level
+- 删 mdx 章节 → 自动 `rm` 孤儿本地图，不单独询问
+- markdown 清洗禁整段删表格/列表，必须 **row/item 颗粒度** + 表头命中整表删
+- 细节：[[feedback_orphan_image_auto_cleanup]]、[[feedback_markdown_table_list_row_level_deletion]]
+
+### 5. 中间产物不入仓
+- staging mdx、manifest、url-map、download 输出等加 `.gitignore`
+- 用过的临时脚本如未来用不上 → **删除**，不保留"以防万一"
+
+### 6. Memory 存储要先确认
+- 主动扫一遍可入 memory 的事实并询问；**存 memory 前列复选清单**让用户确认
+- 细节：[[feedback_proactive_memory]]
+
+### 7. Skill 抽取 ≥3 次
+- 同一类操作重复 ≥3 次 → 主动提议封装为 skill
+- 细节：[[feedback_skill_extraction]]
+
+### 8. Git 高危操作四坑
+- `filter-repo` / `reset --hard` / `force-push` 前先确认 backup
+- 细节：[[feedback_filter_repo_pitfalls]]
+
+### 9. 场景 → Skill 路由表（命中必走 skill，不重新发明轮子）
+
+**强制约束**：命中场景必须走对应 skill；觉得不适用时先说明理由再绕开，让用户能即时纠正。绕过 skill 直接手工执行等同于违反 SOP。
+
+| 场景 | 必走 skill | 跳过条件 |
+|---|---|---|
+| commit | `/commit-flow` | 用户明确说"直接 commit" |
+| 创建 PR | `/pr` | 无 |
+| MDX 改动后（>5 篇） | `/docs-audit-mdx` | 仅图 URL 替换可豁免 |
+| 提交前 | `/security-scan-docs` | 仅本地脚本无 mdx 改动 |
+| 实现前（非 trivial） | `/plan` | 单行修复/已有明确指令 |
+| 加新页 | `/docs-add-page` | 无 |
+| nav 改动 | `/docs-nav-edit` | 无 |
+| 翻译（单篇/批量） | `/docs-translate` 或 `/docs-translate-batch` | 无 |
+| 翻译润色 | `/docs-translate-polish` | 无 |
+| 视觉验证 | `/docs-preview` | 命令行能验证的小改动 |
+| 子产品导入（zh） | `/docs-dingtalk-onboard` | 无 |
+| 子产品导入（en-direct） | `/docs-import-hub-en` | 无 |
+| 删 mdx 后 | `/docs-prune-orphan-images` | 自动判断本地图引用 |
+| 词库变更 | `/docs-glossary-sync` | 无 |
+| 大改动 review | `/code-review` | 单行修复 |
+| 删死码 | `/refactor-clean` | 无 |
+| build/type 错 | `/build-fix` | 无 |
+| 设置 hook | `/update-config` | 无 |
+| memory 扫描 | `/memory-scan` | 用户明确说"不存" |
+| 重排导航 | `/docs-reorder-by-official-menu` | 无 |
+| 开放平台批清 | `/docs-open-platform-cleanup` | 无 |
+| 钉钉归档下载 | `/docs-import-archive` | 无 |
+
+**遗漏 SOP（§1-§9 任一项） = 未完成任务**。如果中途发现某条没走，立即补做并在响应中说明。
+
 ## Git 规范
 
-- **commit 格式**：`<type>: <description>。to #82317048`
+- **commit 格式**：`<type>: <description>。to #82317048`（主体 ≤ 200 字，见上方 SOP §3）
 - **type**：`feat` | `fix` | `refactor` | `docs` | `chore` | `perf`
 - **description**：中文，简洁
 - **末尾必带** `to #82317048`（aoneId，用于代码统计；可被 `/commit-flow` skill 自动填充）
 - 暂存用精确 add，**不用** `git add .` / `git add -A`
 - 不提交 `.env` / `credentials` 等敏感文件
 - `main` 是发布分支，push 即触发自动构建
-- **commit / push / 创建 PR 前需用户明确授权**（不要"顺手"提交）
+- **commit / push / 创建 PR 前需用户明确授权**（见上方 SOP §1）
 - 完整流程见 `/commit-flow` skill
 
 ## 相关资源
