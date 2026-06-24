@@ -88,6 +88,9 @@ def main():
     priority.text = "1.0"
 
     for rel in mdx_paths:
+        # Skip root index.mdx — homepage already added with priority 1.0
+        if str(rel) == "index.mdx":
+            continue
         url_el = ET.SubElement(urlset, "url")
         loc = ET.SubElement(url_el, "loc")
         loc.text = mdx_to_url(rel)
