@@ -517,7 +517,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         <div className="dt-home-nav-links">
           <a href="#categories">{t.nav1}</a>
           <a href={`${lp}open/dingstart/basic-concepts-beta`}>{t.nav3}</a>
-          <a href="https://www.dingtalk.io/contact-sales/?type=support" target="_blank" rel="noopener noreferrer">
+          <a href="https://www.dingtalk.io/contact-sales" target="_blank" rel="noopener noreferrer">
             {t.nav4}
           </a>
         </div>
@@ -683,7 +683,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             <li><a href="https://www.dingtalk.io/#pricing" target="_blank" rel="noopener noreferrer">{t.foot_s1}</a></li>
             <li><a href="https://www.dingtalk.io/contact-sales/" target="_blank" rel="noopener noreferrer">{t.foot_s2}</a></li>
             <li><a href="https://help.dingtalk.io">{t.foot_s3}</a></li>
-            <li><a href={`${lp}open/dingstart/basic-concepts-beta`} target="_blank" rel="noopener noreferrer">{t.foot_s4}</a></li>
+            <li><a href={`https://help.dingtalk.io${lp}open/dingstart/basic-concepts-beta`} target="_blank" rel="noopener noreferrer">{t.foot_s4}</a></li>
           </ul>
         </div>
         <div>
