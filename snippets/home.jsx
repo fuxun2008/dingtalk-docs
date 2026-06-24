@@ -113,34 +113,99 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
      Headless UI Dialog: position:relative wrapper > fixed scroll-container
      > the actual panel pinned to scroll-container's top. We flex-start the
      scroll-container with padding-top = --dt-search-top so the panel sits
-     exactly where the hero input was, and widen panel max-width. */
+     exactly where the hero input was, and widen panel max-width.
+
+     Plus: a MutationObserver unifies all open paths (hero button / hot tag /
+     ⌘K / Ctrl+K) — whenever the dialog mounts we re-measure hero box top,
+     focus the inner input, and lock body scroll. Restored on unmount. */
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "dt-home-search-overrides";
-    if (document.getElementById(id)) return;
-    const el = document.createElement("style");
-    el.id = id;
-    el.textContent = `
-      [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
-        display: flex !important;
-        align-items: flex-start !important;
-        justify-content: center !important;
-        padding-top: var(--dt-search-top, 96px) !important;
-      }
-      [role="dialog"][aria-modal="true"]:has(input)
-        > div.fixed.overflow-y-auto
-        > div[class*="max-w-"] {
-        max-width: min(760px, 92vw) !important;
-        width: 100% !important;
-      }
-      @media (max-width: 640px) {
+    let styleEl = document.getElementById(id);
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = id;
+      styleEl.textContent = `
+        [role="dialog"][aria-modal="true"]:has(input) {
+          z-index: 9999 !important;
+        }
         [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
-          padding-top: max(var(--dt-search-top, 12vh), 12vh) !important;
+          display: flex !important;
+          align-items: flex-start !important;
+          justify-content: center !important;
+          padding-top: var(--dt-search-top, 96px) !important;
+          z-index: 9999 !important;
+        }
+        [role="dialog"][aria-modal="true"]:has(input)
+          > div.fixed.overflow-y-auto
+          > div[class*="max-w-"] {
+          max-width: min(760px, 92vw) !important;
+          width: 100% !important;
+        }
+        @media (max-width: 640px) {
+          [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
+            padding-top: max(var(--dt-search-top, 12vh), 12vh) !important;
+          }
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    const isSearchDialog = (node) =>
+      node && node.nodeType === 1 &&
+      typeof node.matches === "function" &&
+      node.matches('[role="dialog"][aria-modal="true"]') &&
+      !!node.querySelector("input");
+
+    const findSearchDialog = (root) => {
+      if (isSearchDialog(root)) return root;
+      if (root && root.nodeType === 1 && typeof root.querySelector === "function") {
+        const inner = root.querySelector('[role="dialog"][aria-modal="true"]');
+        if (inner && inner.querySelector("input")) return inner;
+      }
+      return null;
+    };
+
+    const onOpen = (dialog) => {
+      const heroBox = document.querySelector(".dt-home-search-box");
+      if (heroBox) {
+        const top = Math.max(0, Math.round(heroBox.getBoundingClientRect().top));
+        document.documentElement.style.setProperty("--dt-search-top", top + "px");
+      }
+      document.body.style.overflow = "hidden";
+      const focusInput = () => {
+        const input = dialog.querySelector(
+          'input[type="search"], input[role="searchbox"], input[type="text"]'
+        );
+        if (input && document.activeElement !== input) input.focus();
+      };
+      focusInput();
+      requestAnimationFrame(focusInput);
+    };
+    const onClose = () => {
+      document.body.style.overflow = "";
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          const d = findSearchDialog(node);
+          if (d) onOpen(d);
+        }
+        for (const node of m.removedNodes) {
+          const d = findSearchDialog(node);
+          if (d) onClose();
         }
       }
-    `;
-    document.head.appendChild(el);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    const existing = document.querySelector('[role="dialog"][aria-modal="true"]');
+    if (existing && existing.querySelector("input")) onOpen(existing);
+
     return () => {
+      observer.disconnect();
+      document.body.style.overflow = "";
       const found = document.getElementById(id);
       if (found) found.remove();
     };
@@ -599,7 +664,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     <footer className="dt-home-footer">
       <div className="dt-home-wrap dt-home-foot">
         <div>
-          <a href="https://help.dingtalk.io" className="dt-home-foot-brand" aria-label="DingTalk" />
+          <a href={homeHref} className="dt-home-foot-brand" aria-label="DingTalk" />
 
           <p className="dt-home-foot-tagline">{t.foot_tag}</p>
         </div>
@@ -615,10 +680,10 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         <div>
           <h5>{t.foot_h2}</h5>
           <ul>
-            <li><a href="https://help.dingtalk.io">{t.foot_s1}</a></li>
-            <li><a href="https://www.dingtalk.io/contact-sales/?type=support" target="_blank" rel="noopener noreferrer">{t.foot_s2}</a></li>
-            <li><a href="https://www.dingtalk.io/" target="_blank" rel="noopener noreferrer">{t.foot_s3}</a></li>
-            <li><a href={`${lp}open/dingstart/basic-concepts-beta`}>{t.foot_s4}</a></li>
+            <li><a href="https://www.dingtalk.io/#pricing" target="_blank" rel="noopener noreferrer">{t.foot_s1}</a></li>
+            <li><a href="https://www.dingtalk.io/contact-sales/" target="_blank" rel="noopener noreferrer">{t.foot_s2}</a></li>
+            <li><a href="https://help.dingtalk.io">{t.foot_s3}</a></li>
+            <li><a href={`${lp}open/dingstart/basic-concepts-beta`} target="_blank" rel="noopener noreferrer">{t.foot_s4}</a></li>
           </ul>
         </div>
         <div>
@@ -626,7 +691,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
           <ul>
             <li><a href="https://www.dingtalk.io/blog/" target="_blank" rel="noopener noreferrer">{t.foot_r1}</a></li>
             <li><a href="https://www.dingtalk.io/qa/" target="_blank" rel="noopener noreferrer">{t.foot_r2}</a></li>
-            <li><a href="https://www.dingtalk.io/" target="_blank" rel="noopener noreferrer">{t.foot_r3}</a></li>
+            <li><a href="https://www.dingtalk.io/#customer-cases" target="_blank" rel="noopener noreferrer">{t.foot_r3}</a></li>
             <li><a href="https://www.dingtalk.io/download/" target="_blank" rel="noopener noreferrer">{t.foot_r4}</a></li>
           </ul>
         </div>
