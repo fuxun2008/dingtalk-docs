@@ -3,7 +3,6 @@
 
 import os
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
 from pathlib import Path
 
 BASE_URL = "https://help.dingtalk.io"
@@ -58,13 +57,6 @@ def mdx_to_url(rel_path: Path) -> str:
     return f"{BASE_URL}/{url_path}"
 
 
-def get_lastmod(file_path: Path) -> str:
-    """Get file modification time as ISO date."""
-    mtime = file_path.stat().st_mtime
-    dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
-    return dt.strftime("%Y-%m-%d")
-
-
 def main():
     mdx_paths = collect_mdx_paths()
     print(f"Found {len(mdx_paths)} .mdx files")
@@ -74,14 +66,15 @@ def main():
     urlset = ET.Element("urlset", xmlns=ns)
     urlset.set("xmlns:xhtml", "http://www.w3.org/1999/xhtml")
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # Note: lastmod is intentionally omitted to keep sitemap.xml deterministic.
+    # The pre-push hook re-runs this script and compares output; including
+    # date-based lastmod would cause spurious diffs every day.
+    # Google explicitly states it does not strongly trust sitemap lastmod anyway.
 
     # Add homepage first
     home_el = ET.SubElement(urlset, "url")
     loc = ET.SubElement(home_el, "loc")
     loc.text = f"{BASE_URL}/"
-    lastmod = ET.SubElement(home_el, "lastmod")
-    lastmod.text = today
     changefreq = ET.SubElement(home_el, "changefreq")
     changefreq.text = "daily"
     priority = ET.SubElement(home_el, "priority")
@@ -94,8 +87,6 @@ def main():
         url_el = ET.SubElement(urlset, "url")
         loc = ET.SubElement(url_el, "loc")
         loc.text = mdx_to_url(rel)
-        lastmod = ET.SubElement(url_el, "lastmod")
-        lastmod.text = today
         changefreq = ET.SubElement(url_el, "changefreq")
         changefreq.text = "weekly"
         priority = ET.SubElement(url_el, "priority")

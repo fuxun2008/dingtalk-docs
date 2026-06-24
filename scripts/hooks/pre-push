@@ -1,0 +1,62 @@
+#!/bin/sh
+# pre-push — 自动刷新 sitemap.xml 并检测是否落后于当前 .mdx 文件状态。
+#
+# 启用方式（每个 contributor 本地一次性执行）：
+#   git config core.hooksPath scripts/hooks
+#
+# 触发时机：git push 之前。
+# 行为：跑 scripts/generate_sitemap.py 重新生成 sitemap.xml；
+#   - 与已 commit 的 sitemap.xml 内容一致 → 通过，继续 push；
+#   - 不一致 → 把刚生成的新版保留在工作树，中断 push，提示用户 commit 后再 push。
+#
+# 设计：脚本输出已是确定性（无时间戳类字段），所以差异 = .mdx 真有变化。
+
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+GEN_SCRIPT="$REPO_ROOT/scripts/generate_sitemap.py"
+SITEMAP="$REPO_ROOT/sitemap.xml"
+
+# 1) 容错：脚本不在则跳过（如 cherry-pick 中间态 / 早期分支）
+if [ ! -f "$GEN_SCRIPT" ]; then
+  exit 0
+fi
+
+# 2) 容错：python3 不可用则跳过 + 打印告警
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[pre-push] ⚠️  python3 not found — skipping sitemap freshness check." >&2
+  exit 0
+fi
+
+# 3) snapshot 当前 sitemap.xml 的 hash（不存在则空字符串）
+OLD_HASH=""
+if [ -f "$SITEMAP" ]; then
+  OLD_HASH=$(git hash-object "$SITEMAP")
+fi
+
+echo "[pre-push] 🔍 Refreshing sitemap.xml ..."
+python3 "$GEN_SCRIPT" >/dev/null
+
+NEW_HASH=""
+if [ -f "$SITEMAP" ]; then
+  NEW_HASH=$(git hash-object "$SITEMAP")
+fi
+
+if [ "$OLD_HASH" = "$NEW_HASH" ]; then
+  echo "[pre-push] ✅ sitemap.xml in sync."
+  exit 0
+fi
+
+# 4) 不一致 — 中断 push 并提示
+cat <<EOF >&2
+
+[pre-push] ⚠️  sitemap.xml is out of sync with current .mdx files.
+            (Pre-push hook regenerated it; the new version is now in your working tree.)
+
+  Inspect:    git diff sitemap.xml
+  Commit:     git add sitemap.xml && git commit -m "chore: refresh sitemap" && git push
+  Or amend:   git add sitemap.xml && git commit --amend --no-edit && git push
+
+Aborting push.
+EOF
+exit 1
