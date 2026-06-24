@@ -37,27 +37,115 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       'M16.75,6.5C16.75,6.6731317,16.809898,6.8409319,16.919532,6.9749284L21.030954,12L16.919926,17.02459C16.809898,17.159069000000002,16.75,17.326867999999997,16.75,17.5C16.75,17.914213,17.085787,18.25,17.5,18.25C17.724951,18.25,17.938021,18.14903,18.080467,17.974928L22.580467,12.4749279C22.806511,12.1986542,22.806511,11.8013458,22.580467,11.5250711L18.080467,6.0250716C17.938021,5.85097,17.724949,5.75,17.5,5.75C17.085787,5.75,16.75,6.0857863000000005,16.75,6.5ZM14.5,3.5C14.5,3.55080509,14.494838,3.60147858,14.484592,3.65123987L10.9846725,20.65085C10.9128208,20.999847,10.6059189,21.25,10.25,21.25C9.8357868,21.25,9.5,20.914213,9.5,20.5C9.5,20.449196,9.5051622,20.398521,9.5154076,20.348759L13.015408,3.34876037C13.087179,3.0001533,13.394081,2.75,13.75,2.75C14.164213,2.75,14.5,3.08578634,14.5,3.5ZM7.25,6.5C7.25,6.6731317,7.1901016,6.8409319,7.0804682,6.9749284L2.9690456000000003,12L7.0800743,17.02459C7.1901016,17.159069000000002,7.25,17.326867999999997,7.25,17.5C7.25,17.914213,6.9142132,18.25,6.5,18.25C6.2750502,18.25,6.0619783,18.14903,5.9195318,17.974928L1.41953182,12.4749279C1.193489075,12.1986542,1.193489075,11.8013458,1.41953182,11.5250711L5.9195318,6.0250716C6.0619793,5.85097,6.2750502,5.75,6.5,5.75C6.9142132,5.75,7.25,6.0857863000000005,6.5,6.5Z',
   };
 
-  /* ---- Mintlify search trigger ---- */
-  const triggerMintlifySearch = () => {
+  /* ---- Mintlify search trigger ----
+     openSearchWithQuery("") -> open the built-in search dialog (empty state).
+     openSearchWithQuery("foo") -> open + prefill "foo" + trigger React's onChange
+     so Mintlify runs the query and renders results immediately.
+     Mintlify renders the dialog via React portal, so we poll a few frames
+     until its <input> mounts, then use the prototype value setter to make
+     React notice the programmatic change. */
+  const openSearchWithQuery = (query) => {
     if (typeof document === "undefined") return;
+    if (openSearchWithQuery._lock) return;
+    openSearchWithQuery._lock = true;
+    setTimeout(() => { openSearchWithQuery._lock = false; }, 300);
+
+    const heroBox = document.querySelector(".dt-home-search-box");
+    if (heroBox) {
+      const top = Math.max(0, Math.round(heroBox.getBoundingClientRect().top));
+      document.documentElement.style.setProperty("--dt-search-top", top + "px");
+    }
+
     const btn = document.querySelector(
       'button[aria-label*="Search" i], button[id*="search-bar-entry"], [data-search-trigger]'
     );
     if (btn) {
       btn.click();
-      return;
+    } else {
+      const isMac = navigator.platform.toLowerCase().includes("mac");
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "k",
+          code: "KeyK",
+          metaKey: isMac,
+          ctrlKey: !isMac,
+          bubbles: true,
+        })
+      );
     }
-    const isMac = navigator.platform.toLowerCase().includes("mac");
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "k",
-        code: "KeyK",
-        metaKey: isMac,
-        ctrlKey: !isMac,
-        bubbles: true,
-      })
-    );
+
+    const trimmed = (query || "").trim();
+    if (!trimmed) return;
+
+    let tries = 0;
+    const maxTries = 18;
+    const tick = () => {
+      tries++;
+      const dialog =
+        document.querySelector('[role="dialog"][aria-modal="true"]') ||
+        document.querySelector("dialog[open]") ||
+        document.querySelector("[data-search-dialog]");
+      const input =
+        dialog &&
+        dialog.querySelector(
+          'input[type="search"], input[role="searchbox"], input[type="text"]'
+        );
+      if (input) {
+        const setter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          "value"
+        ).set;
+        setter.call(input, trimmed);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+        try {
+          input.setSelectionRange(trimmed.length, trimmed.length);
+        } catch (_) {}
+        return;
+      }
+      if (tries < maxTries) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   };
+  const triggerMintlifySearch = () => openSearchWithQuery("");
+
+  /* ---- Centre the Mintlify search dialog over the hero search box.
+     Headless UI Dialog: position:relative wrapper > fixed scroll-container
+     > the actual panel pinned to scroll-container's top. We flex-start the
+     scroll-container with padding-top = --dt-search-top so the panel sits
+     exactly where the hero input was, and widen panel max-width. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "dt-home-search-overrides";
+    if (document.getElementById(id)) return;
+    const el = document.createElement("style");
+    el.id = id;
+    el.textContent = `
+      [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
+        display: flex !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding-top: var(--dt-search-top, 96px) !important;
+      }
+      [role="dialog"][aria-modal="true"]:has(input)
+        > div.fixed.overflow-y-auto
+        > div[class*="max-w-"] {
+        max-width: min(760px, 92vw) !important;
+        width: 100% !important;
+      }
+      @media (max-width: 640px) {
+        [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
+          padding-top: max(var(--dt-search-top, 12vh), 12vh) !important;
+        }
+      }
+    `;
+    document.head.appendChild(el);
+    return () => {
+      const found = document.getElementById(id);
+      if (found) found.remove();
+    };
+  }, []);
+
 
   /* ---- ParticleCanvas (closure-local component) ---- */
   const ParticleCanvas = () => {
@@ -176,42 +264,72 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     return <canvas ref={ref} className="dt-home-particle-canvas" />;
   };
 
-  /* ---- SearchBar (closure-local component with state) ---- */
+  /* ---- SearchBar ----
+     Hero search bar. Local `val` state holds the typed text. Submission
+     (Enter / search button click) calls openSearchWithQuery(val) which
+     opens the Mintlify built-in dialog and prefills the query. Hot tags
+     do the same. */
   const SearchBar = () => {
     const [val, setVal] = useState("");
-    const onSubmit = () => triggerMintlifySearch();
+    const submit = () => openSearchWithQuery(val);
+    const isMac =
+      typeof navigator !== "undefined" &&
+      navigator.platform.toLowerCase().includes("mac");
+    const kbdHint = isMac ? "⌘K" : "Ctrl+K";
     return (
       <div className="dt-home-search">
-        <div className="dt-home-search-box" onClick={onSubmit}>
+        <div className="dt-home-search-box" role="search">
           <svg
             className="dt-home-search-ic"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            aria-hidden="true"
           >
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.2-3.2" />
           </svg>
           <input
             type="text"
+            role="searchbox"
+            aria-label={t.ph}
             value={val}
             placeholder={t.ph}
             onChange={(e) => setVal(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                onSubmit();
+                submit();
               }
             }}
             onClick={(e) => e.stopPropagation()}
           />
+          <kbd
+            aria-hidden="true"
+            style={{
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: "11.5px",
+              fontWeight: 600,
+              color: "var(--ink-3)",
+              background: "var(--surface-2, rgba(15, 23, 42, 0.06))",
+              border: "1px solid var(--line)",
+              borderRadius: "5px",
+              padding: "2px 6px",
+              flex: "none",
+              letterSpacing: "0.02em",
+              userSelect: "none",
+            }}
+          >
+            {kbdHint}
+          </kbd>
           <button
             type="button"
             className="dt-home-search-go"
+            aria-label={t.search_btn}
             onClick={(e) => {
               e.stopPropagation();
-              onSubmit();
+              submit();
             }}
           >
             <svg
@@ -222,6 +340,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
               stroke="currentColor"
               strokeWidth="2.4"
               style={{ display: "inline-block", verticalAlign: "-2px" }}
+              aria-hidden="true"
             >
               <path d="M5 12h14m-6-6 6 6-6 6" />
             </svg>{" "}
@@ -243,7 +362,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            triggerMintlifySearch();
+            openSearchWithQuery(tag);
           }}
         >
           {tag}
