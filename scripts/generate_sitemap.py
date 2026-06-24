@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Generate sitemap.xml for help.dingtalk.io from all .mdx files."""
+"""Generate sitemap.xml for help.dingtalk.io from all .mdx files.
+
+Each <url> block carries <xhtml:link rel="alternate" hreflang="..."> siblings
+that point to its peers in the trilingual mirror (en / zh-CN / ja-JP), plus
+x-default to the en version. Pages that lack a localization are still listed,
+but only with hreflang entries for languages whose .mdx actually exists.
+"""
 
 import os
 import xml.etree.ElementTree as ET
@@ -13,96 +19,153 @@ IGNORE_DIRS = {
     ".aoneci", ".husky", ".vscode", "dev-certs", "ci", "conf",
     "public", "assets",
 }
-# Top-level content directories that are valid doc paths
 VALID_TOP_DIRS = {
     "ai-minutes", "aitable", "calendar", "contacts", "docs", "drive",
     "im", "mail", "meetings", "open", "zh", "ja",
 }
+
+SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
+XHTML_NS = "http://www.w3.org/1999/xhtml"
+
+# Hreflang tags. zh maps to zh-CN (Simplified, mainland);
+# ja maps to ja-JP. en stays plain (no regional qualifier).
+LANG_TAGS = {"en": "en", "zh": "zh-CN", "ja": "ja-JP"}
+DEFAULT_LANG = "en"  # what x-default points to
+
+# Register namespaces so ElementTree emits the expected prefixes.
+ET.register_namespace("", SITEMAP_NS)
+ET.register_namespace("xhtml", XHTML_NS)
 
 
 def collect_mdx_paths():
     """Collect all .mdx file paths relative to DOCS_ROOT."""
     results = []
     for root, dirs, files in os.walk(DOCS_ROOT):
-        # Skip ignored directories
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith(".")]
-
         rel_root = Path(root).relative_to(DOCS_ROOT)
-        # Skip if top-level dir is not a valid content dir
         top = rel_root.parts[0] if rel_root.parts else None
         if top and top not in VALID_TOP_DIRS:
             continue
-
         for f in files:
             if f.endswith(".mdx"):
                 full = Path(root) / f
                 rel = full.relative_to(DOCS_ROOT)
                 results.append(rel)
-
     return sorted(results)
 
 
-def mdx_to_url(rel_path: Path) -> str:
-    """Convert a relative .mdx path to a sitemap URL."""
+def classify(rel_path: Path):
+    """Split a relative .mdx path into (lang, base_parts).
+
+    base_parts is the slug path with the lang prefix stripped, .mdx removed,
+    and trailing "index" collapsed (so /im/index.mdx -> ("en", ["im"])).
+    """
     parts = list(rel_path.parts)
-    # Remove .mdx extension
-    parts[-1] = parts[-1].replace(".mdx", "")
-    # index pages map to parent directory URL
-    if parts[-1] == "index":
-        parts = parts[:-1]
-    # Build URL path
-    url_path = "/".join(parts)
-    if not url_path:
-        url_path = ""  # root
-    return f"{BASE_URL}/{url_path}"
+    if parts and parts[0] in ("zh", "ja"):
+        lang = parts[0]
+        base_parts = parts[1:]
+    else:
+        lang = "en"
+        base_parts = parts[:]
+    if base_parts:
+        base_parts[-1] = base_parts[-1].replace(".mdx", "")
+        if base_parts[-1] == "index":
+            base_parts = base_parts[:-1]
+    return lang, base_parts
+
+
+def url_for(lang: str, base_parts: list) -> str:
+    """Build the canonical URL for a (lang, base_parts) tuple."""
+    segments = []
+    if lang != "en":
+        segments.append(lang)
+    segments.extend(base_parts)
+    path = "/".join(segments)
+    if not path:
+        return f"{BASE_URL}/"
+    return f"{BASE_URL}/{path}"
+
+
+def _make(parent: ET.Element, ns: str, tag: str, **attrib) -> ET.Element:
+    elem = ET.SubElement(parent, f"{{{ns}}}{tag}", attrib=attrib)
+    return elem
+
+
+def emit(urlset: ET.Element, lang: str, base_parts: list,
+         langs_present: dict, is_home: bool) -> None:
+    url_el = _make(urlset, SITEMAP_NS, "url")
+    loc = _make(url_el, SITEMAP_NS, "loc")
+    loc.text = url_for(lang, base_parts)
+
+    # hreflang siblings — only for languages whose .mdx actually exists.
+    for alt_lang in ("en", "zh", "ja"):
+        if alt_lang not in langs_present:
+            continue
+        _make(
+            url_el, XHTML_NS, "link",
+            rel="alternate",
+            hreflang=LANG_TAGS[alt_lang],
+            href=url_for(alt_lang, base_parts),
+        )
+    # x-default points to en if present (fallback for unknown locales).
+    if DEFAULT_LANG in langs_present:
+        _make(
+            url_el, XHTML_NS, "link",
+            rel="alternate",
+            hreflang="x-default",
+            href=url_for(DEFAULT_LANG, base_parts),
+        )
+
+    cf = _make(url_el, SITEMAP_NS, "changefreq")
+    cf.text = "daily" if is_home else "weekly"
+    pr = _make(url_el, SITEMAP_NS, "priority")
+    pr.text = "1.0" if is_home else "0.7"
 
 
 def main():
     mdx_paths = collect_mdx_paths()
     print(f"Found {len(mdx_paths)} .mdx files")
 
-    # Build XML
-    ns = "http://www.sitemaps.org/schemas/sitemap/0.9"
-    urlset = ET.Element("urlset", xmlns=ns)
-    urlset.set("xmlns:xhtml", "http://www.w3.org/1999/xhtml")
+    # Build base_key -> {lang: True} so emit() knows which alternates exist.
+    base_lang_map: dict = {}
+    for rel in mdx_paths:
+        lang, base_parts = classify(rel)
+        base_key = "/".join(base_parts)
+        base_lang_map.setdefault(base_key, {})[lang] = True
+
+    urlset = ET.Element(f"{{{SITEMAP_NS}}}urlset")
 
     # Note: lastmod is intentionally omitted to keep sitemap.xml deterministic.
-    # The pre-push hook re-runs this script and compares output; including
-    # date-based lastmod would cause spurious diffs every day.
-    # Google explicitly states it does not strongly trust sitemap lastmod anyway.
+    # The pre-push hook re-runs this script and compares output; date-based
+    # lastmod would cause spurious daily diffs. Google does not strongly
+    # trust sitemap lastmod anyway.
 
-    # Add homepage first
-    home_el = ET.SubElement(urlset, "url")
-    loc = ET.SubElement(home_el, "loc")
-    loc.text = f"{BASE_URL}/"
-    changefreq = ET.SubElement(home_el, "changefreq")
-    changefreq.text = "daily"
-    priority = ET.SubElement(home_el, "priority")
-    priority.text = "1.0"
+    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja.
+    home_langs = base_lang_map.get("", {})
+    if "en" in home_langs:
+        emit(urlset, "en", [], home_langs, is_home=True)
+    for lang in ("zh", "ja"):
+        if lang in home_langs:
+            emit(urlset, lang, [], home_langs, is_home=False)
 
+    # 2) Other pages in deterministic mdx_paths order.
     for rel in mdx_paths:
-        # Skip root index.mdx — homepage already added with priority 1.0
-        if str(rel) == "index.mdx":
-            continue
-        url_el = ET.SubElement(urlset, "url")
-        loc = ET.SubElement(url_el, "loc")
-        loc.text = mdx_to_url(rel)
-        changefreq = ET.SubElement(url_el, "changefreq")
-        changefreq.text = "weekly"
-        priority = ET.SubElement(url_el, "priority")
-        priority.text = "0.7"
+        lang, base_parts = classify(rel)
+        base_key = "/".join(base_parts)
+        if base_key == "":
+            continue  # homepages already emitted
+        emit(urlset, lang, base_parts, base_lang_map[base_key], is_home=False)
 
-    # Write with XML declaration
     tree = ET.ElementTree(urlset)
     out = DOCS_ROOT / "sitemap.xml"
     ET.indent(tree, space="  ")
     tree.write(str(out), encoding="utf-8", xml_declaration=True)
 
-    # Count by language
-    en = sum(1 for p in mdx_paths if not str(p).startswith("zh/") and not str(p).startswith("ja/"))
-    zh = sum(1 for p in mdx_paths if str(p).startswith("zh/"))
-    ja = sum(1 for p in mdx_paths if str(p).startswith("ja/"))
+    en = sum(1 for p in mdx_paths if classify(p)[0] == "en")
+    zh = sum(1 for p in mdx_paths if classify(p)[0] == "zh")
+    ja = sum(1 for p in mdx_paths if classify(p)[0] == "ja")
     print(f"  EN: {en}, ZH: {zh}, JA: {ja}")
+    print(f"  Unique base paths: {len(base_lang_map)}")
     print(f"Written to {out} ({out.stat().st_size / 1024:.1f} KB)")
 
 
