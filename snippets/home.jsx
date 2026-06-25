@@ -35,6 +35,53 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     return m ? decodeURIComponent(m[1]) : "";
   };
 
+  /* ---- SEO: schema.org JSON-LD payload (Organization + WebSite/SearchAction) ----
+     Mintlify auto-injects title/description from frontmatter, but rich-result
+     eligibility (Organization sitelinks, sitelinks search box) requires
+     explicit structured data. SearchAction urlTemplate is wired to a ?q=
+     handler below so the Google search box lands users into the built-in
+     search dialog instead of a dead URL. */
+  const buildStructuredData = (l) => {
+    const lp = l === "en" ? "/" : "/" + l + "/";
+    const inLang = { en: "en-US", zh: "zh-CN", ja: "ja-JP" }[l] || "en-US";
+    const altName = { en: "DingTalk Help Center", zh: "钉钉帮助中心", ja: "DingTalk ヘルプセンター" }[l];
+    const siteUrl = "https://help.dingtalk.io" + lp;
+    const logo = "https://img.alicdn.com/imgextra/i1/O1CN01OqM4Sy1bJrYgEwAmx_!!6000000003445-2-tps-520-177.png";
+    return {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://help.dingtalk.io/#org",
+          "name": "DingTalk",
+          "url": "https://www.dingtalk.io/",
+          "logo": logo,
+          "sameAs": [
+            "https://www.dingtalk.io/",
+            "https://www.dingtalk.com/",
+            "https://www.dingtalk.co.jp/"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://help.dingtalk.io/#website",
+          "url": siteUrl,
+          "name": altName,
+          "inLanguage": inLang,
+          "publisher": { "@id": "https://help.dingtalk.io/#org" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": siteUrl + "?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    };
+  };
+
   /* ---- SVG icon path strings (rendered inline) ---- */
   const I = {
     im:
@@ -246,10 +293,35 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const path = window.location.pathname.replace(/\/+$/, "") || "/";
+    const qs = window.location.search || "";
 
-    if (path === "/zh" || path.startsWith("/zh/")) { writeDdL("zh"); return; }
-    if (path === "/ja" || path.startsWith("/ja/")) { writeDdL("ja"); return; }
-    if (path !== "/") return;
+    // Consume ?q= (from current URL or sessionStorage stash) and open the
+    // built-in search dialog. Called only when this is the user's final
+    // landing page (no redirect ahead), so the dialog has time to mount
+    // before any navigation happens.
+    const consumeQ = () => {
+      let q = new URLSearchParams(qs).get("q");
+      if (!q) {
+        try { q = sessionStorage.getItem("dt_home_q"); } catch (_) {}
+      }
+      if (q) {
+        try { sessionStorage.removeItem("dt_home_q"); } catch (_) {}
+        openSearchWithQuery(q);
+      }
+    };
+    // Stash ?q= before any redirect so the destination page can still
+    // resurrect it. Mintlify's /zh → /zh/index redirect drops the query
+    // string, and so does our own dd_l replace below.
+    const stashQ = () => {
+      const qp = new URLSearchParams(qs).get("q");
+      if (qp) {
+        try { sessionStorage.setItem("dt_home_q", qp); } catch (_) {}
+      }
+    };
+
+    if (path === "/zh" || path.startsWith("/zh/")) { writeDdL("zh"); consumeQ(); return; }
+    if (path === "/ja" || path.startsWith("/ja/")) { writeDdL("ja"); consumeQ(); return; }
+    if (path !== "/") { consumeQ(); return; }
 
     // Same-origin referrer overrides stale dd_l. Covers the "switched on a
     // doc page then clicked logo" path where the top-bar switcher cannot
@@ -266,13 +338,14 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     } catch (_) {}
     if (refPath && refPath !== "/") {
       if (refPath === "/zh" || refPath.startsWith("/zh/")) {
-        writeDdL("zh"); window.location.replace("/zh"); return;
+        writeDdL("zh"); stashQ(); window.location.replace("/zh" + qs); return;
       }
       if (refPath === "/ja" || refPath.startsWith("/ja/")) {
-        writeDdL("ja"); window.location.replace("/ja"); return;
+        writeDdL("ja"); stashQ(); window.location.replace("/ja" + qs); return;
       }
       // EN doc page (non-root, no lang prefix) → user is in EN context
       writeDdL("en");
+      consumeQ();
       return;
     }
 
@@ -281,7 +354,13 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     const nav = ((typeof navigator !== "undefined" && navigator.language) || "").toLowerCase();
     let target = "en";
     if (ddL === "zh_CN" || (!ddL && /^zh/.test(nav))) target = "zh";
-    if (target !== "en") window.location.replace("/" + target);
+    if (target !== "en") {
+      stashQ();
+      window.location.replace("/" + target + qs);
+      return;
+    }
+    // EN user staying on / — consume now.
+    consumeQ();
   }, []);
 
 
@@ -786,6 +865,10 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
 
   return (
     <div className="dt-home">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildStructuredData(lang)) }}
+      />
       {renderHeader()}
       {renderHero()}
       {renderCategoryGrid()}
