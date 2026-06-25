@@ -3,10 +3,12 @@
 
 输出三类报告，便于人工补齐文案：
 - MISSING   : frontmatter 无 description 或为空字符串
-- TOO_SHORT : description < 50 字符 (搜索引擎摘要质量低)
-- TOO_LONG  : description > 160 字符 (Google SERP 会截断)
+- TOO_SHORT : description < 阈值（按 lang）
+- TOO_LONG  : description > 阈值（按 lang，Google SERP 会截断）
 
-CJK 字符按 1 字符算（搜索引擎按字形计数）。
+CJK 字符按 1 字符算（Python len），但 CJK 在视觉宽度上占双倍，所以 zh/ja
+的阈值收紧到 25/80；en 用 50/160。也对外暴露 LANG_THRESHOLDS 常量供其它
+脚本（gen_seo_descriptions_batch.py 等）import 复用。
 
 用法：
     python3 scripts/lint_seo_descriptions.py
@@ -31,8 +33,12 @@ VALID_TOP_DIRS = {
 # 根目录 .mdx 也算 en (index.mdx / quickstart.mdx 等)
 ROOT_MDX_AS_EN = True
 
-SHORT_THRESHOLD = 50
-LONG_THRESHOLD = 160
+# 按语言分阈值：CJK 视觉宽度是 en 的两倍，相同 SEO 容量对应字符数减半。
+LANG_THRESHOLDS = {
+    "en": {"short": 50, "long": 160},
+    "zh": {"short": 25, "long": 80},
+    "ja": {"short": 25, "long": 80},
+}
 
 DESC_RE = re.compile(
     r'^description:\s*"((?:[^"\\]|\\.)*)"\s*$'
@@ -93,8 +99,8 @@ def main() -> int:
     print(f"Scanned {len(paths)} .mdx files" + (f" (lang={args.lang})" if args.lang else ""))
 
     missing: list[Path] = []
-    short: list[tuple[Path, int, str]] = []
-    long_: list[tuple[Path, int, str]] = []
+    short: list[tuple[Path, int, str, str]] = []  # (path, len, desc, lang)
+    long_: list[tuple[Path, int, str, str]] = []
     total_with_desc = 0
     total_chars = 0
 
@@ -110,17 +116,21 @@ def main() -> int:
         n = len(desc)
         total_with_desc += 1
         total_chars += n
-        if n < SHORT_THRESHOLD:
-            short.append((p, n, desc))
-        elif n > LONG_THRESHOLD:
-            long_.append((p, n, desc))
+        lang = classify(p)
+        th = LANG_THRESHOLDS.get(lang, LANG_THRESHOLDS["en"])
+        if n < th["short"]:
+            short.append((p, n, desc, lang))
+        elif n > th["long"]:
+            long_.append((p, n, desc, lang))
 
     avg = total_chars / total_with_desc if total_with_desc else 0
     print(
         f"  with description: {total_with_desc}  avg={avg:.0f} chars  "
-        f"missing={len(missing)}  short(<{SHORT_THRESHOLD})={len(short)}  "
-        f"long(>{LONG_THRESHOLD})={len(long_)}"
+        f"missing={len(missing)}  short={len(short)}  long={len(long_)}"
     )
+    print(f"  thresholds: " + ", ".join(
+        f"{lang}=<{th['short']}/>{th['long']}" for lang, th in LANG_THRESHOLDS.items()
+    ))
 
     def show(label: str, items: list, fmt) -> None:
         if not items:
@@ -132,17 +142,17 @@ def main() -> int:
     show(
         "MISSING description",
         missing,
-        lambda p: f"  {p.relative_to(REPO_ROOT)}",
+        lambda p: f"  [{classify(p)}]  {p.relative_to(REPO_ROOT)}",
     )
     show(
-        f"TOO_SHORT (<{SHORT_THRESHOLD} chars)",
+        "TOO_SHORT",
         sorted(short, key=lambda t: t[1]),
-        lambda t: f"  {t[1]:3d} chars  {t[0].relative_to(REPO_ROOT)}  — {t[2][:60]}",
+        lambda t: f"  [{t[3]}] {t[1]:3d} chars  {t[0].relative_to(REPO_ROOT)}  — {t[2][:60]}",
     )
     show(
-        f"TOO_LONG (>{LONG_THRESHOLD} chars)",
+        "TOO_LONG",
         sorted(long_, key=lambda t: -t[1]),
-        lambda t: f"  {t[1]:3d} chars  {t[0].relative_to(REPO_ROOT)}  — {t[2][:60]}…",
+        lambda t: f"  [{t[3]}] {t[1]:3d} chars  {t[0].relative_to(REPO_ROOT)}  — {t[2][:60]}…",
     )
 
     return 0
