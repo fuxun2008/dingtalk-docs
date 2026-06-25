@@ -13,6 +13,28 @@ import React, { useEffect, useRef, useState } from "react";
    ============================================================ */
 
 export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
+  /* ---- Language preference cookie (shared across *.dingtalk.io subdomains) ----
+     dd_l values: en_US / zh_CN / ja_JP. Read order on landing:
+       dd_l cookie → navigator.language → fallback "en". */
+  const DD_L_MAP = { en: "en_US", zh: "zh_CN", ja: "ja_JP" };
+  const writeDdL = (code) => {
+    if (typeof document === "undefined") return;
+    const v = DD_L_MAP[code];
+    if (!v) return;
+    const host = (typeof window !== "undefined" && window.location.hostname) || "";
+    const parts = ["dd_l=" + v, "path=/", "max-age=31536000", "samesite=lax"];
+    // Only attach domain on real dingtalk.io subdomains (browsers reject
+    // cross-domain cookies on localhost). Cross-subdomain sharing still
+    // works in production where the page IS on *.dingtalk.io.
+    if (/\.dingtalk\.io$/i.test(host)) parts.push("domain=.dingtalk.io");
+    document.cookie = parts.join("; ");
+  };
+  const readCookie = (k) => {
+    if (typeof document === "undefined") return "";
+    const m = document.cookie.match(new RegExp("(?:^|;\\s*)" + k + "=([^;]+)"));
+    return m ? decodeURIComponent(m[1]) : "";
+  };
+
   /* ---- SVG icon path strings (rendered inline) ---- */
   const I = {
     im:
@@ -209,6 +231,57 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       const found = document.getElementById(id);
       if (found) found.remove();
     };
+  }, []);
+
+  /* ---- Landing language gate ----
+     Mintlify Hobby has no <script> injection. The docs-page top-bar
+     language switcher only changes URL prefix and does NOT write dd_l —
+     so the user's "I just switched to EN on a doc page" intent has to be
+     reconstructed when they come back to the homepage. Rules:
+       - /zh/*, /ja/*  → reinforce dd_l (explicit language path)
+       - /             → if same-origin referrer is a doc page, infer the
+                          language from its path (override stale dd_l);
+                          otherwise fall back to dd_l + navigator.language.
+     Cookie is scoped to .dingtalk.io so subdomains can share it. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname.replace(/\/+$/, "") || "/";
+
+    if (path === "/zh" || path.startsWith("/zh/")) { writeDdL("zh"); return; }
+    if (path === "/ja" || path.startsWith("/ja/")) { writeDdL("ja"); return; }
+    if (path !== "/") return;
+
+    // Same-origin referrer overrides stale dd_l. Covers the "switched on a
+    // doc page then clicked logo" path where the top-bar switcher cannot
+    // touch the cookie itself.
+    let refPath = "";
+    try {
+      const r = document.referrer;
+      if (r) {
+        const u = new URL(r);
+        if (u.host === window.location.host) {
+          refPath = u.pathname.replace(/\/+$/, "") || "/";
+        }
+      }
+    } catch (_) {}
+    if (refPath && refPath !== "/") {
+      if (refPath === "/zh" || refPath.startsWith("/zh/")) {
+        writeDdL("zh"); window.location.replace("/zh"); return;
+      }
+      if (refPath === "/ja" || refPath.startsWith("/ja/")) {
+        writeDdL("ja"); window.location.replace("/ja"); return;
+      }
+      // EN doc page (non-root, no lang prefix) → user is in EN context
+      writeDdL("en");
+      return;
+    }
+
+    // No referrer (direct entry / external link) → dd_l + browser language
+    const ddL = readCookie("dd_l");
+    const nav = ((typeof navigator !== "undefined" && navigator.language) || "").toLowerCase();
+    let target = "en";
+    if (ddL === "zh_CN" || (!ddL && /^zh/.test(nav))) target = "zh";
+    if (target !== "en") window.location.replace("/" + target);
   }, []);
 
 
@@ -458,7 +531,11 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       { code: "en", label: "English", href: "/" },
       { code: "zh", label: "中文", href: "/zh" },
     ];
-    const current = LANGS.find((l) => l.code === lang) || LANGS[0];
+    // Button label reflects the page's actual language (incl. ja), even when
+    // ja is not yet listed in the dropdown options.
+    const LABEL_MAP = { en: "English", zh: "中文", ja: "日本語" };
+    const current = LANGS.find((l) => l.code === lang) ||
+      { code: lang, label: LABEL_MAP[lang] || "English" };
     return (
       <div className={`dt-home-lang${open ? " dt-home-lang-open" : ""}`}>
         <button
@@ -493,6 +570,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
               role="option"
               aria-selected={l.code === current.code ? "true" : "false"}
               onClick={() => {
+                writeDdL(l.code);
                 window.location.href = l.href;
               }}
             >
@@ -505,8 +583,8 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   };
 
   /* ---- Header (replaces Mintlify navbar; navbar is hidden via injected <style>) ---- */
-  const homeHref = "/";
   const lp = lang === "en" ? "/" : "/" + lang + "/";
+  const homeHref = lp;
   const renderHeader = () => (
     <header className="dt-home-header">
       <nav className="dt-home-nav">
