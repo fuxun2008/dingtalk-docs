@@ -97,14 +97,8 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     openSearchWithQuery._lock = true;
     setTimeout(() => { openSearchWithQuery._lock = false; }, 300);
 
-    const heroBox = document.querySelector(".dt-home-search-box");
-    if (heroBox) {
-      const top = Math.max(0, Math.round(heroBox.getBoundingClientRect().top));
-      document.documentElement.style.setProperty("--dt-search-top", top + "px");
-    }
-
     const btn = document.querySelector(
-      'button[aria-label*="Search" i], button[id*="search-bar-entry"], [data-search-trigger]'
+      'button[id*="search-bar-entry"], button[aria-label*="Search" i], [data-search-trigger]'
     );
     if (btn) {
       btn.click();
@@ -128,15 +122,10 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     const maxTries = 18;
     const tick = () => {
       tries++;
-      const dialog =
-        document.querySelector('[role="dialog"][aria-modal="true"]') ||
-        document.querySelector("dialog[open]") ||
-        document.querySelector("[data-search-dialog]");
       const input =
-        dialog &&
-        dialog.querySelector(
-          'input[type="search"], input[role="searchbox"], input[type="text"]'
-        );
+        document.querySelector("#search-input") ||
+        document.querySelector('[role="dialog"] input[role="combobox"]') ||
+        document.querySelector('[role="dialog"] input');
       if (input) {
         const setter = Object.getOwnPropertyDescriptor(
           window.HTMLInputElement.prototype,
@@ -156,15 +145,20 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   };
   const triggerMintlifySearch = () => openSearchWithQuery("");
 
-  /* ---- Centre the Mintlify search dialog over the hero search box.
-     Headless UI Dialog: position:relative wrapper > fixed scroll-container
-     > the actual panel pinned to scroll-container's top. We flex-start the
-     scroll-container with padding-top = --dt-search-top so the panel sits
-     exactly where the hero input was, and widen panel max-width.
+  /* ---- Position + mask the Mintlify built-in search dialog.
+     Mintlify renders it via a portal at <body>: a fixed full-screen
+     scroll-container (the dialog's parent) > the actual panel, plus a sibling
+     mask. We tag the container (.dt-search-portal) to pin the panel to the
+     upper third, tag the mask (.dt-search-backdrop) to recolour it per theme,
+     and add body.dt-search-open to drop the custom landing header below
+     Mintlify's z-40 mask (its default z-50 otherwise floats bright above it),
+     so the header stays visible but gets dimmed like the rest of the page.
+     Selectors stay off Mintlify's internal Tailwind classes so they survive
+     its DOM churn.
 
-     Plus: a MutationObserver unifies all open paths (hero button / hot tag /
-     ⌘K / Ctrl+K) — whenever the dialog mounts we re-measure hero box top,
-     focus the inner input, and lock body scroll. Restored on unmount. */
+     A MutationObserver unifies all open paths (hero button / hot tag / ⌘K /
+     Ctrl+K / ?q= deep-link): on mount we position, mask, focus the input and
+     lock body scroll; all restored on unmount. */
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "dt-home-search-overrides";
@@ -173,26 +167,31 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       styleEl = document.createElement("style");
       styleEl.id = id;
       styleEl.textContent = `
-        [role="dialog"][aria-modal="true"]:has(input) {
-          z-index: 9999 !important;
-        }
-        [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
+        /* Pin the panel to the upper third (~30% from top), not dead-centre
+           which sits too low. flex-start + padding-top keeps tall result
+           lists scrollable inside the container instead of clipping. */
+        .dt-search-portal {
           display: flex !important;
           align-items: flex-start !important;
           justify-content: center !important;
-          padding-top: var(--dt-search-top, 96px) !important;
-          z-index: 9999 !important;
+          padding-top: 16vh !important;
         }
-        [role="dialog"][aria-modal="true"]:has(input)
-          > div.fixed.overflow-y-auto
-          > div[class*="max-w-"] {
-          max-width: min(760px, 92vw) !important;
+        /* Flex layout shrinks the panel to its content; restore the full
+           width so the input matches the doc-page search box (panel keeps its
+           own max-width:640px, so this stays responsive on mobile). */
+        .dt-search-portal > [role="dialog"] {
           width: 100% !important;
         }
-        @media (max-width: 640px) {
-          [role="dialog"][aria-modal="true"]:has(input) > div.fixed.overflow-y-auto {
-            padding-top: max(var(--dt-search-top, 12vh), 12vh) !important;
-          }
+        /* Recolour Mintlify's mask: its default 0.4 black is too faint in light
+           mode and gives too little contrast for the panel in dark mode. */
+        .dt-search-backdrop {
+          background-color: rgba(2, 6, 23, 0.72) !important;
+        }
+        html.dark .dt-search-backdrop {
+          background-color: rgba(0, 0, 0, 0.82) !important;
+        }
+        body.dt-search-open .dt-home-header {
+          z-index: 0 !important;
         }
       `;
       document.head.appendChild(styleEl);
@@ -201,36 +200,56 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     const isSearchDialog = (node) =>
       node && node.nodeType === 1 &&
       typeof node.matches === "function" &&
-      node.matches('[role="dialog"][aria-modal="true"]') &&
+      node.matches('[role="dialog"]') &&
       !!node.querySelector("input");
 
     const findSearchDialog = (root) => {
       if (isSearchDialog(root)) return root;
       if (root && root.nodeType === 1 && typeof root.querySelector === "function") {
-        const inner = root.querySelector('[role="dialog"][aria-modal="true"]');
+        const inner = root.querySelector('[role="dialog"]');
         if (inner && inner.querySelector("input")) return inner;
       }
       return null;
     };
 
     const onOpen = (dialog) => {
-      const heroBox = document.querySelector(".dt-home-search-box");
-      if (heroBox) {
-        const top = Math.max(0, Math.round(heroBox.getBoundingClientRect().top));
-        document.documentElement.style.setProperty("--dt-search-top", top + "px");
+      const container = dialog.parentElement;
+      if (container) {
+        container.classList.add("dt-search-portal");
+        // The mask is a sibling of the container: the portal child with a
+        // non-transparent background. Tag it so our CSS can recolour it.
+        const portalRoot = container.parentElement;
+        if (portalRoot) {
+          for (const c of portalRoot.children) {
+            if (c === container) continue;
+            const bg = getComputedStyle(c).backgroundColor;
+            if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+              c.classList.add("dt-search-backdrop");
+              break;
+            }
+          }
+        }
       }
+      document.body.classList.add("dt-search-open");
       document.body.style.overflow = "hidden";
       const focusInput = () => {
-        const input = dialog.querySelector(
-          'input[type="search"], input[role="searchbox"], input[type="text"]'
-        );
+        const input =
+          document.querySelector("#search-input") ||
+          dialog.querySelector('input[role="combobox"], input');
         if (input && document.activeElement !== input) input.focus();
       };
       focusInput();
       requestAnimationFrame(focusInput);
     };
     const onClose = () => {
+      document.body.classList.remove("dt-search-open");
       document.body.style.overflow = "";
+      document
+        .querySelectorAll(".dt-search-portal")
+        .forEach((el) => el.classList.remove("dt-search-portal"));
+      document
+        .querySelectorAll(".dt-search-backdrop")
+        .forEach((el) => el.classList.remove("dt-search-backdrop"));
     };
 
     const observer = new MutationObserver((mutations) => {
@@ -247,12 +266,12 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    const existing = document.querySelector('[role="dialog"][aria-modal="true"]');
+    const existing = document.querySelector('[role="dialog"]');
     if (existing && existing.querySelector("input")) onOpen(existing);
 
     return () => {
       observer.disconnect();
-      document.body.style.overflow = "";
+      onClose();
       const found = document.getElementById(id);
       if (found) found.remove();
     };
@@ -513,7 +532,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     }, [open]);
     const LANGS = [
       { code: "en", label: "English", href: "/" },
-      { code: "zh", label: "中文", href: "/zh" },
+      { code: "zh", label: "中文", href: "/zh/index" },
     ];
     // Button label reflects the page's actual language (incl. ja), even when
     // ja is not yet listed in the dropdown options.
@@ -566,7 +585,15 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   };
 
   const lp = lang === "en" ? "/" : "/" + lang + "/";
-  const homeHref = lp;
+  // Logo/brand links to the actual landing page. The language root (/zh, /ja)
+  // redirects to the first nav doc, so point at the custom home page directly.
+  const homeHref = lang === "en" ? "/" : "/" + lang + "/index";
+
+  // Feedback form differs by language; non-zh (en/ja) shares the international form.
+  const feedbackHref =
+    lang === "zh"
+      ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_wSHNmzo_d2mVaXS?source=link"
+      : "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link";
 
   /* ---- NavMenu (mobile hamburger; mirrors LangMenu's open/close pattern) ----
      The desktop inline nav (.dt-home-nav-links) is hidden ≤900px in style.css;
@@ -784,7 +811,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             {t.sup_b1}
           </a>
           <a
-            href="https://alidocs.dingtalk.com/notable/share/form/v01YdgOk2b6M2Jb2q4B_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link"
+            href={feedbackHref}
             target="_blank"
             rel="noopener noreferrer"
             className="dt-home-support-s2"
