@@ -589,6 +589,12 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   // redirects to the first nav doc, so point at the custom home page directly.
   const homeHref = lang === "en" ? "/" : "/" + lang + "/index";
 
+  // Feedback form differs by language; non-zh (en/ja) shares the international form.
+  const feedbackHref =
+    lang === "zh"
+      ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_wSHNmzo_d2mVaXS?source=link"
+      : "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link";
+
   /* ---- NavMenu (mobile hamburger; mirrors LangMenu's open/close pattern) ----
      The desktop inline nav (.dt-home-nav-links) is hidden ≤900px in style.css;
      this burger restores those links + the contact CTA inside a dropdown panel.
@@ -805,7 +811,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             {t.sup_b1}
           </a>
           <a
-            href="https://alidocs.dingtalk.com/notable/share/form/v01YdgOk2b6M2Jb2q4B_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link"
+            href={feedbackHref}
             target="_blank"
             rel="noopener noreferrer"
             className="dt-home-support-s2"
