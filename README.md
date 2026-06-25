@@ -102,50 +102,24 @@ Push 到 `main` → Mintlify GitHub App 监听 → 平台侧自动构建 → liv
 | English | `https://help.dingtalk.io/<product>/<slug>` | 调用方已知用户语言为 en |
 | 中文 | `https://help.dingtalk.io/zh/<product>/<slug>` | 调用方已知用户语言为 zh |
 | 日本語 | `https://help.dingtalk.io/ja/<product>/<slug>` | 调用方已知用户语言为 ja |
-| 未知 | `https://help.dingtalk.io/<product>/<slug>`（同 en） | 调用方不确定语言，依赖 `dd_l` 偏好 |
+| 未知 | `https://help.dingtalk.io/<product>/<slug>`（同 en） | 调用方不确定语言，默认走英文 |
 
 注意事项：
 
 - `<product>` slug 永远英文（`im` / `docs` / `aitable` / `drive` / `open` ...），不翻译；只有路径前缀按语言加 `/zh` 或 `/ja`
-- **`dd_l` 偏好仅在用户访问根 `/` 时生效**——直接深链 `https://help.dingtalk.io/docs/...` 不会被语言偏好拦截（Mintlify Hobby 限制）
-- 业务调用方若**有用户语言上下文**，强烈建议自行拼对应语言前缀，**不要**只发英文链等待客户端语言偏好兜底
+- **帮助中心不做自动语言重定向**——访问 `/` 始终落到英文首页，不会按浏览器语言自动跳转（client-side redirect 在 Mintlify Hobby 上会有可见的「EN→ZH 闪动」，体验不可控，故取消）
+- 业务调用方若**有用户语言上下文**，必须自行拼对应语言前缀；**不要**只发英文链期待客户端兜底
 
-### dd_l 语言偏好 Cookie
+### 两个语言切换入口
 
-`*.dingtalk.io` 子域间共用 `dd_l` cookie 同步语言偏好。
+帮助中心有**两套语言切换 UI**，互不冲突：
 
-| 字段 | 值 |
-|---|---|
-| name | `dd_l` |
-| values | `en_US` / `zh_CN` / `ja_JP` |
-| domain | `.dingtalk.io` |
-| path | `/` |
-| max-age | `31536000`（1 年） |
-| samesite | `lax` |
+| 入口 | 出现位置 | 行为 |
+|---|---|---|
+| 首页 LangMenu（自实现） | 三语首页右上 | 跳目标语言首页 |
+| Mintlify 顶部切换器 | 文档页右上 | 改 URL 前缀切到对应语言 |
 
-读取顺序：`dd_l` cookie → `navigator.language` → 默认 `en`。
+设计取舍：
 
-help.dingtalk.io 的写入时机：
-
-1. 用户在首页 LangMenu **手动切换语言**——立即写入对应 `dd_l`
-2. 用户**直接访问 `/zh` 或 `/ja`**——反写 `dd_l` 巩固偏好
-3. 用户访问根 `/` 时若 `dd_l` 与当前页不一致——自动 `replace` 到偏好语言首页（不进历史栈）
-
-### 两个语言切换入口的语义区别
-
-帮助中心有**两套语言切换 UI**，行为不同，定位不同：
-
-| 入口 | 出现位置 | 是否写 `dd_l` | 语义 |
-|---|---|---|---|
-| 首页 LangMenu（自实现） | 三语首页右上 | ✅ 立即写 | **设置偏好** — 跨 `*.dingtalk.io` 子域记忆 |
-| Mintlify 顶部切换器 | 文档页右上 | ❌ 不写（Hobby 平台限制） | **仅本次切换** — 改 URL 前缀不动偏好 |
-
-为什么文档顶部不写 dd_l：Mintlify Hobby 版**不提供文档页自定义脚本注入点**（`docs.json` 无 `customScripts` 字段、无全局 MDX wrapper、`snippets/` 无法自动加载），因此切换器本身无法被拦截。
-
-referrer 反推兜底：用户从同源文档页点 logo 回 `/` 时，`snippets/home.jsx` 会按 referrer 路径反推当前语言并**追写** `dd_l`，覆盖陈旧偏好。这覆盖了 90% 的「在文档页切换后回首页」场景。
-
-剩余边界（已知 Hobby 硬伤）：
-
-- 用户**关闭浏览器后重开** / **新 tab 直接粘贴 URL** / **从外站打开根 `/`** 时无同源 referrer，仍按 `dd_l` 旧值启动——这是 cookie 偏好持久化的预期行为
-- 想要"永久偏好"请用首页 LangMenu；想要"仅本次看其他语言"请用文档顶部切换器
-- 彻底统一两个入口的唯一方案是升级 Mintlify Pro（解锁 `customScripts`），单独排期评估
+- **不做自动语言重定向**：曾尝试 `navigator.language + referrer` 多层兜底自动跳，但 Mintlify Hobby 无 server-side redirect / 无 head script 注入，**client-side redirect 必然先渲染英文页再 JS 跳转**，用户能看到明显的「EN→ZH 闪动 + 等待」。Google、Stripe、Apple 等国际站做法：默认语言加 LangMenu，用户主动切换。本站采用同样模式
+- 升级 Mintlify Pro 后可解锁 `customScripts` 注入全站 JS，但相比闪动的 UX 收益不大，未列入规划
