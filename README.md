@@ -90,3 +90,36 @@ pnpm dev            # http://localhost:5173
 Push 到 `main` → Mintlify GitHub App 监听 → 平台侧自动构建 → live at https://help.dingtalk.io。
 
 仪表盘：https://dashboard.mintlify.com
+
+## 外部调用方接入
+
+面向钉钉客户端 / 业务前端 / 任何想链到帮助中心的「问号入口」。
+
+### 三语 URL 形态
+
+| 语言 | URL 形态 | 适用场景 |
+|---|---|---|
+| English | `https://help.dingtalk.io/<product>/<slug>` | 调用方已知用户语言为 en |
+| 中文 | `https://help.dingtalk.io/zh/<product>/<slug>` | 调用方已知用户语言为 zh |
+| 日本語 | `https://help.dingtalk.io/ja/<product>/<slug>` | 调用方已知用户语言为 ja |
+| 未知 | `https://help.dingtalk.io/<product>/<slug>`（同 en） | 调用方不确定语言，默认走英文 |
+
+注意事项：
+
+- `<product>` slug 永远英文（`im` / `docs` / `aitable` / `drive` / `open` ...），不翻译；只有路径前缀按语言加 `/zh` 或 `/ja`
+- **帮助中心不做自动语言重定向**——访问 `/` 始终落到英文首页，不会按浏览器语言自动跳转（client-side redirect 在 Mintlify Hobby 上会有可见的「EN→ZH 闪动」，体验不可控，故取消）
+- 业务调用方若**有用户语言上下文**，必须自行拼对应语言前缀；**不要**只发英文链期待客户端兜底
+
+### 两个语言切换入口
+
+帮助中心有**两套语言切换 UI**，互不冲突：
+
+| 入口 | 出现位置 | 行为 |
+|---|---|---|
+| 首页 LangMenu（自实现） | 三语首页右上 | 跳目标语言首页 |
+| Mintlify 顶部切换器 | 文档页右上 | 改 URL 前缀切到对应语言 |
+
+设计取舍：
+
+- **不做自动语言重定向**：曾尝试 `navigator.language + referrer` 多层兜底自动跳，但 Mintlify Hobby 无 server-side redirect / 无 head script 注入，**client-side redirect 必然先渲染英文页再 JS 跳转**，用户能看到明显的「EN→ZH 闪动 + 等待」。Google、Stripe、Apple 等国际站做法：默认语言加 LangMenu，用户主动切换。本站采用同样模式
+- 升级 Mintlify Pro 后可解锁 `customScripts` 注入全站 JS，但相比闪动的 UX 收益不大，未列入规划
