@@ -50,6 +50,12 @@
    doc-page layout flashes for a frame on language switch. */
 html[data-page-mode="custom"] #navbar { display: none !important; }
 
+/* Mintlify reserves top padding on the content wrapper to clear its fixed
+   navbar (most visible on mobile). With the navbar hidden on custom landing
+   pages that padding becomes a dead gap above our own sticky header, so zero
+   it out — scoped to custom mode so doc pages keep their navbar offset. */
+html[data-page-mode="custom"] :where(div):has(> #content-area) { padding-top: 0 !important; }
+
 /* Hide scrollbar on the landing page only (scroll still works).
    Scoped via :has(.dt-home) so doc pages keep their native scrollbars. */
 html:has(.dt-home),
@@ -142,6 +148,41 @@ html:has(.dt-home) body::-webkit-scrollbar {
 .dt-home-lang-list li:hover { background: var(--blue-tint); color: var(--blue); }
 .dt-home-lang-list li[aria-selected="true"] { color: var(--blue); font-weight: 600; background: var(--blue-soft); }
 .dt-home-lang-list li[aria-selected="true"]::after { content: "\2713"; font-size: 12px; }
+
+/* mobile hamburger nav (hidden on desktop; shown ≤900px where inline nav-links hide) */
+.dt-home-navmenu { position: relative; display: none; }
+.dt-home-nav-burger {
+  display: flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  border: 1px solid var(--line); border-radius: 11px;
+  background: var(--surface); color: var(--ink-2);
+  cursor: pointer; transition: 0.2s; padding: 0;
+}
+.dt-home-nav-burger:hover { border-color: var(--blue); color: var(--blue); }
+.dt-home-nav-burger svg { width: 22px; height: 22px; }
+.dt-home-navmenu-open .dt-home-nav-burger { border-color: var(--blue); color: var(--blue); }
+.dt-home-nav-panel {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 196px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 13px;
+  box-shadow: var(--shadow-md); padding: 8px;
+  display: flex; flex-direction: column; gap: 2px;
+  opacity: 0; visibility: hidden; transform: translateY(-6px);
+  transition: 0.18s; z-index: 60;
+}
+.dt-home-navmenu-open .dt-home-nav-panel { opacity: 1; visibility: visible; transform: none; }
+.dt-home .dt-home-nav-panel a {
+  font-size: 14.5px; color: var(--ink-2); font-weight: 500;
+  padding: 11px 12px; border-radius: 9px;
+  transition: 0.15s; text-decoration: none;
+}
+.dt-home .dt-home-nav-panel a:hover { background: var(--blue-tint); color: var(--blue); }
+.dt-home .dt-home-nav-panel-cta {
+  margin-top: 6px; text-align: center;
+  background: var(--blue); color: #fff !important; font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 102, 255, 0.28);
+}
+.dt-home .dt-home-nav-panel-cta:hover { background: var(--blue-deep); }
 
 .dt-home .dt-home-btn-primary {
   background: var(--blue); color: #fff;
@@ -398,7 +439,10 @@ html:has(.dt-home) body::-webkit-scrollbar {
 }
 .dt-home-art-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0,1fr) lets tracks shrink below the cards' min-content; without it
+     the nowrap h4 pins each track to the full title width and overflows on
+     narrow screens (the card can't shrink into a single mobile column). */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .dt-home-art {
@@ -406,6 +450,7 @@ html:has(.dt-home) body::-webkit-scrollbar {
   background: var(--surface); border: 1px solid var(--line);
   border-radius: 14px; padding: 18px 20px;
   transition: 0.22s;
+  min-width: 0; /* allow the grid item itself to shrink, enabling h4 ellipsis */
 }
 .dt-home-art:hover {
   border-color: var(--blue);
@@ -557,12 +602,26 @@ html:has(.dt-home) body::-webkit-scrollbar {
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .dt-home-grid { grid-template-columns: repeat(2, 1fr); }
-  .dt-home-art-grid { grid-template-columns: repeat(2, 1fr); }
+  .dt-home-art-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dt-home-foot { grid-template-columns: 1fr 1fr; }
+  /* swap desktop inline links for the hamburger; move contact CTA into its panel */
   .dt-home-nav-links { display: none; }
+  .dt-home-navmenu { display: block; }
+  .dt-home .dt-home-btn-primary { display: none; }
 }
-@media (max-width: 560px) {
-  .dt-home-art-grid { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .dt-home-art-grid { grid-template-columns: minmax(0, 1fr); }
+  /* hot tags: drop the centering hack and scroll horizontally instead of overflowing */
+  .dt-home-hot {
+    left: auto; transform: none;
+    width: auto; max-width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .dt-home-hot::-webkit-scrollbar { display: none; }
 }
 @media (max-width: 560px) {
   .dt-home-nav { gap: 10px; padding: 0 24px; height: 60px; }

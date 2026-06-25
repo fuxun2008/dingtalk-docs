@@ -565,9 +565,83 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     );
   };
 
-  /* ---- Header (replaces Mintlify navbar; navbar is hidden via injected <style>) ---- */
   const lp = lang === "en" ? "/" : "/" + lang + "/";
   const homeHref = lp;
+
+  /* ---- NavMenu (mobile hamburger; mirrors LangMenu's open/close pattern) ----
+     The desktop inline nav (.dt-home-nav-links) is hidden ≤900px in style.css;
+     this burger restores those links + the contact CTA inside a dropdown panel.
+     Language stays in the always-visible LangMenu, so it's not duplicated here. */
+  const NavMenu = () => {
+    const [open, setOpen] = useState(false);
+    useEffect(() => {
+      if (!open) return;
+      const onDoc = (e) => {
+        if (!e.target.closest(".dt-home-navmenu")) setOpen(false);
+      };
+      const onKey = (e) => {
+        if (e.key === "Escape") setOpen(false);
+      };
+      document.addEventListener("click", onDoc);
+      document.addEventListener("keydown", onKey);
+      return () => {
+        document.removeEventListener("click", onDoc);
+        document.removeEventListener("keydown", onKey);
+      };
+    }, [open]);
+    return (
+      <div className={`dt-home-navmenu${open ? " dt-home-navmenu-open" : ""}`}>
+        <button
+          type="button"
+          className="dt-home-nav-burger"
+          aria-haspopup="true"
+          aria-expanded={open ? "true" : "false"}
+          aria-label="Menu"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="dt-home-nav-panel" role="menu">
+          <a href="#categories" role="menuitem" onClick={() => setOpen(false)}>
+            {t.nav1}
+          </a>
+          <a
+            href={`${lp}open/dingstart/basic-concepts-beta`}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            {t.nav3}
+          </a>
+          <a
+            href="https://www.dingtalk.io/contact-sales"
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            {t.nav4}
+          </a>
+          <a
+            href="https://www.dingtalk.io/contact-sales/?type=support"
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            className="dt-home-nav-panel-cta"
+            onClick={() => setOpen(false)}
+          >
+            {t.contact}
+          </a>
+        </div>
+      </div>
+    );
+  };
+
+  /* ---- Header (replaces Mintlify navbar; navbar is hidden via injected <style>) ---- */
   const renderHeader = () => (
     <header className="dt-home-header">
       <nav className="dt-home-nav">
@@ -592,6 +666,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
           >
             {t.contact}
           </a>
+          {React.createElement(NavMenu)}
         </div>
       </nav>
     </header>
