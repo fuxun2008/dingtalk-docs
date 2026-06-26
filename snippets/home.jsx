@@ -533,9 +533,9 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     const LANGS = [
       { code: "en", label: "English", href: "/" },
       { code: "zh", label: "中文", href: "/zh/index" },
+      { code: "ja", label: "日本語", href: "/ja/index" },
     ];
-    // Button label reflects the page's actual language (incl. ja), even when
-    // ja is not yet listed in the dropdown options.
+    // Button label reflects the page's actual language.
     const LABEL_MAP = { en: "English", zh: "中文", ja: "日本語" };
     const current = LANGS.find((l) => l.code === lang) ||
       { code: lang, label: LABEL_MAP[lang] || "English" };
@@ -589,11 +589,39 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   // redirects to the first nav doc, so point at the custom home page directly.
   const homeHref = lang === "en" ? "/" : "/" + lang + "/index";
 
-  // Feedback form differs by language; non-zh (en/ja) shares the international form.
+  // Feedback form differs by language; zh and ja each have their own form,
+  // remaining locales (en) share the international form.
   const feedbackHref =
     lang === "zh"
       ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_wSHNmzo_d2mVaXS?source=link"
+      : lang === "ja"
+      ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_beLDpf0_etWlgA3?source=link"
       : "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link";
+
+  // Marketing site differs by region: ja points at the localized .co.jp site
+  // (product/contact/blog targets verified via dingtalk.co.jp sitemap
+  // hreflang=en alts), with privacy/terms going to the official Alibaba legal
+  // agreement pages. en/zh keep the global .io path so they stay byte-identical.
+  const mkt = (path) => {
+    const jp = {
+      "/contact-sales": "https://www.dingtalk.co.jp/contact-sales/",
+      "/contact-sales/": "https://www.dingtalk.co.jp/contact-sales/",
+      "/contact-sales/?type=support": "https://www.dingtalk.co.jp/contact-sales/?type=support",
+      "/products/dingtalk-im/": "https://www.dingtalk.co.jp/feature/chat/",
+      "/products/dingtalk-meeting/": "https://www.dingtalk.co.jp/feature/meeting/",
+      "/products/dingtalk-document/": "https://www.dingtalk.co.jp/feature/document/",
+      "/products/ai-table/": "https://www.dingtalk.co.jp/feature/aitable/",
+      "/blog/": "https://www.dingtalk.co.jp/blog/",
+      "/qa/": "https://www.dingtalk.co.jp/qa/",
+      "/download/": "https://www.dingtalk.co.jp/download/",
+      "/privacy-policy/": "https://terms.alicdn.com/legal-agreement/terms/suit_bu1_dingtalk/suit_bu1_dingtalk202010191550_64611.html",
+      "/terms-of-service/": "https://terms.alicdn.com/legal-agreement/terms/suit_bu1_dingtalk/suit_bu1_dingtalk202010161503_92178.html",
+      "/#pricing": "https://www.dingtalk.co.jp/#pricing",
+      "/#customer-cases": "https://www.dingtalk.co.jp/#customer-cases",
+    };
+    if (lang === "ja" && jp[path]) return jp[path];
+    return "https://www.dingtalk.io" + path;
+  };
 
   /* ---- NavMenu (mobile hamburger; mirrors LangMenu's open/close pattern) ----
      The desktop inline nav (.dt-home-nav-links) is hidden ≤900px in style.css;
@@ -645,7 +673,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             {t.nav3}
           </a>
           <a
-            href="https://www.dingtalk.io/contact-sales"
+            href={mkt("/contact-sales")}
             target="_blank"
             rel="noopener noreferrer"
             role="menuitem"
@@ -654,7 +682,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             {t.nav4}
           </a>
           <a
-            href="https://www.dingtalk.io/contact-sales/?type=support"
+            href={mkt("/contact-sales/?type=support")}
             target="_blank"
             rel="noopener noreferrer"
             role="menuitem"
@@ -679,14 +707,14 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         <div className="dt-home-nav-links">
           <a href="#categories">{t.nav1}</a>
           <a href={`${lp}open/dingstart/basic-concepts-beta`}>{t.nav3}</a>
-          <a href="https://www.dingtalk.io/contact-sales" target="_blank" rel="noopener noreferrer">
+          <a href={mkt("/contact-sales")} target="_blank" rel="noopener noreferrer">
             {t.nav4}
           </a>
         </div>
         <div className="dt-home-nav-right">
           {React.createElement(LangMenu)}
           <a
-            href="https://www.dingtalk.io/contact-sales/?type=support"
+            href={mkt("/contact-sales/?type=support")}
             target="_blank"
             rel="noopener noreferrer"
             className="dt-home-btn-primary"
@@ -803,7 +831,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         </div>
         <div className="dt-home-support-acts">
           <a
-            href="https://www.dingtalk.io/contact-sales/?type=support"
+            href={mkt("/contact-sales/?type=support")}
             target="_blank"
             rel="noopener noreferrer"
             className="dt-home-support-s1"
@@ -834,36 +862,36 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         <div>
           <h5>{t.foot_h1}</h5>
           <ul>
-            <li><a href="https://www.dingtalk.io/products/dingtalk-im/" target="_blank" rel="noopener noreferrer">{t.foot_p1}</a></li>
-            <li><a href="https://www.dingtalk.io/products/dingtalk-meeting/" target="_blank" rel="noopener noreferrer">{t.foot_p2}</a></li>
-            <li><a href="https://www.dingtalk.io/products/dingtalk-document/" target="_blank" rel="noopener noreferrer">{t.foot_p3}</a></li>
-            <li><a href="https://www.dingtalk.io/products/ai-table/" target="_blank" rel="noopener noreferrer">{t.foot_p4}</a></li>
+            <li><a href={mkt("/products/dingtalk-im/")} target="_blank" rel="noopener noreferrer">{t.foot_p1}</a></li>
+            <li><a href={mkt("/products/dingtalk-meeting/")} target="_blank" rel="noopener noreferrer">{t.foot_p2}</a></li>
+            <li><a href={mkt("/products/dingtalk-document/")} target="_blank" rel="noopener noreferrer">{t.foot_p3}</a></li>
+            <li><a href={mkt("/products/ai-table/")} target="_blank" rel="noopener noreferrer">{t.foot_p4}</a></li>
           </ul>
         </div>
         <div>
           <h5>{t.foot_h2}</h5>
           <ul>
-            <li><a href="https://www.dingtalk.io/#pricing" target="_blank" rel="noopener noreferrer">{t.foot_s1}</a></li>
-            <li><a href="https://www.dingtalk.io/contact-sales/" target="_blank" rel="noopener noreferrer">{t.foot_s2}</a></li>
-            <li><a href="https://help.dingtalk.io">{t.foot_s3}</a></li>
+            <li><a href={mkt("/#pricing")} target="_blank" rel="noopener noreferrer">{t.foot_s1}</a></li>
+            <li><a href={mkt("/contact-sales/")} target="_blank" rel="noopener noreferrer">{t.foot_s2}</a></li>
+            <li><a href={`https://help.dingtalk.io${homeHref}`}>{t.foot_s3}</a></li>
             <li><a href={`https://help.dingtalk.io${lp}open/dingstart/basic-concepts-beta`} target="_blank" rel="noopener noreferrer">{t.foot_s4}</a></li>
           </ul>
         </div>
         <div>
           <h5>{t.foot_h3}</h5>
           <ul>
-            <li><a href="https://www.dingtalk.io/blog/" target="_blank" rel="noopener noreferrer">{t.foot_r1}</a></li>
-            <li><a href="https://www.dingtalk.io/qa/" target="_blank" rel="noopener noreferrer">{t.foot_r2}</a></li>
-            <li><a href="https://www.dingtalk.io/#customer-cases" target="_blank" rel="noopener noreferrer">{t.foot_r3}</a></li>
-            <li><a href="https://www.dingtalk.io/download/" target="_blank" rel="noopener noreferrer">{t.foot_r4}</a></li>
+            <li><a href={mkt("/blog/")} target="_blank" rel="noopener noreferrer">{t.foot_r1}</a></li>
+            <li><a href={mkt("/qa/")} target="_blank" rel="noopener noreferrer">{t.foot_r2}</a></li>
+            <li><a href={mkt("/#customer-cases")} target="_blank" rel="noopener noreferrer">{t.foot_r3}</a></li>
+            <li><a href={mkt("/download/")} target="_blank" rel="noopener noreferrer">{t.foot_r4}</a></li>
           </ul>
         </div>
       </div>
       <div className="dt-home-foot-bottom">
         <span>© 2026 DingTalk. {t.rights}</span>
         <span style={{ display: "flex", gap: "20px" }}>
-          <a href="https://www.dingtalk.io/privacy-policy/" target="_blank" rel="noopener noreferrer">{t.legal1}</a>
-          <a href="https://www.dingtalk.io/terms-of-service/" target="_blank" rel="noopener noreferrer">{t.legal2}</a>
+          <a href={mkt("/privacy-policy/")} target="_blank" rel="noopener noreferrer">{t.legal1}</a>
+          <a href={mkt("/terms-of-service/")} target="_blank" rel="noopener noreferrer">{t.legal2}</a>
         </span>
       </div>
     </footer>

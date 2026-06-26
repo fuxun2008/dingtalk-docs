@@ -1,0 +1,544 @@
+---
+title: "Huayun"
+description: "Huayun（ローコードプラットフォーム）のアプリデータをData sync centerでAI Tableに同期する方法を解説。Professional以上のエディション、EngineCode、Secret、AppCodeとバックエンドコードのデプロイ手順を紹介します。"
+---
+
+## 事前準備
+
+開始する前に、以下を確認してください。
+
+| \# | 要件 | 説明 |
+| --- | --- | --- |
+| 1 | Huayun **プロフェッショナル版** 以上 | **カスタムAPI** 機能が有効であること（ベーシックエディションはバックエンドコードに非対応） |
+| 2 | Huayun **システム管理者** アカウント | **システム管理 → システム統合** を開いて認証情報を取得するために必要 |
+| 3 | AI Table のアクセス権 | AI Table でデータソースを作成するため |
+
+> 注意：最初の4つのステップ（事前準備〜バックエンドコードのデプロイ）はすべて **Huayun のバックエンド** で実行します。最後のステップ（AI Table でのデータソース設定）のみ **AI Table** で行います。両方のブラウザウィンドウを並べて開いておいてください。
+
+---
+## Huayun の EngineCode と Secret を取得
+
+EngineCode と Secret は Huayun の **アクセストークン** として機能します。AI Table はこれらを使用して Huayun のデータ API を呼び出します。
+
+### システム管理を開く
+
+Huayun のバックエンドにサインインした後、以下を行います。
+
+1. 右上の **アバター** をクリックします。
+2. ドロップダウンから **システム管理** を選択します。
+
+### EngineCode と Secret を探す
+
+システム管理で、左メニューの **システム統合** をクリックすると、右側の **企業情報** カードに **EngineCode** と **Secret** が表示されます。
+
+> コピーのヒント：EngineCode と Secret のフィールドにカーソルを合わせると、コピーボタンが表示されます。それぞれをコピーして安全に保管してください。**無関係の人と共有しないでください**。
+
+> 安全に関する注意：Secret は機密性の高い認証情報です。**リセット** をクリックすると古い Secret は即座に失効し、すでに設定済みの AI Table データソースはすべて再入力が必要になります。
+
+---
+## アプリコード（AppCode）を取得
+
+AppCode は **どの Huayun アプリを同期するか** を AI Table に伝えます。
+
+### 対象アプリに入る
+
+Huayun バックエンドのホームで、対象アプリをクリックしてメインページに入ります。
+
+### アプリ設定を開く
+
+アプリのメインページで、左サイドバーの **最下部** にある **アプリ設定** をクリックします。
+
+> 別の方法：URL バーの操作に慣れている場合、アプリホーム URL の **`/application/` 以降のセグメントが AppCode** です（上の赤枠）。直接コピーしてください。
+
+### アプリコードをコピー
+
+アプリ設定 → **基本情報** タブで **アプリコード** フィールドが表示されます。コピーして保管してください。
+
+> 混同しないでください：**アプリ名** は人が読める名前で、**アプリコード** は AI Table が必要とする文字列です。
+
+---
+## バックエンドコードのデプロイ（コアステップ）
+
+> このステップにより、AI Table が Huayun フォームのフィールドメタデータを読み取れるようになります。Huayun の標準 API には **フィールド定義** エンドポイントがないため、Huayun のバックエンドに **カスタムインターフェース** のコードをデプロイする必要があります（**すでに作成済みなので、コピー＆ペーストするだけです**）。
+
+### フォームデザイナーを開く
+
+対象アプリで、**任意のフォームを選択** し（頻繁に変更されないシンプルなものを **キャリアフォーム** として選ぶことを推奨します）、フォームページ右上の **フォームをデザイン** をクリックします。
+
+> 任意のフォームを選択：バックエンドコードはそのフォームの業務ロジックには影響しません。コードをデプロイするためにそのエントリを **借用** するだけです。
+
+### **バックエンドコード** タブに切り替える
+
+フォームデザインに入ると、左上はデフォルトで **ビジュアルデザイナー** タブになっています。**バックエンドコード** に切り替えてください。
+
+### コード全文を貼り付け
+
+エディタで **デフォルトのクラスコードを残したまま**、その **デフォルトコードの下** に以下のスニペット全文を貼り付けます。
+
+> 注意：Huayun のバックエンドコードは `using` / `import` 文に対応していません。すべてのシステム型はフル名前空間を使用する必要があります。以下のコードはそれに合わせてすでに準備されています。**using 文を追加・削除しないでください**。
+
+```c# 
+// ========================================
+// AI Table データソースコネクタ - カスタムインターフェース
+// サポートされる ActionName の値：
+//   1. GetAppList    - 全アプリリストの取得 (NodeType=190)
+//   2. GetFormList   - 指定アプリ配下のフォームリストの取得 (NodeType IN 200,210)
+//   3. GetFieldMeta  - フォームフィールドメタデータの取得 (code → name → type、関連フォーム情報を含む)
+//   4. GetUserInfo        - ユーザー詳細の一括クエリ (Name/Mobile/Position/Email など)
+//   5. GetBizObjectNames  - ObjectId による業務テーブルの Name フィールドの一括クエリ (関連フィールドから読みやすい名前を逆引きするため)
+// 
+// 使い方：任意のフォームの「バックエンドコード」で、デフォルトのクラスコードの下にこのコードを貼り付け、保存してください。
+// ========================================
+
+public class FieldMetaController: H3.SmartForm.RestApiController
+{
+    public FieldMetaController(H3.SmartForm.RestApiRequest request): base(request) { }
+
+    protected override void OnInvoke(string actionName, H3.SmartForm.RestApiResponse response)
+    {
+        try
+        {
+            if(actionName == "GetAppList")
+            {
+                HandleGetAppList(response);
+            }
+            else if(actionName == "GetFormList")
+            {
+                HandleGetFormList(response);
+            }
+            else if(actionName == "GetFieldMeta")
+            {
+                HandleGetFieldMeta(response);
+            }
+            else if(actionName == "GetUserInfo")
+            {
+                HandleGetUserInfo(response);
+            }
+            else if(actionName == "GetBizObjectNames")
+            {
+                HandleGetBizObjectNames(response);
+            }
+            else
+            {
+                response.ReturnData.Add("result", "error");
+                response.ReturnData.Add("message", "Unknown actionName: " + actionName + ". Supported: GetAppList, GetFormList, GetFieldMeta, GetUserInfo");
+            }
+        }
+        catch(System.Exception ex)
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "Interface error: " + ex.Message);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // GetAppList - 全アプリリストの取得 (NodeType=190)
+    // -------------------------------------------------------------------------
+    private void HandleGetAppList(H3.SmartForm.RestApiResponse response)
+    {
+        string sql = "SELECT ObjectId, DisplayName, Code FROM H_FunctionNode WHERE NodeType = 190 ORDER BY DisplayName";
+        System.Data.DataTable dt = this.Request.Engine.Query.QueryTable(sql, null);
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> appList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > appInfo
+                = new System.Collections.Generic.Dictionary<string, string>();
+                appInfo.Add("objectId", row["ObjectId"] + "");
+                appInfo.Add("displayName", row["DisplayName"] + "");
+                appInfo.Add("appCode", row["Code"] + "");
+                appList.Add(appInfo);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("totalCount", appList.Count);
+        response.ReturnData.Add("apps", appList);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetFormList - 指定アプリ配下のフォームリストの取得 (NodeType IN 200,210)
+    // TargetAppCode パラメータをサポート：Invoke のルーティングは AppCode を使用し、業務クエリは TargetAppCode を使用
+    // 後方互換：TargetAppCode が欠落している場合は AppCode にフォールバック
+    // -------------------------------------------------------------------------
+    private void HandleGetFormList(H3.SmartForm.RestApiResponse response)
+    {
+        // 業務クエリの対象アプリコードには TargetAppCode を優先
+        string appCode = this.Request.GetValue<string>("TargetAppCode", "");
+        if(string.IsNullOrEmpty(appCode))
+        {
+            appCode = this.Request.GetValue<string>("AppCode", "");
+        }
+        if(string.IsNullOrEmpty(appCode))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "TargetAppCode or AppCode cannot be empty");
+            return;
+        }
+
+        // NodeType=200 標準フォーム, NodeType=210 プロセスフォーム
+        string sql = "SELECT ObjectId, DisplayName, Code, AppCode FROM H_FunctionNode WHERE AppCode = '" + appCode + "' AND NodeType IN (200, 210) ORDER BY NodeType, DisplayName";
+        System.Data.DataTable dt = this.Request.Engine.Query.QueryTable(sql, null);
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> formList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > formInfo
+                = new System.Collections.Generic.Dictionary<string, string>();
+                formInfo.Add("objectId", row["ObjectId"] + "");
+                formInfo.Add("displayName", row["DisplayName"] + "");
+                formInfo.Add("code", row["Code"] + "");
+                formInfo.Add("appCode", row["AppCode"] + "");
+                formList.Add(formInfo);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("totalCount", formList.Count);
+        response.ReturnData.Add("forms", formList);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetFieldMeta - フォームフィールドメタデータの取得
+    // 拡張：フィールド種類が Association/AssociationArray の場合、関連フォームの code も返す
+    // -------------------------------------------------------------------------
+    private void HandleGetFieldMeta(H3.SmartForm.RestApiResponse response)
+    {
+        string schemaCode = this.Request.GetValue<string>("SchemaCode", "");
+        if(string.IsNullOrEmpty(schemaCode))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "SchemaCode cannot be empty");
+            return;
+        }
+
+        // フォームの Schema 定義を取得
+        H3.DataModel.BizObjectSchema schema =
+            this.Request.Engine.BizObjectManager.GetPublishedSchema(schemaCode);
+
+        if(schema == null)
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "Form not found: " + schemaCode);
+            return;
+        }
+
+        // すべてのフィールドプロパティを反復処理
+        H3.DataModel.PropertySchema[] properties = schema.Properties;
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> fieldList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        foreach(H3.DataModel.PropertySchema prop in properties)
+        {
+            System.Collections.Generic.Dictionary < string, string > fieldInfo
+            = new System.Collections.Generic.Dictionary<string, string>();
+            fieldInfo.Add("code", prop.Name);                        // コントロールコード、例: F0000001
+            fieldInfo.Add("displayName", prop.DisplayName);          // コントロール名、例: Order ID
+            fieldInfo.Add("dataType", prop.DataType + "");           // データ型、例: ShortString, DateTime
+            // プロパティを反復して fieldInfo を構築する際、関連フォームを追加でチェック
+            string dt = prop.DataType + "";
+            if(dt == "Association" || dt == "AssociationArray")
+            {
+                string assocCode = "";
+                try
+                {
+                    assocCode = prop.AssociationSchemaCode;
+                }
+                catch(System.Exception) { }
+                if(assocCode == null) { assocCode = ""; }
+                fieldInfo.Add("associationSchemaCode", assocCode);
+
+                string childCode = "";
+                try
+                {
+                    if(prop.ChildSchema != null)
+                    {
+                        childCode = prop.ChildSchema.SchemaCode;
+                    }
+                }
+                catch(System.Exception) { }
+                if(childCode == null) { childCode = ""; }
+                fieldInfo.Add("childSchemaCode", childCode);
+            }
+            fieldList.Add(fieldInfo);
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("schemaCode", schemaCode);
+        response.ReturnData.Add("totalCount", fieldList.Count);
+        response.ReturnData.Add("fields", fieldList);
+    }
+
+    // -------------------------------------------------------------------------
+    // GetUserInfo - ユーザー詳細の一括クエリ
+    // 入力: UserIds (カンマ区切りの ObjectId リスト)
+    // 戻り値: Name, Mobile, Position, Email, EmployeeNumber, DingId, State を含むユーザーリスト
+    // -------------------------------------------------------------------------
+    private void HandleGetUserInfo(H3.SmartForm.RestApiResponse response)
+    {
+        string userIds = this.Request.GetValue<string>("UserIds", "");
+        if(string.IsNullOrEmpty(userIds))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "UserIds cannot be empty");
+            return;
+        }
+
+        // 分割して IN 句を構築
+        // インジェクション対策: シングルクォートを除去 + 長さ制限 (UUID 標準長 36 文字)
+        // 注意: Huayun の QueryTable はパラメータ化クエリに非対応 — 文字列連結のみ
+        string[] idArray = userIds.Split(',');
+        System.Collections.Generic.List < string > safeIds = new System.Collections.Generic.List<string>();
+        foreach(string rawId in idArray)
+        {
+            string trimmedId = rawId.Trim();
+            if(!string.IsNullOrEmpty(trimmedId) && trimmedId.Length <= 40)
+            {
+                safeIds.Add("'" + trimmedId.Replace("'", "") + "'");
+            }
+        }
+
+        if(safeIds.Count == 0)
+        {
+            response.ReturnData.Add("result", "success");
+            response.ReturnData.Add("totalCount", 0);
+            response.ReturnData.Add("users", new System.Collections.Generic.List<object>());
+            return;
+        }
+
+        string inClause = string.Join(",", safeIds.ToArray());
+        string sql = "SELECT ObjectId, Name, Mobile, Position, Email, EmployeeNumber, DingId, State, ParentId FROM H_User WHERE ObjectId IN (" + inClause + ")";
+        System.Data.DataTable dt = this.Request.Engine.Query.QueryTable(sql, null);
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> userList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > userInfo
+                = new System.Collections.Generic.Dictionary<string, string>();
+                userInfo.Add("objectId", row["ObjectId"] + "");
+                userInfo.Add("name", row["Name"] + "");
+                userInfo.Add("mobile", row["Mobile"] + "");
+                userInfo.Add("position", row["Position"] + "");
+                userInfo.Add("email", row["Email"] + "");
+                userInfo.Add("employeeNumber", row["EmployeeNumber"] + "");
+                userInfo.Add("dingId", row["DingId"] + "");
+                userInfo.Add("state", row["State"] + "");
+                userInfo.Add("parentId", row["ParentId"] + "");
+                userList.Add(userInfo);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("totalCount", userList.Count);
+        response.ReturnData.Add("users", userList);
+    }
+    // -------------------------------------------------------------------------
+    // GetBizObjectNames - ObjectId による業務テーブルの Name フィールドの一括クエリ
+    // 入力:
+    //   - SchemaCode (必須): 業務フォームコード (例: D146656stuu9sfosulmfmahjf)
+    //   - ObjectIds  (必須): カンマ区切りの ObjectId リスト、1 回の呼び出しにつき最大 200 件
+    // 戻り値: { result, schemaCode, totalCount, names: [{objectId, name}, ...] }
+    //
+    // ユースケース: AI Table コネクタがメインテーブルのデータを同期し、関連フィールドの値が ObjectId であると判明した場合、
+    //           このインターフェースを呼び出して関連テーブルの Name フィールドを一括逆引きし、AI Table で読みやすい関連名を表示する。
+    //
+    // 実装上の注意:
+    //   - 業務テーブルの物理名は i_<SchemaCode> のパターンに従う (出典: Huayun 公式 SQL インターフェースドキュメント)
+    //   - インジェクション対策: ObjectId の長さは最大 40 + シングルクォート除去; SchemaCode は英数字に制限
+    //   - GetUserInfo と同様に QueryTable を使用; Huayun はパラメータ化クエリに非対応 — 文字列連結のみ
+    // -------------------------------------------------------------------------
+    private void HandleGetBizObjectNames(H3.SmartForm.RestApiResponse response)
+    {
+        string schemaCode = this.Request.GetValue<string>("SchemaCode", "");
+        string objectIds = this.Request.GetValue<string>("ObjectIds", "");
+
+        if(string.IsNullOrEmpty(schemaCode))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "SchemaCode cannot be empty");
+            return;
+        }
+        if(string.IsNullOrEmpty(objectIds))
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "ObjectIds cannot be empty");
+            return;
+        }
+
+        // SchemaCode インジェクション対策: 英数字のみ (業務テーブルの schemaCode は D146656xxx のような形式で、すべて英数字)
+        bool schemaCodeValid = true;
+        foreach(char c in schemaCode)
+        {
+            if(!char.IsLetterOrDigit(c)) { schemaCodeValid = false; break; }
+        }
+        if(!schemaCodeValid || schemaCode.Length > 64)
+        {
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("message", "SchemaCode is invalid; only alphanumeric allowed");
+            return;
+        }
+
+        // 分割して IN 句を構築 (GetUserInfo と同じパターン: 長さ ≤ 40 + シングルクォート除去)
+        string[] idArray = objectIds.Split(',');
+        System.Collections.Generic.List < string > safeIds = new System.Collections.Generic.List<string>();
+        foreach(string rawId in idArray)
+        {
+            string trimmedId = rawId.Trim();
+            if(!string.IsNullOrEmpty(trimmedId) && trimmedId.Length <= 40)
+            {
+                safeIds.Add("'" + trimmedId.Replace("'", "") + "'");
+            }
+            // 過度に長い IN 句を避けるため 1 回の呼び出しにつき 200 件で上限
+            if(safeIds.Count >= 200) { break; }
+        }
+
+        if(safeIds.Count == 0)
+        {
+            response.ReturnData.Add("result", "success");
+            response.ReturnData.Add("schemaCode", schemaCode);
+            response.ReturnData.Add("totalCount", 0);
+            response.ReturnData.Add("names", new System.Collections.Generic.List<object>());
+            return;
+        }
+
+        string inClause = string.Join(",", safeIds.ToArray());
+        string tableName = "i_" + schemaCode;
+        string sql = "SELECT ObjectId, Name FROM " + tableName + " WHERE ObjectId IN (" + inClause + ")";
+
+        System.Data.DataTable dt = null;
+        try
+        {
+            dt = this.Request.Engine.Query.QueryTable(sql, null);
+        }
+        catch(System.Exception ex)
+        {
+            // テーブルが見つからない、または SQL エラー: 呼び出し元が直列の単一行クエリにフォールバックできるよう、明確なエラーコードを返す
+            response.ReturnData.Add("result", "error");
+            response.ReturnData.Add("errorCode", "SQL_FAILED");
+            response.ReturnData.Add("message", "Query failed (table-name pattern may not match): " + ex.Message);
+            return;
+        }
+
+        System.Collections.Generic.List < System.Collections.Generic.Dictionary < string, string >> nameList
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+
+        if(dt != null && dt.Rows.Count > 0)
+        {
+            foreach(System.Data.DataRow row in dt.Rows)
+            {
+                System.Collections.Generic.Dictionary < string, string > item
+                = new System.Collections.Generic.Dictionary<string, string>();
+                item.Add("objectId", row["ObjectId"] + "");
+                item.Add("name", row["Name"] + "");
+                nameList.Add(item);
+            }
+        }
+
+        response.ReturnData.Add("result", "success");
+        response.ReturnData.Add("schemaCode", schemaCode);
+        response.ReturnData.Add("totalCount", nameList.Count);
+        response.ReturnData.Add("names", nameList);
+    }
+}
+
+```
+
+### 保存して有効化
+
+貼り付けた後、右上の **保存** をクリックし、**保存しました** のプロンプトを待ちます。これでコードが有効になります。
+
+> 確認方法：上部に緑色の **保存しました** トーストが表示されれば、デプロイ成功です。再起動や追加の公開作業は不要です。
+
+---
+## AI Table でデータソースを設定
+
+上記の4つのステップを完了すると、Huayun バックエンドで **認証情報 + AppCode + バックエンドインターフェース** のすべてを準備したことになります。次に AI Table に戻り、データソースを接続します。
+
+### Huayun データソースを作成
+
+AI Table で **+ 新規データソース → Huayun を選択または検索** をクリックし、Huayun データソース設定ダイアログを開きます。
+
+> 重要なヒント：ダイアログ上部の **完全ガイドを見る** リンクは本ドキュメントを指しています。いつでも参照できます。
+
+### Huayun アカウントを関連付け
+
+初回：**関連アカウント** ドロップダウン → **新規アカウント** をクリックし、**アカウント編集** ダイアログを開きます。
+
+1. **アカウント名**：識別しやすい名前（例：**Huayun-本番環境**）。
+2. **EngineCode**：[先ほどの EngineCode](#vg9CseQ4UQE3E7J53FMJZ8 "先ほどの EngineCode") を貼り付けます。
+3. **EngineSecret**：[先ほどの Secret](#vg9CseQ4UQE3E7J53FMJZ8 "先ほどの Secret") を貼り付けます。
+4. **接続テスト** をクリックし、**接続成功** と表示されたら保存します。
+
+> 同じアカウントは複数のデータソースで再利用できます。データソースごとに作り直す必要はありません。
+
+### アプリとフォームを選択
+
+アカウントを関連付けたら、メインダイアログに戻ります。
+
+1. **アプリコード（AppCode）**：[バックエンドコードをデプロイしたアプリの AppCode](#jdQAZkzc6zpNowqvJYjnAm "バックエンドコードをデプロイした AppCode") を貼り付けます。
+2. **アプリを読み込む** をクリックします。
+
+1. **アプリリスト**：ドロップダウンに、アカウントがアクセスできるすべてのアプリが自動的に読み込まれます。
+2. **フォーム**：同期する対象フォームを選択します（**バックエンドコードを載せた** フォームではなく、実際にデータを取得したいフォーム）。
+3. 同期オプションを設定し、**確認** をクリックします。
+
+成功すると、AI Table は自動的に初回同期を開始します。以降の同期は設定したスケジュールに従って増分で実行されます。
+
+---
+## FAQ
+
+#### Q：「接続テスト」が失敗した場合は？
+
+A：
+
+- EngineCode と Secret が完全にコピーされているか（前後にスペースがないか）を確認してください。
+- Huayun アカウントが無効になっていないか、または **カスタムAPI** 権限を持っているかを確認してください。
+- 最近 **Secret をリセット** した場合は、[EngineCode と Secret を探す](#vg9CseQ4UQE3E7J53FMJZ8 "EngineCode と Secret を探す") に戻り、最新の Secret をコピーしてください。
+
+#### Q：AppCode を入力したのにフォームのドロップダウンが空です。どうすれば？
+
+A：
+
+- AppCode が正しいか（アプリ名ではなくアプリコードであるか）を確認してください。
+- [バックエンドコード](#3EV2jtg6Hyrfz4sB6d4Kmj "バックエンドコード") が **保存** されているか（上部のトーストプロンプト）を確認してください。
+- バックエンドコードが **デフォルトのクラスコードの下** に貼り付けられているか（デフォルトコードを置き換えていないか）を確認してください。
+
+#### Q：複数の AI Table データソースで同じバックエンドコードを共有できますか？
+
+A：はい。バックエンドコードは Huayun 内で企業全体に共有されます。いずれかのアプリ/フォームにデプロイすれば、どこでも有効になります。**任意のアプリ・任意のフォームに一度デプロイ** すれば、他のデータソースは EngineCode + 別の AppCode を設定するだけです。
+
+#### Q：アプリを公開すると Huayun のバックエンドコードは上書きされたり失われたりしますか？
+
+A：いいえ。バックエンドコードは Huayun 内でフォームとともに永続化されます。フォームを能動的にクリアまたは削除しない限り、コードは有効なままです。
+
+#### Q：同期頻度と増分ロジックはどのように機能しますか？
+
+A：
+
+- デフォルトのスケジュールは AI Table の統一スケジューリングポリシーに従います（AI Table のデータソース管理ページを参照）。
+- 増分同期は Huayun が記録する `ModifiedTime` フィールドに基づきます。前回の同期以降に変更されたレコードのみが取得されます。
+
+---
+## 付録
+
+### 関連リンク
+
+- [Huayun OpenAPI 概要](https://help.h3yun.com/contents/1005/1631.html "Huayun OpenAPI overview")
+- [Huayun カスタムインターフェースの例](https://help.h3yun.com/contents/1014/1640.html "Huayun custom interface examples")
+- [Huayun API クイックリファレンス（Apifox）](https://h3yun-pro-doc-openapi.apifox.cn/ "Huayun API quick reference (Apifox)")
+
+### フィードバックとサポート
+
+本ドキュメントでカバーされていない問題が発生した場合は、AI Table 内でフィードバックを共有するか、データソースコネクタチームにお問い合わせください。
