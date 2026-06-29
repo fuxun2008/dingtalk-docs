@@ -38,7 +38,7 @@ function NavItem({ node, depth, currentSlug, dirtySlug, onSelect }: NavItemProps
     const isCurrent = node.slug === currentSlug;
     const isDirty = node.slug === dirtySlug;
     const fallback = node.slug.split('/').pop() ?? node.slug;
-    const label = node.titleZh ?? node.titleEn ?? fallback;
+    const label = node.titleLeft ?? node.titleRight ?? fallback;
     return (
       <button
         type="button"
@@ -66,7 +66,7 @@ interface GroupItemProps {
 
 function GroupItem({ node, depth, currentSlug, dirtySlug, onSelect }: GroupItemProps) {
   const [open, setOpen] = useState(true);
-  const title = node.titleZh ?? node.titleEn;
+  const title = node.titleLeft ?? node.titleRight;
   return (
     <div className="navtree-group">
       <button

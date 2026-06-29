@@ -1,8 +1,8 @@
 import type { Block, BlockType } from '../shared/types';
 
 export interface BlockAlignment {
-  zhToEn: Map<number, number>;
-  enToZh: Map<number, number>;
+  leftToRight: Map<number, number>;
+  rightToLeft: Map<number, number>;
 }
 
 const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
@@ -115,13 +115,15 @@ function pairSection(
   }
 }
 
-export function computeAlignment(zhBlocks: Block[], enBlocks: Block[]): BlockAlignment {
-  const zhToEn = new Map<number, number>();
-  const enToZh = new Map<number, number>();
+// `left`/`right` are the two compared panes; the algorithm is symmetric so the
+// internal zh/en labels are just historical names for the two sides.
+export function computeAlignment(leftBlocks: Block[], rightBlocks: Block[]): BlockAlignment {
+  const leftToRight = new Map<number, number>();
+  const rightToLeft = new Map<number, number>();
 
-  const zhItems = pickAlignable(zhBlocks);
-  const enItems = pickAlignable(enBlocks);
-  if (zhItems.length === 0 || enItems.length === 0) return { zhToEn, enToZh };
+  const zhItems = pickAlignable(leftBlocks);
+  const enItems = pickAlignable(rightBlocks);
+  if (zhItems.length === 0 || enItems.length === 0) return { leftToRight, rightToLeft };
 
   const zhHeadings = extractHeadings(zhItems);
   const enHeadings = extractHeadings(enItems);
@@ -156,8 +158,8 @@ export function computeAlignment(zhBlocks: Block[], enBlocks: Block[]): BlockAli
   pairSection(zhItems, enItems, prevZhAnchor + 1, zhItems.length, prevEnAnchor + 1, enItems.length, pairs);
 
   for (const [zi, ei] of pairs) {
-    zhToEn.set(zi, ei);
-    enToZh.set(ei, zi);
+    leftToRight.set(zi, ei);
+    rightToLeft.set(ei, zi);
   }
-  return { zhToEn, enToZh };
+  return { leftToRight, rightToLeft };
 }

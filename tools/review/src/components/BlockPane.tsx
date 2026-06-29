@@ -6,11 +6,12 @@ import { INSERT_AT_START, type PendingInsert } from '../lib/apply-edits';
 import { InlineEditor } from './InlineEditor';
 import type { InsertKind } from './InsertBlockDialog';
 
-type Side = 'zh' | 'en';
+type Side = 'left' | 'right';
 
 interface BlockPaneProps {
   blocks: Block[];
   side: Side;
+  editable: boolean;
   dirty: Map<string, string>;
   inserts?: Map<string, PendingInsert>;
   hoveredIndex: number | null;
@@ -18,6 +19,7 @@ interface BlockPaneProps {
   onCommitBlock?: (blockId: string, newRaw: string) => void;
   onRestoreBlock?: (blockId: string) => void;
   onOpenInsertDialog?: (kind: InsertKind, afterBlockId: string) => void;
+  onOpenReplaceDialog?: (blockId: string, raw: string) => void;
   onRemoveInsert?: (insertId: string) => void;
   registerBlockRef?: (index: number, el: HTMLDivElement | null) => void;
 }
@@ -67,6 +69,7 @@ function isMediaBlock(block: Block): boolean {
 export function BlockPane({
   blocks,
   side,
+  editable,
   dirty,
   inserts,
   hoveredIndex,
@@ -74,12 +77,13 @@ export function BlockPane({
   onCommitBlock,
   onRestoreBlock,
   onOpenInsertDialog,
+  onOpenReplaceDialog,
   onRemoveInsert,
   registerBlockRef,
 }: BlockPaneProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const insertsByAnchor = useMemo(() => groupInsertsByAnchor(inserts), [inserts]);
-  const showInsertUI = side === 'en' && !!onOpenInsertDialog;
+  const showInsertUI = editable && !!onOpenInsertDialog;
   const topInserts = insertsByAnchor.get(INSERT_AT_START) ?? [];
 
   return (
@@ -99,6 +103,7 @@ export function BlockPane({
               block={block}
               index={index}
               side={side}
+              editable={editable}
               isDirty={dirty.has(block.id)}
               currentRaw={dirty.get(block.id) ?? block.raw}
               isHovered={hoveredIndex === index}
@@ -114,6 +119,7 @@ export function BlockPane({
                 setEditingId(null);
                 onCommitBlock(block.id, '');
               } : undefined}
+              onReplace={onOpenReplaceDialog ? () => onOpenReplaceDialog(block.id, block.raw) : undefined}
               onRestore={onRestoreBlock ? () => onRestoreBlock(block.id) : undefined}
               registerBlockRef={registerBlockRef}
             />
@@ -134,6 +140,7 @@ interface BlockItemProps {
   block: Block;
   index: number;
   side: Side;
+  editable: boolean;
   isDirty: boolean;
   currentRaw: string;
   isHovered: boolean;
@@ -143,6 +150,7 @@ interface BlockItemProps {
   onCommit: (newRaw: string) => void;
   onCancel: () => void;
   onDelete?: () => void;
+  onReplace?: () => void;
   onRestore?: () => void;
   registerBlockRef?: (index: number, el: HTMLDivElement | null) => void;
 }
@@ -151,6 +159,7 @@ function BlockItem({
   block,
   index,
   side,
+  editable,
   isDirty,
   currentRaw,
   isHovered,
@@ -160,13 +169,14 @@ function BlockItem({
   onCommit,
   onCancel,
   onDelete,
+  onReplace,
   onRestore,
   registerBlockRef,
 }: BlockItemProps) {
-  const editableHere = block.editable && side === 'en';
+  const editableHere = block.editable && editable;
   const isMedia = isMediaBlock(block);
-  const mediaDeletable = side === 'en' && !block.editable && isMedia && !!onDelete;
-  const isDeleted = (editableHere || mediaDeletable) && isDirty && currentRaw === '';
+  const mediaActionable = editable && !block.editable && isMedia;
+  const isDeleted = (editableHere || mediaActionable) && isDirty && currentRaw === '';
   const classes = [
     'block-item',
     `block-item-${side}`,
@@ -197,7 +207,11 @@ function BlockItem({
       ) : block.editable ? (
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentRaw}</ReactMarkdown>
       ) : (
-        <ReadonlyContent block={block} onDelete={mediaDeletable ? onDelete : undefined} />
+        <ReadonlyContent
+          block={block}
+          onDelete={mediaActionable ? onDelete : undefined}
+          onReplace={mediaActionable ? onReplace : undefined}
+        />
       )}
     </div>
   );
@@ -218,28 +232,48 @@ function DeletedPlaceholder({ block, onRestore }: { block: Block; onRestore?: ()
   );
 }
 
-function MediaDeleteButton({ onDelete, label }: { onDelete: () => void; label: string }) {
+function MediaActions({ onDelete, onReplace, replaceLabel, deleteLabel }: {
+  onDelete?: () => void;
+  onReplace?: () => void;
+  replaceLabel: string;
+  deleteLabel: string;
+}) {
   return (
-    <button
-      type="button"
-      className="readonly-content-delete"
-      onClick={onDelete}
-      title={label}
-      aria-label={label}
-    >
-      删除
-    </button>
+    <div className="readonly-content-actions">
+      {onReplace && (
+        <button
+          type="button"
+          className="readonly-content-replace"
+          onClick={onReplace}
+          title={replaceLabel}
+          aria-label={replaceLabel}
+        >
+          替换
+        </button>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          className="readonly-content-delete"
+          onClick={onDelete}
+          title={deleteLabel}
+          aria-label={deleteLabel}
+        >
+          删除
+        </button>
+      )}
+    </div>
   );
 }
 
-function ReadonlyContent({ block, onDelete }: { block: Block; onDelete?: () => void }) {
+function ReadonlyContent({ block, onDelete, onReplace }: { block: Block; onDelete?: () => void; onReplace?: () => void }) {
   const trimmed = block.raw.trim();
 
   if (block.type === 'paragraph' && IMAGE_ONLY_RE.test(trimmed)) {
     return (
       <div className="readonly-content readonly-content-media">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.raw}</ReactMarkdown>
-        {onDelete && <MediaDeleteButton onDelete={onDelete} label="删除此图片" />}
+        <MediaActions onDelete={onDelete} onReplace={onReplace} replaceLabel="替换此图片" deleteLabel="删除此图片" />
       </div>
     );
   }
@@ -250,7 +284,7 @@ function ReadonlyContent({ block, onDelete }: { block: Block; onDelete?: () => v
       return (
         <div className="readonly-content readonly-content-media">
           <div dangerouslySetInnerHTML={{ __html: `<video ${videoMatch[1]}></video>` }} />
-          {onDelete && <MediaDeleteButton onDelete={onDelete} label="删除此视频" />}
+          <MediaActions onDelete={onDelete} onReplace={onReplace} replaceLabel="替换此视频" deleteLabel="删除此视频" />
         </div>
       );
     }
@@ -259,7 +293,7 @@ function ReadonlyContent({ block, onDelete }: { block: Block; onDelete?: () => v
       return (
         <div className="readonly-content readonly-content-media">
           <div dangerouslySetInnerHTML={{ __html: `<img ${imgMatch[1]}/>` }} />
-          {onDelete && <MediaDeleteButton onDelete={onDelete} label="删除此图片" />}
+          <MediaActions onDelete={onDelete} onReplace={onReplace} replaceLabel="替换此图片" deleteLabel="删除此图片" />
         </div>
       );
     }

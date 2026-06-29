@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { ReviewContext } from '../hooks/usePageState';
 
 interface AlignmentItem {
   slug: string;
-  titleEn?: string;
-  titleZh?: string;
-  zhCount: number;
-  enCount: number;
+  titleLeft?: string;
+  titleRight?: string;
+  leftCount: number;
+  rightCount: number;
   diff: number;
   error?: string;
 }
@@ -17,21 +18,27 @@ interface AlignmentResponse {
 }
 
 interface AlignmentPanelProps {
+  ctx: ReviewContext;
   currentSlug: string | null;
   onNavigate: (slug: string) => void;
 }
 
-export function AlignmentPanel({ currentSlug, onNavigate }: AlignmentPanelProps) {
+export function AlignmentPanel({ ctx, currentSlug, onNavigate }: AlignmentPanelProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AlignmentResponse | null>(null);
 
   const runScan = useCallback(async () => {
+    if (!ctx.product) {
+      setError('请先选择产品模块');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch('/api/alignment');
+      const params = new URLSearchParams({ product: ctx.product, left: ctx.leftLang, right: ctx.rightLang });
+      const r = await fetch(`/api/alignment?${params.toString()}`);
       const json = await r.json();
       if (!r.ok || json.error) throw new Error(json.error ?? `HTTP ${r.status}`);
       setData(json as AlignmentResponse);
@@ -40,7 +47,13 @@ export function AlignmentPanel({ currentSlug, onNavigate }: AlignmentPanelProps)
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ctx.product, ctx.leftLang, ctx.rightLang]);
+
+  // Invalidate cached results when the product / languages change (re-scan on next open).
+  useEffect(() => {
+    setData(null);
+    setError(null);
+  }, [ctx.product, ctx.leftLang, ctx.rightLang]);
 
   const onClick = () => {
     setOpen(true);
@@ -101,14 +114,14 @@ export function AlignmentPanel({ currentSlug, onNavigate }: AlignmentPanelProps)
                   }}
                 >
                   <span className="alignment-row-title">
-                    {m.titleZh ?? m.titleEn ?? m.slug}
+                    {m.titleLeft ?? m.titleRight ?? m.slug}
                   </span>
                   <span className="alignment-row-slug">{m.slug}</span>
                   {m.error ? (
                     <span className="alignment-row-error">{m.error}</span>
                   ) : (
                     <span className="alignment-row-counts">
-                      zh <b>{m.zhCount}</b> · en <b>{m.enCount}</b>
+                      左 <b>{m.leftCount}</b> · 右 <b>{m.rightCount}</b>
                       <span className={'alignment-row-diff' + (m.diff > 0 ? ' is-pos' : ' is-neg')}>
                         {m.diff > 0 ? `+${m.diff}` : m.diff}
                       </span>

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 export type InsertKind = 'image' | 'video';
+export type InsertMode = 'insert' | 'replace';
 
 interface InsertBlockDialogProps {
   open: boolean;
   kind: InsertKind;
+  mode?: InsertMode;
+  initialUrl?: string;
+  initialAlt?: string;
   onSubmit: (raw: string) => void;
   onCancel: () => void;
 }
@@ -28,18 +32,40 @@ function buildRaw(kind: InsertKind, url: string, alt: string): string {
   return `<video src="${u}" controls width="100%"/>`;
 }
 
-export function InsertBlockDialog({ open, kind, onSubmit, onCancel }: InsertBlockDialogProps) {
+/** Parse an existing media block back into {kind, url, alt} for replace mode. */
+export function parseMediaRaw(raw: string): { kind: InsertKind; url: string; alt: string } | null {
+  const t = raw.trim();
+  const md = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(t);
+  if (md) return { kind: 'image', url: md[2].trim(), alt: md[1] };
+  const src = /\bsrc\s*=\s*"([^"]+)"/i.exec(t);
+  if (/^<video\b/i.test(t)) return { kind: 'video', url: src?.[1] ?? '', alt: '' };
+  if (/^<img\b/i.test(t)) {
+    const altAttr = /\balt\s*=\s*"([^"]*)"/i.exec(t);
+    return { kind: 'image', url: src?.[1] ?? '', alt: altAttr?.[1] ?? '' };
+  }
+  return null;
+}
+
+export function InsertBlockDialog({
+  open,
+  kind,
+  mode = 'insert',
+  initialUrl = '',
+  initialAlt = '',
+  onSubmit,
+  onCancel,
+}: InsertBlockDialogProps) {
   const [url, setUrl] = useState('');
   const [alt, setAlt] = useState('');
   const urlRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
-      setUrl('');
-      setAlt('');
+      setUrl(initialUrl);
+      setAlt(initialAlt);
       queueMicrotask(() => urlRef.current?.focus());
     }
-  }, [open, kind]);
+  }, [open, kind, initialUrl, initialAlt]);
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +82,8 @@ export function InsertBlockDialog({ open, kind, onSubmit, onCancel }: InsertBloc
   if (!open) return null;
 
   const canSubmit = isSafeUrl(url);
-  const label = kind === 'image' ? '插入图片' : '插入视频';
+  const verb = mode === 'replace' ? '替换' : '插入';
+  const label = `${verb}${kind === 'image' ? '图片' : '视频'}`;
 
   const submit = () => {
     if (!canSubmit) return;
@@ -109,7 +136,7 @@ export function InsertBlockDialog({ open, kind, onSubmit, onCancel }: InsertBloc
               />
             </label>
           )}
-          <div className="insert-dialog-preview-label">将插入</div>
+          <div className="insert-dialog-preview-label">{`将${verb}`}</div>
           <pre className="insert-dialog-preview">
             {url.trim() ? buildRaw(kind, url, alt) : '（填入 URL 后预览）'}
           </pre>
@@ -123,9 +150,9 @@ export function InsertBlockDialog({ open, kind, onSubmit, onCancel }: InsertBloc
             className="btn btn-primary"
             onClick={submit}
             disabled={!canSubmit}
-            title={canSubmit ? '插入（Enter）' : URL_HINT}
+            title={canSubmit ? `${verb}（Enter）` : URL_HINT}
           >
-            插入
+            {verb}
           </button>
         </div>
       </div>

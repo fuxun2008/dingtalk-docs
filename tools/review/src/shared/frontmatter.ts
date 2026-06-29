@@ -27,6 +27,11 @@ function quoteForYaml(value: string): string {
   return value;
 }
 
+/** title/description follow the corpus convention of always double-quoting. */
+function doubleQuote(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
 export function parseFrontmatter(content: string): ParsedFrontmatter | null {
   const m = FRONTMATTER_RE.exec(content);
   if (!m) return null;
@@ -56,8 +61,8 @@ export function readTitle(content: string): string | undefined {
 
 export function buildFrontmatter(fm: { title?: string; description?: string; rest: Record<string, string> }): string {
   const lines: string[] = ['---'];
-  if (fm.title !== undefined) lines.push(`title: ${quoteForYaml(fm.title)}`);
-  if (fm.description !== undefined) lines.push(`description: ${quoteForYaml(fm.description)}`);
+  if (fm.title !== undefined) lines.push(`title: ${doubleQuote(fm.title)}`);
+  if (fm.description !== undefined) lines.push(`description: ${doubleQuote(fm.description)}`);
   for (const [k, v] of Object.entries(fm.rest)) {
     lines.push(`${k}: ${quoteForYaml(v)}`);
   }

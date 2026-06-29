@@ -1,5 +1,12 @@
 import type { Connect } from 'vite';
-import { handleNav, handleGetPage, handlePostPage, handleAlignment } from './routes';
+import {
+  handleNav,
+  handleGetPage,
+  handlePostPage,
+  handleAlignment,
+  handleProducts,
+  handleDeletePage,
+} from './routes';
 
 export function createApiMiddleware(repoRoot: string): Connect.NextHandleFunction {
   return async (req, res, next) => {
@@ -13,10 +20,12 @@ export function createApiMiddleware(repoRoot: string): Connect.NextHandleFunctio
         res.end(JSON.stringify({ ok: true }));
         return;
       }
-      if (path === '/nav' && method === 'GET') return handleNav(repoRoot, res);
-      if (path === '/alignment' && method === 'GET') return handleAlignment(repoRoot, res);
+      if (path === '/products' && method === 'GET') return handleProducts(repoRoot, res);
+      if (path === '/nav' && method === 'GET') return handleNav(repoRoot, req, res);
+      if (path === '/alignment' && method === 'GET') return handleAlignment(repoRoot, req, res);
       if (path === '/page' && method === 'GET') return handleGetPage(repoRoot, req, res);
       if (path === '/page' && method === 'POST') return handlePostPage(repoRoot, req, res);
+      if (path === '/page' && method === 'DELETE') return handleDeletePage(repoRoot, req, res);
 
       next();
     } catch (err) {
