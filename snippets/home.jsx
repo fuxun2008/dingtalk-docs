@@ -24,7 +24,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     const inLang = { en: "en-US", zh: "zh-CN", ja: "ja-JP" }[l] || "en-US";
     const altName = { en: "DingTalk Help Center", zh: "钉钉帮助中心", ja: "DingTalk ヘルプセンター" }[l];
     const siteUrl = "https://help.dingtalk.io" + lp;
-    const logo = "https://img.alicdn.com/imgextra/i1/O1CN01OqM4Sy1bJrYgEwAmx_!!6000000003445-2-tps-520-177.png";
+    const logo = "https://img.alicdn.com/imgextra/i2/O1CN01YT67eU1F0F4n6LlTN_!!6000000000424-2-tps-1024-1024.png";
     return {
       "@context": "https://schema.org",
       "@graph": [
