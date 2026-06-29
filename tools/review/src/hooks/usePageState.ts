@@ -127,6 +127,8 @@ export function usePageState(): PageState {
   const right = useSideEditor({ side: 'right', lang: ctx.rightLang, slug, content: bundle?.right ?? null, refresh: refreshRight });
 
   const dirtyCount = left.dirtyCount + right.dirtyCount;
+  const dirtyCountRef = useRef(dirtyCount);
+  dirtyCountRef.current = dirtyCount;
 
   // Initial load if the hash already points at a page.
   useEffect(() => {
@@ -159,6 +161,31 @@ export function usePageState(): PageState {
     },
     [loadPage],
   );
+
+  // Follow external hash changes (browser back/forward, manual URL edits). Our own
+  // navigation uses history.replaceState, which does not fire hashchange — so any event
+  // here is external. When the page is dirty, revert the URL and surface the confirm dialog.
+  const syncFromHash = useCallback(() => {
+    const parsed = parseHash();
+    if (!parsed.ctx.product) return;
+    const sameCtx =
+      parsed.ctx.product === ctxRef.current.product &&
+      parsed.ctx.leftLang === ctxRef.current.leftLang &&
+      parsed.ctx.rightLang === ctxRef.current.rightLang;
+    const sameSlug = (parsed.slug ?? null) === slugRef.current;
+    if (sameCtx && sameSlug) return;
+    if (dirtyCountRef.current > 0) {
+      writeHash(ctxRef.current, slugRef.current);
+      setPendingNav({ kind: 'ctx', ctx: parsed.ctx, slug: parsed.slug });
+      return;
+    }
+    applyContext(parsed.ctx, parsed.slug);
+  }, [applyContext]);
+
+  useEffect(() => {
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, [syncFromHash]);
 
   const setContext = useCallback(
     (partial: Partial<ReviewContext>) => {
