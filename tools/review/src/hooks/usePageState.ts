@@ -1,74 +1,107 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { nanoid } from 'nanoid';
-import type { PageBundle } from '../shared/types';
-import { applyEdits, type PendingInsert } from '../lib/apply-edits';
+import type { Lang, PageBundle } from '../shared/types';
+import { ALL_LANGS } from '../shared/types';
+import { useSideEditor, type SideEditor } from './useSideEditor';
 
-interface PageState {
+export interface ReviewContext {
+  product: string;
+  leftLang: Lang;
+  rightLang: Lang;
+}
+
+type PendingNav =
+  | { kind: 'slug'; slug: string }
+  | { kind: 'ctx'; ctx: ReviewContext; slug: string | null };
+
+export interface DeleteResult {
+  slug: string;
+  deletedFiles: string[];
+  removedNavLines: string[];
+  deletedImages: string[];
+}
+
+export interface PageState {
+  ctx: ReviewContext;
   slug: string | null;
   bundle: PageBundle | null;
   loading: boolean;
   error: string | null;
-  dirty: Map<string, string>;
-  inserts: Map<string, PendingInsert>;
+  left: SideEditor;
+  right: SideEditor;
   isDirty: boolean;
   dirtyCount: number;
-  pendingTarget: string | null;
-  saving: boolean;
-  saveError: string | null;
-  navigate: (target: string) => void;
-  markDirty: (blockId: string, newRaw: string) => void;
-  unmarkDirty: (blockId: string) => void;
-  insertBlock: (afterBlockId: string, raw: string) => string;
-  removeInsert: (insertId: string) => void;
-  clearDirty: () => void;
+  pendingNav: PendingNav | null;
+  setContext: (partial: Partial<ReviewContext>) => void;
+  navigate: (slug: string) => void;
   confirmDiscard: () => void;
   confirmSave: () => Promise<void>;
   cancelNavigate: () => void;
   reload: () => Promise<void>;
-  save: () => Promise<boolean>;
+  saveAll: () => Promise<boolean>;
+  deleteCurrent: () => Promise<DeleteResult>;
 }
 
-function readHashSlug(): string | null {
+const DEFAULT_CTX: ReviewContext = { product: '', leftLang: 'zh', rightLang: 'en' };
+
+function parseHash(): { ctx: ReviewContext; slug: string | null } {
   const h = window.location.hash;
-  if (!h.startsWith('#/')) return null;
-  const slug = h.slice(2);
-  return slug || null;
+  if (!h.startsWith('#/')) return { ctx: { ...DEFAULT_CTX }, slug: null };
+  const [pathPart, queryPart] = h.slice(2).split('?');
+  const params = new URLSearchParams(queryPart ?? '');
+  const lang = (v: string | null, fb: Lang): Lang => (v && ALL_LANGS.includes(v as Lang) ? (v as Lang) : fb);
+  return {
+    ctx: {
+      product: pathPart || '',
+      leftLang: lang(params.get('left'), 'zh'),
+      rightLang: lang(params.get('right'), 'en'),
+    },
+    slug: params.get('slug') || null,
+  };
 }
 
-function writeHashSlug(slug: string): void {
-  const next = `#/${slug}`;
-  if (window.location.hash !== next) window.location.hash = next;
+function writeHash(ctx: ReviewContext, slug: string | null): void {
+  const params = new URLSearchParams();
+  params.set('left', ctx.leftLang);
+  params.set('right', ctx.rightLang);
+  if (slug) params.set('slug', slug);
+  const next = `#/${ctx.product}?${params.toString()}`;
+  if (window.location.hash !== next) {
+    history.replaceState(null, '', next);
+  }
 }
 
-async function fetchPage(slug: string): Promise<PageBundle> {
-  const r = await fetch(`/api/page?slug=${encodeURIComponent(slug)}`);
+async function fetchBundle(slug: string, ctx: ReviewContext): Promise<PageBundle> {
+  const params = new URLSearchParams({ slug, left: ctx.leftLang, right: ctx.rightLang });
+  const r = await fetch(`/api/page?${params.toString()}`);
   const data = await r.json();
   if (!r.ok || data.error) throw new Error(data.error ?? `HTTP ${r.status}`);
   return data as PageBundle;
 }
 
 export function usePageState(): PageState {
-  const [slug, setSlug] = useState<string | null>(() => readHashSlug());
+  const initialRef = useRef(parseHash());
+  const initial = initialRef.current;
+  const [ctx, setCtx] = useState<ReviewContext>(initial.ctx);
+  const [slug, setSlug] = useState<string | null>(initial.slug);
   const [bundle, setBundle] = useState<PageBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState<Map<string, string>>(new Map());
-  const [inserts, setInserts] = useState<Map<string, PendingInsert>>(new Map());
-  const insertSeqRef = useRef(0);
-  const [pendingTarget, setPendingTarget] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [pendingNav, setPendingNav] = useState<PendingNav | null>(null);
 
-  const loadPage = useCallback(async (target: string) => {
+  // Refs mirror latest state so fetch callbacks stay stable across renders.
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
+  const slugRef = useRef(slug);
+  slugRef.current = slug;
+
+  const loadPage = useCallback(async (target: string, nextCtx: ReviewContext) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchPage(target);
+      const data = await fetchBundle(target, nextCtx);
       setBundle(data);
       setSlug(target);
-      setDirty(new Map());
-      setInserts(new Map());
-      writeHashSlug(target);
+      writeHash(nextCtx, target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'load failed');
     } finally {
@@ -76,28 +109,30 @@ export function usePageState(): PageState {
     }
   }, []);
 
-  useEffect(() => {
-    if (slug) loadPage(slug);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  /** Re-read one side from disk and patch only that side (keeps the other side's edits stable). */
+  const refreshSide = useCallback(async (side: 'left' | 'right') => {
+    const s = slugRef.current;
+    if (!s) return;
+    const fresh = await fetchBundle(s, ctxRef.current);
+    setBundle((prev) => {
+      if (!prev) return fresh;
+      return side === 'left' ? { ...prev, left: fresh.left } : { ...prev, right: fresh.right };
+    });
   }, []);
 
-  const dirtyCount = dirty.size + inserts.size;
+  const refreshLeft = useCallback(() => refreshSide('left'), [refreshSide]);
+  const refreshRight = useCallback(() => refreshSide('right'), [refreshSide]);
 
+  const left = useSideEditor({ side: 'left', lang: ctx.leftLang, slug, content: bundle?.left ?? null, refresh: refreshLeft });
+  const right = useSideEditor({ side: 'right', lang: ctx.rightLang, slug, content: bundle?.right ?? null, refresh: refreshRight });
+
+  const dirtyCount = left.dirtyCount + right.dirtyCount;
+
+  // Initial load if the hash already points at a page.
   useEffect(() => {
-    const onHashChange = () => {
-      const next = readHashSlug();
-      if (next && next !== slug) {
-        if (dirtyCount > 0) {
-          setPendingTarget(next);
-          writeHashSlug(slug ?? '');
-        } else {
-          loadPage(next);
-        }
-      }
-    };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, [slug, dirtyCount, loadPage]);
+    if (initial.slug && initial.ctx.product) loadPage(initial.slug, initial.ctx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -110,141 +145,122 @@ export function usePageState(): PageState {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirtyCount]);
 
-  const navigate = useCallback(
-    (target: string) => {
-      if (target === slug) return;
-      if (dirtyCount === 0) {
-        loadPage(target);
+  const applyContext = useCallback(
+    (next: ReviewContext, targetSlug: string | null) => {
+      setCtx(next);
+      ctxRef.current = next;
+      if (targetSlug) {
+        loadPage(targetSlug, next);
       } else {
-        setPendingTarget(target);
+        setSlug(null);
+        setBundle(null);
+        writeHash(next, null);
       }
     },
-    [slug, dirtyCount, loadPage],
+    [loadPage],
   );
 
-  const markDirty = useCallback((blockId: string, newRaw: string) => {
-    setDirty((prev) => {
-      const next = new Map(prev);
-      next.set(blockId, newRaw);
-      return next;
-    });
-  }, []);
+  const setContext = useCallback(
+    (partial: Partial<ReviewContext>) => {
+      const next = { ...ctxRef.current, ...partial };
+      // Switching product invalidates the current slug; lang changes keep it.
+      const keepSlug = partial.product === undefined || partial.product === ctxRef.current.product;
+      const targetSlug = keepSlug ? slugRef.current : null;
+      if (dirtyCount > 0) {
+        setPendingNav({ kind: 'ctx', ctx: next, slug: targetSlug });
+        return;
+      }
+      applyContext(next, targetSlug);
+    },
+    [dirtyCount, applyContext],
+  );
 
-  const unmarkDirty = useCallback((blockId: string) => {
-    setDirty((prev) => {
-      if (!prev.has(blockId)) return prev;
-      const next = new Map(prev);
-      next.delete(blockId);
-      return next;
-    });
-  }, []);
+  const navigate = useCallback(
+    (target: string) => {
+      if (target === slugRef.current) return;
+      if (dirtyCount > 0) {
+        setPendingNav({ kind: 'slug', slug: target });
+        return;
+      }
+      loadPage(target, ctxRef.current);
+    },
+    [dirtyCount, loadPage],
+  );
 
-  const insertBlock = useCallback((afterBlockId: string, raw: string): string => {
-    const id = `__insert_${nanoid(8)}`;
-    insertSeqRef.current += 1;
-    const seq = insertSeqRef.current;
-    setInserts((prev) => {
-      const next = new Map(prev);
-      next.set(id, { afterBlockId, raw, seq });
-      return next;
-    });
-    return id;
-  }, []);
+  const saveAll = useCallback(async (): Promise<boolean> => {
+    const a = await left.save();
+    const b = await right.save();
+    return a && b;
+  }, [left, right]);
 
-  const removeInsert = useCallback((insertId: string) => {
-    setInserts((prev) => {
-      if (!prev.has(insertId)) return prev;
-      const next = new Map(prev);
-      next.delete(insertId);
-      return next;
-    });
-  }, []);
-
-  const clearDirty = useCallback(() => {
-    setDirty(new Map());
-    setInserts(new Map());
-  }, []);
+  const runPending = useCallback(
+    (nav: PendingNav) => {
+      if (nav.kind === 'slug') loadPage(nav.slug, ctxRef.current);
+      else applyContext(nav.ctx, nav.slug);
+    },
+    [loadPage, applyContext],
+  );
 
   const confirmDiscard = useCallback(() => {
-    if (!pendingTarget) return;
-    const target = pendingTarget;
-    setPendingTarget(null);
-    setDirty(new Map());
-    setInserts(new Map());
-    loadPage(target);
-  }, [pendingTarget, loadPage]);
-
-  const save = useCallback(async (): Promise<boolean> => {
-    if (!slug || !bundle || dirtyCount === 0) return true;
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const en = bundle.en;
-      const { content, skipped } = applyEdits({
-        content: en.content,
-        blocks: en.blocks,
-        frontmatter: en.frontmatter,
-        dirty,
-        inserts,
-      });
-      if (skipped.length > 0) throw new Error(`无法定位的修改：${skipped.join(', ')}`);
-      const r = await fetch('/api/page', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, lang: 'en', content }),
-      });
-      const data = await r.json();
-      if (!r.ok || data.error) throw new Error(data.error ?? `HTTP ${r.status}`);
-      const fresh = await fetchPage(slug);
-      setBundle(fresh);
-      setDirty(new Map());
-      setInserts(new Map());
-      return true;
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'save failed');
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [slug, bundle, dirty, inserts, dirtyCount]);
+    if (!pendingNav) return;
+    const nav = pendingNav;
+    setPendingNav(null);
+    left.clear();
+    right.clear();
+    runPending(nav);
+  }, [pendingNav, left, right, runPending]);
 
   const confirmSave = useCallback(async () => {
-    if (!pendingTarget) return;
-    const target = pendingTarget;
-    const ok = await save();
+    if (!pendingNav) return;
+    const nav = pendingNav;
+    const ok = await saveAll();
     if (!ok) return;
-    setPendingTarget(null);
-    loadPage(target);
-  }, [pendingTarget, save, loadPage]);
+    setPendingNav(null);
+    runPending(nav);
+  }, [pendingNav, saveAll, runPending]);
 
-  const cancelNavigate = useCallback(() => setPendingTarget(null), []);
+  const cancelNavigate = useCallback(() => setPendingNav(null), []);
 
   const reload = useCallback(async () => {
-    if (slug) await loadPage(slug);
-  }, [slug, loadPage]);
+    if (slugRef.current) await loadPage(slugRef.current, ctxRef.current);
+  }, [loadPage]);
+
+  const deleteCurrent = useCallback(async (): Promise<DeleteResult> => {
+    const s = slugRef.current;
+    if (!s) throw new Error('no page selected');
+    const r = await fetch('/api/page', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: s }),
+    });
+    const data = await r.json();
+    if (!r.ok || data.error) throw new Error(data.error ?? `HTTP ${r.status}`);
+    left.clear();
+    right.clear();
+    setSlug(null);
+    setBundle(null);
+    writeHash(ctxRef.current, null);
+    return data as DeleteResult;
+  }, [left, right]);
 
   return {
+    ctx,
     slug,
     bundle,
     loading,
     error,
-    dirty,
-    inserts,
+    left,
+    right,
     isDirty: dirtyCount > 0,
     dirtyCount,
-    pendingTarget,
-    saving,
-    saveError,
+    pendingNav,
+    setContext,
     navigate,
-    markDirty,
-    unmarkDirty,
-    insertBlock,
-    removeInsert,
-    clearDirty,
     confirmDiscard,
     confirmSave,
     cancelNavigate,
     reload,
-    save,
+    saveAll,
+    deleteCurrent,
   };
 }

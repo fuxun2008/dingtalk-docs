@@ -1,17 +1,34 @@
 export type Lang = 'en' | 'zh' | 'ja';
 
+export const ALL_LANGS: Lang[] = ['en', 'zh', 'ja'];
+
+export const LANG_LABEL: Record<Lang, string> = {
+  en: '英文（en）',
+  zh: '中文（zh）',
+  ja: '日文（ja）',
+};
+
+/** A single proofreading unit: one tab inside one product, identified by its
+ *  position key `p{productIdx}t{tabIdx}` (stable across localized tab names). */
+export interface ProductTab {
+  key: string;
+  product: string;
+  tab: string;
+}
+
 export interface NavPage {
   type: 'page';
+  /** Canonical en-relative slug, e.g. `im/chats-overview`. */
   slug: string;
-  titleZh?: string;
-  titleEn?: string;
+  titleLeft?: string;
+  titleRight?: string;
   missing?: boolean;
 }
 
 export interface NavGroup {
   type: 'group';
-  titleEn: string;
-  titleZh?: string;
+  titleLeft: string;
+  titleRight?: string;
   children: NavNode[];
 }
 
@@ -59,8 +76,11 @@ export interface PageContent {
 
 export interface PageBundle {
   slug: string;
-  en: PageContent;
-  zh: PageContent;
+  leftLang: Lang;
+  rightLang: Lang;
+  /** null when the file for that language does not exist (untranslated). */
+  left: PageContent | null;
+  right: PageContent | null;
 }
 
 export interface ApiError {

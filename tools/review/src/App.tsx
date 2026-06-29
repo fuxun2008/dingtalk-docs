@@ -1,88 +1,111 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigation } from './hooks/useNavigation';
+import { useNavigation, useProducts } from './hooks/useNavigation';
 import { usePageState } from './hooks/usePageState';
 import { useScrollSync } from './hooks/useScrollSync';
+import type { SideEditor } from './hooks/useSideEditor';
 import { NavTree } from './components/NavTree';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { BlockPane } from './components/BlockPane';
 import { FrontmatterCard } from './components/FrontmatterCard';
 import { SaveBar } from './components/SaveBar';
+import { TopBar } from './components/TopBar';
 import { AlignmentPanel } from './components/AlignmentPanel';
-import { InsertBlockDialog, type InsertKind } from './components/InsertBlockDialog';
+import { DeletePageDialog } from './components/DeletePageDialog';
+import {
+  InsertBlockDialog,
+  parseMediaRaw,
+  type InsertKind,
+  type InsertMode,
+} from './components/InsertBlockDialog';
+import { LANG_LABEL } from './shared/types';
 import { computeAlignment, type BlockAlignment } from './lib/align-blocks';
 
-interface InsertDialogState {
-  kind: InsertKind;
-  afterBlockId: string;
-}
+type Side = 'left' | 'right';
 
-type Side = 'zh' | 'en';
+type MediaDialogState =
+  | { mode: 'insert'; side: Side; kind: InsertKind; afterBlockId: string; url?: undefined; alt?: undefined }
+  | { mode: 'replace'; side: Side; kind: InsertKind; blockId: string; url: string; alt: string };
 
 interface HoverState {
   side: Side;
   index: number;
 }
 
-const EMPTY_ALIGNMENT: BlockAlignment = { zhToEn: new Map(), enToZh: new Map() };
+const EMPTY_ALIGNMENT: BlockAlignment = { leftToRight: new Map(), rightToLeft: new Map() };
 
 function peerIndex(alignment: BlockAlignment, hovered: HoverState, side: Side): number | null {
   if (hovered.side === side) return hovered.index;
-  const map = side === 'en' ? alignment.zhToEn : alignment.enToZh;
+  const map = side === 'right' ? alignment.leftToRight : alignment.rightToLeft;
   return map.get(hovered.index) ?? null;
 }
 
 export default function App() {
-  const nav = useNavigation();
   const page = usePageState();
+  const nav = useNavigation(page.ctx);
+  const products = useProducts();
   const [hovered, setHovered] = useState<HoverState | null>(null);
-  const [insertDialog, setInsertDialog] = useState<InsertDialogState | null>(null);
+  const [mediaDialog, setMediaDialog] = useState<MediaDialogState | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
+  const { setContext } = page;
+
+  // Default to the first product once the list arrives (unless the hash already set one).
+  useEffect(() => {
+    if (!page.ctx.product && products.products.length > 0) {
+      setContext({ product: products.products[0].key });
+    }
+  }, [products.products, page.ctx.product, setContext]);
+
+  const leftBlocks = page.left.content?.blocks;
+  const rightBlocks = page.right.content?.blocks;
   const alignment = useMemo<BlockAlignment>(() => {
-    if (!page.bundle) return EMPTY_ALIGNMENT;
-    return computeAlignment(page.bundle.zh.blocks, page.bundle.en.blocks);
-  }, [page.bundle]);
+    if (!leftBlocks || !rightBlocks) return EMPTY_ALIGNMENT;
+    return computeAlignment(leftBlocks, rightBlocks);
+  }, [leftBlocks, rightBlocks]);
 
-  const zhHoverIndex = hovered ? peerIndex(alignment, hovered, 'zh') : null;
-  const enHoverIndex = hovered ? peerIndex(alignment, hovered, 'en') : null;
+  const leftHoverIndex = hovered ? peerIndex(alignment, hovered, 'left') : null;
+  const rightHoverIndex = hovered ? peerIndex(alignment, hovered, 'right') : null;
 
-  const onHoverZh = useCallback(
-    (idx: number | null) => setHovered(idx === null ? null : { side: 'zh', index: idx }),
+  const onHoverLeft = useCallback(
+    (idx: number | null) => setHovered(idx === null ? null : { side: 'left', index: idx }),
     [],
   );
-  const onHoverEn = useCallback(
-    (idx: number | null) => setHovered(idx === null ? null : { side: 'en', index: idx }),
+  const onHoverRight = useCallback(
+    (idx: number | null) => setHovered(idx === null ? null : { side: 'right', index: idx }),
     [],
   );
 
-  const alignLeftToRight = useCallback(
-    (i: number) => alignment.zhToEn.get(i) ?? null,
-    [alignment],
-  );
-  const alignRightToLeft = useCallback(
-    (i: number) => alignment.enToZh.get(i) ?? null,
-    [alignment],
-  );
+  const alignLeftToRight = useCallback((i: number) => alignment.leftToRight.get(i) ?? null, [alignment]);
+  const alignRightToLeft = useCallback((i: number) => alignment.rightToLeft.get(i) ?? null, [alignment]);
 
-  const openInsertDialog = (kind: InsertKind, afterBlockId: string) => {
-    setInsertDialog({ kind, afterBlockId });
-  };
-  const handleInsertSubmit = (raw: string) => {
-    if (!insertDialog) return;
-    page.insertBlock(insertDialog.afterBlockId, raw);
-    setInsertDialog(null);
-  };
-  const closeInsertDialog = () => setInsertDialog(null);
+  const openInsertDialog = (side: Side) => (kind: InsertKind, afterBlockId: string) =>
+    setMediaDialog({ mode: 'insert', side, kind, afterBlockId });
 
-  const zhBodyRef = useRef<HTMLDivElement>(null);
-  const enBodyRef = useRef<HTMLDivElement>(null);
-  const zhRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const enRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const openReplaceDialog = (side: Side) => (blockId: string, raw: string) => {
+    const parsed = parseMediaRaw(raw);
+    if (!parsed) return;
+    setMediaDialog({ mode: 'replace', side, kind: parsed.kind, blockId, url: parsed.url, alt: parsed.alt });
+  };
+
+  const handleMediaSubmit = (raw: string) => {
+    if (!mediaDialog) return;
+    const editor = mediaDialog.side === 'left' ? page.left : page.right;
+    if (mediaDialog.mode === 'insert') editor.insertBlock(mediaDialog.afterBlockId, raw);
+    else editor.markDirty(mediaDialog.blockId, raw);
+    setMediaDialog(null);
+  };
+
+  const leftBodyRef = useRef<HTMLDivElement>(null);
+  const rightBodyRef = useRef<HTMLDivElement>(null);
+  const leftRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const rightRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const { suspendSync } = useScrollSync({
-    leftBody: zhBodyRef,
-    rightBody: enBodyRef,
-    leftBlocks: zhRefs,
-    rightBlocks: enRefs,
+    leftBody: leftBodyRef,
+    rightBody: rightBodyRef,
+    leftBlocks: leftRefs,
+    rightBlocks: rightRefs,
     enabled: !!page.bundle,
     alignLeftToRight,
     alignRightToLeft,
@@ -92,13 +115,13 @@ export default function App() {
     if (!hovered) return;
     const handle = window.setTimeout(() => {
       const srcSide: Side = hovered.side;
-      const peerSide: Side = srcSide === 'zh' ? 'en' : 'zh';
+      const peerSide: Side = srcSide === 'left' ? 'right' : 'left';
       const peerIdx = peerIndex(alignment, hovered, peerSide);
       if (peerIdx === null) return;
-      const srcRefs = srcSide === 'zh' ? zhRefs : enRefs;
-      const peerRefs = peerSide === 'zh' ? zhRefs : enRefs;
-      const srcBody = srcSide === 'zh' ? zhBodyRef : enBodyRef;
-      const peerBody = peerSide === 'zh' ? zhBodyRef : enBodyRef;
+      const srcRefs = srcSide === 'left' ? leftRefs : rightRefs;
+      const peerRefs = peerSide === 'left' ? leftRefs : rightRefs;
+      const srcBody = srcSide === 'left' ? leftBodyRef : rightBodyRef;
+      const peerBody = peerSide === 'left' ? leftBodyRef : rightBodyRef;
       const srcEl = srcRefs.current.get(hovered.index);
       const peerEl = peerRefs.current.get(peerIdx);
       const srcBodyEl = srcBody.current;
@@ -108,37 +131,37 @@ export default function App() {
       const peerTop = peerEl.getBoundingClientRect().top - peerBodyEl.getBoundingClientRect().top;
       const delta = peerTop - srcTop;
       if (Math.abs(delta) < 8) return;
-      suspendSync(peerSide === 'zh' ? 'left' : 'right', 500);
+      suspendSync(peerSide, 500);
       peerBodyEl.scrollTo({ top: peerBodyEl.scrollTop + delta, behavior: 'smooth' });
     }, 150);
     return () => window.clearTimeout(handle);
   }, [hovered, alignment, suspendSync]);
 
   useEffect(() => {
-    zhRefs.current.clear();
-    enRefs.current.clear();
+    leftRefs.current.clear();
+    rightRefs.current.clear();
     setHovered(null);
-    if (zhBodyRef.current) zhBodyRef.current.scrollTop = 0;
-    if (enBodyRef.current) enBodyRef.current.scrollTop = 0;
+    if (leftBodyRef.current) leftBodyRef.current.scrollTop = 0;
+    if (rightBodyRef.current) rightBodyRef.current.scrollTop = 0;
   }, [page.slug]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === 's' || e.key === 'S')) {
-        if (page.isDirty && !page.saving) {
+        if (page.isDirty) {
           e.preventDefault();
-          page.save();
+          page.saveAll();
         }
         return;
       }
-      if (e.target instanceof HTMLElement && ['TEXTAREA', 'INPUT'].includes(e.target.tagName)) return;
+      if (e.target instanceof HTMLElement && ['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName)) return;
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       if (!page.slug) return;
       const idx = nav.flatPages.findIndex((p) => p.slug === page.slug);
       if (idx < 0) return;
       const nextIdx = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
       const next = nav.flatPages[nextIdx];
-      if (!next) return;
+      if (!next || next.missing) return;
       e.preventDefault();
       page.navigate(next.slug);
     };
@@ -146,112 +169,155 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [nav.flatPages, page]);
 
-  useEffect(() => {
-    const onFocus = () => {
-      if (page.isDirty || page.saving || !page.slug) return;
-      page.reload();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [page]);
-
-  const registerZhRef = (index: number, el: HTMLDivElement | null) => {
-    if (el) zhRefs.current.set(index, el);
-    else zhRefs.current.delete(index);
-  };
-  const registerEnRef = (index: number, el: HTMLDivElement | null) => {
-    if (el) enRefs.current.set(index, el);
-    else enRefs.current.delete(index);
-  };
+  const handleDelete = useCallback(async () => {
+    const idx = nav.flatPages.findIndex((p) => p.slug === page.slug);
+    const result = await page.deleteCurrent();
+    setDeleteOpen(false);
+    setNotice(
+      `已删除「${result.slug}」：${result.deletedFiles.length} 个 mdx、` +
+        `${result.removedNavLines.length} 处导航、${result.deletedImages.length} 张孤儿图。`,
+    );
+    await nav.reload();
+    const next = nav.flatPages[idx + 1] ?? nav.flatPages[idx - 1];
+    if (next && next.slug !== result.slug && !next.missing) page.navigate(next.slug);
+  }, [nav, page]);
 
   return (
     <div className="app-shell">
-      <aside className="nav-pane">
-        <div className="nav-pane-toolbar">
-          <AlignmentPanel currentSlug={page.slug} onNavigate={page.navigate} />
-          <button
-            type="button"
-            className="nav-reload-button"
-            onClick={() => { nav.reload(); }}
-            disabled={nav.loading}
-            title="重新读取磁盘上的 docs.json 与 mdx（切分支或拉取后用）"
-          >
-            <span aria-hidden="true">↻</span>
-            <span>刷新</span>
+      <TopBar
+        products={products.products}
+        productsLoading={products.loading}
+        ctx={page.ctx}
+        onChange={page.setContext}
+        canDelete={!!page.slug}
+        onDeletePage={() => setDeleteOpen(true)}
+      />
+
+      {notice && (
+        <div className="app-notice" role="status">
+          {notice}
+          <button type="button" className="app-notice-close" onClick={() => setNotice(null)}>
+            ×
           </button>
         </div>
-        {nav.loading && <div className="nav-pane-placeholder">加载导航中…</div>}
-        {nav.error && <div className="nav-pane-placeholder error">{nav.error}</div>}
-        {!nav.loading && !nav.error && (
-          <NavTree
-            tree={nav.tree}
-            currentSlug={page.slug}
-            dirtySlug={page.isDirty ? page.slug : null}
-            onSelect={page.navigate}
-          />
-        )}
-      </aside>
+      )}
 
-      <main className="dual-pane">
-        <PaneShell
-          label={`中文（zh）${page.bundle ? '· ' + page.bundle.zh.blocks.length + ' blocks' : ''}`}
-          side="zh"
-          bodyRef={zhBodyRef}
-        >
-          <PaneContent
-            page={page}
-            side="zh"
-            hoveredIndex={zhHoverIndex}
-            onHover={onHoverZh}
-            registerRef={registerZhRef}
-          />
-        </PaneShell>
-        <PaneShell
-          label={`英文（en）${page.bundle ? '· ' + page.bundle.en.blocks.length + ' blocks' : ''}`}
-          side="en"
-          bodyRef={enBodyRef}
-          headerExtra={
-            <SaveBar
-              dirtyCount={page.dirtyCount}
-              saving={page.saving}
-              error={page.saveError}
-              onSave={() => { page.save(); }}
+      <div className="app-main">
+        <aside className="nav-pane">
+          <div className="nav-pane-toolbar">
+            <AlignmentPanel ctx={page.ctx} currentSlug={page.slug} onNavigate={page.navigate} />
+            <button
+              type="button"
+              className="nav-reload-button"
+              onClick={() => { nav.reload(); }}
+              disabled={nav.loading}
+              title="重新读取磁盘上的 docs.json 与 mdx（切分支或拉取后用）"
+            >
+              <span aria-hidden="true">↻</span>
+              <span>刷新</span>
+            </button>
+          </div>
+          {nav.loading && <div className="nav-pane-placeholder">加载导航中…</div>}
+          {nav.error && <div className="nav-pane-placeholder error">{nav.error}</div>}
+          {!nav.loading && !nav.error && (
+            <NavTree
+              tree={nav.tree}
+              currentSlug={page.slug}
+              dirtySlug={page.isDirty ? page.slug : null}
+              onSelect={page.navigate}
             />
-          }
-        >
-          <PaneContent
-            page={page}
-            side="en"
-            hoveredIndex={enHoverIndex}
-            onHover={onHoverEn}
-            registerRef={registerEnRef}
-            onOpenInsertDialog={openInsertDialog}
-          />
-        </PaneShell>
-      </main>
+          )}
+        </aside>
+
+        <main className="dual-pane">
+          <PaneShell
+            label={`左 · ${LANG_LABEL[page.ctx.leftLang]}${page.left.content ? ' · ' + page.left.content.blocks.length + ' blocks' : ''}`}
+            side="left"
+            bodyRef={leftBodyRef}
+            headerExtra={
+              <SaveBar
+                dirtyCount={page.left.dirtyCount}
+                saving={page.left.saving}
+                error={page.left.saveError}
+                onSave={() => { page.left.save(); }}
+              />
+            }
+          >
+            <PaneContent
+              page={page}
+              editor={page.left}
+              side="left"
+              hoveredIndex={leftHoverIndex}
+              onHover={onHoverLeft}
+              registerRef={(i, el) => setRef(leftRefs, i, el)}
+              onOpenInsertDialog={openInsertDialog('left')}
+              onOpenReplaceDialog={openReplaceDialog('left')}
+            />
+          </PaneShell>
+          <PaneShell
+            label={`右 · ${LANG_LABEL[page.ctx.rightLang]}${page.right.content ? ' · ' + page.right.content.blocks.length + ' blocks' : ''}`}
+            side="right"
+            bodyRef={rightBodyRef}
+            headerExtra={
+              <SaveBar
+                dirtyCount={page.right.dirtyCount}
+                saving={page.right.saving}
+                error={page.right.saveError}
+                onSave={() => { page.right.save(); }}
+              />
+            }
+          >
+            <PaneContent
+              page={page}
+              editor={page.right}
+              side="right"
+              hoveredIndex={rightHoverIndex}
+              onHover={onHoverRight}
+              registerRef={(i, el) => setRef(rightRefs, i, el)}
+              onOpenInsertDialog={openInsertDialog('right')}
+              onOpenReplaceDialog={openReplaceDialog('right')}
+            />
+          </PaneShell>
+        </main>
+      </div>
 
       <ConfirmDialog
-        open={!!page.pendingTarget}
+        open={!!page.pendingNav}
         title={`当前页有 ${page.dirtyCount} 处未保存修改`}
-        message={`切换到「${page.pendingTarget ?? ''}」前，请选择如何处理这些修改。`}
+        message="切换前请选择如何处理这些修改。"
         onSave={page.confirmSave}
         onDiscard={page.confirmDiscard}
         onCancel={page.cancelNavigate}
       />
 
+      <DeletePageDialog
+        open={deleteOpen}
+        slug={page.slug ?? ''}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
+
       <InsertBlockDialog
-        open={!!insertDialog}
-        kind={insertDialog?.kind ?? 'image'}
-        onSubmit={handleInsertSubmit}
-        onCancel={closeInsertDialog}
+        open={!!mediaDialog}
+        kind={mediaDialog?.kind ?? 'image'}
+        mode={(mediaDialog?.mode ?? 'insert') as InsertMode}
+        initialUrl={mediaDialog?.mode === 'replace' ? mediaDialog.url : ''}
+        initialAlt={mediaDialog?.mode === 'replace' ? mediaDialog.alt : ''}
+        onSubmit={handleMediaSubmit}
+        onCancel={() => setMediaDialog(null)}
       />
     </div>
   );
 }
 
+function setRef(refs: React.MutableRefObject<Map<number, HTMLDivElement>>, index: number, el: HTMLDivElement | null) {
+  if (el) refs.current.set(index, el);
+  else refs.current.delete(index);
+}
+
 interface PaneShellProps {
   label: string;
-  side: 'zh' | 'en';
+  side: Side;
   bodyRef: React.RefObject<HTMLDivElement>;
   children: React.ReactNode;
   headerExtra?: React.ReactNode;
@@ -273,37 +339,53 @@ function PaneShell({ label, side, bodyRef, children, headerExtra }: PaneShellPro
 
 interface PaneContentProps {
   page: ReturnType<typeof usePageState>;
-  side: 'zh' | 'en';
+  editor: SideEditor;
+  side: Side;
   hoveredIndex: number | null;
   onHover: (index: number | null) => void;
   registerRef: (index: number, el: HTMLDivElement | null) => void;
-  onOpenInsertDialog?: (kind: InsertKind, afterBlockId: string) => void;
+  onOpenInsertDialog: (kind: InsertKind, afterBlockId: string) => void;
+  onOpenReplaceDialog: (blockId: string, raw: string) => void;
 }
 
-function PaneContent({ page, side, hoveredIndex, onHover, registerRef, onOpenInsertDialog }: PaneContentProps) {
+function PaneContent({
+  page,
+  editor,
+  side,
+  hoveredIndex,
+  onHover,
+  registerRef,
+  onOpenInsertDialog,
+  onOpenReplaceDialog,
+}: PaneContentProps) {
   if (page.loading) return <div className="pane-placeholder">加载中…</div>;
   if (page.error) return <div className="pane-placeholder error">{page.error}</div>;
   if (!page.slug || !page.bundle) return <div className="pane-placeholder">从左侧选择文件开始校对</div>;
-  const content = page.bundle[side];
+  if (!editor.content) {
+    return <div className="pane-placeholder">该语言（{LANG_LABEL[editor.lang]}）暂无对应文件</div>;
+  }
   return (
     <>
       <FrontmatterCard
-        meta={content.frontmatter}
+        meta={editor.content.frontmatter}
         side={side}
-        dirty={page.dirty}
-        onChange={side === 'en' ? page.markDirty : undefined}
+        editable
+        dirty={editor.dirty}
+        onChange={editor.markDirty}
       />
       <BlockPane
-        blocks={content.blocks}
+        blocks={editor.content.blocks}
         side={side}
-        dirty={page.dirty}
-        inserts={side === 'en' ? page.inserts : undefined}
+        editable
+        dirty={editor.dirty}
+        inserts={editor.inserts}
         hoveredIndex={hoveredIndex}
         onHoverBlock={onHover}
-        onCommitBlock={side === 'en' ? page.markDirty : undefined}
-        onRestoreBlock={side === 'en' ? page.unmarkDirty : undefined}
-        onOpenInsertDialog={side === 'en' ? onOpenInsertDialog : undefined}
-        onRemoveInsert={side === 'en' ? page.removeInsert : undefined}
+        onCommitBlock={editor.markDirty}
+        onRestoreBlock={editor.unmarkDirty}
+        onOpenInsertDialog={onOpenInsertDialog}
+        onOpenReplaceDialog={onOpenReplaceDialog}
+        onRemoveInsert={editor.removeInsert}
         registerBlockRef={registerRef}
       />
     </>

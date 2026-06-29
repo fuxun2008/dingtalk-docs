@@ -4,16 +4,17 @@ import type { FrontmatterMeta } from '../shared/types';
 export const FM_TITLE_KEY = '__fm_title__';
 export const FM_DESC_KEY = '__fm_description__';
 
-type Side = 'zh' | 'en';
+type Side = 'left' | 'right';
 
 interface FrontmatterCardProps {
   meta: FrontmatterMeta | null;
   side: Side;
+  editable: boolean;
   dirty: Map<string, string>;
   onChange?: (key: string, value: string) => void;
 }
 
-export function FrontmatterCard({ meta, side, dirty, onChange }: FrontmatterCardProps) {
+export function FrontmatterCard({ meta, side, editable, dirty, onChange }: FrontmatterCardProps) {
   if (!meta) return null;
   const titleValue = dirty.get(FM_TITLE_KEY) ?? meta.title ?? '';
   const descValue = dirty.get(FM_DESC_KEY) ?? meta.description ?? '';
@@ -26,14 +27,14 @@ export function FrontmatterCard({ meta, side, dirty, onChange }: FrontmatterCard
       <FmField
         label="标题"
         value={titleValue}
-        editable={side === 'en'}
+        editable={editable}
         isDirty={isDirtyTitle}
         onChange={onChange ? (v) => onChange(FM_TITLE_KEY, v) : undefined}
       />
       <FmField
         label="描述"
         value={descValue}
-        editable={side === 'en'}
+        editable={editable}
         isDirty={isDirtyDesc}
         multiline
         onChange={onChange ? (v) => onChange(FM_DESC_KEY, v) : undefined}
