@@ -6,11 +6,13 @@
      landing pages, which are also custom mode, nor normal doc pages),
      re-evaluated on SPA route changes so nothing leaks across pages:
        1. Tag <html> with `dt-404` so style.css can re-show the real
-          #navbar (top bar + product tabs), which custom mode hides.
-       2. Rewrite the #error-description block with a fixed message +
-          3 random recommended docs (relative, locale-aware paths).
-   - The over-tall gradient decoration that made the short 404 scroll
-     is capped in style.css (html.dt-404 rule), not here.
+          #navbar (top bar + product tabs), which custom mode hides,
+          and cap the over-tall gradient that made the short 404 scroll.
+       2. Expand the framing sentence in #error-description to invite
+          the reader to the suggestions below. We only swap that one
+          sentence text node — the recommended links themselves are
+          Mintlify's own native suggestions, left untouched (we no
+          longer inject our own list, which duplicated them).
    ============================================================ */
 (function () {
   if (typeof document === "undefined") return;
@@ -23,30 +25,6 @@
     zh: "找不到该页面。也许您想找的是以下页面之一？",
     ja: "ページが見つかりませんでした。お探しのページは以下のいずれかではありませんか？",
   };
-
-  // Recommendation pool — pages that exist and are translated in all
-  // three languages. `path` is the locale-less slug; the current locale
-  // prefix is prepended at render time. Labels are per-language.
-  var POOL = [
-    { path: "aitable/getting-started/quick-start",
-      t: { en: "AI Table Quick Start", zh: "AI 表格快速上手", ja: "AI テーブル クイックスタート" } },
-    { path: "aitable/getting-started/import-excel",
-      t: { en: "Import Excel into AI Table", zh: "将 Excel 导入 AI 表格", ja: "Excel を AI テーブルへインポート" } },
-    { path: "aitable/getting-started/keyboard-shortcuts",
-      t: { en: "Keyboard shortcuts", zh: "使用快捷键", ja: "ショートカットキーの利用" } },
-    { path: "docs/getting-started/intro-docs",
-      t: { en: "DingTalk Docs", zh: "钉钉文档", ja: "DingTalk ドキュメント" } },
-    { path: "docs/getting-started/intro-sheets",
-      t: { en: "DingTalk Sheets", zh: "钉钉表格", ja: "スプレッドシート" } },
-    { path: "docs/getting-started/intro-mind",
-      t: { en: "DingTalk Mind", zh: "钉钉脑图", ja: "DingTalk Mind" } },
-    { path: "docs/getting-started/intro-whiteboard",
-      t: { en: "DingTalk Whiteboard", zh: "钉钉白板", ja: "DingTalk Whiteboard" } },
-    { path: "docs/getting-started/intro-knowledge-base",
-      t: { en: "Knowledge Base", zh: "知识库", ja: "ナレッジベース" } },
-    { path: "docs/getting-started/intro-ai-table",
-      t: { en: "AI Table", zh: "钉钉 AI 表格", ja: "AI テーブル" } },
-  ];
 
   function detectLang() {
     var p = location.pathname;
@@ -71,40 +49,26 @@
     return false;
   }
 
-  function pickThree() {
-    var a = POOL.slice();
-    for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
-    }
-    return a.slice(0, 3);
-  }
-
-  // Replace Mintlify's #error-description (short in dev, sentence +
-  // its own suggested links in prod) with our sentence + 3 recs, so
-  // the result is identical everywhere and never duplicated.
+  // Swap ONLY the framing sentence — the first text node in
+  // #error-description that isn't inside a suggestion link — so
+  // Mintlify's native recommended links stay intact and nothing
+  // flickers. Idempotent: skips once our sentence is in place.
   function enhanceDescription(lang) {
     var desc = document.getElementById("error-description");
-    if (!desc || desc.querySelector(".dt-404-links")) return;
+    if (!desc) return;
+    var sentence = SENTENCE[lang] || SENTENCE.en;
 
-    desc.textContent = "";
-
-    var p = document.createElement("p");
-    p.className = "dt-404-desc";
-    p.textContent = SENTENCE[lang] || SENTENCE.en;
-    desc.appendChild(p);
-
-    var prefix = lang === "en" ? "/" : "/" + lang + "/";
-    var list = document.createElement("div");
-    list.className = "dt-404-links";
-    pickThree().forEach(function (item) {
-      var a = document.createElement("a");
-      a.className = "dt-404-link";
-      a.href = prefix + item.path;
-      a.textContent = item.t[lang] || item.t.en;
-      list.appendChild(a);
+    var walker = document.createTreeWalker(desc, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        if (n.parentElement && n.parentElement.closest("a")) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
     });
-    desc.appendChild(list);
+    var node = walker.nextNode();
+    if (!node) return;
+    if (node.nodeValue.trim() === sentence) return;
+    node.nodeValue = sentence;
   }
 
   function sync() {
