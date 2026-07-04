@@ -125,7 +125,7 @@ git push origin main
 - **JSON 配置**：`docs.json` 必带 `$schema` 字段（编辑器自动校验）
 - **字体**：PingFang SC（中日韩友好）
 - **主题**：`theme: "mint"`，品牌色 `#0066ff`（与 logo `#06F` 一致），appearance 默认跟随系统
-- **LLM 投喂入口**：docs.json 顶层 `contextual.options` 已开 8 个（copy / view / chatgpt / claude / perplexity / mcp / cursor / vscode），每页右上区会出现 contextual 按钮组
+- **LLM 投喂入口**：docs.json 顶层 `contextual.options` 现只保留 `["copy"]`（每页右上区出现「复制页面」按钮）；曾开过 8 项（view / chatgpt / claude / perplexity / mcp / cursor / vscode）但已按需精简，只留 copy，勿擅自加回
 - **包管理 / build 工具**：**无**（不依赖 Node 项目结构；mint CLI 自带运行时）
 
 ### 可用 MDX 组件（Mintlify 内置）
