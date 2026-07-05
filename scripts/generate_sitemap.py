@@ -21,15 +21,15 @@ IGNORE_DIRS = {
 }
 VALID_TOP_DIRS = {
     "ai-minutes", "aitable", "calendar", "contacts", "docs", "drive",
-    "im", "mail", "meetings", "open", "zh", "ja",
+    "im", "mail", "meetings", "open", "zh", "ja", "id",
 }
 
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 
 # Hreflang tags. zh maps to zh-CN (Simplified, mainland);
-# ja maps to ja-JP. en stays plain (no regional qualifier).
-LANG_TAGS = {"en": "en", "zh": "zh-CN", "ja": "ja-JP"}
+# ja maps to ja-JP. en and id stay plain (no regional qualifier).
+LANG_TAGS = {"en": "en", "zh": "zh-CN", "ja": "ja-JP", "id": "id"}
 DEFAULT_LANG = "en"  # what x-default points to
 
 # Register namespaces so ElementTree emits the expected prefixes.
@@ -61,7 +61,7 @@ def classify(rel_path: Path):
     and trailing "index" collapsed (so /im/index.mdx -> ("en", ["im"])).
     """
     parts = list(rel_path.parts)
-    if parts and parts[0] in ("zh", "ja"):
+    if parts and parts[0] in ("zh", "ja", "id"):
         lang = parts[0]
         base_parts = parts[1:]
     else:
@@ -98,7 +98,7 @@ def emit(urlset: ET.Element, lang: str, base_parts: list,
     loc.text = url_for(lang, base_parts)
 
     # hreflang siblings — only for languages whose .mdx actually exists.
-    for alt_lang in ("en", "zh", "ja"):
+    for alt_lang in ("en", "zh", "ja", "id"):
         if alt_lang not in langs_present:
             continue
         _make(
@@ -140,11 +140,11 @@ def main():
     # lastmod would cause spurious daily diffs. Google does not strongly
     # trust sitemap lastmod anyway.
 
-    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja.
+    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja/id.
     home_langs = base_lang_map.get("", {})
     if "en" in home_langs:
         emit(urlset, "en", [], home_langs, is_home=True)
-    for lang in ("zh", "ja"):
+    for lang in ("zh", "ja", "id"):
         if lang in home_langs:
             emit(urlset, lang, [], home_langs, is_home=False)
 
@@ -164,7 +164,8 @@ def main():
     en = sum(1 for p in mdx_paths if classify(p)[0] == "en")
     zh = sum(1 for p in mdx_paths if classify(p)[0] == "zh")
     ja = sum(1 for p in mdx_paths if classify(p)[0] == "ja")
-    print(f"  EN: {en}, ZH: {zh}, JA: {ja}")
+    idn = sum(1 for p in mdx_paths if classify(p)[0] == "id")
+    print(f"  EN: {en}, ZH: {zh}, JA: {ja}, ID: {idn}")
     print(f"  Unique base paths: {len(base_lang_map)}")
     print(f"Written to {out} ({out.stat().st_size / 1024:.1f} KB)")
 
