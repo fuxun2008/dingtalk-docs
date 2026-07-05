@@ -96,6 +96,19 @@ STYLE_JA = """風格指南（日文）：
 - 注意：避免中文式 kanji 顺序、避免「的」直译为「の」过多"""
 
 
+STYLE_ID = """Panduan gaya (Bahasa Indonesia)：
+- 目标读者：印尼企业用户与 IT 管理员（bahasa baku 商务书面语）
+- 语气：清晰、专业、动作导向（imperative：Klik / Pilih / Buka，不写 Anda dapat mengklik）
+- 句式：短句优先；避免被动堆砌；一句话讲一件事
+- Heading：Sentence case；避免 Title Case
+- 用词：通用 IT 术语用印尼语主流译法（Pengaturan / Fitur / Izin / File / Folder / Unduh / Unggah / Masuk / Kelola / Bagikan / Simpan / Kirim）
+- 技术缩写保持英文：API / SDK / URL / JSON / SaaS / SSO / OAuth / H5 / QR
+- 数字 / 日期：千分位「.」小数「,」（1.000）；日期 2 Juni 2026
+- 标点：拉丁标点 . , ? ! " ( )
+- 品牌词不译：DingTalk / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind / DingTalk Whiteboard / Knowledge Base / AI Table / AI Minutes 遵循术语表
+- 功能更新：Baru / Ditingkatkan / Diperbaiki / Tidak digunakan lagi"""
+
+
 # ---------------------------------------------------------------------------
 # 检测：占位 / 已 polish / 链接组件统计
 # ---------------------------------------------------------------------------
@@ -177,8 +190,12 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
 
 
 def build_system_prompt(lang: str) -> str:
-    style = STYLE_EN if lang == "en" else STYLE_JA
-    target = "英文（American English）" if lang == "en" else "日文（敬体 です・ます）"
+    style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID}[lang]
+    target = {
+        "en": "英文（American English）",
+        "ja": "日文（敬体 です・ます）",
+        "id": "印尼文（Bahasa Indonesia，bahasa baku）",
+    }[lang]
     return (
         f"{POLISH_RULES}\n\n{REVIEW_CHECKLIST}\n\n{style}\n\n"
         f"本次任务：对已经是 {target} 的 mdx 做语言层润色，不改语义、不改链接、不改组件。"
@@ -347,12 +364,23 @@ def ensure_polished_flag(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
+    # 特例：root == "." 只润色语言根的 index.mdx（Overview 首页）
+    if root in (".", ""):
+        base = REPO_ROOT if lang == "en" else REPO_ROOT / lang
+        idx = base / "index.mdx"
+        if not idx.exists():
+            sys.exit(f"ERROR: index.mdx not found: {idx}")
+        rel_str = "index.mdx" if lang == "en" else str(Path(lang) / "index.mdx")
+        return [FileTask(target=idx, rel=rel_str)]
+
     if lang == "en":
         target_base = REPO_ROOT / root
     elif lang == "ja":
         target_base = REPO_ROOT / "ja" / root
+    elif lang == "id":
+        target_base = REPO_ROOT / "id" / root
     else:
-        sys.exit(f"ERROR: lang must be en or ja, got {lang}")
+        sys.exit(f"ERROR: lang must be en / ja / id, got {lang}")
 
     if not target_base.exists():
         sys.exit(f"ERROR: target dir not found: {target_base}")
@@ -360,7 +388,7 @@ def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
     tasks: list[FileTask] = []
     for mdx in sorted(target_base.rglob("*.mdx")):
         rel = mdx.relative_to(target_base)
-        rel_str = str(Path(root) / rel) if lang == "en" else str(Path("ja") / root / rel)
+        rel_str = str(Path(root) / rel) if lang == "en" else str(Path(lang) / root / rel)
         if only and not rel_str.startswith(only):
             continue
         tasks.append(FileTask(target=mdx, rel=rel_str))
@@ -477,10 +505,10 @@ async def main_async(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="批量润色已译 mdx：<root>/ (en) 或 ja/<root>/ (ja) 同路径覆盖；不改语义，只改语言质量。",
+        description="批量润色已译 mdx：<root>/ (en) / ja/<root>/ (ja) / id/<root>/ (id) 同路径覆盖；不改语义，只改语言质量。",
     )
     p.add_argument("--root", required=True, help="产品根目录名，如 docs / aitable")
-    p.add_argument("--lang", required=True, choices=["en", "ja"])
+    p.add_argument("--lang", required=True, choices=["en", "ja", "id"])
     p.add_argument("--concurrency", type=int, default=4)
     p.add_argument("--model", default=None, help="覆盖默认 ANTHROPIC_MODEL")
     p.add_argument("--timeout", type=int, default=240, help="单次 claude CLI 调用超时秒数")

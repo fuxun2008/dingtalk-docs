@@ -87,6 +87,18 @@ STYLE_JA = """風格指南（日文）：
 - 注意：避免中文式 kanji 顺序、避免「的」直译为「の」过多
 - 功能更新用：新機能 / 改善 / 修正 / 廃止"""
 
+STYLE_ID = """Panduan gaya (Bahasa Indonesia):
+- 目标读者：印尼企业用户与 IT 管理员（pengguna perusahaan & admin IT）
+- 语气：clear、profesional、动作导向（imperative：Klik X / Pilih X / Buka X，不写 Anda dapat mengklik）
+- 句式：短句优先；避免被动堆砌；一句话讲一件事；用 bahasa baku（正式书面语），非口语俚语
+- Heading：Sentence case（仅首字母 + 专有名词大写），避免 Title Case
+- 用词：通用 IT 术语用印尼语主流译法 — Pengaturan / Fitur / Izin / File / Folder / Unduh / Unggah / Masuk / Keluar / Kelola / Bagikan / Hapus / Simpan / Kirim
+- 技术缩写保持英文：API / SDK / URL / JSON / SaaS / SSO / OAuth / Webhook / H5 / QR
+- 品牌词不译（遵术语表）：DingTalk / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind / DingTalk Whiteboard / Knowledge Base / AI Table / AI Minutes
+- 数字 / 日期：印尼语千分位用「.」小数用「,」（1.000）；日期格式 2 Juni 2026
+- 标点：拉丁标点 . , ? ! " ( )（同英文），不用中文全角标点
+- 功能更新条目：Baru / Ditingkatkan / Diperbaiki / Tidak digunakan lagi"""
+
 
 # 开放平台 (Open Platform / OpenAPI) 专属铁律 — 仅 root=open 注入
 # 对标 Google API Docs / Microsoft Learn 的开发者文档质量
@@ -227,8 +239,12 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
 
 
 def build_system_prompt(lang: str, root: str = "") -> str:
-    style = STYLE_EN if lang == "en" else STYLE_JA
-    target = "英文（American English）" if lang == "en" else "日文（敬体 です・ます）"
+    style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID}[lang]
+    target = {
+        "en": "英文（American English）",
+        "ja": "日文（敬体 です・ます）",
+        "id": "印尼文（Bahasa Indonesia，正式商务书面语 bahasa baku）",
+    }[lang]
     sections = [SYSTEM_RULES, style]
     if root == "open":
         sections.append(OPEN_PLATFORM_RULES)
@@ -376,8 +392,10 @@ def gather_tasks(
         target_base = REPO_ROOT / root
     elif lang == "ja":
         target_base = REPO_ROOT / "ja" / root
+    elif lang == "id":
+        target_base = REPO_ROOT / "id" / root
     else:
-        sys.exit(f"ERROR: lang must be en or ja, got {lang}")
+        sys.exit(f"ERROR: lang must be en / ja / id, got {lang}")
 
     tasks: list[FileTask] = []
     for mdx in sorted(zh_root.rglob("*.mdx")):
@@ -516,9 +534,9 @@ async def main_async(args: argparse.Namespace) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="批量翻译 mdx：zh/<root>/ → <root>/ (en) 或 ja/<root>/ (ja)")
+    p = argparse.ArgumentParser(description="批量翻译 mdx：zh/<root>/ → <root>/ (en) / ja/<root>/ (ja) / id/<root>/ (id)")
     p.add_argument("--root", required=True, help="zh 下的根目录，如 docs / aitable")
-    p.add_argument("--lang", required=True, choices=["en", "ja"])
+    p.add_argument("--lang", required=True, choices=["en", "ja", "id"])
     p.add_argument("--concurrency", type=int, default=4)
     p.add_argument("--model", default=None, help="覆盖默认 ANTHROPIC_MODEL，如 claude-sonnet-4-6")
     p.add_argument("--timeout", type=int, default=240, help="单次 claude CLI 调用超时秒数")

@@ -1,0 +1,122 @@
+---
+title: "Memicu otomatisasi melalui webhook"
+description: "Siapkan webhook dengan filter kata kunci dan opsi format parameter untuk memicu Otomatisasi ketika sistem eksternal mengirim data yang cocok di DingTalk AI Table."
+polished: true
+---
+
+## 1 Apa fungsinya
+
+Webhook memungkinkan sistem saling mengirim data — **ketika sesuatu yang Anda pedulikan terjadi di hulu, data akan masuk secara otomatis**. URL webhook adalah alamat pengiriman yang memastikan data tiba tepat waktu.
+
+- Catatan: webhook adalah fitur developer tingkat lanjut. Bekerja samalah dengan developer untuk menyiapkannya.
+
+> ⚠️ Jaga kerahasiaan URL webhook Anda. Jangan pernah mempublikasikannya di situs eksternal. Kebocoran dapat membanjiri organisasi Anda dengan lalu lintas berbahaya, menghabiskan sumber daya developer, dan membahayakan organisasi.
+
+## 2 Kasus penggunaan
+
+Dengan menyiapkan webhook, Anda dapat "berlangganan" pembaruan dari suatu sistem atau aplikasi:
+
+- **Sinkronisasi data sistem internal** — siapkan webhook di ERP, CRM, dan lainnya untuk menyinkronkan data antarsistem tanpa serah terima manual.
+- **Pembaruan konten situs** — siapkan webhook di situs yang dipantau; konten baru akan memberi tahu Anda tanpa perlu memuat ulang halaman.
+- **Pemantauan dan peringatan** — siapkan webhook di platform pemantauan atau peringatan untuk memperoleh wawasan kesehatan sistem secara real-time dan respons insiden yang lebih cepat.
+
+## 3 Cara menggunakan
+
+### 3.1 Menetapkan kata kunci pemicu
+
+Alur hanya berjalan ketika data yang diterima mengandung kata kunci. Klik **Tambah kata kunci** untuk menambahkan hingga 10 kata kunci. Kecocokan salah satunya akan memicu alur.
+
+### 3.2 Menetapkan format parameter
+
+Ketika data masuk dari sistem hulu, parameter diteruskan ke hilir. **Format menentukan cara langkah hilir mengurai dan mereferensikan parameter ini.**
+
+#### 3.2.1 Format = JSON
+
+Langkah hilir mengurai parameter sebagai JSON terstruktur. **Isi contoh payload** agar langkah berikutnya dapat mereferensikan data terstruktur.
+
+#### 3.2.2 Format = Teks
+
+Di hilir, Anda mereferensikan seluruh blok parameter sebagai teks. (Kasus khusus: jika parameter cocok dengan [struktur pesan DingTalk bot](https://open.dingtalk.com/document/orgapp/custom-bot-send-message-type#66407430cd5xr "DingTalk bot message structure"), di **Kirim pesan ke grup ini** Anda dapat mengubah **Sumber** menjadi **Penguraian data sumber**, dan parameter otomatis ditampilkan sebagai isi pesan.)
+
+#### 3.2.3 Format = Tidak ada
+
+Hilir tidak dapat mereferensikan parameter ini.
+
+### 3.3 Mengonfigurasi URL webhook
+
+Klik **Salin** dan tempel URL ke sistem hulu. (Setiap Otomatisasi memiliki URL webhook-nya sendiri. **Jaga kerahasiaannya; kebocoran dapat membanjiri organisasi Anda dengan lalu lintas berbahaya dan menghabiskan sumber daya developer.**)
+
+### 3.4 Mengirim permintaan HTTP
+
+Sebuah permintaan akan memicu Otomatisasi.
+
+| Parameter | Value | Example |
+| --- | --- | --- |
+| Method | POST | \- |
+| URL | URL webhook dari Pemicu | [https://connector.dingtalk.io/webhook/flow/xxxxx](https://connector.dingtalk.io/webhook/flow/xxxxx "https://connector.dingtalk.io/webhook/flow/xxxxx") |
+| Body | JSON — harus mengandung kata kunci pemicu agar berjalan | \{  "key": "value"  \} |
+
+## 4 Header dan contoh
+
+| **Name**       | **Type** | **Required** | **Description**                                                                                                                                                                                                                                                                              |
+| -------------- | -------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization | string   | No           | Pemeriksaan kredensial (Bearer token) — dikirim melalui header Authorization. Format (peka huruf besar-kecil):  --header 'Authorization: Bearer \\[real Bearer token]'  Tanda kutip tunggal adalah bagian dari header sebenarnya. Tanda kurung hanya placeholder — jangan mengetiknya. Kunci header tetap `Authorization`; nilainya memiliki prefiks tetap `Bearer`.  Perhatikan spasi wajib antara `Bearer` dan token sebenarnya. |
+| Client-Token  | string   | No           | Idempotensi. Kunci header tetap `Client-Token`; nilainya dibuat oleh pengguna, biasanya berupa UUID.  Nilai kosong = permintaan baru. Nilai tidak kosong = pembaruan idempoten — dalam 3 jam, nilai yang sama hanya memicu sekali. |
+
+Contoh Bearer token (tanda kurung adalah placeholder — jangan mengetiknya):
+
+```bash 
+curl --location --request POST '[real webhook URL]' \
+--header 'Authorization: Bearer [real Bearer token]' \
+--header 'Content-Type: application/json' \
+--data-raw '{[real request body]}'
+```
+
+## 5 Isi permintaan
+
+Atur sesuai kebutuhan Anda — harus berupa JSON yang valid.
+
+## 6 Respons dan contoh
+
+Nilai `code` selain nol dalam respons berarti gagal.
+
+Ketika `code` selain nol, cari pesannya di tabel kode kesalahan di bawah untuk melakukan debug.
+
+Respons berhasil:
+
+```json 
+{
+"msg": "",
+"data": { },
+"code": 0
+}
+```
+
+Respons kesalahan:
+
+```json 
+{
+"data": { },
+"code": 800004509,
+"msg": "webhook trigger workflow is disabled"
+}
+```
+
+## 7 Kode kesalahan
+
+Ketika pemicu webhook mengalami kesalahan, periksa respons dari sisi pengirim dan cari kodenya di bawah.
+
+| **Code**  | **Message**                             | **Cause**                                                                                                                                                      | **Fix**                              |
+| --------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 800005649 | Credential check failed                  | Pemeriksaan kredensial aktif, tetapi kredensial dalam permintaan tidak cocok dengan yang dikonfigurasi di Otomatisasi. | Periksa ulang dan masukkan kembali kredensial. |
+| 800005650 | IP not in the allow-list — please check  | Daftar izin IP aktif, dan IP pengirim tidak ada dalam daftar. | Tambahkan IP ke daftar izin, atau kirim dari IP yang ada dalam daftar izin. |
+| 800005647 | Request body too large — please reduce   | Isi permintaan webhook melebihi 4 MB. | Kurangi ukuran isi permintaan. |
+| 800005646 | HTTP node calls itself, causing a loop — change the HTTP node URL | Pemicunya adalah "When webhook fires" dan tindakannya adalah "Send HTTP request" dengan URL HTTP diatur ke URL webhook yang sama — sehingga menyebabkan perulangan. | Ubah URL di **Kirim permintaan HTTP** agar berbeda dari URL webhook. |
+| 800005652 | Too many requests — try again later      | Frekuensi penerimaan webhook melebihi batas dan dibatasi.  -   Per AI Table: 50 req/dtk.  -   Per satu Otomatisasi: 5 req/dtk.  -   Otomatisasi tanpa pemeriksaan kredensial (Bearer token): 1 req/dtk. | Coba lagi nanti. |
+| 800006003 | Body doesn't match JSON spec — please fix and retry | Biasanya terjadi ketika "set output by sending a request" digunakan dan isinya memiliki JSON yang tidak valid. | Periksa ulang dan perbaiki JSON. |
+
+## 8 Menggunakannya dalam praktik
+
+1. Sebagai admin F\&B, Anda ingin **data barang internal disinkronkan ke grup DingTalk**. Di **Sample params**, isi secara manual payload hulu (nama produk baru, spesifikasi, dasar teh, bahan). Di **Kirim pesan ke grup ini**, sesuaikan isi pesan dan gunakan `+` untuk **mereferensikan parameter ini**. Detail produk terbaru pun langsung masuk ke grup.
+
+2. **Jika Anda pernah menggunakan "Custom bot" di grup obrolan sebelumnya** dan parameter hulu cocok dengan [struktur pesan DingTalk bot](https://open.dingtalk.com/document/orgapp/custom-bot-send-message-type#66407430cd5xr "DingTalk bot message structure"), di **Kirim pesan ke grup ini** ubah **Sumber** menjadi **Penguraian data sumber** dan pilih output "On data received" dari node webhook sebagai sumber. Parameter akan **otomatis ditampilkan sebagai isi pesan dan dikirim**.
