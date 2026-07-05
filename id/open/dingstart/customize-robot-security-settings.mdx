@@ -1,0 +1,101 @@
+---
+title: "Pengaturan keamanan untuk Bot kustom"
+description: "Pelajari tiga pengaturan keamanan Bot kustom DingTalk — daftar izin kata kunci, tanda tangan, dan rentang alamat IP — untuk melindungi bot dari serangan berbahaya secara efektif."
+---
+
+Rujuk dokumen ini untuk mempelajari pengaturan keamanan Bot kustom.
+
+## Latar belakang
+
+Untuk memastikan keamanan Bot kustom, kami menyediakan tiga langkah perlindungan guna menjaga operasi Bot kustom Anda. Langkah-langkah ini meliputi **Kata kunci kustom**, **Tanda tangani permintaan** (enkripsi dengan tanda tangan), dan alamat IP (rentang). Metode ini secara efektif melindungi bot Anda dari serangan berbahaya.
+
+## Prasyarat
+
+Selesaikan prosedur [Buat Bot kustom](/id/open/dingstart/custom-bot-creation-and-installation).
+
+## Kata kunci kustom
+
+Anda dapat mengonfigurasi hingga 10 kata kunci. Sebuah pesan harus mengandung setidaknya satu dari kata kunci ini agar berhasil terkirim.
+
+Misalnya, jika Anda menambahkan kata kunci kustom **peringatan pemantauan**, pesan yang dikirim oleh bot ini harus mengandung frasa **peringatan pemantauan** agar berhasil dikirim.
+
+## Tanda tangani permintaan
+
+Metode Tanda tangani permintaan memungkinkan Autentikasi Keamanan dua arah antara DingTalk Bot dan pengembang untuk memverifikasi Keamanan. Langkah-langkah penghitungan tanda tangan adalah sebagai berikut:
+
+1. Gunakan stempel waktu dan secret sebagai string penandatanganan. Hitung tanda tangan menggunakan algoritma HmacSHA256, enkode hasilnya dengan Base64, lalu lakukan urlEncode pada parameter signature untuk memperoleh tanda tangan akhir. Encoding UTF-8 diperlukan.
+
+   | **Parameter** | **Deskripsi** |
+   | --- | --- |
+   | timestamp | Stempel waktu sistem pengembang saat ini, dalam milidetik. Selisih dengan waktu pemanggilan permintaan tidak boleh melebihi 1 jam. |
+   | secret | Secret. String yang diawali dengan SEC yang ditampilkan pada bagian Tanda tangani permintaan di Halaman Pengaturan Keamanan bot. |
+
+   - Contoh kode penghitungan tanda tangan (Java)
+
+     ```java lines
+     import javax.crypto.Mac;
+     import javax.crypto.spec.SecretKeySpec;
+     import org.apache.commons.codec.binary.Base64;
+     import java.net.URLEncoder;
+
+     public class Test{
+         public static void main(String[] args) throws Exception{
+             Long timestamp = System.currentTimeMillis();
+             String secret = "this is secret";
+
+             String stringToSign = timestamp + "\n" + secret;
+             Mac mac = Mac.getInstance("HmacSHA256");
+             mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+             String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+             System.out.println(sign);
+         }
+
+     }
+     ```
+   - Contoh kode penghitungan tanda tangan (Python)
+
+     ```python lines
+     #python 3.8
+     import time
+     import hmac
+     import hashlib
+     import base64
+     import urllib.parse
+
+     timestamp = str(round(time.time() * 1000))
+     secret = 'this is secret'
+     secret_enc = secret.encode('utf-8')
+     string_to_sign = '{}\n{}'.format(timestamp, secret)
+     string_to_sign_enc = string_to_sign.encode('utf-8')
+     hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
+     sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+     print(timestamp)
+     print(sign)
+     ```
+2. Peroleh stempel waktu sistem saat ini dan nilai sign terenkripsi dari layanan pengembang, lalu tambahkan timestamp dan sign ke URL.
+
+   ```text
+   https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+   ```
+
+   | Parameter | Deskripsi |
+   | --- | --- |
+   | timestamp | Stempel waktu yang digunakan pengembang untuk menghitung nilai sign. |
+   | sign | Nilai tanda tangan yang diperoleh pada Langkah 1. |
+
+   Untuk detail, lihat Kirim pesan Obrolan Grup dengan Bot kustom.
+
+## Alamat IP (rentang)
+
+Setelah dikonfigurasi, hanya permintaan dari alamat IP dalam rentang yang ditentukan yang diproses. Dua metode konfigurasi didukung: alamat IP dan rentang alamat IP. Daftar izin IPv6 belum didukung. Formatnya adalah sebagai berikut:
+
+| Format | Deskripsi |
+| --- | --- |
+| 1.1.1.1 | Alamat IP publik keluar pengembang (bukan alamat LAN). |
+| 1.1.1.0/24 | Segmen jaringan yang dinyatakan dalam notasi CIDR. |
+
+## Dokumen terkait
+
+- Kirim pesan Obrolan Grup dengan Bot kustom
+- [OpenAPI untuk mengirim pesan grup dengan Bot kustom](/id/open/development/custom-robots-send-group-messages)

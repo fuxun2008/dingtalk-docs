@@ -1,0 +1,73 @@
+---
+title: "Batas laju"
+description: "Memahami mekanisme batas laju default untuk Server API DingTalk, mencakup terminologi, aturan pembatasan laju global dan IP, serta praktik terbaik agar terhindar dari batas laju."
+---
+
+Untuk mencegah panggilan aplikasi yang tidak normal membebani server DingTalk secara berlebihan, platform menerapkan batas laju default pada semua endpoint Server API. Ketika frekuensi panggilan melebihi batas pada dimensi mana pun, API akan memicu batas laju dan mengembalikan pesan error terkait, yang memengaruhi operasi bisnis normal.
+
+## Ringkasan
+
+Saat Anda memanggil API, sistem memeriksa beberapa dimensi batas laju sekaligus. Begitu suatu dimensi (seperti dimensi global atau dimensi IP) melampaui ambang batasnya, permintaan ditolak dan respons batas laju terkait dikembalikan. Perhatikan dua aturan batas laju utama — **dimensi global** dan **dimensi IP** — serta tambahkan mekanisme retry dan fallback dalam desain aplikasi Anda untuk meningkatkan stabilitas.
+
+<Note>
+Mekanisme ini memastikan stabilitas platform secara keseluruhan. Rencanakan kecepatan panggilan Anda dengan baik dan hindari permintaan frekuensi tinggi yang terpusat.
+</Note>
+
+## Glosarium
+
+Istilah inti berikut yang terkait dengan mekanisme batas laju didefinisikan untuk membantu Anda memahami konten berikut:
+
+- **Frekuensi panggilan**: Jumlah permintaan HTTP yang dikirim ke suatu endpoint API per satuan waktu, biasanya diukur dalam "permintaan per detik".
+- **IP egress (IP publik)**: Alamat IP publik yang digunakan server aplikasi Anda untuk mengakses API DingTalk.
+- **Dimensi global**: Frekuensi panggilan kumulatif ke suatu endpoint API tertentu di seluruh organisasi dan seluruh aplikasi pada keseluruhan platform.
+- **Dimensi IP**: Total volume panggilan API per satuan waktu dari alamat IP egress publik pemanggil, terlepas dari API spesifiknya.
+- **errcode**: Kode error yang dikembalikan oleh API DingTalk untuk mengidentifikasi penyebab panggilan yang gagal. Misalnya, `90002` menunjukkan bahwa batas laju global telah terpicu.
+- **Exponential backoff**: Strategi retry di mana interval antar-percobaan bertumbuh secara eksponensial (seperti 1s, 2s, 4s...) untuk menghindari panggilan API secara terus-menerus.
+
+## Dimensi batas laju global
+
+- Ketika frekuensi panggilan ke **endpoint API yang sama** dari seluruh organisasi dan seluruh aplikasi mencapai batas atas, batas laju global akan terpicu.
+- Setelah terpicu, tidak ada pemanggil yang dapat berhasil meminta API ini, dan kode error `90002` dikembalikan.
+- Batas ini berlaku untuk semua jenis Aplikasi, termasuk Aplikasi internal, Aplikasi perusahaan pihak ketiga, dan Aplikasi personal pihak ketiga.
+- **Skenario yang berlaku**: Dalam skenario konkurensi tinggi (seperti sinkronisasi data massal), beberapa aplikasi yang memanggil API populer (seperti manajemen pengguna atau pengiriman pesan) secara bersamaan dapat dengan mudah memicu batas ini.
+- **Persyaratan izin**: Untuk memanggil API yang dilindungi, Anda harus memiliki paket izin yang sesuai, dan otorisasi Admin biasanya diperlukan untuk mengaktifkan kapabilitas terkait.
+- **Saran penanganan error**:
+
+  - Ketika Anda menerima `errcode: 90002`, segera hentikan panggilan intensif ke API ini.
+  - Gunakan strategi exponential backoff untuk mencoba lagi (seperti menunggu 1s, 2s, 4s...).
+  - Kombinasikan dengan mekanisme langganan peristiwa untuk memproses tugas secara asinkron dan mengurangi frekuensi polling aktif.
+
+## Batas laju dimensi IP
+
+- Total volume panggilan dari setiap alamat IP egress publik ke semua API dibatasi menjadi **10.000 panggilan dalam 20 detik**.
+- Setelah batas laju terpicu, IP tersebut diblokir dari pemanggilan semua API selama **5 menit**.
+- Batas laju tidak mengembalikan struktur error JSON Standar. Sebagai gantinya, ia mengembalikan halaman HTML atau respons JSON dengan format berikut:
+
+  ```json lines
+  {
+     "status":1111,
+     "wait":5,
+     "source":"x5",
+     "punish":"deny",
+     "uuid":"xxx"
+  }
+  ```
+- **Catatan**
+
+  - Batas ini tidak membedakan jenis API. Total trafik dari satu IP adalah satu-satunya kriteria.
+  - Hal ini umum terjadi pada skenario di mana beberapa aplikasi berbagi satu IP egress di belakang gateway atau NAT terpadu.
+  - Saat Anda menggunakan layanan cloud, jika beberapa tenant berbagi satu IP egress cluster, ambang batas dapat tercapai lebih cepat dari yang diperkirakan.
+
+## Saran mitigasi dan praktik terbaik
+
+- **Gunakan proxy pool atau deployment terdistribusi**: Distribusikan permintaan ke beberapa IP egress yang berbeda untuk mencegah satu IP menjadi bottleneck.
+- **Terapkan strategi load balancing**: Terapkan distribusi permintaan pada sisi klien atau pada lapisan gateway untuk menyeimbangkan tekanan panggilan antar-node.
+- **Tambahkan mekanisme cache lokal**: Cache data yang sering dibaca tetapi jarang berubah (seperti struktur organisasi dan informasi pengguna) untuk mengurangi panggilan duplikat.
+- **Terapkan circuit breaker dan logika fallback**:
+
+  - Ketika Anda mendeteksi bahwa sebuah IP diblokir, otomatis beralih ke IP cadangan atau tunda tugas non-kritis.
+  - Rekam log dan picu peringatan agar tim operasi dapat merespons dengan cepat.
+- **Pemantauan dan peringatan**:
+
+  - Lacak tren queries per second (QPS).
+  - Siapkan notifikasi peringatan yang terpicu saat nilai mendekati ambang batas (seperti 8.000 permintaan per 20 detik).

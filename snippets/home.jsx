@@ -586,10 +586,9 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   };
 
   const lp = lang === "en" ? "/" : "/" + lang + "/";
-  // Indonesian has no Open Platform docs (no /id/open/*), so its developer
-  // links fall back to the English Open Platform. For en/zh/ja this equals lp,
-  // keeping their output byte-identical.
-  const openLp = lang === "id" ? "/" : lp;
+  // Open Platform docs now exist for every language (en/zh/ja/id), so developer
+  // links use the same language prefix as the rest of the page.
+  const openLp = lp;
   // Logo/brand links to the actual landing page. The language root (/zh, /ja)
   // redirects to the first nav doc, so point at the custom home page directly.
   const homeHref = lang === "en" ? "/" : "/" + lang + "/index";

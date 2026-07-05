@@ -1,0 +1,511 @@
+---
+title: "Mendapatkan token pengguna"
+description: "Panggil API ini untuk mendapatkan access_token pengguna di DingTalk — langkah kunci dalam autentikasi identitas pengguna yang berlaku untuk berbagai skenario autentikasi."
+---
+
+## Kasus penggunaan
+
+API ini mendapatkan `accessToken` pengguna dan merupakan langkah kunci dalam menerapkan autentikasi identitas pengguna. Kasus penggunaan umum meliputi:
+
+- Setelah pengguna masuk, tukarkan authorization code (`code`) dengan kredensial akses yang valid.
+- Sebelum `accessToken` kedaluwarsa, gunakan `refreshToken` untuk memperbaruinya secara otomatis dan menghindari otorisasi ulang yang berulang.
+- Aplikasi perusahaan pihak ketiga terintegrasi dengan sistem sign-in terpadu DingTalk untuk menerapkan Single Sign-On (SSO).
+- Aplikasi perusahaan memanggil API terlindungi atas nama pengguna dari layanan backend-nya.
+
+Developer harus mengelola siklus hidup `accessToken` dengan baik. Kami menyarankan untuk menyimpannya di cache secara lokal dan menyiapkan mekanisme refresh otomatis untuk memastikan panggilan API yang stabil.
+
+<Note>
+Saat menggunakan access token, perhatikan hal berikut:
+</Note>
+
+- `accessToken` berlaku selama 7.200 detik (2 jam). Permintaan berulang dalam periode validitas mengembalikan hasil yang sama dan memperbaruinya secara otomatis. Setelah kedaluwarsa, `accessToken` baru akan dikembalikan.
+- `accessToken` setiap aplikasi bersifat independen. Simpan token di cache per aplikasi untuk menghindari kebingungan.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/oauth2/userAccessToken |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Internal app appType-Third-party enterprise app appType-Third-party personal app |
+| Izin yang diperlukan | permission-open_app_api_base-Basic permission to obtain user access credentials for DingTalk Open APIs |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| clientId | String | Ya | dingxxx | ID aplikasi. Anda dapat menggunakan AppId dari aplikasi sign-in Pindai Kode QR atau mini program personal pihak ketiga.   - Untuk aplikasi internal, kirimkan **AppKey** aplikasi. - Untuk aplikasi perusahaan pihak ketiga, kirimkan **SuiteKey** aplikasi. - Untuk aplikasi personal pihak ketiga, kirimkan **AppId** aplikasi. |
+| clientSecret | String | Ya | 1234 | App secret.   - Untuk aplikasi internal, kirimkan **AppSecret** aplikasi. - Untuk aplikasi perusahaan pihak ketiga, kirimkan **SuiteSecret** aplikasi. - Untuk aplikasi personal pihak ketiga, kirimkan **AppSecret** aplikasi. |
+| code | String | Tidak | abcd | Authorization code sementara OAuth 2.0. Aplikasi perusahaan pihak ketiga harus terintegrasi dengan suite otorisasi terpadu atau [Mendapatkan kredensial akses pengguna yang telah masuk](/id/open/development/obtain-identity-credentials) untuk mendapatkan authorization code sementara `authCode`. |
+| refreshToken | String | Tidak | abcd | Refresh token OAuth 2.0, diperoleh dari respons API sebelumnya. Berlaku selama 30 hari. |
+| grantType | String | Ya | authorization_code | - Untuk menukar authorization code dengan token, kirimkan `authorization_code`. Dalam hal ini, parameter `code` wajib diisi. - Untuk menukar refresh token dengan token baru, kirimkan `refresh_token`. Dalam hal ini, parameter `refreshToken` wajib diisi. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST 'https://api.dingtalk.io/v1.0/oauth2/userAccessToken' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "clientId": "dingxxx",
+    "clientSecret": "1234",
+    "code": "abcd",
+    "refreshToken": "abcd",
+    "grantType": "authorization_code"
+  }'
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.dingtalkoauth2_1_0.*;
+import com.aliyun.dingtalkoauth2_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * Inisialisasi Client akun menggunakan Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkoauth2_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkoauth2_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkoauth2_1_0.Client client = Sample.createClient();
+        GetUserTokenRequest getUserTokenRequest = new GetUserTokenRequest()
+                .setClientId("dingxxx")
+                .setClientSecret("1234")
+                .setCode("abcd")
+                .setRefreshToken("abcd")
+                .setGrantType("authorization_code");
+        try {
+            client.getUserToken(getUserTokenRequest);
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi properti code dan message, yang membantu menemukan masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi properti code dan message, yang membantu menemukan masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.oauth2_1_0.client import Client as dingtalkoauth2_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.oauth2_1_0 import models as dingtalkoauth_2__1__0_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkoauth2_1_0Client:
+        """
+        Inisialisasi Client akun menggunakan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkoauth2_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_user_token_request = dingtalkoauth_2__1__0_models.GetUserTokenRequest(
+            client_id='dingxxx',
+            client_secret='1234',
+            code='abcd',
+            refresh_token='abcd',
+            grant_type='authorization_code'
+        )
+        try:
+            client.get_user_token(get_user_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi properti code dan message, yang membantu menemukan masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_user_token_request = dingtalkoauth_2__1__0_models.GetUserTokenRequest(
+            client_id='dingxxx',
+            client_secret='1234',
+            code='abcd',
+            refresh_token='abcd',
+            grant_type='authorization_code'
+        )
+        try:
+            await client.get_user_token_async(get_user_token_request)
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi properti code dan message, yang membantu menemukan masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Voauth2_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Voauth2_1_0\Models\GetUserTokenRequest;
+
+class Sample {
+
+    /**
+     * Inisialisasi Client akun menggunakan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $getUserTokenRequest = new GetUserTokenRequest([
+            "clientId" => "dingxxx",
+            "clientSecret" => "1234",
+            "code" => "abcd",
+            "refreshToken" => "abcd",
+            "grantType" => "authorization_code"
+        ]);
+        try {
+            $client->getUserToken($getUserTokenRequest);
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err berisi properti code dan message, yang membantu menemukan masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkoauth2_1_0  "github.com/alibabacloud-go/dingtalk/oauth2_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Inisialisasi Client akun menggunakan Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkoauth2_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkoauth2_1_0.Client{}
+  _result, _err = dingtalkoauth2_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  getUserTokenRequest := &dingtalkoauth2_1_0.GetUserTokenRequest{
+    ClientId: tea.String("dingxxx"),
+    ClientSecret: tea.String("1234"),
+    Code: tea.String("abcd"),
+    RefreshToken: tea.String("abcd"),
+    GrantType: tea.String("authorization_code"),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.GetUserToken(getUserTokenRequest)
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err berisi properti code dan message, yang membantu menemukan masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util from '@alicloud/tea-util';
+import dingtalkoauth2_1_0, * as $dingtalkoauth2_1_0 from '@alicloud/dingtalk/oauth2_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Inisialisasi Client akun menggunakan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkoauth2_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkoauth2_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let getUserTokenRequest = new $dingtalkoauth2_1_0.GetUserTokenRequest({
+      clientId: "dingxxx",
+      clientSecret: "1234",
+      code: "abcd",
+      refreshToken: "abcd",
+      grantType: "authorization_code",
+    });
+    try {
+      await client.getUserToken(getUserTokenRequest);
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err berisi properti code dan message, yang membantu menemukan masalah
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Inisialisasi Client akun menggunakan Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkoauth2_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkoauth2_1_0.Models.GetUserTokenRequest getUserTokenRequest = new AlibabaCloud.SDK.Dingtalkoauth2_1_0.Models.GetUserTokenRequest
+            {
+                ClientId = "dingxxx",
+                ClientSecret = "1234",
+                Code = "abcd",
+                RefreshToken = "abcd",
+                GrantType = "authorization_code",
+            };
+            try
+            {
+                client.GetUserToken(getUserTokenRequest);
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi properti code dan message, yang membantu menemukan masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi properti code dan message, yang membantu menemukan masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+C
+
+```cpp
+// This file is auto-generated, don't edit it. Thanks.
+
+#include <alibabacloud/dingtalkoauth_2__1__0.hpp>
+#include <alibabacloud/open_api.hpp>
+#include <boost/any.hpp>
+#include <darabonba/core.hpp>
+#include <darabonba/util.hpp>
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+Alibabacloud_Dingtalkoauth2_1_0::Client createClient() {
+  shared_ptr<Alibabacloud_OpenApi::Config> config = make_shared<Alibabacloud_OpenApi::Config>();
+  config->protocol = make_shared<string>("https");
+  config->regionId = make_shared<string>("central");
+  return Alibabacloud_Dingtalkoauth2_1_0::Client(config);
+}
+
+int main(int argc, char *args[]) {
+  args;
+  shared_ptr<Alibabacloud_Dingtalkoauth2_1_0::Client> client = make_shared<Alibabacloud_Dingtalkoauth2_1_0::Client>(createClient());
+  shared_ptr<Alibabacloud_Dingtalkoauth2_1_0::GetUserTokenRequest> getUserTokenRequest = make_shared<Alibabacloud_Dingtalkoauth2_1_0::GetUserTokenRequest>(map<string, boost::any>({
+    {"clientId", boost::any(string("dingxxx"))},
+    {"clientSecret", boost::any(string("1234"))},
+    {"code", boost::any(string("abcd"))},
+    {"refreshToken", boost::any(string("abcd"))},
+    {"grantType", boost::any(string("authorization_code"))}
+  }));
+  try {
+    client->getUserToken(getUserTokenRequest);
+  }
+  catch (std::exception &err) {
+    if (!Darabonba_Util::Client::empty(err.code) && !Darabonba_Util::Client::empty(err.message)) {
+      // err berisi properti code dan message, yang membantu menemukan masalah
+    }
+  }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| accessToken | String | abcd | accessToken yang dihasilkan, digunakan untuk autentikasi pada panggilan API berikutnya. |
+| refreshToken | String | abcd | refresh_token yang dihasilkan. Gunakan refresh token ini untuk secara berkala mendapatkan accessToken pengguna. |
+| expireIn | Long | 7200 | Waktu kedaluwarsa, dalam detik. |
+| corpId | String | corpxxxx | ID organisasi dari organisasi yang dipilih. |
+
+### Contoh respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "accessToken" : "abcd",
+  "refreshToken" : "abcd",
+  "expireIn" : 7200,
+  "corpId" : "corpxxxx"
+}
+```
+
+### Kode error
+
+Jika terjadi error saat memanggil API ini, temukan solusinya berdasarkan pesan error di dokumen [Kode error (legacy Sisi server)](/id/open/development/server-api-error-codes-1).

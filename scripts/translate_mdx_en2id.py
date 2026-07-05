@@ -223,6 +223,8 @@ class FileResult:
 
 
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
+    # user_msg 作为 positional prompt 传入（而非 stdin），规避 claude CLI 高负载下 3s stdin
+    # 握手竞争导致的 "no stdin data received" 死锁；prompt 体量 ~20-40KB 远低于 ARG_MAX(1MB)。
     proc = await asyncio.create_subprocess_exec(
         "claude", "-p", "--bare",
         "--model", model,
@@ -230,13 +232,14 @@ async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout
         "--tools", "",
         "--no-session-persistence",
         "--output-format", "json",
-        stdin=asyncio.subprocess.PIPE,
+        user_msg,
+        stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout, stderr = await asyncio.wait_for(
-            proc.communicate(input=user_msg.encode("utf-8")),
+            proc.communicate(),
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
@@ -323,7 +326,12 @@ async def translate_one(
 # 主流程
 # ---------------------------------------------------------------------------
 
-def gather_tasks(root: str, only: str | None) -> list[FileTask]:
+def gather_tasks(
+    root: str,
+    only: str | None,
+    bucket_id: int | None = None,
+    bucket_count: int | None = None,
+) -> list[FileTask]:
     # 特例：root == "." 只译仓库根的 index.mdx（Overview 首页）→ id/index.mdx
     if root in (".", ""):
         src = REPO_ROOT / "index.mdx"
@@ -344,6 +352,24 @@ def gather_tasks(root: str, only: str | None) -> list[FileTask]:
         if only and not rel_str.startswith(only):
             continue
         tasks.append(FileTask(source=mdx, target=target, rel=rel_str))
+
+    # 多进程分桶：按文件大小 round-robin 均衡，各桶交给独立 OS 进程（concurrency=1）跑，
+    # 规避 asyncio 多子进程 stdin 死锁（claude CLI 3s stdin 超时竞争）。
+    if bucket_id is not None and bucket_count and bucket_count > 1:
+        if not 0 <= bucket_id < bucket_count:
+            sys.exit(f"ERROR: bucket_id must be in [0, {bucket_count}), got {bucket_id}")
+        sized = sorted(tasks, key=lambda t: t.source.stat().st_size, reverse=True)
+        buckets: list[list[FileTask]] = [[] for _ in range(bucket_count)]
+        sizes = [0] * bucket_count
+        for t in sized:
+            i = sizes.index(min(sizes))
+            buckets[i].append(t)
+            sizes[i] += t.source.stat().st_size
+        tasks = sorted(buckets[bucket_id], key=lambda t: t.rel)
+        print(
+            f"[bucket] id={bucket_id}/{bucket_count} files={len(tasks)} "
+            f"bytes={sizes[bucket_id]:,} (total all buckets bytes={sum(sizes):,})"
+        )
     return tasks
 
 
@@ -392,7 +418,7 @@ async def main_async(args: argparse.Namespace) -> int:
     system_prompt = build_system_prompt(args.root)
     sem = asyncio.Semaphore(args.concurrency)
 
-    tasks = gather_tasks(args.root, args.only)
+    tasks = gather_tasks(args.root, args.only, args.bucket_id, args.bucket_count)
     if args.limit:
         tasks = tasks[: args.limit]
 
@@ -426,6 +452,8 @@ async def main_async(args: argparse.Namespace) -> int:
     suffix = f"_{args.root}"
     if args.only:
         suffix += "_" + re.sub(r"[^a-zA-Z0-9]+", "-", args.only)
+    if args.bucket_id is not None and args.bucket_count:
+        suffix += f"_bucket{args.bucket_id}of{args.bucket_count}"
     write_report(results, OUTPUT_DIR / "id", started, ended, suffix)
 
     failed = [r for r in results if r.status == "failed"]
@@ -443,6 +471,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--limit", type=int, default=0, help="只跑前 N 篇")
     p.add_argument("--force", action="store_true", help="覆盖非占位的已译文件")
     p.add_argument("--dry-run", action="store_true", help="只列任务 + 命中术语")
+    p.add_argument("--bucket-id", type=int, default=None, dest="bucket_id",
+                   help="多进程分桶：本进程跑桶 N（0..bucket_count-1），与 --bucket-count 配合")
+    p.add_argument("--bucket-count", type=int, default=None, dest="bucket_count",
+                   help="多进程分桶总数；各桶独立 OS 进程 concurrency=1 跑，规避 stdin 死锁")
     return p.parse_args()
 
 

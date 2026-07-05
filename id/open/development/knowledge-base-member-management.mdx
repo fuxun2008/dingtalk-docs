@@ -1,0 +1,157 @@
+---
+title: "Manajemen anggota Knowledge Base"
+description: "Gunakan API anggota Knowledge Base untuk memberikan akses, menyesuaikan peran, dan mencabut akses secara terprogram pada skenario onboarding, perubahan peran, dan offboarding di DingTalk."
+---
+
+Dalam operasional sehari-hari Knowledge Base organisasi, seiring berkembangnya kebutuhan kolaborasi tim, admin sering kali perlu menyesuaikan izin akses secara fleksibel—misalnya menambahkan karyawan baru ke Knowledge Base saat onboarding, menyesuaikan peran pengguna, atau mencabut akses setelah karyawan keluar. API manajemen anggota Knowledge Base memungkinkan Anda melakukan operasi ini secara terprogram dan mengotomatiskan pengelolaan izin Knowledge Base.
+
+## Kasus penggunaan
+
+Pilih alur yang sesuai berdasarkan skenario berikut:
+
+- **Skenario 1**: Ketika karyawan baru onboarding, kolaborator eksternal bergabung, atau sebuah departemen/grup perlu mengakses Knowledge Base, admin dapat menggunakan alur ini untuk menambahkan anggota secara massal dan menetapkan peran.
+- **Skenario 2**: Ketika seorang anggota dipromosikan menjadi admin, atau Anda perlu membatasi operasi anggota, gunakan alur ini untuk mengubah perannya.
+- **Skenario 3**: Ketika seorang anggota keluar, sebuah proyek berakhir, atau Anda perlu mencabut akses untuk pengguna atau departemen tertentu, gunakan alur ini untuk menghapusnya dari Knowledge Base.
+- **Skenario 4**: Ketika organisasi ingin membuat sebuah Knowledge Base (seperti kebijakan perusahaan atau manual produk) dapat diakses oleh semua karyawan tanpa menambahkan anggota satu per satu.
+- **Skenario 5**: Digunakan ketika Anda perlu mengaudit izin Knowledge Base, memecahkan masalah izin, atau memastikan peran anggota saat ini sebelum melakukan operasi massal.
+
+## Ikhtisar izin
+
+### Peran izin (roleId)
+
+| roleId | Nama peran | Kemampuan |
+| --- | --- | --- |
+| **OWNER** | Pemilik | Izin tertinggi. Membaca, menulis, mengelola anggota, dan mentransfer Knowledge Base. |
+| **MANAGER** | Admin | Membaca, menulis, dan mengelola anggota (transfer tidak termasuk). |
+| **EDITOR** | Editor | Menampilkan, mengedit, dan mengunggah konten. |
+| **DOWNLOADER** | Tampilkan dan unduh | Menampilkan dan mengunduh konten. |
+| **READER** | Tampilkan saja | Hanya menampilkan konten; pengunduhan tidak diizinkan. |
+
+> **Catatan**: Peran **OWNER** tidak dapat ditambahkan atau dihapus melalui API. Pembuat Knowledge Base secara default menjadi pemiliknya.
+
+### Tipe anggota (members.type)
+
+| Nilai type | Deskripsi | Arti members.id |
+| --- | --- | --- |
+| **USER** | Pengguna | userId karyawan |
+| **DEPT** | Departemen | deptId departemen. corpId harus disertakan bersamaan. |
+| **CONVERSATION** | Obrolan grup | chatId grup DingTalk |
+| **ORG** | Semua karyawan di organisasi | corpId organisasi. Hanya peran **EDITOR**, **DOWNLOADER**, dan **READER** yang didukung. |
+
+---
+
+## Skenario 1: Memberikan akses Knowledge Base kepada anggota baru
+
+1. Panggil API [Dapatkan daftar Knowledge Base](/id/open/development/get-knowledge-base-list) dan baca bidang `rootNodeId` dari respons. Ini adalah `dentryUuid` dari node root Knowledge Base.
+2. Dapatkan ID anggota:
+
+   - Untuk menambahkan **pengguna**: Panggil API [Kueri detail pengguna](/id/open/development/query-user-details) untuk mendapatkan `userId`, atau gunakan [Dapatkan daftar userId departemen](/id/open/development/query-the-list-of-department-userids) untuk mengambilnya secara massal.
+   - Untuk menambahkan **departemen**: Panggil API [Dapatkan daftar departemen](/id/open/development/user-management-acquires-the-list-departments) untuk mendapatkan `deptId`.
+   - Untuk menambahkan **obrolan grup**: Gunakan `chatId` grup.
+3. Panggil API [Tambahkan izin](/id/open/development/add-permissions-file) dan pilih peran yang sesuai berdasarkan kebutuhan bisnis Anda (misalnya, **EDITOR** untuk pengeditan kolaboratif, **READER** untuk akses hanya baca) untuk menambahkan anggota ke Knowledge Base.
+
+   > **Tips**: Satu permintaan mendukung hingga 30 anggota. Bagi menjadi beberapa panggilan jika melebihi batas ini.
+
+   ```http lines
+   POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={operator unionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "EDITOR",
+     "members": [
+       { "type": "USER", "id": "employee userId" },
+       { "type": "DEPT", "id": "department deptId", "corpId": "organization corpId" }
+     ]
+   }
+   ```
+
+## Skenario 2: Menyesuaikan peran anggota di Knowledge Base
+
+1. Untuk memastikan peran anggota saat ini, panggil terlebih dahulu API [Dapatkan daftar izin](/id/open/development/get-permission-list).
+2. Panggil API [Ubah izin](/id/open/development/modify-permissions-file) dan tentukan anggota serta peran target untuk mengubah peran.
+
+   > **Catatan**: Seorang anggota hanya dapat memegang satu peran di Knowledge Base yang sama. Setelah perubahan, peran lama secara otomatis digantikan.
+
+   ```http lines
+   PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={operator unionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "MANAGER",
+     "members": [
+       { "type": "USER", "id": "employee userId" }
+     ]
+   }
+   ```
+
+## Skenario 3: Mencabut akses Knowledge Base seorang anggota
+
+1. Pastikan peran yang saat ini dipegang oleh anggota. Panggil API [Dapatkan daftar izin](/id/open/development/get-permission-list) untuk mengambil peran anggota saat ini (`roleId`). Peran yang ditentukan untuk penghapusan harus cocok dengan peran yang sebenarnya dipegang.
+2. Panggil API [Hapus izin](/id/open/development/delete-permissions-file).
+
+   > **Catatan**: `roleId` harus cocok dengan peran yang sebenarnya dipegang oleh anggota; jika tidak, operasi menjadi tidak valid. Peran **OWNER** tidak dapat dihapus.
+
+   ```http lines
+   POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId={operator unionId} HTTP/1.1
+   Host: api.dingtalk.io
+   x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+   Content-Type: application/json
+
+   {
+     "roleId": "EDITOR",
+     "members": [
+       { "type": "USER", "id": "employee userId" }
+     ]
+   }
+   ```
+
+## Skenario 4: Membuat Knowledge Base dapat diakses oleh semua karyawan
+
+Panggil API [Tambahkan izin](/id/open/development/add-permissions-file), atur tipe anggota menjadi **ORG**, dan tentukan peran publik yang sesuai.
+
+> **Catatan**: Setelah otorisasi **ORG**, semua karyawan di organisasi dapat mengakses Knowledge Base dengan peran yang ditentukan. Anggota bertipe **ORG** tidak muncul dalam hasil kueri daftar anggota. Untuk mencabut akses bagi semua karyawan, panggil API penghapusan dengan cara yang sama dan berikan **ORG** sebagai `type`.
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId={operator unionId} HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    { "type": "ORG" }
+  ]
+}
+```
+
+## Skenario 5: Mengueri daftar anggota Knowledge Base saat ini
+
+Panggil API [Dapatkan daftar izin](/id/open/development/get-permission-list). Pemfilteran berdasarkan peran dan penomoran halaman didukung.
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/query?unionId={operator unionId} HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: {ACCESS_TOKEN}
+Content-Type: application/json
+
+{
+  "option": {
+    "maxResults": 30,
+    "filterRoleIds": ["MANAGER", "EDITOR"]
+  }
+}
+```
+
+Setiap rekaman dalam respons berisi tipe, ID, nama, dan peran anggota. Jika `nextToken` tidak kosong, tersedia lebih banyak data. Berikan `nextToken` pada permintaan berikutnya untuk melanjutkan pengambilan hasil.
+
+## Catatan
+
+- Operator harus memiliki izin **OWNER** atau **MANAGER** pada Knowledge Base; jika tidak, API mengembalikan error izin tidak memadai.
+- Peran **OWNER** tidak dapat ditambahkan atau dihapus melalui API. Pembuat Knowledge Base secara default menjadi pemiliknya.
+- Saat menghapus anggota, `roleId` harus cocok dengan peran yang sebenarnya dipegang oleh anggota; jika tidak, operasi menjadi tidak valid.
+- Satu permintaan mendukung hingga 30 anggota dalam daftar `members`. Bagi menjadi beberapa panggilan jika melebihi batas ini.

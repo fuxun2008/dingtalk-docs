@@ -1,0 +1,120 @@
+---
+title: "Kirim notifikasi kerja setelah mengunggah file media"
+description: "Panduan memanggil API penyimpanan file dan notifikasi pesan di aplikasi internal DingTalk untuk mengunggah file media dan mengirim notifikasi kerja secara menyeluruh."
+---
+
+Dokumen ini menjelaskan cara memanggil API penyimpanan file dan notifikasi pesan untuk mengimplementasikan alur kerja file media. Pertama, buat aplikasi internal, lalu gunakan API penyimpanan file dan notifikasi pesan untuk mengunggah file media dan mengirim notifikasi kerja.
+
+## Pengantar
+
+### Yang akan Anda pelajari
+
+Tutorial ini menggunakan instruksi langkah demi langkah dan contoh untuk membantu developer organisasi mengunggah file media dengan cepat dan mengirim notifikasi ke pengguna tertentu setelah unggahan berhasil.
+
+### Tujuan pembelajaran
+
+Membantu developer membangun aplikasi mereka sendiri dengan cepat dan menggunakan API dasar DingTalk untuk mengunggah lampiran serta mengirim notifikasi kerja.
+
+### Audiens
+
+Semua developer DingTalk.
+
+## Prasyarat
+
+- Anda telah memperoleh izin developer.
+- Anda telah menginstal IDE atau alat pengembangan lainnya.
+- Anda telah menginstal [Node.js](https://nodejs.org/en/download) dan menyelesaikan [konfigurasi environment](https://m.runoob.com/nodejs/nodejs-install-setup.html).
+- Anda telah menginstal [Maven](https://maven.apache.org/) dan menyelesaikan [konfigurasi environment](https://maven.apache.org/install.html).
+- Anda telah menginstal [JDK](https://www.oracle.com/java/technologies/downloads/?er=221886) dan menyelesaikan [konfigurasi environment](https://docs.oracle.com/en/java/javase/24/install/overview-jdk-installation.html).
+
+## Alur kerja pengembangan
+
+1. Gunakan login senyap untuk memperoleh nama, peran, dan informasi lain dari pengguna yang sedang masuk. Untuk informasi lebih lanjut, lihat login senyap untuk aplikasi web (aplikasi mikro H5).
+2. Panggil API [Unggah file media](/id/open/development/upload-media-files) untuk mengunggah file tertentu (tutorial ini menggunakan file lokal; dalam praktiknya, developer dapat menggunakan file apa pun) dan memperoleh `media_id` file (pengenal unik dari file).
+3. Berdasarkan `media_id`, panggil Server API [Kirim notifikasi kerja](/id/open/development/asynchronous-sending-of-enterprise-session-messages) untuk mengirim notifikasi kerja (dokumen ini menyediakan dua jenis pesan: image dan action, yang dapat Anda ganti di dalam kode).
+
+## Langkah 1: Buat aplikasi
+
+1. Masuk ke [Developer Backend](https://open-dev.dingtalk.io/#/).
+2. Klik **App Development** > **Internal app** > **DingTalk App** > **Create App**.
+3. Isi informasi aplikasi.
+
+   | **Item** | **Wajib** | **Deskripsi** |
+   | --- | --- | --- |
+   | Nama aplikasi | Ya | Masukkan nama aplikasi. Panjang minimum adalah 2 karakter. |
+   | Deskripsi aplikasi | Ya | Deskripsikan secara singkat produk atau layanan yang disediakan aplikasi. Panjang minimum adalah 4 karakter. |
+   | **Ikon aplikasi** | Tidak | Unggah ikon aplikasi. Ikon harus dalam format JPG/PNG, minimal 240 px \* 240 px, dengan rasio 1:1, tanpa sudut membulat, dan tidak lebih besar dari 2 MB. |
+4. Klik **Save** untuk masuk ke halaman detail aplikasi. Klik **Basic Information** > **Credentials and Basic Information** untuk melihat Client ID, Client Secret, dan Agent ID dari aplikasi.
+
+   > Catatan: Simpan Client ID, Client Secret, dan Agent ID untuk digunakan nanti.
+
+## Langkah 2: Konfigurasikan aplikasi web
+
+1. Pada halaman detail aplikasi, klik **App Capabilities** > **Add App Capability**.
+2. Pilih Add Web App.
+3. Konfigurasikan informasi aplikasi web (H5):
+
+   | **Item** | **Deskripsi** |
+   | --- | --- |
+   | URL beranda aplikasi | Masukkan URL beranda aplikasi. Contoh ini menggunakan `http://localhost:5173?corpid=$CORPID$` untuk pengujian selanjutnya. Contoh ini hanya untuk pengujian lokal. |
+   | URL beranda PC | |
+4. Setelah konfigurasi selesai, klik **Save**.
+
+## Langkah 3: Tambahkan izin API
+
+Izin diberikan secara default. Anda tidak perlu mengajukannya.
+
+## Langkah 4: Publikasikan aplikasi
+
+1. Setelah mengonfigurasi aplikasi, Anda perlu memublikasikannya. Pada halaman detail aplikasi, klik **App Release** > **Version Management and Release**.
+2. Klik **Create New Version** untuk masuk ke halaman detail versi.
+3. Konfigurasikan informasi versi:
+
+   | **Item** | **Deskripsi** |
+   | --- | --- |
+   | Nomor versi aplikasi | Masukkan nomor versi aplikasi. Gunakan versi default. |
+   | Deskripsi versi | Masukkan deskripsi untuk versi tersebut. Anda dapat menyesuaikannya. |
+   | Konten yang akan dipublikasikan | Kemampuan aplikasi yang ditampilkan di workbench:  - Pilih aplikasi web |
+
+   Setelah konfigurasi selesai, klik Save di bagian bawah.
+4. Pada kotak dialog yang muncul setelah menyimpan, klik Publish Directly.
+
+   > *Jika Anda bukan Admin Organisasi, memublikasikan aplikasi memerlukan persetujuan dari Admin Organisasi. Memublikasikan untuk "Visible to me only" tidak memerlukan persetujuan admin.*
+
+## Langkah 5: Bangun layanan
+
+1. Pastikan Anda telah menyelesaikan langkah-langkah di atas dan memperoleh parameter yang diperlukan untuk menjalankan demo di bawah ini.
+2. Unduh demo [file-demo.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250729/qrbdtr/file-demo.zip).
+3. Buka IDE Anda dan impor demo yang telah diunduh.
+
+   > Kode contoh dibagi menjadi `backend` (direktori kode backend) dan `frontend` (direktori kode frontend).
+
+4. Buka direktori kode backend dan modifikasi file `application.properties` di direktori `resources`. Isi parameter seperti `clientId` (Client ID dari aplikasi), `clientSecret` (Client Secret dari aplikasi), `filepath` (jalur absolut file yang akan diunggah), dan `agentId` (Agent ID dari aplikasi).
+
+5. Klik untuk memulai layanan backend.
+
+   **Catatan**
+   - Sebelum memulai layanan backend, pastikan Maven dan JDK terinstal dengan benar dan environment terkait telah dikonfigurasi. Jika Anda menginstal IDE untuk pertama kalinya, Anda perlu memodifikasi file konfigurasi terkait di IDE.
+   - Pastikan port 5173 dan 8080 tidak sedang digunakan.
+
+6. Buka direktori kode frontend dan modifikasi `vite.config.ts` untuk mengisi `clientId` (Client ID dari aplikasi) yang benar.
+
+7. Klik kanan file proyek frontend dan pilih **Terminal** untuk membukanya.
+
+8. Pada jendela terminal, jalankan perintah berikut:
+
+   1. `npm install`
+   2. `npm run dev`
+
+      > Catatan: Pada Windows, gunakan `npm run dev:raw` saat memulai.
+9. Layanan frontend dan backend kini telah berhasil dimulai.
+
+### Langkah 6: Uji aplikasi
+
+1. Masuk ke DingTalk Sisi klien dan pilih organisasi tempat aplikasi berada.
+
+2. Klik **Workbench** > **Add**, cari aplikasi organisasi yang Anda buat di atas, lalu tambahkan.
+
+3. Buka aplikasi di workbench dan klik tombol **Upload File** untuk mengunggah file media.
+
+   > *Ukuran file harus kurang dari 50 MB.*

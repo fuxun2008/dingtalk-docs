@@ -1,0 +1,251 @@
+---
+title: "Menerima pesan"
+description: "Pelajari protokol penerimaan pesan Bot DingTalk — mencakup parameter HTTP header, struktur HTTP body, tipe pesan masuk yang didukung, verifikasi tanda tangan, dan format respons untuk integrasi Bot yang aman."
+---
+
+Ketika pengguna @menyebut Bot grup atau mengirim pesan langsung ke Bot, DingTalk meneruskan konten pesan ke endpoint layanan HTTPS milik developer Bot. Topik ini menjelaskan protokol penerimaan pesan pada Bot.
+
+## Parameter HTTP header
+
+```json
+{
+  "Content-Type": "application/json; charset=utf-8",
+  "timestamp": "1577262236757",
+  "sign":"xxxxxxxxxx"
+}
+```
+
+| **Parameter** | **Deskripsi** |
+| --- | --- |
+| timestamp | Stempel waktu saat pesan dikirim, dalam milidetik. |
+| sign | Nilai tanda tangan. |
+
+Developer harus memverifikasi timestamp dan sign pada header untuk menentukan apakah permintaan tersebut merupakan permintaan sah dari DingTalk. Hal ini mencegah pihak jahat menyamar sebagai DingTalk untuk memanggil layanan HTTPS developer dan mengirimkan data. Logika verifikasinya adalah sebagai berikut:
+
+- Jika timestamp berbeda lebih dari 1 jam dari timestamp sistem saat ini, permintaan dianggap tidak valid.
+- Jika sign tidak cocok dengan nilai yang dihitung oleh developer, permintaan dianggap tidak valid.
+
+Hanya ketika timestamp dan sign berhasil diverifikasi, permintaan dapat dianggap sebagai permintaan sah dari DingTalk.
+
+### Cara menghitung sign
+
+Gunakan timestamp dari header + "\n" + appSecret Bot sebagai string yang akan ditandatangani. Hitung tanda tangan menggunakan algoritme HmacSHA256, lalu enkode hasilnya dengan Base64 untuk memperoleh nilai tanda tangan akhir.
+
+Contoh kode penghitungan tanda tangan (Java)
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Base64;
+
+public class Test {
+    public static void main(String[] args) throws Exception {
+        Long timestamp = 1577262236757L;
+        String appSecret = "this is a secret";
+        String stringToSign = timestamp + "\n" + appSecret;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(appSecret.getBytes("UTF-8"), "HmacSHA256"));
+        byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+        String sign = new String(Base64.encodeBase64(signData));
+        System.out.println(sign);
+    }
+}
+```
+
+## HTTP Body
+
+```json
+{
+    "conversationId": "xxx",
+    "atUsers": [
+        {
+            "dingtalkId": "xxx",
+            "staffId":"xxx",
+            "unionId":"edxxx34"
+        }
+    ],
+    "chatbotCorpId": "dinge8a565xxxx",
+    "chatbotUserId": "$:LWCP_v1:$Cxxxxx",
+    "msgId": "msg0xxxxx",
+    "senderNick": "John",
+    "isAdmin": true,
+    "senderStaffId": "user123",
+    "sessionWebhookExpiredTime": 1613635652738,
+    "createAt": 1613630252678,
+    "senderCorpId": "dinge8a565xxxx",
+    "conversationType": "2",
+    "senderId": "$:LWCP_v1:$Ff09GIxxxxx",
+    "conversationTitle": "Bot Test-TEST",
+    "isInAtList": true,
+    "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=xxxxx",
+    "text": {
+        "content": " Hello"
+    },
+    "msgtype": "text"
+}
+```
+
+### Deskripsi parameter
+
+| **Parameter** | **Wajib** | **Tipe** | **Deskripsi** |
+| --- | --- | --- | --- |
+| msgtype | Ya | String | Tipe pesan. |
+| content | Ya | String | Teks pesan. |
+| msgId | Ya | String | ID pesan terenkripsi. |
+| createAt | Ya | String | Stempel waktu pesan, dalam milidetik. |
+| conversationType | Ya | String | **1**: Pesan Langsung  **2**: Obrolan Grup |
+| conversationId | Ya | String | ID obrolan. |
+| conversationTitle | Tidak | String | Judul obrolan. Dikembalikan hanya untuk obrolan grup. |
+| senderId | Ya | String | ID pengirim terenkripsi.  **Catatan**  Gunakan senderStaffId sebagai nilai ID pengguna pengirim. |
+| senderNick | Ya | String | Nama pengirim. |
+| senderCorpId | Tidak | String | ID organisasi dari grup pengirim saat ini dalam grup internal. |
+| sessionWebhook | Ya | String | URL Webhook dari obrolan saat ini. |
+| sessionWebhookExpiredTime | Ya | Long | Waktu kedaluwarsa URL Webhook obrolan saat ini. |
+| isAdmin | Tidak | boolean | Menunjukkan apakah pengirim adalah Admin.  **Catatan**  Berlaku setelah Bot dipublikasikan. |
+| chatbotCorpId | Tidak | String | ID organisasi terenkripsi tempat Bot berada. |
+| isInAtList | Tidak | boolean | Menunjukkan apakah pengguna berada dalam daftar @. |
+| senderStaffId | Tidak | String | ID pengguna anggota yang @menyebut Bot dalam grup internal.  **Catatan**  Bidang ini hanya dikembalikan setelah Bot dipublikasikan ke versi produksi. |
+| senderUnionId | Tidak | String | unionId dari pengirim. |
+| chatbotUserId | Ya | String | ID Bot terenkripsi. |
+| atUsers | Tidak | Array | Informasi tentang pengguna yang @disebut.   - **dingtalkId**: ID terenkripsi dari pengguna yang @disebut. - **staffId**: userId dari pengguna yang @disebut. Bidang ini kosong untuk pengguna eksternal dalam obrolan eksternal. - **unionId**: unionid dari pengguna yang @disebut. |
+
+## Tipe pesan yang didukung untuk penerimaan
+
+Saat ini Bot mendukung penerimaan pesan teks, suara, gambar, file, video, dan teks kaya. Tabel berikut menjelaskan bidang untuk setiap tipe pesan yang diterima Bot. Selain bidang tipe pesan dan isi pesan, semua bidang parameter lainnya sama seperti pada tabel di atas.
+
+### Penting
+
+- Dalam obrolan grup: ketika anggota grup @menyebut Bot, Bot **tidak mendukung** penerimaan tipe suara, file, atau video.
+- Dalam obrolan orang-ke-orang: Bot **tidak mendukung** penerimaan tipe suara, file, atau video.
+- Dalam obrolan orang-ke-Bot: Bot **mendukung** penerimaan tipe suara, file, dan video.
+
+### Pesan teks
+
+```json
+{
+  "msgtype": "text",
+  "text": {
+    "content": "Hello"
+  }
+}
+```
+
+### Deskripsi parameter:
+
+| **Parameter** | **Tipe** | **Deskripsi** |
+| --- | --- | --- |
+| msgtype | String | Tipe pesan:   - **text**: Pesan teks |
+| content | String | Konten pesan teks. |
+
+### Pesan suara
+
+```json
+{
+  "msgtype": "audio",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/+m+Nn***********geqPd7xpJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "recognition": "DingTalk, let progress happen"
+  }
+}
+```
+
+### Deskripsi parameter:
+
+| **Parameter** | **Tipe** | **Deskripsi** |
+| --- | --- | --- |
+| msgtype | String | Tipe pesan:   - **audio**: Pesan suara |
+| downloadCode | String | Kode unduh file suara. Gunakan kode ini untuk mengambil file suara biner dengan memanggil Server API [Unduh konten file yang diterima Bot](/id/open/development/download-the-file-content-of-the-robot-receiving-message) guna memperoleh URL unduh sementara. |
+| recognition | String | Hasil teks pengenalan Speech-to-Text. |
+| duration | Long | Durasi suara, dalam milidetik. |
+
+### Pesan gambar
+
+```json
+{
+  "msgtype": "picture",
+  "content": {
+    "downloadCode": "mIofN681YE3f/+m+**********8rs4RGdQAwyVs3B75N7boKf8ep0FBB122u9YY/novFAM9BQrirm4/+avZaCV+6nnZ0Zk="
+  }
+}
+```
+
+### Deskripsi parameter:
+
+| **Parameter** | **Tipe** | **Deskripsi** |
+| --- | --- | --- |
+| msgtype | String | Tipe pesan:   - picture: Pesan gambar |
+| downloadCode | String | Kode unduh file gambar. Gunakan kode ini untuk mengambil file gambar biner dengan memanggil Server API [Unduh konten file yang diterima Bot](/id/open/development/download-the-file-content-of-the-robot-receiving-message) guna memperoleh URL unduh sementara. |
+
+### Pesan video
+
+```json
+{
+  "msgtype": "video",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/****************OAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "videoType": "mp4"
+  }
+}
+```
+
+### Deskripsi parameter:
+
+| **Parameter** | **Tipe** | **Deskripsi** |
+| --- | --- | --- |
+| msgtype | String | Tipe pesan:   - **video**: Pesan video |
+| downloadCode | String | Kode unduh file video. Gunakan kode ini untuk mengambil file video biner dengan memanggil Server API [Unduh konten file yang diterima Bot](/id/open/development/download-the-file-content-of-the-robot-receiving-message) guna memperoleh URL unduh sementara. |
+| videoType | String | Tipe File video. |
+| duration | Long | Durasi video, dalam milidetik. |
+
+### Pesan file
+
+```json
+{
+  "msgtype": "file",
+  "content": {
+    "downloadCode": "mIofN681YE3f*************pJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "fileName": "DingTalk Let Progress Happen.pdf"
+  }
+}
+```
+
+### Deskripsi parameter:
+
+| **Parameter** | **Tipe** | **Deskripsi** |
+| --- | --- | --- |
+| msgtype | String | Tipe pesan:   - **video**: Pesan file |
+| downloadCode | String | Kode unduh file. Gunakan kode ini untuk mengambil file biner dengan memanggil Server API [Unduh konten file yang diterima Bot](/id/open/development/download-the-file-content-of-the-robot-receiving-message) guna memperoleh URL unduh sementara. |
+| fileName | String | Nama file. |
+
+### Pesan teks kaya
+
+```json
+{
+  "msgtype": "richText",
+  "content": {
+    "richText": [
+      {
+        "text": "Hello"
+      },
+      {
+        "downloadCode": "mIofN681YE3f*************JkVBG2vhj4Q9TsmsNCHy0Phdd2tn/t6XxjaB6U8oEst1JVnFR2QRaLqsGyuWPhEvzhIDEpfQYEvexbwdKCCpMOVnYYbn1aMT/n3JFgb4i64X3TFXxXCdaH1+NLRM/B6kGWxJPR/egKS8syvGzaZpzVI+hHQbCjLOO/FYLor2Q==",
+        "type": "picture"
+      }
+    ]
+  }
+}
+```
+
+### Deskripsi parameter:
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| msgtype | String | Ya | Tipe pesan:   - **richText**: Teks Kaya |
+| content | Object | Ya | Konten pesan. |
+| richText | Array | Ya | Daftar Teks Kaya.  **Catatan**  Daftar pesan dapat berisi:   - **text:** Pesan teks - **picture**: Pesan gambar |
+
+## Format respons HTTP
+
+Developer dapat memilih untuk membalas dengan pesan sesuai kebutuhan bisnis mereka. Saat ini terdapat lima [tipe pesan](/id/open/development/robot-message-type) yang didukung: text, markdown, actionCard lompat-keseluruhan, actionCard lompat-mandiri, dan feedCard.

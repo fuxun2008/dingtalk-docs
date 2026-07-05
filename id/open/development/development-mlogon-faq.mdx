@@ -1,0 +1,127 @@
+---
+title: "FAQ"
+description: "Ringkasan FAQ dan solusi untuk Single Sign-On DingTalk, mencakup cakupan penerapan, alur SSO, contoh yang dapat dijalankan, dan analisis kode error umum."
+---
+
+Artikel ini menjelaskan masalah umum pada Login senyap DingTalk beserta solusinya, membantu developer mendiagnosis dan menyelesaikan error dengan cepat selama proses Otorisasi.
+
+## Cakupan penerapan
+
+Dokumen ini berlaku untuk jenis aplikasi berikut:
+
+- Aplikasi mikro H5
+- Aplikasi mini program (termasuk mini program organisasi)
+
+Implementasi Login senyap sedikit berbeda antar jenis aplikasi. Pilih metode yang tepat untuk memperoleh authorization code sesuai skenario Anda.
+
+Untuk mempelajari cara membuat jenis aplikasi yang sesuai, lihat [Pengenalan jenis aplikasi](https://open.dingtalk.com/document/development/introduction-to-application-types).
+
+## Ikhtisar alur Login senyap
+
+Verifikasi identitas melalui **Login senyap** memungkinkan pengguna masuk ke aplikasi tanpa memasukkan nama pengguna atau kata sandi DingTalk. Aplikasi secara otomatis memperoleh identitas pengguna saat ini dan menyelesaikan proses masuk.
+
+Alur ini dibangun di atas mekanisme authorization code sementara. Sisi front end memanggil JSAPI untuk memperoleh authorization code sementara sekali pakai `tmp_auth_code`, dan server menggunakan kode ini untuk memanggil API DingTalk Open Platform guna menukarnya dengan informasi identitas seperti `userId` pengguna.
+
+**Istilah penting**: `tmp_auth_code` adalah authorization code sementara sekali pakai yang diperoleh melalui JSAPI front end (seperti `dd.getAuthCode` atau `dd.runtime.permission.requestAuthCode`). Kode ini berlaku selama 5 menit dan hanya dapat digunakan sekali. Server harus meneruskannya ke API DingTalk (seperti `/user/get`) untuk menukarnya dengan identitas pengguna.
+
+## Contoh yang dapat dijalankan
+
+### Kode front end (aplikasi mikro H5)
+
+```text
+// Gunakan SDK dd untuk memperoleh authorization code sementara
+dd.ready(function() {
+  dd.runtime.permission.requestAuthCode({
+    corpId: "your_corp_id", // Ganti dengan ID organisasi Anda
+    onSuccess: function(result) {
+      const code = result.code; // Ambil tmp_auth_code
+      // Kirim ke server Anda
+      fetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ tmp_auth_code: code }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onFail: function(err) {
+      console.error('Gagal memperoleh authorization code:', err);
+    }
+  });
+});
+```
+
+## Kode error umum
+
+Error berikut beserta penyebabnya dapat terjadi dalam berbagai skenario Login senyap.
+
+### errcode=40078, errmsg=The temporary authorization code does not exist
+
+Kemungkinan penyebab:
+
+- **Authorization code Login senyap tidak diperoleh dengan benar**
+
+  - Untuk aplikasi mini program, gunakan `dd.getAuthCode`.
+  - Untuk aplikasi mikro H5, gunakan `dd.runtime.permission.requestAuthCode` atau `dd.runtime.permission.requestOperateAuthCode`.
+- **Authorization code telah kedaluwarsa**
+
+  - Authorization code Login senyap berlaku selama **5 menit** setelah dibuat. Kode menjadi tidak valid setelah periode ini.
+- **Authorization code telah digunakan**
+
+  - Authorization code Login senyap adalah kredensial sekali pakai. Setelah digunakan, kode menjadi tidak valid dan tidak dapat digunakan kembali.
+- **Jenis authorization code tercampur**
+
+  - Misalnya, meneruskan authorization code Login senyap dari admin console ke API aplikasi internal untuk memperoleh `userId` pengguna menyebabkan error ini.
+
+### errcode=41007, errmsg=Invalid ssoCode
+
+Kemungkinan penyebab:
+
+- **ssoCode tidak ada atau salah eja**
+
+  - Periksa bahwa parameter `ssoCode` yang diteruskan dari front end lengkap dan tidak terpotong.
+- **ssoCode telah kedaluwarsa**
+
+  - ssoCode biasanya memiliki masa berlaku singkat (sekitar 5 menit). Pastikan untuk menggunakannya segera.
+- **ssoCode telah dikonsumsi**
+
+  - Kode ini hanya untuk sekali pakai. Jika sudah digunakan dalam permintaan lain, panggilan berikutnya akan gagal.
+
+### errcode=41026, errmsg=Missing tmp_auth_code
+
+Kemungkinan penyebab:
+
+- Parameter permintaan tidak menyertakan bidang `tmp_auth_code`.
+- Nama parameter salah eja (misalnya, `temp_auth_code` atau `authCode`).
+- Parameter tidak diteruskan dengan benar melalui query string (seharusnya dalam bentuk `?tmp_auth_code=xxx`).
+- Front end tidak mengembalikan authorization code dengan benar, sehingga server tidak dapat menyusun permintaan yang lengkap.
+
+> Solusi: Verifikasi bahwa front end menangani callback dengan benar dan meneruskan nilai `code`, serta server dikonfigurasi untuk menerima parameter `tmp_auth_code`.
+
+### errcode=40079, errmsg=Authorization information does not exist
+
+Kemungkinan penyebab:
+
+- Aplikasi belum menyelesaikan alur Otorisasi, dan pengguna belum menyelesaikan konfirmasi masuk.
+- Pengguna tidak berada dalam cakupan visibilitas aplikasi (misalnya, pengguna tidak ada di Kontak atau belum diberi otorisasi untuk mengakses aplikasi).
+- Izin aplikasi tidak dikonfigurasi dengan benar, dan kapabilitas Login senyap tidak diaktifkan.
+- Panggilan dilakukan terlalu dini, mencoba memperoleh authorization code sebelum konteks pengguna siap.
+
+> Rekomendasi: Tambahkan logika validasi sebelum panggilan untuk memastikan bahwa pengguna telah masuk ke aplikasi dan lingkungan sisi klien telah siap.
+
+### errcode=40087, errmsg=Failed to create a persistent authorization code
+
+Kemungkinan penyebab:
+
+- Jenis aplikasi saat ini tidak mendukung pembuatan authorization code persisten.
+- Izin yang diperlukan tidak ada (misalnya, izin "otorisasi persisten" tidak diaktifkan).
+- Frekuensi panggilan API terlalu tinggi dan telah memicu Batas laju.
+- Aplikasi dalam status abnormal (misalnya, dinonaktifkan atau sedang ditinjau).
+
+### errcode=40091, errmsg=Missing tmp_auth_code
+
+Kemungkinan penyebab:
+
+- Tidak ada authorization code sementara (`tmp_auth_code`) yang valid saat membuat authorization code persisten.
+- Pengguna tidak menyelesaikan tindakan otorisasi, sehingga kode sementara kosong.
+- Parameter tidak diteruskan dengan benar ke API pembuatan.
+
+> Solusi: Minta pengguna untuk melakukan otorisasi ulang, ambil `authCode` baru dari front end, dan kirimkan ke server untuk membuat authorization code persisten.
