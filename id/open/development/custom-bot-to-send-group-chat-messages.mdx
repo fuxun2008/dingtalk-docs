@@ -1,0 +1,146 @@
+---
+title: "Kirim pesan obrolan grup dengan Bot kustom"
+description: "Panduan lengkap mengirim pesan Obrolan Grup dengan Bot kustom DingTalk — mulai dari persyaratan, prasyarat, Panduan cepat, langkah-langkah, hingga FAQ untuk developer."
+---
+
+Dokumen ini menjelaskan cara mengirim pesan obrolan grup menggunakan Bot kustom.
+
+## Menetapkan persyaratan
+
+Sebelum memulai pengembangan, perhatikan bahwa dokumen ini membantu Anda mengirim pesan obrolan grup dengan memanggil API [Bot kustom mengirim pesan grup](/id/open/development/custom-robots-send-group-messages) melalui Webhook dari Bot kustom. Demo ini menggunakan metode Tanda tangani permintaan. Untuk memulai dengan cepat, jalankan contoh demo yang disediakan di bagian Panduan cepat. Ini memberi Anda pengalaman intuitif menggunakan Bot kustom.
+
+## Prasyarat
+
+1. Selesaikan prosedur [Buat Bot kustom](/id/open/dingstart/custom-bot-creation-and-installation).
+
+   > Pilih **Tanda tangani permintaan** sebagai pengaturan keamanan untuk Bot kustom. Untuk detailnya, lihat [Pengaturan keamanan Bot kustom](/id/open/dingstart/customize-robot-security-settings).
+2. Selesaikan prosedur [Dapatkan URL Webhook Bot kustom](/id/open/dingstart/obtain-the-webhook-address-of-a-custom-robot).
+3. Siapkan lingkungan pengembangan:
+
+   | **Lingkungan pengembangan** | **Deskripsi** |
+   | --- | --- |
+   | Java | - JDK 1.8 atau yang lebih baru terpasang - Maven 3 terpasang |
+   | Python | - Python 3 |
+
+## Panduan cepat
+
+1. Unduh contoh demo:
+
+   | **Contoh** | **Deskripsi** |
+   | --- | --- |
+   | Java | [custom-robot-group-message-quick-start-java.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/cvzdoy/custom-robot-group-message-quick-start-java.zip) |
+   | Python | [custom-robot-group-message-quick-start-python.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/qspdnf/custom-robot-group-message-quick-start-python.zip) |
+2. Jalankan contoh demo:
+
+   | **Tipe** | **Deskripsi** |
+   | --- | --- |
+   | Java | 1. Ubah parameter metode main di customRobotGroupMessage.java:  - CUSTOM_ROBOT_TOKEN: nilai access_token dari aplikasi bot. Untuk detailnya, lihat [Dapatkan URL Webhook Bot kustom](/id/open/dingstart/obtain-the-webhook-address-of-a-custom-robot).  **Catatan**  Masukkan hanya nilai access_token dari URL Webhook, bukan URL Webhook lengkap.  - SECRET: secret Tanda tangani permintaan pada pengaturan keamanan. Untuk detailnya, lihat [Pengaturan keamanan Bot kustom](/id/open/dingstart/customize-robot-security-settings). - (Opsional) USER_ID: userId dari pengguna. Untuk detailnya, lihat [User userId](/id/open/dingstart/basic-concepts-beta).  Grup Internal: Masukkan userId pengguna untuk mengaktifkan fitur @.  Obrolan Eksternal: Ketika bot memanggil OpenAPI untuk mengirim pesan, fitur @ tidak didukung. 2. Jalankan metode main.  3. Pesan yang dikirim oleh Bot kustom kemudian muncul di grup. |
+   | Python | 1. Di direktori file saat ini, jalankan perintah berikut: `python3 send_custom_robot_group_message.py --access_token="your custom robot token" --secret="your custom robot secret" --userid="you need @ group user's userid"`.  Ganti access_token dari Webhook bot, secret Tanda tangani permintaan dari bot, dan userid pengguna. Untuk cara mendapatkan parameter ini, lihat deskripsi di bagian Java.  2. Pesan yang dikirim oleh Bot kustom kemudian muncul di grup. |
+
+## Prosedur
+
+> Berikut adalah contoh Java. Untuk contoh Python, unduh demo di atas.
+
+1. Tambahkan dependensi ke file `pom.xml` proyek.
+
+   ```xml lines
+    <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>commons-codec</groupId>
+               <artifactId>commons-codec</artifactId>
+               <version>1.11</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Buat metode main dan jalankan.
+
+   ```java lines
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiRobotSendRequest;
+   import com.dingtalk.api.response.OapiRobotSendResponse;
+   import com.taobao.api.ApiException;
+   import org.apache.commons.codec.binary.Base64;
+
+   import javax.crypto.Mac;
+   import javax.crypto.spec.SecretKeySpec;
+   import java.io.UnsupportedEncodingException;
+   import java.net.URLEncoder;
+   import java.security.InvalidKeyException;
+   import java.security.NoSuchAlgorithmException;
+   import java.util.Arrays;
+
+   public class customRobotGroupMessage {
+
+       public static final String CUSTOM_ROBOT_TOKEN = "<your custom robot token>";
+
+       public static final String USER_ID= "<you need @ group user's userId>";
+
+       public static final String SECRET = "<your custom robot SECRET>";
+
+       public static void main(String[] args) {
+           try {
+               Long timestamp = System.currentTimeMillis();
+               System.out.println(timestamp);
+               String secret = SECRET;
+               String stringToSign = timestamp + "\n" + secret;
+               Mac mac = Mac.getInstance("HmacSHA256");
+               mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+               byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+               String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+               System.out.println(sign);
+
+               //Field sign dan timestamp harus ditambahkan ke URL permintaan. Jika tidak, terjadi error 310000.
+               DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send?sign="+sign+"&timestamp="+timestamp);
+               OapiRobotSendRequest req = new OapiRobotSendRequest();
+               /**
+                * Kirim pesan teks
+                */
+               //Definisikan konten teks
+               OapiRobotSendRequest.Text text = new OapiRobotSendRequest.Text();
+               text.setContent("DingTalk, where progress happens");
+               //Definisikan target @
+               OapiRobotSendRequest.At at = new OapiRobotSendRequest.At();
+               at.setAtUserIds(Arrays.asList(USER_ID));
+               //Atur tipe pesan
+               req.setMsgtype("text");
+               req.setText(text);
+               req.setAt(at);
+               OapiRobotSendResponse rsp = client.execute(req, CUSTOM_ROBOT_TOKEN);
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               e.printStackTrace();
+           } catch (UnsupportedEncodingException e) {
+               throw new RuntimeException(e);
+           } catch (NoSuchAlgorithmException e) {
+               throw new RuntimeException(e);
+           } catch (InvalidKeyException e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   Pesan yang dikirim oleh Bot kustom kemudian muncul di grup.
+
+## FAQ
+
+### Batas laju
+
+Untuk mencegah pengiriman pesan yang terlalu sering menurunkan kualitas pengalaman obrolan grup, batas laju untuk pesan yang dikirim oleh Bot kustom adalah sebagai berikut:
+
+### Setiap bot dapat mengirim maksimal 20 pesan per menit ke sebuah grup. Jika batas terlampaui, bot dibatasi lajunya selama 10 menit.
+
+> Jika Anda memiliki skenario dengan volume pesan yang besar, seperti peringatan pemantauan sistem, gabungkan pesan-pesan tersebut dan kirim sebagai ringkasan ke grup menggunakan pesan markdown.
+
+## Dokumen terkait
+
+- [Pengaturan keamanan Bot kustom](/id/open/dingstart/customize-robot-security-settings)
+- [Tipe pengiriman dan penerimaan pesan](/id/open/development/robot-message-type)
+- [Bot kustom mengirim pesan grup](/id/open/development/custom-robots-send-group-messages)

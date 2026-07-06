@@ -1,0 +1,111 @@
+---
+title: "Paginasi data"
+description: "DingTalk OpenAPI mendukung mode paginasi nextToken dan pageSize. Pilih sesuai API dan skenario untuk meningkatkan efisiensi pengambilan data serta menjaga stabilitas sistem."
+---
+
+DingTalk OpenAPI mendukung dua metode paginasi. API yang berbeda dapat menggunakan mekanisme paginasi yang berbeda. Pilih mode paginasi yang tepat berdasarkan dokumentasi API dan skenario bisnis tertentu untuk meningkatkan efisiensi pengambilan data, mengurangi beban sisi server, dan menjaga stabilitas sistem.
+
+## Cakupan dan izin yang berlaku
+
+Dokumen ini berlaku untuk jenis aplikasi berikut:
+
+- **Aplikasi internal**: Aplikasi yang dikembangkan oleh sebuah organisasi hanya untuk digunakan di dalam organisasi tersebut.
+- **Aplikasi perusahaan pihak ketiga**: Aplikasi yang dikembangkan oleh ISV (Independent Software Vendor) dan disediakan agar dapat diinstal serta digunakan oleh berbagai organisasi.
+- **Aplikasi personal pihak ketiga**: Aplikasi yang dikembangkan oleh penyedia solusi untuk pengguna DingTalk individu.
+
+### Izin
+
+Sebelum memanggil DingTalk OpenAPI mana pun, pastikan aplikasi memiliki izin API yang diperlukan.
+
+Di konsol DingTalk Open Platform, selesaikan langkah-langkah berikut:
+
+1. Buka halaman detail aplikasi yang dituju.
+2. Klik **Informasi dasar > Kredensial dan informasi dasar**.
+3. Di bagian "Kelola izin", tambahkan izin API yang diperlukan (seperti "Baca kontak" atau "Dapatkan daftar acara").
+
+Referensi: [Cara mengajukan izin API](/id/open/development/add-api-permission)
+
+### Prasyarat autentikasi
+
+Sebelum memanggil API mana pun, dapatkan `access_token` yang valid untuk autentikasi dan verifikasi izin.
+
+- Gunakan **App Key / App Secret** atau **Client ID / Client Secret** untuk mendapatkan `access_token`.
+- `access_token` biasanya berlaku selama 7.200 detik. Simpan di cache dan muat ulang secara berkala.
+- `access_token` yang tidak valid atau kedaluwarsa menyebabkan API mengembalikan kode error `40001` atau `40014`.
+
+Referensi: [Cara memanggil API](https://open.dingtalk.com/document/development/how-to-call-apis)
+
+## Metode 1: Paginasi nextToken
+
+Gunakan `nextToken` sebagai kredensial kueri untuk membaca data secara berkelanjutan. Permintaan pertama tidak memerlukan `nextToken`. Untuk permintaan berikutnya, salin nilai `nextToken` dari respons sebelumnya ke permintaan saat ini untuk mengambil batch data berikutnya.
+
+### Alur permintaan
+
+- Untuk permintaan pertama, jangan sertakan `nextToken`. Server mengembalikan batch data pertama beserta nilai `nextToken`.
+- Untuk permintaan berikutnya, sertakan nilai `nextToken` dari respons sebelumnya sebagai parameter kueri untuk mengambil halaman berikutnya.
+- Ketika respons tidak lagi berisi `nextToken`, berarti semua data telah diambil.
+
+Contoh: `GET /v1.0/edu/grades/{identifier}/classes?nextToken=bGFzdD0xMTExMExMSZdGhlcnBhcmFtPXh4eCYuLi4u&maxResults=20`
+
+### Istilah penting
+
+- `nextToken`: Kredensial string buram (opaque) yang dibuat oleh server dan menandai posisi konteks kueri saat ini. Klien harus meneruskannya apa adanya dan tidak boleh mengurai atau memodifikasinya.
+- `maxResults`: Jumlah entri maksimum yang disarankan oleh klien. Ini bukan nilai pasti. Jumlah aktual yang dikembalikan dapat lebih sedikit, bergantung pada batas sisi server atau jumlah data yang tersisa.
+
+### Catatan
+
+- Parameter `maxResults` membatasi jumlah maksimum catatan yang dikembalikan per permintaan. Jangan melebihi 500 untuk menghindari latensi respons.
+- Paginasi mendalam dapat menurunkan performa. Kombinasikan paginasi dengan filter jendela waktu untuk mengurangi volume data.
+
+### Skenario yang disarankan
+
+- Tugas sinkronisasi data (seperti sinkronisasi kontak atau pengambilan log)
+- Ekspor set data besar
+- Skenario dengan kebutuhan integritas data yang tinggi
+
+## Metode 2: Paginasi pageSize
+
+Metode ini menggunakan logika paginasi tradisional dan cocok untuk API daftar sisi front-end (seperti daftar pengguna, daftar departemen, dan formulir persetujuan). Metode ini mengontrol pemuatan data menggunakan nomor halaman dan ukuran halaman.
+
+### Alur permintaan
+
+- Untuk permintaan pertama, atur `pageNumber=1` dan tentukan jumlah catatan per halaman menggunakan `pageSize`.
+- Untuk setiap permintaan berikutnya, tingkatkan `pageNumber` hingga volume data yang dikembalikan kurang dari `pageSize`, yang biasanya menandakan halaman terakhir.
+
+### Catatan
+
+- Mulai panggilan pertama dengan `pageNumber=1` dan tingkatkan nomor halaman untuk setiap panggilan berikutnya.
+- Metode ini tidak cocok untuk pengambilan data dalam jumlah besar dengan frekuensi tinggi, karena dapat memengaruhi performa sisi server.
+
+### Istilah penting
+
+- `pageNumber`: Nomor halaman permintaan saat ini, dimulai dari 1.
+- `pageSize`: Jumlah entri yang dikembalikan per halaman. Rentang yang disarankan adalah 10 hingga 200.
+
+### Skenario yang disarankan
+
+- Integrasi dengan kontrol paginasi front-end (seperti paginasi tabel)
+- Menampilkan data statis berskala kecil
+- Penjelajahan halaman demi halaman yang dipicu oleh tindakan pengguna
+
+## Rekomendasi dan praktik terbaik
+
+| **Dimensi** | **Metode nextToken** | **Metode pageSize** |
+| --- | --- | --- |
+| **Konsistensi data** | Tinggi (berbasis cursor) | Sedang (berbasis offset, dipengaruhi oleh penulisan) |
+| **Volume data yang sesuai** | Set data besar (puluhan ribu atau lebih) | Set data kecil hingga sedang (dalam ribuan) |
+| **Overhead jaringan** | Lebih rendah (mendukung maxResults yang lebih besar) | Sedang (dibatasi oleh batas atas pageSize yang disarankan) |
+| **Kompleksitas implementasi** | Sedang (memerlukan pengelolaan status token) | Rendah (peningkatan nomor halaman yang sederhana) |
+| **Skenario umum** | Sinkronisasi backend, migrasi data | Tampilan front-end, kueri interaktif |
+
+### Panduan pemilihan
+
+- **API sinkronisasi inkremental** (seperti penarikan langganan peristiwa atau pengambilan log perubahan): Gunakan **metode nextToken** untuk memastikan data tidak berulang atau terlewat.
+- **API tampilan daftar** (seperti daftar karyawan atau daftar formulir persetujuan): Gunakan **metode pageSize** agar mudah diintegrasikan dengan komponen paginasi front-end.
+
+### Ringkasan praktik terbaik
+
+- Untuk API sinkronisasi inkremental, gunakan **Metode 1: Paginasi nextToken** untuk memastikan data tidak berulang atau terlewat.
+- Untuk API tampilan daftar, gunakan **Metode 2: Paginasi pageSize** agar mudah diintegrasikan dengan kontrol paginasi front-end.
+- Terapkan mekanisme coba-lagi otomatis pada klien. Jika permintaan gagal karena `nextToken` yang tidak valid, kembali ke permintaan awal dan ambil kembali datanya.
+- Hindari nilai `maxResults` atau `pageSize` yang terlalu besar. Rentang yang disarankan adalah 10 hingga 200 untuk menyeimbangkan efisiensi transmisi jaringan dan kecepatan respons.

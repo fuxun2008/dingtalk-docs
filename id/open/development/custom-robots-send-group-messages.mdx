@@ -1,0 +1,300 @@
+---
+title: "Kirim obrolan grup menggunakan bot kustom"
+description: "Panggil API ini untuk mengirim pesan ke obrolan grup tertentu menggunakan bot kustom di DingTalk, lengkap dengan catatan penggunaan, parameter permintaan, dan referensi bidang respons."
+---
+
+Panggil API ini untuk mengirim obrolan grup menggunakan bot kustom.
+
+## Deskripsi panggilan API
+
+- API ini memungkinkan bot kustom mengirim obrolan di Grup Internal dan Grup Standar dalam organisasi Anda. Sebelum memanggil API ini, buat bot kustom terlebih dahulu. Untuk detailnya, lihat Mengembangkan aplikasi bot.
+- Jika Anda memiliki obrolan dalam jumlah besar untuk dikirim (misalnya, peringatan pemantauan sistem), konsolidasikan informasi tersebut dan kirim ke grup sebagai ringkasan dalam obrolan markdown.
+- Jika bot kustom menggunakan [pengaturan keamanan bot kustom](/id/open/dingstart/customize-robot-security-settings), tambahkan parameter `timestamp` dan `sign` saat memanggil API ini. Contoh:
+
+  ```text
+  https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+  ```
+- **Setiap bot dapat mengirim hingga 20 obrolan per menit ke sebuah grup. Melebihi 20 obrolan akan memicu batas laju selama 10 menit.**
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://oapi.dingtalk.io/robot/send |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-qyapi_base-Izin dasar untuk memanggil API perusahaan |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | BE3xxxx | Kredensial yang digunakan bot kustom untuk memanggil API.  Nilai `access_token` dari URL Webhook yang dihasilkan setelah bot kustom dipasang. Untuk detailnya, lihat [Mendapatkan URL Webhook bot kustom](/id/open/dingstart/obtain-the-webhook-address-of-a-custom-robot). |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| msgtype | String | Ya | text | Tipe obrolan. Untuk tipe obrolan yang didukung oleh bot kustom, lihat Tipe obrolan yang didukung oleh bot kustom. |
+| msgUuid | String | Tidak | 123 | Kunci idempotensi untuk obrolan, digunakan untuk mengontrol idempotensi.  **Catatan**  Kasus penggunaan umum: ketika panggilan API mengalami timeout atau mengembalikan error yang tidak diketahui, coba ulang dengan `msgUuid` yang sama untuk menghindari pengiriman obrolan ganda. |
+| text | Object | Tidak |  | Obrolan teks. |
+| content | String | Tidak | DingTalk mewujudkan kemajuan | Konten obrolan teks. |
+| at | Object | Tidak |  | Informasi tentang anggota grup yang disebut dengan @. |
+| isAtAll | Boolean | Tidak | false | Apakah menyebut @Semua Orang.   - true: Ya - false: Tidak |
+| atMobiles | String[] | Tidak | ["15xxx,18xxx"] | Nomor ponsel anggota grup yang akan disebut dengan @. |
+| atUserIds | String[] | Tidak | ["user001","user002"] | `userId` anggota grup yang akan disebut dengan @.  **Catatan**  Saat menyebut anggota grup dengan @, Anda dapat menyebut hingga 50 anggota. |
+| link | Object | Tidak |  | Obrolan tautan. |
+| messageUrl | String | Tidak | https://www.dingtalk.io | URL yang dialihkan saat obrolan diketuk. |
+| title | String | Tidak | Ini adalah judul | Judul obrolan tautan. |
+| picUrl | String | Tidak | @aubHxxxxx | URL gambar dalam obrolan tautan. Kami menyarankan penggunaan API [Mengunggah file media](/id/open/development/upload-media-files) untuk mendapatkannya. |
+| text | String | Tidak | Konten obrolan tautan | Konten obrolan tautan. |
+| markdown | Object | Tidak |  | Obrolan markdown. |
+| text | String | Tidak | konten obrolan markdown | Konten teks obrolan markdown. |
+| title | String | Tidak | Judul yang ditampilkan di daftar obrolan | Judul yang ditampilkan di daftar obrolan, bukan judul isi obrolan. |
+| actionCard | Object | Tidak |  | Obrolan actionCard. |
+| hideAvatar | String | Tidak | 1 | Apakah menampilkan foto profil pengirim.   - 0: Tampilkan foto profil pengirim - 1: Sembunyikan foto profil pengirim |
+| btnOrientation | String | Tidak | 1 | Tata letak tombol dalam obrolan.   - 0: Tombol disusun vertikal - 1: Tombol disusun horizontal |
+| singleURL | String | Tidak | https://www.dingtalk.io | URL yang dipicu saat tombol `singleTitle` diketuk.  **Catatan**  Wajib jika obrolan hanya berisi satu tombol. |
+| singleTitle | String | Tidak | Ini adalah tombol | Opsi tombol tunggal. (Jika ini dan `singleURL` diatur, `btns` tidak berlaku.)  **Catatan**  Wajib jika obrolan hanya berisi satu tombol. |
+| text | String | Tidak | Konten obrolan | Konten isi obrolan actionCard. Sintaks markdown didukung. |
+| title | String | Tidak | Judul yang ditampilkan di daftar obrolan | Judul yang ditampilkan di daftar obrolan, bukan judul isi obrolan. |
+| btns | Object[] | Tidak |  | Daftar informasi tombol.  **Catatan**  Wajib jika obrolan berisi lebih dari satu tombol. |
+| actionURL | String | Tidak | https://www.dingtalk.io | URL yang dialihkan oleh tombol. |
+| title | String | Tidak | Ini adalah tombol | Teks yang ditampilkan pada tombol. |
+| feedCard | Object | Tidak |  | Obrolan feedCard. |
+| links | Object[] | Tidak |  | Daftar konten obrolan feedCard. |
+| picURL | String | Tidak | @aubHxxxxx | URL gambar untuk setiap item dalam obrolan feedCard. Kami menyarankan penggunaan API [Mengunggah file media](/id/open/development/upload-media-files) untuk mendapatkannya. |
+| messageURL | String | Tidak | https://www.dingtalk.io | URL pengalihan untuk setiap item dalam obrolan feedCard. |
+| title | String | Tidak | Judul obrolan | Judul setiap item dalam obrolan feedCard. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/robot/send" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=c370586xxxxd65d506' \
+-d 'actionCard=null' \
+-d 'at=null' \
+-d 'feedCard=null' \
+-d 'link=null' \
+-d 'markdown=null' \
+-d 'msgtype=text' \
+-d 'text=null'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send");
+OapiRobotSendRequest req = new OapiRobotSendRequest();
+req.setMsgtype("text");
+Text obj1 = new Text();
+obj1.setContent("123");
+req.setText(obj1);
+At obj2 = new At();
+obj2.setIsAtAll(false);
+obj2.setAtMobiles("");
+obj2.setAtUserIds("");
+req.setAt(obj2);
+Link obj3 = new Link();
+obj3.setMessageUrl("1");
+obj3.setTitle("1");
+obj3.setPicUrl("1");
+obj3.setText("1");
+req.setLink(obj3);
+Markdown obj4 = new Markdown();
+obj4.setText("1");
+obj4.setTitle("1");
+req.setMarkdown(obj4);
+Actioncard obj5 = new Actioncard();
+obj5.setHideAvatar("1");
+obj5.setBtnOrientation("1");
+obj5.setSingleURL("1");
+obj5.setSingleTitle("1");
+obj5.setText("1");
+obj5.setTitle("1");
+List<Btns> list7 = new ArrayList<Btns>();
+Btns obj8 = new Btns();
+list7.add(obj8);
+obj8.setActionURL("1");
+obj8.setTitle("1");
+obj5.setBtns(list7);
+req.setActionCard(obj5);
+Feedcard obj9 = new Feedcard();
+List<Links> list11 = new ArrayList<Links>();
+Links obj12 = new Links();
+list11.add(obj12);
+obj12.setPicURL("1");
+obj12.setMessageURL("1");
+obj12.setTitle("1");
+obj9.setLinks(list11);
+req.setFeedCard(obj9);
+OapiRobotSendResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+import dingtalk.api
+
+req=dingtalk.api.OapiRobotSendRequest("https://oapi.dingtalk.io/robot/send")
+
+req.msgtype="text"
+req.text=""
+req.at=""
+req.link=""
+req.markdown=""
+req.actionCard=""
+req.feedCard=""
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiRobotSendRequest;
+$req->setMsgtype("text");
+$text = new Text;
+$text->content="123";
+$req->setText($text);
+$at = new At;
+$at->isAtAll="false";
+$at->atMobiles="[]";
+$at->atUserIds="[]";
+$req->setAt($at);
+$link = new Link;
+$link->messageUrl="1";
+$link->title="1";
+$link->picUrl="1";
+$link->text="1";
+$req->setLink($link);
+$markdown = new Markdown;
+$markdown->text="1";
+$markdown->title="1";
+$req->setMarkdown($markdown);
+$actionCard = new Actioncard;
+$actionCard->hideAvatar="1";
+$actionCard->btnOrientation="1";
+$actionCard->singleURL="1";
+$actionCard->singleTitle="1";
+$actionCard->text="1";
+$actionCard->title="1";
+$btns = new Btns;
+$btns->actionURL="1";
+$btns->title="1";
+$actionCard->btns = array($btns);
+$req->setActionCard($actionCard);
+$feedCard = new Feedcard;
+$links = new Links;
+$links->picURL="1";
+$links->messageURL="1";
+$links->title="1";
+$feedCard->links = array($links);
+$req->setFeedCard($feedCard);
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/robot/send");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/robot/send");
+OapiRobotSendRequest req = new OapiRobotSendRequest();
+req.Msgtype = "text";
+OapiRobotSendRequest.TextDomain obj1 = new OapiRobotSendRequest.TextDomain();
+obj1.Content = "123";
+req.Text_ = obj1;
+OapiRobotSendRequest.AtDomain obj2 = new OapiRobotSendRequest.AtDomain();
+obj2.IsAtAll = false;
+obj2.AtMobiles = "";
+obj2.AtUserIds = "";
+req.At_ = obj2;
+OapiRobotSendRequest.LinkDomain obj3 = new OapiRobotSendRequest.LinkDomain();
+obj3.MessageUrl = "1";
+obj3.Title = "1";
+obj3.PicUrl = "1";
+obj3.Text = "1";
+req.Link_ = obj3;
+OapiRobotSendRequest.MarkdownDomain obj4 = new OapiRobotSendRequest.MarkdownDomain();
+obj4.Text = "1";
+obj4.Title = "1";
+req.Markdown_ = obj4;
+OapiRobotSendRequest.ActioncardDomain obj5 = new OapiRobotSendRequest.ActioncardDomain();
+obj5.HideAvatar = "1";
+obj5.BtnOrientation = "1";
+obj5.SingleURL = "1";
+obj5.SingleTitle = "1";
+obj5.Text = "1";
+obj5.Title = "1";
+List<OapiRobotSendRequest.BtnsDomain> list7 = new List<OapiRobotSendRequest.BtnsDomain>();
+OapiRobotSendRequest.BtnsDomain obj8 = new OapiRobotSendRequest.BtnsDomain();
+list7.Add(obj8);
+obj8.ActionURL = "1";
+obj8.Title = "1";
+obj5.Btns= list7;
+req.ActionCard_ = obj5;
+OapiRobotSendRequest.FeedcardDomain obj9 = new OapiRobotSendRequest.FeedcardDomain();
+List<OapiRobotSendRequest.LinksDomain> list11 = new List<OapiRobotSendRequest.LinksDomain>();
+OapiRobotSendRequest.LinksDomain obj12 = new OapiRobotSendRequest.LinksDomain();
+list11.Add(obj12);
+obj12.PicURL = "1";
+obj12.MessageURL = "1";
+obj12.Title = "1";
+obj9.Links= list11;
+req.FeedCard_ = obj9;
+OapiRobotSendResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| errmsg | String | ok | Deskripsi kode error. |
+| errcode | Number | 0 | Kode error. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode":"0",
+  "errmsg":"ok"
+}
+```
+
+### Kode error
+
+Jika error dikembalikan saat memanggil API ini, cari solusinya dalam dokumentasi [Kode error global](/id/open/development/server-api-error-codes-1) berdasarkan pesan error.
+
+| Kode error (errorcode) | Deskripsi error (errmsg) | Solusi |
+| --- | --- | --- |
+| -1 | Sistem sibuk | Coba lagi nanti |
+| 40035 | Parameter json hilang | Tambahkan json obrolan |
+| 43004 | Content-Type HEADER HTTP tidak valid | Atur parameter obrolan yang spesifik |
+| 400013 | Grup telah dibubarkan | Kirim obrolan ke grup lain |
+| 400101 | access_token tidak ada | Pastikan access_token dieja dengan benar |
+| 400102 | Bot dinonaktifkan | Hubungi admin untuk mengaktifkan bot |
+| 400105 | Tipe obrolan tidak didukung | Gunakan tipe obrolan yang didukung dalam dokumentasi |
+| 400106 | Bot tidak ada | Pastikan bot ada di dalam grup |
+| 410100 | Batas laju dipicu karena pengiriman terlalu cepat | Kurangi laju pengiriman |
+| 430101 | Berisi tautan eksternal yang tidak aman | Pastikan konten yang dikirim sesuai ketentuan |
+| 430102 | Berisi teks yang tidak pantas | Pastikan konten yang dikirim sesuai ketentuan |
+| 430103 | Berisi gambar yang tidak pantas | Pastikan konten yang dikirim sesuai ketentuan |
+| 430104 | Berisi konten yang tidak pantas | Pastikan konten yang dikirim sesuai ketentuan |
+
+Ketika error berikut terjadi, obrolan gagal divalidasi. Periksa pengaturan keamanan bot.
+
+| Kode error (errorcode) | Deskripsi error (errmsg) | Solusi |
+| --- | --- | --- |
+| 310000 | - keywords not in content - invalid timestamp - sign not match - ip X.X.X.X not in whitelist | - Konten obrolan tidak mengandung kata kunci apa pun - Stempel waktu tidak valid - Tanda tangan tidak cocok - Alamat IP tidak ada dalam daftar izin |

@@ -1,0 +1,230 @@
+---
+title: "Buat, perbarui, cari, dan hapus grup ruang rapat"
+description: "Gunakan aplikasi internal dan API ruang rapat pintar DingTalk untuk membuat, memperbarui, dan mencari grup ruang rapat — lengkap dengan hasil yang diharapkan, prasyarat, kredensial, dan izin."
+---
+
+Dokumen ini menjelaskan cara membuat aplikasi internal dan menggunakan API yang disediakan oleh Ruang rapat pintar untuk membuat, memperbarui, mencari, dan menghapus grup ruang rapat.
+
+## Hasil yang diharapkan
+
+Hasil grup ruang rapat ditampilkan di bawah ini:
+
+## Gambaran umum proses
+
+Prasyarat: Selesaikan proses [Pembuatan dan konfigurasi aplikasi](/id/open/dingstart/create-application).
+
+Langkah 1: Dapatkan Kredensial aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Ajukan izin API untuk API Ruang rapat pintar.
+
+Langkah 3: Dapatkan Kredensial akses aplikasi dengan mengikuti [Dapatkan access token aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app). Saat memanggil API, access token digunakan untuk mengautentikasi pemanggil.
+
+Langkah 4: Panggil API ruang rapat:
+
+1. Panggil Server API [Buat grup ruang rapat](/id/open/development/create-meeting-room-groups) dan dapatkan bidang `result` dari respons, yang merupakan ID grup ruang rapat.
+2. Gunakan ID grup ruang rapat untuk memanggil Server API [Perbarui grup ruang rapat](/id/open/development/update-meeting-room-groups) guna memperbarui informasi grup ruang rapat.
+3. Panggil Server API [Cari daftar grup ruang rapat](/id/open/development/query-meeting-rooms-groups) untuk mengambil daftar grup ruang rapat.
+4. Gunakan ID grup ruang rapat untuk memanggil Server API [Cari grup ruang rapat](/id/open/development/query-meeting-room-groups) guna mengambil informasi rinci tentang satu grup ruang rapat.
+5. Gunakan ID grup ruang rapat untuk memanggil Server API [Hapus grup ruang rapat](/id/open/development/delete-a-conference-room-group) guna menghapus grup ruang rapat.
+
+## Prasyarat
+
+Selesaikan proses [Pembuatan dan konfigurasi aplikasi](/id/open/dingstart/create-application).
+
+## Langkah 1: Dapatkan Kredensial aplikasi
+
+1. Pilih aplikasi target dan buka halaman detail aplikasi. Klik **Basic Information** > **Credentials and Basic Information**.
+2. Dapatkan client ID dan Client Secret.
+
+## Langkah 2: Tambahkan izin API
+
+Klik **Development Configuration** > **Kelola izin**. Pada kotak pencarian izin, masukkan `VideoConference.Conference.Write` dan `VideoConference.Conference.Read` secara berurutan, lalu ajukan izinnya.
+
+## Langkah 3: Dapatkan access token aplikasi
+
+<Warning>
+Untuk perbedaan antara versi Server API, lihat perbandingan API lama vs. API baru. API berikut semuanya menggunakan Server API. Untuk unduhan SDK, lihat halaman unduh SDK sisi server.
+</Warning>
+
+Gunakan client ID dan Client Secret yang diperoleh pada Langkah 1 untuk mendapatkan access token aplikasi dengan mengikuti [Dapatkan access token aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Langkah 4: Panggil API grup ruang rapat
+
+1. Panggil Server API [Buat grup ruang rapat](/id/open/development/create-meeting-room-groups) dan dapatkan bidang `result` dari respons, yang merupakan ID grup ruang rapat.
+
+   ```java lines
+   public void createRoomsGroups() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomGroupHeaders createMeetingRoomGroupHeaders = new com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomGroupHeaders();
+           createMeetingRoomGroupHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomGroupRequest createMeetingRoomGroupRequest = new com.aliyun.dingtalkrooms_1_0.models.CreateMeetingRoomGroupRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE")
+                   .setGroupName("Grup Pertama")
+                   .setParentGroupId(0L);
+           try {
+               CreateMeetingRoomGroupResponse meetingRoomGroupWithOptions = client.createMeetingRoomGroupWithOptions(createMeetingRoomGroupRequest, createMeetingRoomGroupHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(meetingRoomGroupWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. Gunakan ID grup ruang rapat untuk memanggil Server API [Perbarui grup ruang rapat](/id/open/development/update-meeting-room-groups) guna memperbarui informasi grup ruang rapat.
+
+   ```java lines
+    public void updateRoomsGroups() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomGroupHeaders updateMeetingRoomGroupHeaders = new com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomGroupHeaders();
+           updateMeetingRoomGroupHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomGroupRequest updateMeetingRoomGroupRequest = new com.aliyun.dingtalkrooms_1_0.models.UpdateMeetingRoomGroupRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE")
+                   .setGroupName("Grup Pertama Saya")
+                   .setGroupId(39L);
+           try {
+               UpdateMeetingRoomGroupResponse updateMeetingRoomGroupResponse = client.updateMeetingRoomGroupWithOptions(updateMeetingRoomGroupRequest, updateMeetingRoomGroupHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(updateMeetingRoomGroupResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+3. Panggil Server API [Cari daftar grup ruang rapat](/id/open/development/query-meeting-rooms-groups) untuk mengambil daftar grup ruang rapat.
+
+   ```java lines
+    public void RoomsGroupsList() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupListHeaders queryMeetingRoomGroupListHeaders = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupListHeaders();
+           queryMeetingRoomGroupListHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupListRequest queryMeetingRoomGroupListRequest = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupListRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE");
+           try {
+               QueryMeetingRoomGroupListResponse queryMeetingRoomGroupListResponse = client.queryMeetingRoomGroupListWithOptions(queryMeetingRoomGroupListRequest, queryMeetingRoomGroupListHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryMeetingRoomGroupListResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+4. Gunakan ID grup ruang rapat untuk memanggil Server API [Cari grup ruang rapat](/id/open/development/query-meeting-room-groups) guna mengambil informasi rinci tentang satu grup ruang rapat.
+
+   ```java lines
+   public void RoomsGroupsInfo() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupHeaders queryMeetingRoomGroupHeaders = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupHeaders();
+           queryMeetingRoomGroupHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupRequest queryMeetingRoomGroupRequest = new com.aliyun.dingtalkrooms_1_0.models.QueryMeetingRoomGroupRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE");
+           try {
+               QueryMeetingRoomGroupResponse queryMeetingRoomGroupResponse = client.queryMeetingRoomGroupWithOptions("39", queryMeetingRoomGroupRequest, queryMeetingRoomGroupHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryMeetingRoomGroupResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+5. Gunakan ID grup ruang rapat untuk memanggil Server API [Hapus grup ruang rapat](/id/open/development/delete-a-conference-room-group) guna menghapus grup ruang rapat.
+
+### Catatan
+
+   Grup ruang rapat tidak dapat dihapus jika masih berisi ruang rapat.
+
+   ```java lines
+    public void  deleteRoomsGroups() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkrooms_1_0.Client client = new com.aliyun.dingtalkrooms_1_0.Client(config);
+           com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomGroupHeaders deleteMeetingRoomGroupHeaders = new com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomGroupHeaders();
+           deleteMeetingRoomGroupHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomGroupRequest deleteMeetingRoomGroupRequest = new com.aliyun.dingtalkrooms_1_0.models.DeleteMeetingRoomGroupRequest()
+                   .setUnionId("E9CS6X*******eN7QiEiE");
+           try {
+               DeleteMeetingRoomGroupResponse deleteMeetingRoomGroupResponse = client.deleteMeetingRoomGroupWithOptions("40", deleteMeetingRoomGroupRequest, deleteMeetingRoomGroupHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(deleteMeetingRoomGroupResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // Objek err berisi properti code dan message, yang membantu developer menemukan issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```

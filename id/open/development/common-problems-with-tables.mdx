@@ -1,0 +1,145 @@
+---
+title: "FAQ"
+description: "Jawaban pertanyaan umum seputar onboarding dan penggunaan API DingTalk Spreadsheet, termasuk berbagai cara mendapatkan workbookId untuk integrasi API."
+---
+
+## Onboarding
+
+### Cara mendapatkan workbookId sebuah Spreadsheet
+
+Setiap DingTalk Spreadsheet memiliki `workbookId` yang unik. Anda dapat memperolehnya dengan cara berikut:
+
+- **Dari URL Spreadsheet**: Buka Spreadsheet. ID Dokumen yang terdapat dalam URL adalah `workbookId`.
+
+- **Dari informasi dokumen**: Di sudut kiri atas Spreadsheet, klik **Menu** → **Spreadsheet** → **Informasi Dokumen**. ID Dokumen yang ditampilkan di sana adalah `workbookId`.
+
+- **Melalui Knowledge Base API**: Panggil API [Get node](/id/open/development/get-knowledge-base-acquisition-node). `nodeId` (`dentryUuid`) yang dikembalikan adalah `workbookId`.
+
+### Cara mendapatkan operatorId
+
+`operatorId` adalah `unionId` dari operator. Peroleh dengan cara berikut:
+
+1. **Dapatkan userId berdasarkan nomor telepon**: Panggil API [Query users by phone number](/id/open/development/query-users-by-phone-number).
+2. **Dapatkan unionId berdasarkan userId**: Panggil API [Query user details](/id/open/development/query-user-details). `unionId` yang dikembalikan adalah `operatorId`.
+
+<Warning>
+Anda mungkin perlu mengajukan izin **Kontak** di aplikasi Anda sebelum panggilan pertama. Setelah memperoleh `operatorId`, simpan (misalnya sebagai variabel lingkungan) agar tidak perlu mengambilnya melalui API setiap kali.
+</Warning>
+
+### Apa yang harus dilakukan saat access token kedaluwarsa
+
+Access token berlaku selama **7.200 detik (2 jam)**. Setelah kedaluwarsa, panggil kembali API [Get the access token of an internal app](/id/open/development/obtain-the-access-token-of-an-internal-app) untuk memperoleh token baru.
+
+Kami menyarankan menerapkan caching token dan mekanisme muat ulang otomatis di aplikasi Anda:
+
+- Simpan token beserta waktu kedaluwarsanya di cache.
+- Muat ulang token secara proaktif 5 menit sebelumnya sebelum kedaluwarsa.
+- Saat API mengembalikan error token tidak valid, segera muat ulang dan coba lagi.
+
+---
+
+### Cara mengatasi error "The operator has no permission" saat memanggil API
+
+Error ini menunjukkan bahwa pengguna yang diidentifikasi oleh `operatorId` tidak memiliki izin untuk mengoperasikan Spreadsheet target. Periksa hal berikut:
+
+- **Apakah pengguna memiliki akses ke Spreadsheet**: Pastikan pengguna telah ditambahkan sebagai Kolaborator Spreadsheet, atau Knowledge Base yang menampung Spreadsheet telah memberikan izin kepada pengguna.
+- **Apakah tipe izin sesuai**:
+
+  - Operasi baca seperti `GetAllSheets`, `GetSheet`, dan `GetRange` memerlukan izin `Document.Workbook.Read`.
+  - Operasi tulis seperti `AppendRows`, `UpdateRange`, dan `CreateSheet` memerlukan izin `Document.Workbook.Write`.
+- **Apakah aplikasi telah mengajukan izin yang diperlukan**: Di Kelola Aplikasi pada [DingTalk Open Platform](https://open-dev.dingtalk.io/), verifikasi bahwa scope izin terkait telah diajukan dan disetujui.
+
+---
+
+## Penggunaan API
+
+### Dapatkah parameter sheetId menerima nama Lembar Kerja
+
+Ya. Parameter `sheetId` menerima **ID** maupun **nama (judul)** Lembar Kerja. Contoh:
+
+- Kirim ID: `Sheet1`, yang dibuat oleh sistem.
+- Kirim nama: `Sales Data`, yang merupakan judul Lembar Kerja yang ditentukan pengguna.
+
+> **Rekomendasi**: Gunakan ID Lembar Kerja bila memungkinkan, karena nama dapat diubah oleh pengguna. Anda dapat memanggil API `GetAllSheets` untuk memperoleh ID dan nama semua Lembar Kerja.
+
+---
+
+### Di mana data ditulis saat AppendRows menambahkan data
+
+`AppendRows` secara otomatis menemukan **baris terakhir yang berisi data** di Lembar Kerja dan menambahkan baris baru di bawahnya.
+
+- Jika Lembar Kerja kosong, data ditulis mulai dari baris pertama.
+- Jumlah Kolom yang ditambahkan harus sesuai dengan data yang ada agar data tetap selaras.
+
+---
+
+### Apa format rangeAddress saat menggunakan UpdateRange untuk memperbarui Sel
+
+`rangeAddress` menggunakan **notasi A1**. Format umum tercantum di bawah ini:
+
+| Format | Arti | Contoh |
+| --- | --- | --- |
+| A1 | Sel tunggal | Baris 1, Kolom 1. |
+| A1:C3 | Rentang berbentuk persegi | 9 Sel dari A1 sampai C3. |
+| A:A | Seluruh Kolom | Semua Sel di Kolom A. |
+| 1:1 | Seluruh Rekam | Semua Sel di Baris 1. |
+| A1:ZZ99999 | Rentang besar | Digunakan untuk operasi seluruh sheet. |
+
+---
+
+### Apa perbedaan antara GetRange dan UpdateRange
+
+| Item | GetRange | UpdateRange |
+| --- | --- | --- |
+| Metode HTTP | GET | PUT |
+| Fungsi | Membaca nilai, gaya, dan Atribut lain dari rentang Sel | Memperbarui nilai, gaya, dan Atribut lain dari rentang Sel |
+| Izin yang diperlukan | `Document.Workbook.Read` | `Document.Workbook.Write` |
+| Dokumentasi | [Get Cell properties](/id/open/development/get-cell-properties) | [Update Cell properties](/id/open/development/update-cell-properties) |
+
+`GetRange` cocok untuk memverifikasi hasil setelah menulis data, atau untuk membaca data Spreadsheet dalam alur Otomatisasi untuk diproses lebih lanjut. Kedua API menggunakan parameter `rangeAddress` yang sama (notasi A1) untuk menentukan rentang Sel target.
+
+---
+
+### Cara memecahkan masalah error invalidRequest.resource.notFound
+
+Error ini menunjukkan bahwa resource yang diminta tidak ada. Penyebab umum:
+
+| Skenario | Kemungkinan penyebab | Solusi |
+| --- | --- | --- |
+| workbookId tidak valid | Spreadsheet telah dihapus, atau ID salah ketik | Dapatkan kembali workbookId. |
+| sheetId tidak valid | Lembar Kerja telah dihapus, atau namanya telah diubah | Panggil `GetAllSheets` untuk mendapatkan Daftar Lembar Kerja terbaru. |
+| rangeAddress tidak valid | Alamat Sel salah format atau di luar rentang | Periksa format notasi A1 dan pastikan berada dalam rentang Spreadsheet. |
+
+### Apa saja batasan penggunaan DingTalk Spreadsheet API
+
+| Batasan | Nilai | Deskripsi |
+| --- | --- | --- |
+| Batas laju | Disarankan ≤ 100 panggilan/menit | Frekuensi panggilan satu aplikasi terhadap Spreadsheet yang sama. |
+| AppendRows per panggilan | Disarankan ≤ 5.000 baris | Melebihi ini dapat menyebabkan timeout. |
+| Panjang konten Sel | Sesuai batas Spreadsheet | Teks yang terlalu panjang dapat terpotong. |
+| Masa berlaku access token | 7.200 detik (2 jam) | Token baru harus diperoleh setelah kedaluwarsa. |
+
+### Cara menangani kegagalan panggilan API dalam kode
+
+Kami menyarankan strategi penanganan error berikut:
+
+- **Muat ulang otomatis saat token kedaluwarsa**: Tangkap error token tidak valid, muat ulang token secara otomatis, dan coba lagi.
+- **Coba lagi saat pembatasan laju**: Saat error 429 dikembalikan, tunggu sebelum mencoba lagi (kami menyarankan strategi exponential backoff).
+- **Penanganan idempotensi**: Untuk operasi tulis seperti `AppendRows`, perhatikan bahwa percobaan ulang dapat menyebabkan penulisan data ganda. Sertakan pengidentifikasi unik dalam data dan verifikasi dengan `GetRange` setelah menulis.
+- **Penanganan timeout**: Tetapkan timeout yang wajar untuk permintaan jaringan (kami menyarankan 30 detik), dan coba lagi setelah timeout.
+
+```python
+import time
+
+def call_api_with_retry(func, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except TokenExpiredError:
+            refresh_token()
+        except RateLimitError:
+            time.sleep(2 ** attempt)
+        except TimeoutError:
+            time.sleep(1)
+    raise Exception("The API call failed. The maximum number of retries has been reached.")
+```

@@ -1,0 +1,88 @@
+---
+title: "Izin sensitif untuk aplikasi"
+description: "Pelajari konsep izin sensitif di DingTalk Open Platform — alur integrasi developer, pengalaman otorisasi admin, dan FAQ untuk mengelola akses ke API seperti penulisan Kontak dan operasi AI Table."
+---
+
+Jika aplikasi Anda perlu memanggil API sensitif yang melibatkan data inti organisasi (seperti operasi penulisan Kontak atau baca/tulis AI Table), aplikasi harus melalui alur otorisasi izin yang ketat. Artikel ini secara sistematis memperkenalkan konsep izin sensitif, alur integrasi developer, pengalaman otorisasi admin, dan FAQ untuk membantu Anda mengelola izin sensitif dengan lancar.
+
+## Gambaran konsep
+
+### Apa itu izin sensitif
+
+Di DingTalk Open Platform, beberapa izin didefinisikan sebagai "izin sensitif" karena melibatkan data inti organisasi atau tindakan berisiko tinggi. Sebuah aplikasi harus mengajukan izin ini secara terpisah dan memperoleh otorisasi eksplisit dari Admin organisasi sebelum dapat memanggil OpenAPI terkait.
+
+Izin sensitif utama yang saat ini tersedia meliputi:
+
+<Note>
+Hanya pengguna dengan peran tertentu yang dapat memberikan atau mencabut izin sensitif. Misalnya, "Admin Kontak Seluruh Organisasi" adalah satu-satunya peran yang dapat memberikan izin `qyapi_manage_addresslist`.
+</Note>
+
+| **Kode cakupan izin** | **Deskripsi** | **Peran yang memenuhi syarat** |
+| --- | --- | --- |
+| qyapi_manage_addresslist | Izin pengelolaan data Kontak | Admin Kontak Seluruh Organisasi |
+| Notable.Base.Write | Izin tulis DingTalk AI Table. **Penting:** Cakupan izin AI Table sedang diperluas. Pengajuan baru untuk sementara tidak didukung. Untuk kebutuhan khusus, hubungi tim produk. | Admin DingTalk Docs (Knowledge Base) |
+| Notable.Base.Read | Izin baca DingTalk AI Table. **Penting:** Cakupan izin AI Table sedang diperluas. Pengajuan baru untuk sementara tidak didukung. Untuk kebutuhan khusus, hubungi tim produk. | Admin DingTalk Docs (Knowledge Base) |
+
+### Apa itu Admin Kontak Seluruh Organisasi
+
+`qyapi_manage_addresslist` adalah cakupan izin sensitif yang digunakan untuk memanggil API penulisan Kontak. Hanya "Admin Kontak Seluruh Organisasi" yang dapat memberikannya.
+
+Peran ini harus memenuhi kedua syarat berikut:
+
+- Memiliki izin dasar pengelolaan Kontak
+- Mengelola seluruh organisasi
+
+Untuk melihat Admin Kontak Seluruh Organisasi, buka [backend OA](https://oa.dingtalk.io) dan klik Kelola izin.
+
+### Suite otorisasi terpadu dan authCode
+
+- **Suite otorisasi terpadu**: Solusi otorisasi tingkat organisasi yang terstandardisasi yang disediakan oleh DingTalk, dirancang untuk skenario ketika Aplikasi pihak ketiga meminta izin sensitif dari organisasi pelanggan. Dengan mengintegrasikan suite ini, developer dapat memandu organisasi yang memberikan otorisasi melalui alur otorisasi dan memperoleh kode otorisasi sementara (authCode).
+- **authCode**: Kode otorisasi sementara yang dikembalikan oleh DingTalk setelah pengguna mengonfirmasi otorisasi. Kode ini memiliki masa berlaku singkat. Developer menggunakan kode ini untuk memanggil API guna menukarnya dengan `access_token`, lalu memanggil OpenAPI yang dilindungi.
+
+## Pengalaman developer
+
+### Kaitkan cakupan izin selama pengembangan aplikasi
+
+> Artikel ini menggunakan cakupan izin sensitif `qyapi_manage_addresslist` sebagai contoh.
+
+Pertama, kaitkan cakupan izin sensitif `qyapi_manage_addresslist` dengan aplikasi Anda di Developer Backend. Ini memungkinkan aplikasi memanggil OpenAPI di bawah izin sensitif — Atur cakupan pengelolaan untuk anggota peran.
+
+Jika cakupan izin sensitif `qyapi_manage_addresslist` tidak tersedia di Developer Backend, hubungi dukungan teknis dan jelaskan kebutuhan bisnis Anda. Setelah evaluasi lolos, platform akan mengaktifkan izin sensitif untuk organisasi developer Anda.
+
+> Setelah izin diajukan, developer juga harus mengintegrasikan suite otorisasi terpadu DingTalk untuk menghubungi Admin dari organisasi yang memberikan otorisasi. Jika tidak, panggilan API akan mengembalikan 403.
+
+### Panggil OpenAPI dari aplikasi Anda
+
+Gunakan `access_token` untuk memanggil OpenAPI target (seperti membuat departemen atau memperbarui pengguna). HTTP 200 menandakan bahwa panggilan berhasil. Pengalaman developer di sini sama dengan cakupan izin standar.
+
+## Pengalaman Admin Organisasi
+
+### Otorisasi saat mengaktifkan aplikasi
+
+- Izin standar diberikan kepada aplikasi oleh Admin saat aplikasi diaktifkan.
+- Izin sensitif tidak berlaku saat aplikasi diaktifkan. Admin dengan peran yang sesuai harus menyelesaikan otorisasi secara manual di Workbench.
+
+### Lihat log audit di backend OA
+
+Anda dapat melihat tindakan organisasi terhadap izin sensitif di backend OA, termasuk "Terima permintaan izin dari aplikasi" dan "Tarik Kembali izin yang sebelumnya diberikan kepada aplikasi".
+
+## FAQ
+
+### Panggilan OpenAPI aplikasi saya mengembalikan 403. Bagaimana cara memperbaikinya?
+
+Kemungkinan penyebab dan solusinya adalah sebagai berikut:
+
+Pastikan izin API yang diperlukan telah diajukan dengan benar di Developer Backend.
+
+- Pertama, pastikan izin API telah diajukan di Developer Backend.
+
+- Periksa apakah otorisasi di sisi organisasi telah selesai:
+
+  - Pandu Admin dari organisasi yang memberikan otorisasi untuk menyelesaikan otorisasi manual di Workbench.
+  - Atau integrasikan SDK suite otorisasi terpadu untuk mengaktifkan alur otorisasi otomatis.
+
+Respons 403 dari panggilan OpenAPI berarti organisasi yang memberikan otorisasi pada aplikasi belum memberikan izin kepada aplikasi, atau telah mencabut izin yang sebelumnya diberikan.
+
+### Mengintegrasikan komponen otorisasi memerlukan waktu pengembangan. Bagaimana jika developer tidak dapat mengintegrasikannya tepat waktu? Adakah solusi sementara untuk masalah 403?
+
+Jawaban: Developer Aplikasi pihak ketiga dapat memandu **Admin dari organisasi yang memberikan otorisasi** untuk menyelesaikan otorisasi manual di Workbench.

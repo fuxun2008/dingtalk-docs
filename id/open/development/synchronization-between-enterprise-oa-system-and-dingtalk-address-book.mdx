@@ -1,0 +1,142 @@
+---
+title: "Sinkronkan sistem OA Anda dengan Kontak DingTalk"
+description: "Pelajari alur lengkap sinkronisasi sistem OA perusahaan dengan Kontak DingTalk di DingTalk — mulai dari kredensial aplikasi, izin API, pengambilan accessToken, hingga langkah sinkronisasi kontak untuk admin."
+---
+
+# Sinkronkan sistem OA Anda dengan Kontak DingTalk
+
+## Prasyarat
+
+Selesaikan proses [Buat aplikasi](/id/open/dingstart/create-application).
+
+## Langkah 1: Dapatkan kredensial aplikasi
+
+1. Pilih aplikasi target dan buka halaman detail aplikasi. Klik **Basic Information** > **Credentials and Basic Information**.
+2. Dapatkan Client ID dan Client Secret.
+
+## Langkah 2: Tambahkan izin API
+
+Klik **Development Configuration** > **Manage permissions**. Masukkan `qyapi_manage_addresslist` di kotak pencarian izin lalu ajukan permintaan izin.
+
+## Langkah 3: Dapatkan access token aplikasi
+
+### Penting
+
+- Untuk perbedaan antara Server API, lihat perbandingan antara Server API lama dan Server API baru.
+- Untuk mengunduh SDK Server API, lihat unduhan Server SDK.
+
+Gunakan Client ID dan Client Secret yang diperoleh pada Langkah 1 untuk mendapatkan access_token dari aplikasi internal.
+
+```java
+public void getAccessToken() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+        OapiGettokenRequest req = new OapiGettokenRequest();
+        req.setAppkey("dingxxxxxxxxxhgn");
+        req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+        req.setHttpMethod("GET");
+        OapiGettokenResponse rsp = client.execute(req);
+        System.out.println(rsp.getBody());
+    }
+```
+
+## Langkah 4: Alur kerja sinkronisasi Kontak
+
+1. Sinkronkan Kontak DingTalk ke kontak sistem OA:
+
+   Kunci sinkronisasi ini adalah setiap perubahan pada Kontak DingTalk harus memicu tindakan terkait pada kontak sistem OA.
+
+   1. Pertama, lihat dokumen Dapatkan semua karyawan dalam organisasi untuk mengimpor Struktur Organisasi DingTalk saat ini ke kontak sistem OA.
+   2. Gunakan fitur Langganan peristiwa yang disediakan oleh DingTalk dan berlangganan peristiwa kontak. Perubahan pada Kontak DingTalk akan memicu peristiwa Callback terkait. Untuk format pesan Push peristiwa kontak, lihat Kontak.
+   3. Sistem OA menerima dan memproses peristiwa kontak yang di-Push oleh DingTalk, lalu memperbarui kontak sistem OA sesuai perubahan tersebut.
+2. Sinkronkan pembaruan kontak sistem OA ke Kontak DingTalk:
+
+   Ketika informasi pada kontak sistem OA berubah, sinkronkan pembaruan tersebut ke Kontak DingTalk agar tetap konsisten.
+
+   1. Ketika sebuah departemen dibuat pada kontak sistem OA, panggil API Buat departemen untuk membuat tingkat departemen dan nama departemen yang sama pada Sisi klien DingTalk berdasarkan tingkat dan nama departemen di sistem OA.
+
+      ```java lines
+       public void deptCreate() throws ApiException {
+              DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/department/create");
+              OapiV2DepartmentCreateRequest req = new OapiV2DepartmentCreateRequest();
+              req.setParentId(1L);
+              req.setOuterDept(true);
+              req.setHideDept(false);
+              req.setCreateDeptGroup(true);
+              req.setOrder(1L);
+              req.setName("Tes Departemen 1019");
+              req.setSourceIdentifier("Tes Departemen 1019");
+              req.setOuterPermitUsers("manager7675,01472825524039877041");
+              req.setOuterDeptOnlySelf(true);
+              OapiV2DepartmentCreateResponse rsp = client.execute(req, getAccessToken());
+              System.out.println(rsp.getBody());
+          }
+      ```
+
+### Catatan
+
+      ID departemen di Kontak DingTalk dibuat secara otomatis dan tidak dapat diatur secara manual. Saat menyinkronkan pembaruan kontak, gunakan nama departemen sebagai identifier ketika menyinkronkan ke DingTalk, dan simpan ID departemen Kontak DingTalk terkait untuk digunakan nanti.
+   2. Tambahkan peran ke kontak sistem OA berdasarkan informasi peran di sistem OA.
+
+      1. Panggil Server API [Tambahkan grup peran](/id/open/development/add-a-role-group) untuk membuat informasi Grup peran.
+
+         ```java lines
+         public void addRoleGroup() throws ApiException {
+                 DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/role/add_role_group");
+                 OapiRoleAddrolegroupRequest req = new OapiRoleAddrolegroupRequest();
+                 req.setName("Tes Grup Peran 1019");
+                 OapiRoleAddrolegroupResponse rsp = client.execute(req, getAccessToken());
+                 System.out.println(rsp.getBody());
+             }
+         ```
+      2. Panggil Server API Buat peran untuk membuat informasi peran bagi organisasi.
+
+         ```java lines
+           public void addRole() throws ApiException {
+                 DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/role/add_role");
+                 OapiRoleAddRoleRequest req = new OapiRoleAddRoleRequest();
+                 req.setRoleName("Tes Peran 1019");
+                 req.setGroupId(3168010875L);
+                 OapiRoleAddRoleResponse rsp = client.execute(req, getAccessToken());
+                 System.out.println(rsp.getBody());
+             }
+         ```
+   3. Panggil API [Buat pengguna](/id/open/development/user-information-creation) untuk menambahkan karyawan dari setiap departemen di sistem OA ke departemen terkait di DingTalk. Pada langkah ini, Anda juga dapat menetapkan informasi peran kepada karyawan tersebut.
+
+      ```java lines
+      public void createUser() throws ApiException {
+              DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/v2/user/create");
+              OapiV2UserCreateRequest req = new OapiV2UserCreateRequest();
+              req.setUserid("manger7666");
+              req.setName("Tes Pengguna 1009");
+              req.setSeniorMode(false);
+              req.setMobile("152****3025");
+              req.setTitle("Direktur Teknis");
+              req.setEmail("test***@xx.com");
+              req.setOrgEmail("test***@xxx.com");
+              req.setOrgEmailType("profession");
+              ArrayList<OapiV2UserCreateRequest.DeptTitle> deptTitles = new ArrayList<>();
+              OapiV2UserCreateRequest.DeptTitle deptTitle = new OapiV2UserCreateRequest.DeptTitle();
+              deptTitle.setDeptId(724960197L);
+              deptTitle.setTitle("Direktur Teknis Senior");
+              deptTitles.add(deptTitle);
+              req.setDeptTitleList(deptTitles);
+              req.setHideMobile(false);
+              req.setTelephone("010-8xxxxx6-2345");
+              req.setJobNumber("202210190001");
+              req.setHiredDate(1666143772000L);
+              req.setWorkPlace("Alibaba Center****");
+              req.setRemark("Keterangan");
+              req.setDeptIdList("724960197");
+              List<OapiV2UserCreateRequest.DeptOrder> deptOrderList = new ArrayList<OapiV2UserCreateRequest.DeptOrder>();
+              OapiV2UserCreateRequest.DeptOrder deptOrder = new OapiV2UserCreateRequest.DeptOrder();
+              deptOrder.setDeptId(724960197L);
+              deptOrder.setOrder(1L);
+              deptOrderList.add(deptOrder);
+              req.setDeptOrderList(deptOrderList);
+              req.setExtension("{\"Hobby\":\"[Hobby](http://test.com?userid=#userid#&corpid=#corpid#)\"}");
+              req.setManagerUserid("manager7675");
+              req.setLoginEmail("test****@xxx.com");
+              OapiV2UserCreateResponse rsp = client.execute(req, getAccessToken());
+              System.out.println(rsp.getBody());
+          }
+      ```

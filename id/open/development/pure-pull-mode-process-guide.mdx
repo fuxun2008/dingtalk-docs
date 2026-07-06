@@ -1,0 +1,95 @@
+---
+title: "Menerapkan mode pull murni untuk kartu yang dipasang"
+description: "Pelajari cara menerapkan mode pull murni untuk kartu yang dipasang di DingTalk — mulai dari gambaran alur integrasi, perilaku yang diharapkan, hingga langkah memperbarui konten kartu."
+---
+
+## Hasil yang diharapkan
+
+- Mode pull murni untuk kartu yang dipasang
+
+  Setiap kali sebuah Obrolan dibuka, callbackUrl yang diatur oleh developer akan dipanggil untuk mengambil Data privat dan Memperbaruinya ke Kartu.
+
+- Mode pull murni untuk Pesan kartu
+
+  Setiap kali sebuah Obrolan dibuka untuk menarik pesan, callbackUrl yang diatur oleh developer akan dipanggil untuk mengambil Data privat dan Memperbaruinya ke Kartu.
+
+## Gambaran alur integrasi
+
+Langkah 4: Perbarui Konten Kartu.
+
+### 1. Buat Templat Kartu yang dipasang
+
+<Note>
+Untuk detail tentang cara mengonfigurasi Konten Templat Kartu, lihat dokumen tentang cara membuat Templat pesan.
+</Note>
+
+### Catatan
+
+- Gunakan kartu interaktif untuk mengaktifkan Interaksi antara pengguna dan kartu. Untuk detailnya, lihat dokumen tentang penggunaan kartu interaktif.
+- Mode pull murni hanya dapat menarik Data yang sesuai dengan variabel privat yang didefinisikan dalam Templat Pesan kartu interaktif.
+
+Anda dapat mengatur variabel privat di editor Templat Kartu.
+
+Di editor Templat Kartu, gabungkan berbagai komponen untuk memenuhi kebutuhan bisnis Anda. Setelah Kartu selesai dibuat, klik **Save** atau **Publish** untuk membuatnya tersedia.
+
+Untuk menggunakan mode pull murni pada kartu, Panggil API untuk mendaftarkan URL callback Kartu dan memperoleh parameter **callbackRouteKey**.
+
+<Note>
+Atur parameter **pullStrategy** ke **true** untuk Mengaktifkan mode pull murni pada Kartu.
+</Note>
+
+## Langkah 4: Perbarui Konten Kartu
+
+<Note>
+Setiap kali seorang Pengguna membuka Obrolan, callbackUrl yang diatur oleh developer akan dipanggil untuk mengambil Data yang sesuai dengan variabel privat. Data yang sesuai dengan variabel non-privat tidak dapat diperoleh melalui mode pull murni.
+</Note>
+
+### 1. Tarik Data privat
+
+Ketika seorang Pengguna membuka Obrolan, tindakan tersebut dikirim ke alamat HTTP yang didaftarkan oleh developer sebagai permintaan HTTP POST untuk menarik Data privat. Isi permintaan diteruskan kepada developer dengan contentType="application/json" dan berisi parameter berikut.
+
+<Note>
+Bidang content mencakup Data non-privat dari Kartu.
+</Note>
+
+```json
+{
+    "corpId": "dingXXXXXX",
+    "outTrackId": "XXXXXX",
+    "userId": "XXXXXX",
+    "content": "{\"cardData\":{\"cardParamMap\":{\"xxx\":\"xxx\"}}}",
+    ...
+}
+```
+
+### 2. Perbarui Data Kartu privat secara sinkron
+
+Dalam mode pull murni, jika Anda perlu Memperbarui Data privat Kartu secara sinkron, kembalikan Data Kartu privat terbaru dalam Respons terhadap Permintaan callback. Hal ini memastikan bahwa Pengguna selalu melihat Data privat terbaru setiap kali Kartu ditampilkan. Format Data Kartu yang dikembalikan adalah sebagai berikut.
+
+<Note>
+Anda tidak perlu mengembalikan Data yang sesuai dengan variabel non-privat. Bahkan jika dikembalikan, Data non-privat pada Kartu tidak akan diperbarui.
+</Note>
+
+```json
+{
+ "outTrackId": "XXXXXX(unique ID used to update the card)",
+ "cardOptions": {
+  "updatePrivateDataByKey": true/false,
+ },
+ "userPrivateData": {
+  "cardParamMap": {
+   "key1": "value1",
+   "key2": "value2",
+   "variableN": "valueN"
+  },
+  "cardMediaIdParamMap": {
+   "image1": "mediaIdXXXXX1",
+   "image2": "mediaIdXXXXX2"
+  }
+ }
+}
+```
+
+### 3. Hasil mode pull murni untuk kartu yang dipasang
+
+Setiap kali Obrolan dibuka, Kartu akan muncul seperti yang ditunjukkan di bawah ini.

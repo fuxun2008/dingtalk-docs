@@ -16,7 +16,7 @@
 ## 参数
 
 - `<root>`（必填）：产品根目录名（如 `docs` / `aitable`），不带前缀
-- `--lang <en|ja>`（必填）：目标语言；input 路径自动推导为 `<root>/`（en）或 `ja/<root>/`（ja）
+- `--lang <en|ja|id>`（必填）：目标语言；input 路径自动推导为 `<root>/`（en）/ `ja/<root>/`（ja）/ `id/<root>/`（id）
 - `--concurrency <N>`（默认 `4`）：并发路数
 - `--only <path-prefix>`（可选）：只润色指定路径前缀（如 `docs/dingtalk-docs`）
 - `--limit <N>`（可选）：只润色前 N 篇

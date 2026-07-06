@@ -38,16 +38,23 @@ OFFICIAL_DIR = GLOSSARY_DIR / "official"
 LOCAL_SUPPLEMENTS_MD = GLOSSARY_DIR / "local-supplements.md"
 FINAL_ZH_EN = GLOSSARY_DIR / "zh-en.json"
 FINAL_ZH_JA = GLOSSARY_DIR / "zh-ja.json"
+FINAL_ZH_ID = GLOSSARY_DIR / "zh-id.json"
 MERGE_REPORT = GLOSSARY_DIR / "merge-report.md"
 
 # 表头识别（语言同学 csv 第一行 + 部分 csv 第二行二级表头）
 HEADER_TOKENS_ZH = {"中文文案", "中文术语", "中文", "原文"}
 HEADER_TOKENS_EN = {"英语", "English", "Eng", "EN", "英文"}
 HEADER_TOKENS_JA = {"日语", "日本語", "Japanese", "JA", "日文"}
+HEADER_TOKENS_ID = {"印尼语", "Indonesian", "ID"}
 
 
-def is_header_row(zh: str, en: str, ja: str) -> bool:
-    return zh in HEADER_TOKENS_ZH or en in HEADER_TOKENS_EN or ja in HEADER_TOKENS_JA
+def is_header_row(zh: str, en: str, ja: str, id_: str = "") -> bool:
+    return (
+        zh in HEADER_TOKENS_ZH
+        or en in HEADER_TOKENS_EN
+        or ja in HEADER_TOKENS_JA
+        or id_ in HEADER_TOKENS_ID
+    )
 
 
 def normalize_value(s: str) -> str:
@@ -57,34 +64,42 @@ def normalize_value(s: str) -> str:
     return s.replace(" ", " ").strip()
 
 
-def iter_csv_rows(csv_path: Path) -> Iterator[tuple[str, str, str]]:
+def iter_csv_rows(csv_path: Path) -> Iterator[tuple[str, str, str, str]]:
     with csv_path.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.reader(fh)
         for row in reader:
             if len(row) < 3:
                 continue
             zh, en, ja = normalize_value(row[0]), normalize_value(row[1]), normalize_value(row[2])
-            yield zh, en, ja
+            id_ = normalize_value(row[3]) if len(row) >= 4 else ""
+            yield zh, en, ja, id_
 
 
-def parse_official_csvs(csv_paths: list[Path]) -> tuple[dict[str, str], dict[str, str], list[dict]]:
-    """合并多个 csv → (zh-en, zh-ja, conflicts)。
+def parse_official_csvs(
+    csv_paths: list[Path],
+) -> tuple[dict[str, str], dict[str, str], dict[str, str], list[dict]]:
+    """合并多个 csv → (zh-en, zh-ja, zh-id, conflicts)。
 
     conflicts: 同 key 不同译法记录。后出现的不覆盖，但记进 conflicts。
     """
     zh_en: dict[str, str] = {}
     zh_ja: dict[str, str] = {}
+    zh_id: dict[str, str] = {}
     conflicts: list[dict] = []
 
     for csv_path in csv_paths:
-        for zh, en, ja in iter_csv_rows(csv_path):
+        for zh, en, ja, id_ in iter_csv_rows(csv_path):
             if not zh:
                 continue
-            if is_header_row(zh, en, ja):
+            if is_header_row(zh, en, ja, id_):
                 continue
-            if not en and not ja:
+            if not en and not ja and not id_:
                 continue
-            for target, mapping, lang in ((en, zh_en, "en"), (ja, zh_ja, "ja")):
+            for target, mapping, lang in (
+                (en, zh_en, "en"),
+                (ja, zh_ja, "ja"),
+                (id_, zh_id, "id"),
+            ):
                 if not target:
                     continue
                 if zh in mapping and mapping[zh] != target:
@@ -100,24 +115,34 @@ def parse_official_csvs(csv_paths: list[Path]) -> tuple[dict[str, str], dict[str
                     continue
                 mapping[zh] = target
 
-    return zh_en, zh_ja, conflicts
+    return zh_en, zh_ja, zh_id, conflicts
 
 
-def parse_supplements_md(path: Path) -> tuple[dict[str, str], dict[str, str]]:
-    """从 local-supplements.md 抽 (zh-en, zh-ja)。
+def parse_supplements_md(
+    path: Path,
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """从 local-supplements.md 抽 (zh-en, zh-ja, zh-id)。
 
-    支持两种表格：
+    支持多种表格：
     - | 中文 | 英文 | [备注] |
     - | 中文 | 英文 | 日文 | [备注] |
+    - | 中文 | 英文 | 日文 | 印尼语 | [备注] |   （开放平台段）
     """
     zh_en: dict[str, str] = {}
     zh_ja: dict[str, str] = {}
+    zh_id: dict[str, str] = {}
     if not path.exists():
-        return zh_en, zh_ja
+        return zh_en, zh_ja, zh_id
 
     text = path.read_text(encoding="utf-8")
     in_table = False
     has_ja_col = False
+    has_id_col = False
+
+    def detect_cols(cols: list[str]) -> tuple[bool, bool]:
+        ja = len(cols) >= 3 and cols[2] in HEADER_TOKENS_JA
+        id_ = len(cols) >= 4 and cols[3] in HEADER_TOKENS_ID
+        return ja, id_
 
     for raw in text.splitlines():
         line = raw.strip()
@@ -133,14 +158,15 @@ def parse_supplements_md(path: Path) -> tuple[dict[str, str], dict[str, str]]:
         # 表头识别
         if not in_table:
             in_table = True
-            has_ja_col = len(cols) >= 3 and cols[2] in HEADER_TOKENS_JA
+            has_ja_col, has_id_col = detect_cols(cols)
             continue
         if cols[0] in HEADER_TOKENS_ZH:
-            has_ja_col = len(cols) >= 3 and cols[2] in HEADER_TOKENS_JA
+            has_ja_col, has_id_col = detect_cols(cols)
             continue
 
         zh_raw, en_raw = cols[0], cols[1]
         ja_raw = cols[2] if has_ja_col and len(cols) >= 3 else ""
+        id_raw = cols[3] if has_id_col and len(cols) >= 4 else ""
 
         # 拆 "AI 表格 / AI表格" 这种多形式 zh
         zh_variants = [v.strip() for v in re.split(r"\s*/\s*", zh_raw) if v.strip()]
@@ -149,6 +175,9 @@ def parse_supplements_md(path: Path) -> tuple[dict[str, str], dict[str, str]]:
         en_clean = re.sub(r"（.*?）|\(.*?\)", "", en_clean).strip()
         ja_clean = re.split(r"\s*/\s*", ja_raw)[0] if ja_raw else ""
         ja_clean = re.sub(r"（.*?）|\(.*?\)", "", ja_clean).strip()
+        # id 保留 "/" 多形式的首选，去 (...) 注释（如 "Isi permintaan (request body)"）
+        id_clean = re.split(r"\s*/\s*", id_raw)[0] if id_raw else ""
+        id_clean = re.sub(r"（.*?）|\(.*?\)", "", id_clean).strip()
 
         for zh in zh_variants:
             if len(zh) < 2:
@@ -157,8 +186,10 @@ def parse_supplements_md(path: Path) -> tuple[dict[str, str], dict[str, str]]:
                 zh_en[zh] = en_clean
             if ja_clean:
                 zh_ja[zh] = ja_clean
+            if id_clean:
+                zh_id[zh] = id_clean
 
-    return zh_en, zh_ja
+    return zh_en, zh_ja, zh_id
 
 
 def merge_with_official(
@@ -200,14 +231,18 @@ def render_report(
     csv_files: list[Path],
     official_en: dict[str, str],
     official_ja: dict[str, str],
+    official_id: dict[str, str],
     conflicts: list[dict],
     supp_en: dict[str, str],
     supp_ja: dict[str, str],
+    supp_id: dict[str, str],
     en_stats: dict,
     ja_stats: dict,
+    id_stats: dict,
 ) -> str:
     en_conflicts = [c for c in conflicts if c["lang"] == "en"]
     ja_conflicts = [c for c in conflicts if c["lang"] == "ja"]
+    id_conflicts = [c for c in conflicts if c["lang"] == "id"]
     lines = [
         "# Glossary Merge Report",
         "",
@@ -221,7 +256,7 @@ def render_report(
     lines += [
         "",
         f"- 本地补充：`{LOCAL_SUPPLEMENTS_MD.relative_to(GLOSSARY_DIR.parent)}`"
-        f"（zh-en {len(supp_en)} 条 / zh-ja {len(supp_ja)} 条）",
+        f"（zh-en {len(supp_en)} 条 / zh-ja {len(supp_ja)} 条 / zh-id {len(supp_id)} 条）",
         "",
         "## Official（语言同学权威词库）",
         "",
@@ -229,8 +264,10 @@ def render_report(
         f"|---|---|",
         f"| zh → en | {len(official_en)} |",
         f"| zh → ja | {len(official_ja)} |",
+        f"| zh → id | {len(official_id)} |",
         f"| 内部冲突（en） | {len(en_conflicts)} |",
         f"| 内部冲突（ja） | {len(ja_conflicts)} |",
+        f"| 内部冲突（id） | {len(id_conflicts)} |",
         "",
         "## 合并（official + 本地补充）",
         "",
@@ -238,6 +275,7 @@ def render_report(
         f"|---|---|---|---|---|",
         f"| zh → en | {en_stats['official_count']} | {en_stats['supplement_added']} | {en_stats['supplement_skipped_covered']} | {en_stats['merged_total']} |",
         f"| zh → ja | {ja_stats['official_count']} | {ja_stats['supplement_added']} | {ja_stats['supplement_skipped_covered']} | {ja_stats['merged_total']} |",
+        f"| zh → id | {id_stats['official_count']} | {id_stats['supplement_added']} | {id_stats['supplement_skipped_covered']} | {id_stats['merged_total']} |",
         "",
     ]
     if conflicts:
@@ -277,29 +315,37 @@ def main() -> int:
     for p in csv_files:
         print(f"    - {p.name}")
 
-    official_en, official_ja, conflicts = parse_official_csvs(csv_files)
+    official_en, official_ja, official_id, conflicts = parse_official_csvs(csv_files)
     official_en = sort_by_key_len_desc(official_en)
     official_ja = sort_by_key_len_desc(official_ja)
-    print(f"[*] official: zh-en {len(official_en)} 条 / zh-ja {len(official_ja)} 条 / 冲突 {len(conflicts)} 条")
+    official_id = sort_by_key_len_desc(official_id)
+    print(
+        f"[*] official: zh-en {len(official_en)} 条 / zh-ja {len(official_ja)} 条 / "
+        f"zh-id {len(official_id)} 条 / 冲突 {len(conflicts)} 条"
+    )
 
-    supp_en, supp_ja = parse_supplements_md(LOCAL_SUPPLEMENTS_MD)
-    print(f"[*] supplements: zh-en {len(supp_en)} 条 / zh-ja {len(supp_ja)} 条")
+    supp_en, supp_ja, supp_id = parse_supplements_md(LOCAL_SUPPLEMENTS_MD)
+    print(f"[*] supplements: zh-en {len(supp_en)} 条 / zh-ja {len(supp_ja)} 条 / zh-id {len(supp_id)} 条")
 
     merged_en, en_stats = merge_with_official(official_en, supp_en)
     merged_ja, ja_stats = merge_with_official(official_ja, supp_ja)
+    merged_id, id_stats = merge_with_official(official_id, supp_id)
     merged_en = sort_by_key_len_desc(merged_en)
     merged_ja = sort_by_key_len_desc(merged_ja)
-    print(f"[*] merged: zh-en {len(merged_en)} 条 / zh-ja {len(merged_ja)} 条")
+    merged_id = sort_by_key_len_desc(merged_id)
+    print(f"[*] merged: zh-en {len(merged_en)} 条 / zh-ja {len(merged_ja)} 条 / zh-id {len(merged_id)} 条")
 
     print(write_json(OFFICIAL_DIR / "zh-en.json", official_en, dry_run=args.dry_run))
     print(write_json(OFFICIAL_DIR / "zh-ja.json", official_ja, dry_run=args.dry_run))
+    print(write_json(OFFICIAL_DIR / "zh-id.json", official_id, dry_run=args.dry_run))
     print(write_json(OFFICIAL_DIR / "conflicts.json", conflicts, dry_run=args.dry_run))
     print(write_json(FINAL_ZH_EN, merged_en, dry_run=args.dry_run))
     print(write_json(FINAL_ZH_JA, merged_ja, dry_run=args.dry_run))
+    print(write_json(FINAL_ZH_ID, merged_id, dry_run=args.dry_run))
 
     report = render_report(
-        csv_files, official_en, official_ja, conflicts,
-        supp_en, supp_ja, en_stats, ja_stats,
+        csv_files, official_en, official_ja, official_id, conflicts,
+        supp_en, supp_ja, supp_id, en_stats, ja_stats, id_stats,
     )
     if args.dry_run:
         print(f"(dry-run) would write {MERGE_REPORT.relative_to(GLOSSARY_DIR.parent)}")

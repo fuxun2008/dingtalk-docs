@@ -96,6 +96,33 @@ STYLE_JA = """風格指南（日文）：
 - 注意：避免中文式 kanji 顺序、避免「的」直译为「の」过多"""
 
 
+STYLE_ID = """Panduan gaya (Bahasa Indonesia)：
+- 目标读者：印尼企业用户与 IT 管理员（bahasa baku 商务书面语）
+- 语气：清晰、专业、动作导向（imperative：Klik / Pilih / Buka，不写 Anda dapat mengklik）
+- 句式：短句优先；避免被动堆砌；一句话讲一件事
+- Heading：Sentence case；避免 Title Case
+- 用词：通用 IT 术语用印尼语主流译法（Pengaturan / Fitur / Izin / File / Folder / Unduh / Unggah / Masuk / Kelola / Bagikan / Simpan / Kirim）
+- 技术缩写保持英文：API / SDK / URL / JSON / SaaS / SSO / OAuth / H5 / QR
+- 数字 / 日期：千分位「.」小数「,」（1.000）；日期 2 Juni 2026
+- 标点：拉丁标点 . , ? ! " ( )
+- 品牌词不译：DingTalk / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind / DingTalk Whiteboard / Knowledge Base / AI Table / AI Minutes 遵循术语表
+- 功能更新：Baru / Ditingkatkan / Diperbaiki / Tidak digunakan lagi"""
+
+
+# 开放平台 (Open Platform / OpenAPI) 专属润色规则 — 仅 root=open 注入，防止润色改坏 API 契约
+OPEN_PLATFORM_POLISH_RULES = """开放平台 (Open Platform / OpenAPI) 专属规则 — 润色时违反任意一条则无效：
+
+【术语一致（润色时统一，但不得误译）】
+A. 「机器人」一律 Bot（英文），**绝不 Robot**；已是 Bot 的保持。
+B. API 契约字符串一律保持原样，禁止「顺手翻译」：JSON 字段名 / 参数名（access_token / corpId / userid / unionId / grant_type 等）/ HTTP 动词 / 状态码 / Header 名 / Content-Type / API 端点 URL 与 {占位符} / 错误码字符串（如 InvalidParameter.AccessToken）。这些即使看起来「像没翻译」，也**必须留英文原样**。
+C. 技术缩写保持英文：API / SDK / URL / JSON / OAuth / JSAPI / Webhook / SSO / H5 / IM。
+D. 代码块内部（含注释、变量名、方法名、SDK 调用）完全不动（已被铁律 5 覆盖，此处再次强调）。
+
+【风格】
+E. 英文/印尼文 Heading 用 Sentence case + 专有名词大写；动作导向祈使句（Klik / Panggil / Konfigurasikan）。
+F. 参数表列头统一：Name / Type / Required / Example / Description（印尼文 Nama / Tipe / Wajib / Contoh / Deskripsi）。"""
+
+
 # ---------------------------------------------------------------------------
 # 检测：占位 / 已 polish / 链接组件统计
 # ---------------------------------------------------------------------------
@@ -176,11 +203,16 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
     )
 
 
-def build_system_prompt(lang: str) -> str:
-    style = STYLE_EN if lang == "en" else STYLE_JA
-    target = "英文（American English）" if lang == "en" else "日文（敬体 です・ます）"
+def build_system_prompt(lang: str, root: str = "") -> str:
+    style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID}[lang]
+    target = {
+        "en": "英文（American English）",
+        "ja": "日文（敬体 です・ます）",
+        "id": "印尼文（Bahasa Indonesia，bahasa baku）",
+    }[lang]
+    open_block = f"\n\n{OPEN_PLATFORM_POLISH_RULES}" if root == "open" else ""
     return (
-        f"{POLISH_RULES}\n\n{REVIEW_CHECKLIST}\n\n{style}\n\n"
+        f"{POLISH_RULES}\n\n{REVIEW_CHECKLIST}\n\n{style}{open_block}\n\n"
         f"本次任务：对已经是 {target} 的 mdx 做语言层润色，不改语义、不改链接、不改组件。"
     )
 
@@ -213,6 +245,8 @@ class FileResult:
 # ---------------------------------------------------------------------------
 
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
+    # user_msg 作为 positional prompt 传入（而非 stdin），规避 claude CLI 高负载下 3s stdin
+    # 握手竞争导致的 "no stdin data received" 死锁；prompt 体量远低于 ARG_MAX(1MB)。
     proc = await asyncio.create_subprocess_exec(
         "claude", "-p", "--bare",
         "--model", model,
@@ -220,13 +254,14 @@ async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout
         "--tools", "",
         "--no-session-persistence",
         "--output-format", "json",
-        stdin=asyncio.subprocess.PIPE,
+        user_msg,
+        stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout, stderr = await asyncio.wait_for(
-            proc.communicate(input=user_msg.encode("utf-8")),
+            proc.communicate(),
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
@@ -347,12 +382,23 @@ def ensure_polished_flag(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
+    # 特例：root == "." 只润色语言根的 index.mdx（Overview 首页）
+    if root in (".", ""):
+        base = REPO_ROOT if lang == "en" else REPO_ROOT / lang
+        idx = base / "index.mdx"
+        if not idx.exists():
+            sys.exit(f"ERROR: index.mdx not found: {idx}")
+        rel_str = "index.mdx" if lang == "en" else str(Path(lang) / "index.mdx")
+        return [FileTask(target=idx, rel=rel_str)]
+
     if lang == "en":
         target_base = REPO_ROOT / root
     elif lang == "ja":
         target_base = REPO_ROOT / "ja" / root
+    elif lang == "id":
+        target_base = REPO_ROOT / "id" / root
     else:
-        sys.exit(f"ERROR: lang must be en or ja, got {lang}")
+        sys.exit(f"ERROR: lang must be en / ja / id, got {lang}")
 
     if not target_base.exists():
         sys.exit(f"ERROR: target dir not found: {target_base}")
@@ -360,7 +406,7 @@ def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
     tasks: list[FileTask] = []
     for mdx in sorted(target_base.rglob("*.mdx")):
         rel = mdx.relative_to(target_base)
-        rel_str = str(Path(root) / rel) if lang == "en" else str(Path("ja") / root / rel)
+        rel_str = str(Path(root) / rel) if lang == "en" else str(Path(lang) / root / rel)
         if only and not rel_str.startswith(only):
             continue
         tasks.append(FileTask(target=mdx, rel=rel_str))
@@ -424,7 +470,7 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
     glossary = load_glossary(args.lang)
-    system_prompt = build_system_prompt(args.lang)
+    system_prompt = build_system_prompt(args.lang, args.root)
     sem = asyncio.Semaphore(args.concurrency)
 
     tasks = gather_tasks(args.root, args.lang, args.only)
@@ -477,10 +523,10 @@ async def main_async(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="批量润色已译 mdx：<root>/ (en) 或 ja/<root>/ (ja) 同路径覆盖；不改语义，只改语言质量。",
+        description="批量润色已译 mdx：<root>/ (en) / ja/<root>/ (ja) / id/<root>/ (id) 同路径覆盖；不改语义，只改语言质量。",
     )
     p.add_argument("--root", required=True, help="产品根目录名，如 docs / aitable")
-    p.add_argument("--lang", required=True, choices=["en", "ja"])
+    p.add_argument("--lang", required=True, choices=["en", "ja", "id"])
     p.add_argument("--concurrency", type=int, default=4)
     p.add_argument("--model", default=None, help="覆盖默认 ANTHROPIC_MODEL")
     p.add_argument("--timeout", type=int, default=240, help="单次 claude CLI 调用超时秒数")

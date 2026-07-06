@@ -11,13 +11,13 @@
        2. Expand the framing sentence in #error-description (locale-aware).
           The recommended links themselves are Mintlify's own native
           suggestions, left untouched.
-       3. Localize the chrome on a zh/ja 404. Mintlify renders the 404
-          in the DEFAULT (English) locale regardless of the /zh//ja/ URL
+       3. Localize the chrome on a zh/ja/id 404. Mintlify renders the 404
+          in the DEFAULT (English) locale regardless of the /zh//ja//id/ URL
           prefix, so the navbar tabs, the language selector, the product
           menu and the "Page Not Found" title all come out English on a
           localized URL. Rewrite those labels to the current locale, and
-          route navbar-tab clicks to the /zh//ja/-prefixed page so a
-          Chinese tab never lands on an English doc. (Recommendation
+          route navbar-tab clicks to the /zh//ja//id/-prefixed page so a
+          localized tab never lands on an English doc. (Recommendation
           links stay Mintlify-native English by design.)
    ============================================================ */
 (function () {
@@ -30,28 +30,29 @@
     en: "We couldn't find the page. Maybe you were looking for one of these pages below?",
     zh: "找不到该页面。也许您想找的是以下页面之一？",
     ja: "ページが見つかりませんでした。お探しのページは以下のいずれかではありませんか？",
+    id: "Kami tidak dapat menemukan halaman tersebut. Mungkin Anda mencari salah satu halaman di bawah ini?",
   };
 
   // Localized "Page Not Found" title.
-  var HEADING = { zh: "页面未找到", ja: "ページが見つかりません" };
+  var HEADING = { zh: "页面未找到", ja: "ページが見つかりません", id: "Halaman tidak ditemukan" };
 
   // Navbar label overrides, keyed by the English text Mintlify renders.
   // Covers the 9 Help Center product tabs + the product menu + the
   // language selector's current value + the Download CTA. Order-
   // independent (matched by text).
   var NAV_LABELS = {
-    Messages: { zh: "消息", ja: "メッセージ" },
-    Calendar: { zh: "日历", ja: "カレンダー" },
-    Meetings: { zh: "会议", ja: "会議" },
-    Contacts: { zh: "通讯录", ja: "連絡先" },
-    Mail: { zh: "邮箱", ja: "メール" },
-    Docs: { zh: "文档", ja: "ドキュメント" },
-    Drive: { zh: "钉盘", ja: "ドライブ" },
-    "AI Table": { zh: "AI 表格", ja: "AI テーブル" },
-    "AI Minutes": { zh: "AI 听记", ja: "AI 議事録" },
-    "Help Center": { zh: "帮助中心", ja: "ヘルプセンター" },
-    English: { zh: "中文", ja: "日本語" },
-    Download: { zh: "下载", ja: "ダウンロード" },
+    Messages: { zh: "消息", ja: "メッセージ", id: "Pesan" },
+    Calendar: { zh: "日历", ja: "カレンダー", id: "Kalender" },
+    Meetings: { zh: "会议", ja: "会議", id: "Rapat" },
+    Contacts: { zh: "通讯录", ja: "連絡先", id: "Kontak" },
+    Mail: { zh: "邮箱", ja: "メール", id: "Email" },
+    Docs: { zh: "文档", ja: "ドキュメント", id: "Dokumen" },
+    Drive: { zh: "钉盘", ja: "ドライブ", id: "Drive" },
+    "AI Table": { zh: "AI 表格", ja: "AI テーブル", id: "AI Table" },
+    "AI Minutes": { zh: "AI 听记", ja: "AI 議事録", id: "AI Minutes" },
+    "Help Center": { zh: "帮助中心", ja: "ヘルプセンター", id: "Pusat Bantuan" },
+    English: { zh: "中文", ja: "日本語", id: "Bahasa Indonesia" },
+    Download: { zh: "下载", ja: "ダウンロード", id: "Unduh" },
   };
 
   // First path segment of every Help Center product tab — used to spot a
@@ -65,6 +66,7 @@
     var p = location.pathname;
     if (p.indexOf("/zh/") === 0 || p === "/zh") return "zh";
     if (p.indexOf("/ja/") === 0 || p === "/ja") return "ja";
+    if (p.indexOf("/id/") === 0 || p === "/id") return "id";
     return "en";
   }
 

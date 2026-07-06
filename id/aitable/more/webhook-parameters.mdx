@@ -1,0 +1,64 @@
+---
+title: "Parameter webhook — referensi lengkap"
+description: "Referensi lengkap parameter webhook otomatisasi AI Table — header Authorization (Bearer token) dan Client-Token idempoten, format request body, struktur respons, serta pemecahan masalah kode kesalahan."
+polished: true
+---
+
+## 1. Header
+
+| **Name**       | **Type** | **Required** | **Description**                                                                                                                                                                                                                                                                                |
+| ------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization | string  | No       | Pemeriksaan kredensial (Bearer token) — kirim melalui header request. Format header (peka huruf besar/kecil):  \--header 'Authorization: Bearer \\[real Bearer token]'  Tanda kutip tunggal wajib ada pada header sebenarnya. Tanda kurung siku hanya placeholder — jangan sertakan pada header sebenarnya. Kunci header selalu `Authorization` dan nilainya memiliki prefiks tetap `Bearer`.  Catatan: harus ada satu spasi antara prefiks `Bearer` dan Bearer token sebenarnya. |
+| Client-Token  | string  | No       | Untuk idempotensi. Kunci header selalu `Client-Token` dan nilainya dibuat oleh pemanggil (biasanya berupa UUID).  Nilai kosong = request baru. Nilai terisi = pembaruan idempoten — nilai yang sama dalam jendela 3 jam hanya dipicu satu kali.                                                                                                                                                                    |
+
+Contoh request Bearer token (tanda kurung siku hanya placeholder — ganti sebelum dijalankan, jangan sertakan tanda kurungnya):
+
+```bash 
+curl --location --request POST '[real webhook URL]' \
+--header 'Authorization: Bearer [real Bearer token]' \
+--header 'Content-Type: application/json' \
+--data-raw '{[real request body]}'
+```
+
+## 2. Request body
+
+Atur field apa pun yang Anda butuhkan. Body harus berupa JSON yang valid.
+
+## 3. Response body
+
+Jika `code` pada respons bukan `0`, berarti request gagal.
+
+Ketika `code` bukan nol, cari kode dan pesan tersebut pada tabel **Kode kesalahan** di bawah untuk melakukan debug.
+
+Ketika webhook berhasil menerima request, respons terlihat seperti berikut:
+
+```json 
+{
+"msg": "",
+"data": { },
+"code": 0
+}
+```
+
+Ketika webhook mengalami kesalahan, respons terlihat seperti berikut:
+
+```json 
+{
+"data": { },
+"code": 800004509,
+"msg": "webhook trigger workflow is disabled"
+}
+```
+
+## 4. Kode kesalahan
+
+Ketika pemicu webhook mengalami kesalahan, periksa respons di sisi pemanggil dan cocokkan kode serta pesannya dengan tabel di bawah.
+
+| **Code**  | **Message**                             | **Cause**                                                                                                                                                            | **Resolution**                              |
+| --------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 800005649 | Credential check failed                               | Pemeriksaan kredensial aktif, tetapi kredensial pada request HTTP tidak sesuai dengan yang diharapkan otomatisasi — proses tidak dapat dilanjutkan.                                                                                                                       | Periksa ulang dan masukkan kembali kredensialnya.                             |
+| 800005650 | Source IP not in allowlist                       | Daftar izin IP aktif, dan IP sumber request tidak ada di dalamnya.                                                                                                                                         | Tambah IP ke daftar izin atau kirim request dari IP yang diizinkan.            |
+| 800005647 | Request body too large                      | Webhook menerima request HTTP yang lebih besar dari 4 MB.                                                                                                                                       | Perkecil request body.                                 |
+| 800005646 | Self-calling HTTP node — loop detected; change the HTTP node URL | Otomatisasi dipicu "saat webhook dipanggil" dan tindakannya adalah "kirim request HTTP" — dan URL HTTP sama dengan URL webhook, sehingga menyebabkan loop tak terhingga.                                                                           | Ubah URL **Kirim request HTTP** — URL tersebut tidak boleh sama dengan URL webhook. |
+| 800005652 | Too many requests; try again later                          | Webhook dibatasi laju (rate limit).  \-   Batas laju webhook seluruh AI Table: 50 req/detik.  \-   Batas laju webhook per otomatisasi: 5 req/detik.  \-   Otomatisasi tanpa pemeriksaan kredensial (tanpa Bearer token): 1 req/detik masing-masing. | Coba lagi nanti.                                  |
+| 800006003 | Request body is not valid JSON; fix and retry             | Biasanya terjadi saat menggunakan "atur output melalui request masuk" — body yang diterima bukan JSON yang valid.                                                                                                                     | Periksa ulang JSON request body, perbaiki, lalu coba lagi.                  |

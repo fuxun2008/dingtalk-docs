@@ -1,0 +1,158 @@
+---
+title: "Mendapatkan hasil pengiriman pesan Work Notification"
+description: "Panggil API ini untuk mengueri hasil pengiriman pesan Work Notification di DingTalk, lengkap dengan parameter permintaan, kolom respons, dan kode error."
+---
+
+Panggil API ini untuk mengueri hasil pengiriman pesan Work Notification.
+
+## Deskripsi panggilan API
+
+API ini cocok untuk skenario ketika Anda perlu memastikan apakah pesan Work Notification telah berhasil dikirim ke pengguna tertentu. Misalnya, setelah departemen HR sebuah organisasi mengirim notifikasi penting, Anda mungkin perlu memastikan apakah karyawan telah menerimanya.
+
+### Catatan
+
+- API ini hanya mengembalikan hasil pengiriman pesan Work Notification yang dikirim dalam 24 jam terakhir.
+- API ini tidak mendukung daftar penerima yang melebihi 100 pengguna. Jika melebihi, sistem akan mengembalikan **Call timeout**.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-qyapi_base-Izin dasar yang diperlukan untuk memanggil API perusahaan |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi untuk memanggil API ini.   - Untuk aplikasi internal, dapatkan melalui API untuk mendapatkan access_token aplikasi internal. - Untuk aplikasi perusahaan pihak ketiga, dapatkan melalui API untuk mendapatkan access_token perusahaan pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| agent_id | Number | Ya | 836390886 | Agent ID dari aplikasi mikro yang digunakan untuk mengirim pesan.   - Untuk aplikasi internal, lihat di halaman detail aplikasi pada [backend developer](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1). image - Untuk aplikasi perusahaan pihak ketiga, dapatkan dengan memanggil API untuk mendapatkan informasi otorisasi perusahaan. |
+| task_id | Number | Ya | 256271667526 | ID tugas yang dikembalikan oleh DingTalk saat pesan dikirim. Panggil API [Kirim Work Notification](/id/open/development/asynchronous-sending-of-enterprise-session-messages) untuk mendapatkan nilai task_id.  **Catatan**  Hanya tugas yang dibuat dalam 24 jam terakhir yang dapat dikueri. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=cfe36xxxxd8dbce' \
+-d 'agent_id=123' \
+-d 'task_id=456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+req.setAgentId(123L);
+req.setTaskId(456L);
+OapiMessageCorpconversationGetsendresultResponse rsp = client.execute(req, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationGetsendresultRequest("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult")
+
+req.agent_id=123
+req.task_id=456
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationGetsendresultRequest;
+$req->setAgentId("123");
+$req->setTaskId("456");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/message/corpconversation/getsendresult");
+OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+req.AgentId = 123L;
+req.TaskId = 456L;
+OapiMessageCorpconversationGetsendresultResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| send_result | AsyncSendResult |  | Hasil yang dikembalikan. |
+| invalid_user_id_list | String[] | ["manager4220",user123"] | ID pengguna yang tidak valid. |
+| forbidden_user_id_list | String[] | ["manager4220",user123"] | ID pengguna yang sebenarnya tidak terkirim akibat batas laju yang disebabkan oleh pengiriman pesan yang terlalu sering atau dalam volume berlebihan.  Penerima yang tidak terpengaruh batas laju tetap terkirim dengan sukses.  Aturan batas laju meliputi:   - Mengirim konten yang sama ke pengguna yang sama hanya diperbolehkan satu kali per hari. - Untuk aplikasi yang sama yang mengirim pesan ke pengguna yang sama:    - Untuk aplikasi perusahaan pihak ketiga, batas harian adalah 100 pesan per pengguna.   - Untuk aplikasi internal, batas harian adalah 500 pesan per pengguna. |
+| failed_user_id_list | String[] | ["manager4220",user123"] | ID pengguna yang gagal menerima pesan. |
+| read_user_id_list | String[] | ["manager4220",user123"] | ID pengguna yang telah membaca pesan. |
+| unread_user_id_list | String[] | ["manager4220",user123"] | ID pengguna yang belum membaca pesan. |
+| invalid_dept_id_list | Number[] | [1,2,3] | ID departemen yang tidak valid. |
+| forbidden_list | SendForbiddenModel[] |  | Alasan spesifik mengapa push dilarang. |
+| code | String | 143105 | Kode batas laju.   - 143105 menandakan bahwa batas harian pesan yang di-push ke seorang pengguna oleh aplikasi internal telah terlampaui. - 143106 menandakan bahwa aplikasi internal telah mengirim pesan duplikat ke seorang pengguna. |
+| count | Number | 1 | Ambang batas laju. |
+| userid | String | user123 | ID pengguna dari karyawan yang terpengaruh oleh batas laju. |
+| errcode | Number | 0 | Kode kembalian. |
+| errmsg | String | ok | Deskripsi kode kembalian. |
+| request_id | String | 6pcvwp6jcows | ID permintaan. |
+
+### Contoh respons
+
+```json
+{
+  "errcode": 0,
+  "send_result": {
+    "failed_user_id_list": [],
+    "forbidden_list": [],
+    "invalid_dept_id_list": [],
+    "invalid_user_id_list": [],
+    "read_user_id_list": [
+      "manager4220"
+    ],
+    "unread_user_id_list": []
+  },
+  "request_id": "6pcvwp6jcows"
+}
+```
+
+### Kode error
+
+Jika terjadi error saat memanggil API ini, lihat dokumen [Kode error global](/id/open/development/server-api-error-codes-1) dan temukan solusinya berdasarkan pesan error.
+
+| Kode error | Deskripsi | Solusi |
+| --- | --- | --- |
+| 143103 | Batas QPM untuk jumlah penerima pesan per aplikasi dalam organisasi telah terlampaui. | API dipanggil terlalu sering. Coba lagi nanti. |
+| 143104 | Batas QPM untuk jumlah penerima pesan per menit dalam organisasi telah terlampaui. | API dipanggil terlalu sering. Coba lagi nanti. |
+| 143105 | Batas push harian per pengguna per aplikasi telah terlampaui. | Sebuah organisasi dapat mengirim hingga 500 notifikasi pesan per karyawan per hari, sedangkan ISV dapat mengirim hingga 50. |
+| 143106 | Batas untuk pesan duplikat yang di-push oleh satu aplikasi ke satu pengguna telah terlampaui. | Hanya satu notifikasi pesan dengan konten yang sama yang dapat dikirim ke karyawan yang sama per hari. |
+| 143203 | Batas QPM untuk aplikasi ISV yang mengirim ke satu organisasi telah terlampaui. | API dipanggil terlalu sering. Coba lagi nanti. |
+| 143204 | Batas QPM untuk aplikasi ISV yang mengirim ke semua organisasi telah terlampaui. | API dipanggil terlalu sering. Coba lagi nanti. |
+| 143205 | Batas push harian per pengguna per aplikasi telah terlampaui. | Sebuah organisasi dapat mengirim hingga 500 notifikasi pesan per karyawan per hari, sedangkan ISV dapat mengirim hingga 50. |
+| 143206 | Batas untuk pesan duplikat yang di-push oleh satu aplikasi ke satu pengguna telah terlampaui. | Hanya satu notifikasi pesan dengan konten yang sama yang dapat dikirim ke karyawan yang sama per hari. |
+| 1430000 | Penerima kosong. | Penerima tidak boleh kosong. Periksa apakah penerima pesan kosong. |
+| 1430001 | grantType tidak dikenali. | Tidak ada. |
+| 1430002 | Pesan mengandung konten yang dilarang. | Periksa apakah teks pesan mengandung kata-kata pornografi, reaksioner, atau kata terlarang lainnya. |
+| 1430003 | Proteksi sistem OAPI terpicu. | Tidak ada. |
+| 1430004 | Proteksi eksekutif senior. | Nonaktifkan proteksi eksekutif senior. |

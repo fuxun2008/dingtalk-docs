@@ -1,0 +1,762 @@
+---
+title: "Mendapatkan informasi unggahan file"
+description: "Panggil API ini untuk mendapatkan informasi unggahan file di DingTalk, termasuk kredensial dan alamat yang diperlukan klien untuk mengunggah file ke ruang penyimpanan."
+---
+
+Panggil API ini untuk mendapatkan informasi unggahan file.
+
+## Deskripsi panggilan API
+
+### Deskripsi
+
+- Jika parameter `spaceId` diberikan saat mengunggah file, gunakan API [Mendapatkan informasi unggahan file](https://open.dingtalk.com/document/development/obtain-storage-upload-information#).
+- Jika parameter `dentryUuid` atau `uuid` diberikan saat mengunggah file, dokumen ini yang direkomendasikan.
+
+Alur panggilan API adalah sebagai berikut:
+
+Langkah 1: Panggil API ini untuk mendapatkan nilai parameter `resourceUrls` dan `headers` yang diperlukan untuk mengunggah file.
+
+Langkah 2: Unggah file menggunakan metode tanda tangan header OSS. Lihat contoh berikut:
+
+Java
+
+```java
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+public void test(){
+               // Dapatkan resourceUrls dari respons panggilan API pertama
+                String resourceUrl = "resourceUrls returned by the first API call";
+              // Dapatkan headers dari respons panggilan API pertama
+                Map<String, String> headers = headers returned by the first API call;
+                URL url = new URL(resourceUrl);
+                HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+               if (headers != null) {
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    connection.setRequestProperty(entry.getKey(), entry.getValue());
+                }
+            }
+                connection.setDoOutput(true);
+                connection.setRequestMethod("PUT");
+                connection.setUseCaches(false);
+                connection.setReadTimeout(10000);
+                connection.setConnectTimeout(10000);
+                connection.connect();
+                OutputStream out = connection.getOutputStream();
+                InputStream is = new FileInputStream(new File("/Users/xxxxx/Desktop/test_file.xls"));
+                byte[] b =new byte[1024];
+                int temp;
+                while ((temp=is.read(b))!=-1){
+                       out.write(b,0,temp);
+                }
+                out.flush();
+                out.close();
+                int responseCode = connection.getResponseCode();
+                connection.disconnect();
+                if (responseCode == 200) {
+                    System.out.println("Upload succeeded");
+                 } else {
+                    System.out.println("Upload failed");
+                 }
+}
+```
+
+Python
+
+```python
+#!/usr/bin/env python
+
+import requests
+
+url = '<resourceUrl returned by the first API call>'
+headers = <headers returned by the first API call>
+result = requests.put(url, data=open('<path_to_file>', 'rb'), headers=headers)
+print(result)
+```
+
+C#
+
+```java
+public static string HttpRequest(string url, string filePath, Dictionary<string, string> headers) {
+
+    FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+    BinaryReader reader = new BinaryReader(fileStream);
+    reader.BaseStream.Seek(0, SeekOrigin.Begin);
+    byte[] datas = reader.ReadBytes((int)reader.BaseStream.Length);
+    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+    request.Method = "PUT";
+    request.Timeout = 150000;
+    foreach (var header in headers) {
+        request.Headers.Add($"{header.Key}", $"{header.Value}");
+    }
+    Stream requestStream = null;
+    string responseStr = null;
+    try {
+        if (datas != null) {
+            request.ContentLength = datas.Length;
+            requestStream = request.GetRequestStream();
+            requestStream.Write(datas, 0, datas.Length);
+            requestStream.Close();
+        } else {
+            request.ContentLength = 0;
+        }
+        HttpWebResponse response = request.GetResponse() as HttpWebResponse;
+        responseStr = response.Headers.GetValues("x-oss-request-id")[0];
+    } catch (Exception ex) {
+        Console.WriteLine("error");
+    } finally {
+        request = null;
+        requestStream = null;
+    }
+    return responseStr;
+}
+```
+
+PHP
+
+```text
+$url = $result->body->headerSignatureInfo->resourceUrls[0];
+$headersSource = $result->body->headerSignatureInfo->headers;
+foreach ($headersSource as $key => $value) {
+$headers[] = $key . ': ' . $value;
+}
+// Setel content-type ke kosong secara eksplisit
+$headers['Content-Type'] = '';
+
+$file = '/Users/dengxian.ldx/Desktop/test.txt';
+
+$ch = curl_init();
+curl_setopt_array($ch, array(
+CURLOPT_URL => $url,
+CURLOPT_RETURNTRANSFER => true,
+CURLOPT_HEADER => true,
+CURLOPT_TIMEOUT => 100,
+CURLOPT_CONNECTTIMEOUT => 100,
+CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+CURLOPT_PUT => true,
+CURLOPT_HTTPHEADER => $headers,
+CURLOPT_SSL_VERIFYPEER => false,
+CURLOPT_SSL_VERIFYHOST => false,
+));
+curl_setopt($ch, CURLOPT_INFILE, fopen($file , 'rb'));
+curl_setopt($ch, CURLOPT_INFILESIZE, filesize($file) );
+curl_setopt($ch, CURLOPT_UPLOAD, true);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response .PHP_EOL;
+```
+
+Node.js
+
+```javascript
+const fs = require('fs');
+const request = require('request-promise');
+
+url = <url>;
+header = <headers>;
+
+// Catatan: setel content-type ke kosong secara eksplisit
+headers['content-type']='';
+
+var options = {
+  method: 'PUT',
+  url: url,
+  headers: headers
+};
+
+fs.createReadStream('/Users/dengxian.ldx/temp/test/a.txt').pipe(request(options)).then(body =>{
+  console.log(body);
+}).catch(err => {
+  console.log(err);
+});
+```
+
+Langkah 3: Panggil API [Mengirim file](/id/open/development/submittal-file) untuk menyelesaikan unggahan file.
+
+### Deskripsi
+
+- Ketika tipe ruang penyimpanan adalah USER, pengguna yang memiliki izin ke ruang tersebut memiliki izin tindakan. Karyawan lain harus memanggil API [Menambahkan izin](/id/open/development/add-permissions-file) untuk otorisasi.
+- Ketika tipe ruang penyimpanan adalah APP, siapa pun yang melakukan tindakan harus memanggil API [Menambahkan izin](/id/open/development/add-permissions-file) untuk otorisasi.
+
+## Permintaan
+
+### Informasi dasar
+
+| Bidang | Nilai |
+| --- | --- |
+| URL HTTP | `https://api.dingtalk.io/v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query` |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-Storage.UploadInfo.Read-Izin baca untuk informasi unggahan file penyimpanan organisasi |
+
+### Header permintaan
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkan dengan cara berikut:   - Untuk aplikasi internal, panggil API [Mendapatkan access token aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app#). - Untuk aplikasi perusahaan pihak ketiga, panggil API [Mendapatkan access token organisasi terotorisasi untuk aplikasi pihak ketiga](https://open.dingtalk.com/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#). |
+
+### Parameter jalur
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| parentDentryUuid | String | Ya | dentryUuid dari node induk. Panggil API [Mencari file](/id/open/development/search-for-files#) atau [Mendapatkan informasi dentryUuid](/id/open/development/api-getuuidbydentryid#) untuk mendapatkan nilai bidang `dentryUuid` yang dikembalikan.    Untuk direktori root ruang, teruskan dentryUuid dari direktori root ruang. |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| unionId | String | Ya | unionId dari operator. Panggil API [Mengueri detail pengguna](/id/open/development/query-user-details#) untuk mendapatkannya. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| protocol | String | Ya | Mengembalikan informasi yang diperlukan untuk protokol unggahan yang berbeda berdasarkan protokol yang ditentukan.   - **HEADER_SIGNATURE**: Tanda tangan header |
+| option | Object | Tidak | Parameter opsional. |
+| storageDriver | String | Tidak | Tipe driver penyimpanan file.    Saat ini, hanya DINGTALK yang didukung. |
+| preCheckParam | Object | Tidak | Bidang untuk pra-pemeriksaan. Digunakan untuk memvalidasi nama file, integritas file, dan kapasitas. |
+| size | Long | Tidak | Ukuran file, digunakan untuk validasi terkait kapasitas. Jika tidak diberikan, tidak ada validasi yang dilakukan. |
+| name | String | Tidak | Nama file (digunakan untuk pemeriksaan validitas nama file dan konflik nama file). Aturan: - Spasi di awal dan akhir tidak diperbolehkan dan akan otomatis dihapus. - Tidak boleh mengandung karakter khusus, termasuk: tab, `*`, `"`, `<`, `>`, `|`. - Tidak boleh diakhiri dengan `.`. |
+| preferRegion | String | Tidak | Wilayah yang diutamakan:   - **ZHANGJIAKOU**: Zhangjiakou - **SHENZHEN**: Shenzhen - **SHANGHAI**: Shanghai - **SINGAPORE**: Singapura - **UNKNOWN**: Tidak diketahui     Menentukan wilayah tempat resource sebaiknya disimpan, memungkinkan fitur seperti unggahan terdekat. |
+| preferIntranet | Boolean | Tidak | Apakah memprioritaskan transmisi intranet. Parameter ini memerlukan transmisi intranet penyimpanan khusus untuk dikonfigurasi.   - **true**: Ya (default) - **false**: Tidak |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v2.0/storage/spaces/files/uuid/uploadInfos/query?unionId=union_id HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:access_token
+Content-Type:application/json
+
+{
+  "protocol" : "HEADER_SIGNATURE",
+  "option" : {
+    "storageDriver" : "DINGTALK",
+    "preCheckParam" : {
+      "size" : 512,
+      "name" : "dentry_name"
+    },
+    "preferRegion" : "ZHANGJIAKOU",
+    "preferIntranet" : true
+  }
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Initialize the account Client using a Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkstorage_2_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkstorage_2_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkstorage_2_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoHeaders getFileUploadInfoHeaders = new com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoHeaders();
+        getFileUploadInfoHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOptionPreCheckParam optionPreCheckParam = new com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOptionPreCheckParam()
+                .setSize(512L)
+                .setName("dentry_name");
+        com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOption option = new com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOption()
+                .setStorageDriver("DINGTALK")
+                .setPreCheckParam(optionPreCheckParam)
+                .setPreferRegion("ZHANGJIAKOU")
+                .setPreferIntranet(true);
+        com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoRequest getFileUploadInfoRequest = new com.aliyun.dingtalkstorage_2_0.models.GetFileUploadInfoRequest()
+                .setUnionId("union_id")
+                .setProtocol("HEADER_SIGNATURE")
+                .setOption(option);
+        try {
+            client.getFileUploadInfoWithOptions("uuid", getFileUploadInfoRequest, getFileUploadInfoHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi properti code dan message untuk membantu menemukan masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi properti code dan message untuk membantu menemukan masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.storage_2_0.client import Client as dingtalkstorage_2_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.storage_2_0 import models as dingtalkstorage__2__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkstorage_2_0Client:
+        """
+        Initialize the account Client using a Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkstorage_2_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_file_upload_info_headers = dingtalkstorage__2__0_models.GetFileUploadInfoHeaders()
+        get_file_upload_info_headers.x_acs_dingtalk_access_token = '<your access token>'
+        option_pre_check_param = dingtalkstorage__2__0_models.GetFileUploadInfoRequestOptionPreCheckParam(
+            size=512,
+            name='dentry_name'
+        )
+        option = dingtalkstorage__2__0_models.GetFileUploadInfoRequestOption(
+            storage_driver='DINGTALK',
+            pre_check_param=option_pre_check_param,
+            prefer_region='ZHANGJIAKOU',
+            prefer_intranet=True
+        )
+        get_file_upload_info_request = dingtalkstorage__2__0_models.GetFileUploadInfoRequest(
+            union_id='union_id',
+            protocol='HEADER_SIGNATURE',
+            option=option
+        )
+        try:
+            client.get_file_upload_info_with_options('uuid', get_file_upload_info_request, get_file_upload_info_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi properti code dan message untuk membantu menemukan masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_file_upload_info_headers = dingtalkstorage__2__0_models.GetFileUploadInfoHeaders()
+        get_file_upload_info_headers.x_acs_dingtalk_access_token = '<your access token>'
+        option_pre_check_param = dingtalkstorage__2__0_models.GetFileUploadInfoRequestOptionPreCheckParam(
+            size=512,
+            name='dentry_name'
+        )
+        option = dingtalkstorage__2__0_models.GetFileUploadInfoRequestOption(
+            storage_driver='DINGTALK',
+            pre_check_param=option_pre_check_param,
+            prefer_region='ZHANGJIAKOU',
+            prefer_intranet=True
+        )
+        get_file_upload_info_request = dingtalkstorage__2__0_models.GetFileUploadInfoRequest(
+            union_id='union_id',
+            protocol='HEADER_SIGNATURE',
+            option=option
+        )
+        try:
+            await client.get_file_upload_info_with_options_async('uuid', get_file_upload_info_request, get_file_upload_info_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi properti code dan message untuk membantu menemukan masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vstorage_2_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_2_0\Models\GetFileUploadInfoHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_2_0\Models\GetFileUploadInfoRequest\option\preCheckParam;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_2_0\Models\GetFileUploadInfoRequest\option;
+use AlibabaCloud\SDK\Dingtalk\Vstorage_2_0\Models\GetFileUploadInfoRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Initialize the account Client using a Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $getFileUploadInfoHeaders = new GetFileUploadInfoHeaders([]);
+        $getFileUploadInfoHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $optionPreCheckParam = new preCheckParam([
+            "size" => 512,
+            "name" => "dentry_name"
+        ]);
+        $option = new option([
+            "storageDriver" => "DINGTALK",
+            "preCheckParam" => $optionPreCheckParam,
+            "preferRegion" => "ZHANGJIAKOU",
+            "preferIntranet" => true
+        ]);
+        $getFileUploadInfoRequest = new GetFileUploadInfoRequest([
+            "unionId" => "union_id",
+            "protocol" => "HEADER_SIGNATURE",
+            "option" => $option
+        ]);
+        try {
+            $client->getFileUploadInfoWithOptions("uuid", $getFileUploadInfoRequest, $getFileUploadInfoHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err berisi properti code dan message untuk membantu menemukan masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkstorage_2_0  "github.com/alibabacloud-go/dingtalk/storage_2_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Initialize the account Client using a Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkstorage_2_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkstorage_2_0.Client{}
+  _result, _err = dingtalkstorage_2_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  getFileUploadInfoHeaders := &dingtalkstorage_2_0.GetFileUploadInfoHeaders{}
+  getFileUploadInfoHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  optionPreCheckParam := &dingtalkstorage_2_0.GetFileUploadInfoRequestOptionPreCheckParam{
+    Size: tea.Int64(512),
+    Name: tea.String("dentry_name"),
+  }
+  option := &dingtalkstorage_2_0.GetFileUploadInfoRequestOption{
+    StorageDriver: tea.String("DINGTALK"),
+    PreCheckParam: optionPreCheckParam,
+    PreferRegion: tea.String("ZHANGJIAKOU"),
+    PreferIntranet: tea.Bool(true),
+  }
+  getFileUploadInfoRequest := &dingtalkstorage_2_0.GetFileUploadInfoRequest{
+    UnionId: tea.String("union_id"),
+    Protocol: tea.String("HEADER_SIGNATURE"),
+    Option: option,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.GetFileUploadInfoWithOptions(tea.String("uuid"), getFileUploadInfoRequest, getFileUploadInfoHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err berisi properti code dan message untuk membantu menemukan masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkstorage_2_0, * as $dingtalkstorage_2_0 from '@alicloud/dingtalk/storage_2_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Initialize the account Client using a Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkstorage_2_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkstorage_2_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let getFileUploadInfoHeaders = new $dingtalkstorage_2_0.GetFileUploadInfoHeaders({ });
+    getFileUploadInfoHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let optionPreCheckParam = new $dingtalkstorage_2_0.GetFileUploadInfoRequestOptionPreCheckParam({
+      size: 512,
+      name: "dentry_name",
+    });
+    let option = new $dingtalkstorage_2_0.GetFileUploadInfoRequestOption({
+      storageDriver: "DINGTALK",
+      preCheckParam: optionPreCheckParam,
+      preferRegion: "ZHANGJIAKOU",
+      preferIntranet: true,
+    });
+    let getFileUploadInfoRequest = new $dingtalkstorage_2_0.GetFileUploadInfoRequest({
+      unionId: "union_id",
+      protocol: "HEADER_SIGNATURE",
+      option: option,
+    });
+    try {
+      await client.getFileUploadInfoWithOptions("uuid", getFileUploadInfoRequest, getFileUploadInfoHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err berisi properti code dan message untuk membantu menemukan masalah
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Initialize the account Client using a Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkstorage_2_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkstorage_2_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkstorage_2_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoHeaders getFileUploadInfoHeaders = new AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoHeaders();
+            getFileUploadInfoHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOption.GetFileUploadInfoRequestOptionPreCheckParam optionPreCheckParam = new AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOption.GetFileUploadInfoRequestOptionPreCheckParam
+            {
+                Size = 512,
+                Name = "dentry_name",
+            };
+            AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOption option = new AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoRequest.GetFileUploadInfoRequestOption
+            {
+                StorageDriver = "DINGTALK",
+                PreCheckParam = optionPreCheckParam,
+                PreferRegion = "ZHANGJIAKOU",
+                PreferIntranet = true,
+            };
+            AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoRequest getFileUploadInfoRequest = new AlibabaCloud.SDK.Dingtalkstorage_2_0.Models.GetFileUploadInfoRequest
+            {
+                UnionId = "union_id",
+                Protocol = "HEADER_SIGNATURE",
+                Option = option,
+            };
+            try
+            {
+                client.GetFileUploadInfoWithOptions("uuid", getFileUploadInfoRequest, getFileUploadInfoHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi properti code dan message untuk membantu menemukan masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi properti code dan message untuk membantu menemukan masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Deskripsi |
+| --- | --- | --- |
+| uploadKey | String | Identifier unik untuk unggahan. |
+| storageDriver | String | Tipe penyimpanan file. |
+| protocol | String | Protokol unggahan:   - **HEADER_SIGNATURE**: Tanda tangan header |
+| headerSignatureInfo | Object | Informasi unggahan tanda tangan header.    Dikembalikan ketika parameter `protocol` disetel ke HEADER_SIGNATURE. |
+| resourceUrls | Array of String | URL transmisi. |
+| headers | `Map<String, String>` | Header permintaan. Ukuran maksimum: 20. |
+| expirationSeconds | Integer | Waktu kedaluwarsa, dalam detik. |
+| region | String | Wilayah. Nilai enum:   - **ZHANGJIAKOU**: Zhangjiakou - **SHENZHEN**: Shenzhen - **SHANGHAI**: Shanghai - **SINGAPORE**: Singapura - **UNKNOWN**: Tidak diketahui |
+| internalResourceUrls | Array of String | URL intranet.    Bidang ini saat ini tidak digunakan. Abaikan saja. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "uploadKey" : "upload_key",
+  "storageDriver" : "DINGTALK",
+  "protocol" : "HEADER_SIGNATURE",
+  "headerSignatureInfo" : {
+    "resourceUrls" : [ "resourceUrl" ],
+    "headers" : {
+      "key" : "header_value"
+    },
+    "expirationSeconds" : 900,
+    "region" : "ZHANGJIAKOU",
+    "internalResourceUrls" : [ "internalResourceUrl" ]
+  }
+}
+```
+
+### Kode error
+
+Jika terjadi error saat memanggil API ini, cari pesan error di dokumen [Kode error global](/id/open/development/server-api-error-codes-1) untuk solusinya.
+
+| HttpCode | Kode error | Pesan error | Deskripsi |
+| --- | --- | --- | --- |
+| 400 | paramError | %s | Error parameter |
+| 400 | paramError.protocol | %s | Error parameter - protocol |
+| 400 | paramError.parentDentryUuid | %s | Error parameter - parentDentryUuid |
+| 400 | paramError.storageDriver | %s | Error parameter - storageDriver |
+| 400 | dentryUploadError | %s | Error unggah file |
+| 400 | spaceQuotaInsufficient | %s | Kapasitas ruang tidak mencukupi |
+| 400 | sceneQuotaInsufficient | %s | Kapasitas skenario tidak mencukupi |
+| 400 | appQuotaInsufficient | %s | Kapasitas aplikasi tidak mencukupi |
+| 400 | orgQuotaInsufficient | %s | Kapasitas organisasi tidak mencukupi |
+| 400 | dentryUploadForbidden | %s | Unggahan dilarang |
+| 400 | dentryUploadProtocolNotSupport | %s | Protokol unggahan tidak didukung |
+| 403 | permissionDenied | %s | Pengguna tidak memiliki izin untuk mengunggah file |
+| 404 | spaceNotExist | %s | Ruang tidak ada |
+| 500 | systemError | %s | Error sistem |
+| 500 | unknownError | Unknown Error | Error tidak diketahui |
+| 503 | operationTimeout | %s | Permintaan kedaluwarsa |

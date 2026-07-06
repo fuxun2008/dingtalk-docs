@@ -21,8 +21,8 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
      search dialog instead of a dead URL. */
   const buildStructuredData = (l) => {
     const lp = l === "en" ? "/" : "/" + l + "/";
-    const inLang = { en: "en-US", zh: "zh-CN", ja: "ja-JP" }[l] || "en-US";
-    const altName = { en: "DingTalk Help Center", zh: "钉钉帮助中心", ja: "DingTalk ヘルプセンター" }[l];
+    const inLang = { en: "en-US", zh: "zh-CN", ja: "ja-JP", id: "id-ID" }[l] || "en-US";
+    const altName = { en: "DingTalk Help Center", zh: "钉钉帮助中心", ja: "DingTalk ヘルプセンター", id: "Pusat Bantuan DingTalk" }[l];
     const siteUrl = "https://help.dingtalk.io" + lp;
     const logo = "https://img.alicdn.com/imgextra/i2/O1CN01YT67eU1F0F4n6LlTN_!!6000000000424-2-tps-1024-1024.png";
     return {
@@ -534,9 +534,10 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       { code: "en", label: "English", href: "/" },
       { code: "zh", label: "中文", href: "/zh/index" },
       { code: "ja", label: "日本語", href: "/ja/index" },
+      { code: "id", label: "Bahasa Indonesia", href: "/id/index" },
     ];
     // Button label reflects the page's actual language.
-    const LABEL_MAP = { en: "English", zh: "中文", ja: "日本語" };
+    const LABEL_MAP = { en: "English", zh: "中文", ja: "日本語", id: "Bahasa Indonesia" };
     const current = LANGS.find((l) => l.code === lang) ||
       { code: lang, label: LABEL_MAP[lang] || "English" };
     return (
@@ -585,6 +586,9 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   };
 
   const lp = lang === "en" ? "/" : "/" + lang + "/";
+  // Open Platform docs now exist for every language (en/zh/ja/id), so developer
+  // links use the same language prefix as the rest of the page.
+  const openLp = lp;
   // Logo/brand links to the actual landing page. The language root (/zh, /ja)
   // redirects to the first nav doc, so point at the custom home page directly.
   const homeHref = lang === "en" ? "/" : "/" + lang + "/index";
@@ -666,7 +670,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             {t.nav1}
           </a>
           <a
-            href={`${lp}open/dingstart/basic-concepts-beta`}
+            href={`${openLp}open/dingstart/basic-concepts-beta`}
             role="menuitem"
             onClick={() => setOpen(false)}
           >
@@ -706,7 +710,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         </a>
         <div className="dt-home-nav-links">
           <a href="#categories">{t.nav1}</a>
-          <a href={`${lp}open/dingstart/basic-concepts-beta`}>{t.nav3}</a>
+          <a href={`${openLp}open/dingstart/basic-concepts-beta`}>{t.nav3}</a>
           <a href={mkt("/contact-sales")} target="_blank" rel="noopener noreferrer">
             {t.nav4}
           </a>
@@ -874,7 +878,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             <li><a href={mkt("/#pricing")} target="_blank" rel="noopener noreferrer">{t.foot_s1}</a></li>
             <li><a href={mkt("/contact-sales/")} target="_blank" rel="noopener noreferrer">{t.foot_s2}</a></li>
             <li><a href={`https://help.dingtalk.io${homeHref}`}>{t.foot_s3}</a></li>
-            <li><a href={`https://help.dingtalk.io${lp}open/dingstart/basic-concepts-beta`} target="_blank" rel="noopener noreferrer">{t.foot_s4}</a></li>
+            <li><a href={`https://help.dingtalk.io${openLp}open/dingstart/basic-concepts-beta`} target="_blank" rel="noopener noreferrer">{t.foot_s4}</a></li>
           </ul>
         </div>
         <div>

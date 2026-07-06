@@ -1,0 +1,157 @@
+---
+title: "Mengirim pesan obrolan grup dengan Bot templat grup"
+description: "Panduan praktis mengirim pesan Obrolan Grup di DingTalk menggunakan Bot templat grup — mencakup kebutuhan, prasyarat, panduan cepat, dan langkah-langkah bagi developer."
+---
+
+Untuk mengirim pesan Obrolan Grup menggunakan Bot templat grup, ikuti langkah-langkah dalam dokumen ini.
+
+## Menentukan kebutuhan
+
+Sebelum pengembangan, tinjau ringkasan berikut. Dokumen ini menjelaskan cara menggunakan Bot templat grup untuk mengirim pesan Obrolan Grup melalui API pesan asisten grup. Untuk memulai dengan cepat, jalankan demo contoh yang disediakan di bagian Panduan cepat. Ini memberi Anda pengalaman langsung dengan Bot templat grup.
+
+## Prasyarat
+
+1. Selesaikan proses pembuatan Bot templat grup.
+2. Selesaikan [pengajuan izin API](/id/open/development/add-api-permission) untuk OpenAPI. Ajukan `Izin pengelolaan pesan grup DingTalk`.
+3. Siapkan lingkungan pengembangan:
+
+   - Java: JDK 1.8 atau versi lebih baru terpasang
+   - Java: Maven 3 terpasang
+
+## Panduan cepat
+
+1. Unduh demo contoh [group-template-robot-group-message-quick-start](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20240221/oqqnlh/group-template-robot-group-message-quick-start.zip).
+2. Ganti parameter dalam metode main dari groupTemplateRobotGroupMessage:
+
+   | Item konfigurasi | Deskripsi |
+   | --- | --- |
+   | GROUP_TEMPLATE_ID | Masuk ke Developer Backend, klik **Open Capabilities** > **Scenario Group** > **Group Template**, lalu salin ID. |
+   | ROBOT_CODE | Masuk ke Developer Backend, klik **Open Capabilities** > **Scenario Group** > **Group Template** > **Templat grup target**. Salin ID Bot. Jika templat grup tidak terhubung dengan Bot, lihat cara menghubungkan Bot templat grup dengan templat grup. |
+   | OWNER_USER_ID | userId pengguna. Untuk detailnya, lihat [User UserId](/id/open/dingstart/basic-concepts-beta). |
+   | CLIENT_ID | Client ID aplikasi. Untuk detailnya, lihat [Client ID](/id/open/dingstart/basic-concepts-beta). |
+   | CLIENT_SECRET | Client Secret aplikasi. Untuk detailnya, lihat [Client Secret](/id/open/dingstart/basic-concepts-beta). |
+3. Jalankan metode main. Anda akan menerima pesan yang dikirim oleh Bot di dalam grup.
+
+## Prosedur
+
+1. Tambahkan dependensi ke file `pom.xml` proyek.
+
+   ```xml lines
+   <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>dingtalk</artifactId>
+               <version>2.0.76</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>fastjson</artifactId>
+               <version>1.2.68</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Buat metode main lalu jalankan.
+
+   ```java lines
+   import com.alibaba.fastjson.JSON;
+   import com.alibaba.fastjson.JSONObject;
+   import com.aliyun.dingtalkoauth2_1_0.Client;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
+   import com.aliyun.teaopenapi.models.Config;
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiImChatScencegroupMessageSendV2Request;
+   import com.dingtalk.api.request.OapiImChatScenegroupCreateRequest;
+   import com.dingtalk.api.response.OapiImChatScencegroupMessageSendV2Response;
+   import com.dingtalk.api.response.OapiImChatScenegroupCreateResponse;
+   import com.taobao.api.ApiException;
+
+   public class groupTemplateRobotGroupMessage {
+
+       // Id templat grup
+       public static final String GROUP_TEMPLATE_ID = "<your group template id >";
+
+       // Id Bot templat grup
+       public static final String ROBOT_CODE = "<your group robot id>";
+
+       // userId pemilik grup
+       public static final String OWNER_USER_ID= "<owner userId>";
+
+       // Client id aplikasi
+       public static final String CLIENT_ID= "<your app client id>";
+
+       // Client secret aplikasi
+       public static final String CLIENT_SECRET= "< your app client secret>";
+
+       /**
+        * Mengirim pesan Bot templat grup
+        * @param args
+        */
+       public static void main(String[] args) {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/im/chat/scencegroup/message/send_v2");
+           OapiImChatScencegroupMessageSendV2Request req = new OapiImChatScencegroupMessageSendV2Request();
+           req.setTargetOpenConversationId(CreateGroup());
+           req.setMsgTemplateId("inner_app_template_markdown");
+           JSONObject jsonObject = new JSONObject().fluentPut("title","Judul uji").fluentPut("markdown_content", "# Konten uji \n > Uji");
+           req.setMsgParamMap(JSON.toJSONString(jsonObject));
+           req.setRobotCode(ROBOT_CODE);
+           OapiImChatScencegroupMessageSendV2Response rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+       }
+
+       /**
+        * Mendapatkan OpenConversationId grup
+        * @return
+        */
+       public static String CreateGroup() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/topapi/im/chat/scenegroup/create");
+           OapiImChatScenegroupCreateRequest req = new OapiImChatScenegroupCreateRequest();
+           req.setTitle("Grup uji Bot templat grup");
+           req.setTemplateId(GROUP_TEMPLATE_ID);
+           req.setOwnerUserId(OWNER_USER_ID);
+           OapiImChatScenegroupCreateResponse rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               return rsp.getResult().getOpenConversationId();
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+
+       }
+
+       public static String accessToken(){
+           GetAccessTokenRequest getAccessTokenRequest = new GetAccessTokenRequest();
+           getAccessTokenRequest.setAppKey(CLIENT_ID);
+           getAccessTokenRequest.setAppSecret(CLIENT_SECRET);
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           try {
+               Client client = new Client(config);
+               GetAccessTokenResponse accessToken = client.getAccessToken(getAccessTokenRequest);
+               return accessToken.getBody().getAccessToken();
+           } catch (Exception e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   Obrolan Grup dibuat secara otomatis, dan Anda dapat melihat pesan yang dikirim oleh Bot templat grup di dalam grup.
+
+## Dokumen terkait
+
+- Mengirim pesan asisten grup

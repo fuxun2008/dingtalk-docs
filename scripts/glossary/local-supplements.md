@@ -221,301 +221,301 @@
 
 ## 应用类型 / 平台分类
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 企业内部应用 | Internal app | 社内アプリ | 区别于第三方应用；专有概念 |
-| 第三方应用 | Third-party app | サードパーティアプリ | |
-| 第三方企业应用 | Third-party enterprise app | サードパーティ社内アプリ | 与"第三方应用"语义微差，按上下文取舍 |
-| 第三方个人应用 | Third-party personal app | サードパーティ個人アプリ | |
-| 第三方组件应用 | Third-party component app | サードパーティコンポーネントアプリ | |
-| H5 应用 / H5应用 | H5 app | H5アプリ | 钉钉术语，不译为 HTML5 |
-| 微应用 | Micro app | マイクロアプリ | |
-| 小程序 | Mini program | ミニプログラム | |
-| 服务窗 | Service account | サービスアカウント | |
-| 应用类型 | App type | アプリタイプ | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 企业内部应用 | Internal app | 社内アプリ | Aplikasi internal | 区别于第三方应用；专有概念 |
+| 第三方应用 | Third-party app | サードパーティアプリ | Aplikasi pihak ketiga |  |
+| 第三方企业应用 | Third-party enterprise app | サードパーティ社内アプリ | Aplikasi perusahaan pihak ketiga | 与"第三方应用"语义微差，按上下文取舍 |
+| 第三方个人应用 | Third-party personal app | サードパーティ個人アプリ | Aplikasi personal pihak ketiga |  |
+| 第三方组件应用 | Third-party component app | サードパーティコンポーネントアプリ | Aplikasi komponen pihak ketiga |  |
+| H5 应用 / H5应用 | H5 app | H5アプリ | Aplikasi H5 | 钉钉术语，不译为 HTML5 |
+| 微应用 | Micro app | マイクロアプリ | Aplikasi mikro |  |
+| 小程序 | Mini program | ミニプログラム | Mini program |  |
+| 服务窗 | Service account | サービスアカウント | Akun layanan |  |
+| 应用类型 | App type | アプリタイプ | Jenis aplikasi |  |
 
 ## 鉴权 / 凭证 / OAuth
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 鉴权 | Authentication | 認証 | 区别于授权 Authorization |
-| 授权 | Authorization | 認可 | |
-| 鉴权方式 | Authentication method | 認証方法 | |
-| 凭证 | Credential | 認証情報 | |
-| 应用凭证 | App credential | アプリ認証情報 | |
-| 访问凭证 | Access credential | アクセス認証情報 | |
-| 调用凭证 | API credential | API 認証情報 | 业务文档常用替代说法 |
-| accessToken / Access Token / 访问令牌 | access token | アクセストークン | 文中行文表达；JSON 字段保持 `accessToken` 原样不译 |
-| access_token | access_token | access_token | JSON 字段名 / 参数名，**保持原样不译** |
-| refreshToken / Refresh Token / 刷新令牌 | refresh token | リフレッシュトークン | 同上 |
-| jsapi_ticket | jsapi_ticket | jsapi_ticket | 保持原样 |
-| corpId | corpId | corpId | 保持原样 |
-| suiteKey / suiteSecret / suiteTicket | suiteKey / suiteSecret / suiteTicket | suiteKey / suiteSecret / suiteTicket | 保持原样 |
-| 应用 Client ID / Client ID | client ID | クライアント ID | 文中行文；JSON 字段 `client_id` 保持原样 |
-| 应用 Client Secret / Client Secret | client secret | クライアントシークレット | 同上；JSON 字段 `client_secret` 保持原样 |
-| AppKey | AppKey | AppKey | **保持单词不拆**；official "App Key" 是旧译，本批次按一体词 |
-| AppSecret | AppSecret | AppSecret | 同上 |
-| 签名 | signature | 署名 | official 已有，沿用 |
-| 时间戳 | timestamp | タイムスタンプ | |
-| 随机串 / Nonce / nonce | nonce | nonce | 保持小写 |
-| 加签 | sign request | リクエスト署名 | 动词短语 |
-| 验签 | verify signature | 署名検証 | |
-| OAuth 2.0 授权 | OAuth 2.0 authorization | OAuth 2.0 認可 | |
-| 授权码 / authorization_code | authorization code | 認可コード | JSON 字段 `authorization_code` 保持原样 |
-| 授权类型 / grant_type | grant type | 認可タイプ | JSON 字段 `grant_type` 保持原样 |
-| 客户端模式 / client_credentials | client credentials | クライアント資格情報 | 同上 |
-| 单点登录 / SSO | single sign-on | シングルサインオン | |
-| 免登 | silent login | サイレントログイン | DingTalk 专有概念 |
-| 扫码登录 | QR code login | QR コードログイン | |
-| 应用授权 | App authorization | アプリ認可 | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 鉴权 | Authentication | 認証 | Autentikasi | 区别于授权 Authorization |
+| 授权 | Authorization | 認可 | Otorisasi |  |
+| 鉴权方式 | Authentication method | 認証方法 | Metode autentikasi |  |
+| 凭证 | Credential | 認証情報 | Kredensial |  |
+| 应用凭证 | App credential | アプリ認証情報 | Kredensial aplikasi |  |
+| 访问凭证 | Access credential | アクセス認証情報 | Kredensial akses |  |
+| 调用凭证 | API credential | API 認証情報 | Kredensial API | 业务文档常用替代说法 |
+| accessToken / Access Token / 访问令牌 | access token | アクセストークン | access token | 文中行文表达；JSON 字段保持 `accessToken` 原样不译 |
+| access_token | access_token | access_token | access_token | JSON 字段名 / 参数名，**保持原样不译** |
+| refreshToken / Refresh Token / 刷新令牌 | refresh token | リフレッシュトークン | refresh token | 同上 |
+| jsapi_ticket | jsapi_ticket | jsapi_ticket | jsapi_ticket | 保持原样 |
+| corpId | corpId | corpId | corpId | 保持原样 |
+| suiteKey / suiteSecret / suiteTicket | suiteKey / suiteSecret / suiteTicket | suiteKey / suiteSecret / suiteTicket | suiteKey / suiteSecret / suiteTicket | 保持原样 |
+| 应用 Client ID / Client ID | client ID | クライアント ID | client ID | 文中行文；JSON 字段 `client_id` 保持原样 |
+| 应用 Client Secret / Client Secret | client secret | クライアントシークレット | client secret | 同上；JSON 字段 `client_secret` 保持原样 |
+| AppKey | AppKey | AppKey | AppKey | **保持单词不拆**；official "App Key" 是旧译，本批次按一体词 |
+| AppSecret | AppSecret | AppSecret | AppSecret | 同上 |
+| 签名 | signature | 署名 | Tanda tangan | official 已有，沿用 |
+| 时间戳 | timestamp | タイムスタンプ | Stempel waktu |  |
+| 随机串 / Nonce / nonce | nonce | nonce | nonce | 保持小写 |
+| 加签 | sign request | リクエスト署名 | Tanda tangani permintaan | 动词短语 |
+| 验签 | verify signature | 署名検証 | Verifikasi tanda tangan |  |
+| OAuth 2.0 授权 | OAuth 2.0 authorization | OAuth 2.0 認可 | Otorisasi OAuth 2.0 |  |
+| 授权码 / authorization_code | authorization code | 認可コード | authorization_code | JSON 字段 `authorization_code` 保持原样 |
+| 授权类型 / grant_type | grant type | 認可タイプ | grant_type | JSON 字段 `grant_type` 保持原样 |
+| 客户端模式 / client_credentials | client credentials | クライアント資格情報 | client_credentials | 同上 |
+| 单点登录 / SSO | single sign-on | シングルサインオン | Single Sign-On |  |
+| 免登 | silent login | サイレントログイン | Login senyap | DingTalk 专有概念 |
+| 扫码登录 | QR code login | QR コードログイン | Login kode QR |  |
+| 应用授权 | App authorization | アプリ認可 | Otorisasi App |  |
 
 ## 权限 / 范围 / 调用控制
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 权限点 | permission scope | 権限スコープ | 钉钉开放平台核心概念 |
-| 权限范围 | permission scope | 権限スコープ | 与"权限点"同义 |
-| 接口权限 | API permission | API 権限 | |
-| 申请权限 | Request permission | 権限をリクエスト | 动词；avoid "apply for" |
-| 授予权限 | Grant permission | 権限を付与 | |
-| 撤回权限 | Revoke permission | 権限を取り消し | |
-| 调用频率 / API 调用频率 | rate limit | レート制限 | 业界标准译法 |
-| 限流 | rate limit | レート制限 | 同上 |
-| 限速 | throttling | スロットリング | 偏严格场景 |
-| 调用次数 | call count | 呼び出し回数 | |
-| 配额 | quota | クォータ | |
-| 调用上限 | rate limit | レート制限 | |
-| 命名空间 | namespace | 名前空間 | |
-| 通讯录可见范围 | contact visibility scope | 連絡先可視範囲 | DingTalk 通讯录术语 |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 权限点 | permission scope | 権限スコープ | Cakupan izin | 钉钉开放平台核心概念 |
+| 权限范围 | permission scope | 権限スコープ | Cakupan izin | 与"权限点"同义 |
+| 接口权限 | API permission | API 権限 | Izin API |  |
+| 申请权限 | Request permission | 権限をリクエスト | Minta izin | 动词；avoid "apply for" |
+| 授予权限 | Grant permission | 権限を付与 | Berikan izin |  |
+| 撤回权限 | Revoke permission | 権限を取り消し | Cabut izin |  |
+| 调用频率 / API 调用频率 | rate limit | レート制限 | Batas laju | 业界标准译法 |
+| 限流 | rate limit | レート制限 | Batas laju | 同上 |
+| 限速 | throttling | スロットリング | Pembatasan laju | 偏严格场景 |
+| 调用次数 | call count | 呼び出し回数 | Jumlah panggilan |  |
+| 配额 | quota | クォータ | Kuota |  |
+| 调用上限 | rate limit | レート制限 | Batas laju |  |
+| 命名空间 | namespace | 名前空間 | Namespace |  |
+| 通讯录可见范围 | contact visibility scope | 連絡先可視範囲 | Cakupan visibilitas kontak | DingTalk 通讯录术语 |
 
 ## HTTP / 请求 / 响应（API 文档骨架词）
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 请求 | request | リクエスト | |
-| 响应 | response | レスポンス | |
-| 请求方式 / 请求方法 | HTTP method | HTTP メソッド | |
-| 接口地址 / 接口 URL | HTTP URL | HTTP URL | |
-| 请求头 | request header | リクエストヘッダー | |
-| 响应头 | response header | レスポンスヘッダー | |
-| 请求体 | request body | リクエストボディ | |
-| 响应体 | response body | レスポンスボディ | |
-| 请求参数 | request parameter | リクエストパラメータ | |
-| 响应参数 | response parameter | レスポンスパラメータ | |
-| 路径参数 | path parameter | パスパラメータ | |
-| 查询参数 | query parameter | クエリパラメータ | |
-| 请求示例 | Request example | リクエスト例 | Heading 用法（Sentence case） |
-| 响应示例 | Response example | レスポンス例 | |
-| 调用示例 | Code example | コード例 | 含 SDK 调用代码场景 |
-| 返回示例 | Response example | レスポンス例 | 与"响应示例"同义合并 |
-| 错误示例 | Error response example | エラーレスポンス例 | |
-| 调用接口 | Call the API | API を呼び出す | 动词短语 |
-| 接入流程 | Integration flow | 統合フロー | |
-| 接入说明 | Integration guide | 統合ガイド | |
-| 接口说明 | API description | API 説明 | |
-| 接口调用说明 | API call description | API 呼び出し説明 | |
-| 调用说明 | Usage notes | 使用上の注意 | |
-| 字段类型 | Field type | フィールドタイプ | official 有，但 ja 拼写有误 (フォールド)，本批次纠正 |
-| 字段名 | Field name | フィールド名 | |
-| 字段含义 | Field description | フィールドの説明 | |
-| 是否必填 | Required | 必須 | 表格列头惯用 |
-| 必填 | Required | 必須 | |
-| 非必填 | Optional | 任意 | |
-| 选填 | Optional | 任意 | |
-| 默认值 | Default | デフォルト | |
-| 示例值 | Example | 例 | |
-| 取值范围 | Allowed values | 許容値 | |
-| 枚举值 | Enum values | 列挙値 | |
-| 数据类型 | Data type | データ型 | |
-| 数组 | array | 配列 | |
-| 对象 | object | オブジェクト | |
-| 字符串 | string | 文字列 | |
-| 数字 | number | 数値 | |
-| 布尔 | boolean | 真偽値 | |
-| 整型 | integer | 整数 | |
-| 长整型 | long | long | |
-| 浮点型 | float | 浮動小数点 | |
-| 时间戳 (毫秒) | Unix timestamp (ms) | Unix タイムスタンプ (ミリ秒) | |
-| 时间戳 (秒) | Unix timestamp (s) | Unix タイムスタンプ (秒) | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 请求 | request | リクエスト | Permintaan |  |
+| 响应 | response | レスポンス | Respons |  |
+| 请求方式 / 请求方法 | HTTP method | HTTP メソッド | Metode HTTP |  |
+| 接口地址 / 接口 URL | HTTP URL | HTTP URL | URL HTTP |  |
+| 请求头 | request header | リクエストヘッダー | Header permintaan |  |
+| 响应头 | response header | レスポンスヘッダー | Header respons |  |
+| 请求体 | request body | リクエストボディ | Isi permintaan (request body) |  |
+| 响应体 | response body | レスポンスボディ | Isi respons (response body) |  |
+| 请求参数 | request parameter | リクエストパラメータ | Parameter permintaan |  |
+| 响应参数 | response parameter | レスポンスパラメータ | Parameter respons |  |
+| 路径参数 | path parameter | パスパラメータ | Parameter jalur |  |
+| 查询参数 | query parameter | クエリパラメータ | Parameter kueri |  |
+| 请求示例 | Request example | リクエスト例 | Contoh permintaan | Heading 用法（Sentence case） |
+| 响应示例 | Response example | レスポンス例 | Contoh respons |  |
+| 调用示例 | Code example | コード例 | Contoh kode | 含 SDK 调用代码场景 |
+| 返回示例 | Response example | レスポンス例 | Contoh respons | 与"响应示例"同义合并 |
+| 错误示例 | Error response example | エラーレスポンス例 | Contoh respons error |  |
+| 调用接口 | Call the API | API を呼び出す | Panggil API | 动词短语 |
+| 接入流程 | Integration flow | 統合フロー | Alur integrasi |  |
+| 接入说明 | Integration guide | 統合ガイド | Panduan integrasi |  |
+| 接口说明 | API description | API 説明 | Deskripsi API |  |
+| 接口调用说明 | API call description | API 呼び出し説明 | Deskripsi panggilan API |  |
+| 调用说明 | Usage notes | 使用上の注意 | Catatan penggunaan |  |
+| 字段类型 | Field type | フィールドタイプ | Tipe field | official 有，但 ja 拼写有误 (フォールド)，本批次纠正 |
+| 字段名 | Field name | フィールド名 | Nama field |  |
+| 字段含义 | Field description | フィールドの説明 | Deskripsi field |  |
+| 是否必填 | Required | 必須 | Wajib | 表格列头惯用 |
+| 必填 | Required | 必須 | Wajib |  |
+| 非必填 | Optional | 任意 | Opsional |  |
+| 选填 | Optional | 任意 | Opsional |  |
+| 默认值 | Default | デフォルト | Default |  |
+| 示例值 | Example | 例 | Contoh |  |
+| 取值范围 | Allowed values | 許容値 | Nilai yang diizinkan |  |
+| 枚举值 | Enum values | 列挙値 | Nilai enum |  |
+| 数据类型 | Data type | データ型 | Tipe data |  |
+| 数组 | array | 配列 | array |  |
+| 对象 | object | オブジェクト | object |  |
+| 字符串 | string | 文字列 | string |  |
+| 数字 | number | 数値 | number |  |
+| 布尔 | boolean | 真偽値 | boolean |  |
+| 整型 | integer | 整数 | integer |  |
+| 长整型 | long | long | long |  |
+| 浮点型 | float | 浮動小数点 | float |  |
+| 时间戳 (毫秒) | Unix timestamp (ms) | Unix タイムスタンプ (ミリ秒) | Unix timestamp (ms) |  |
+| 时间戳 (秒) | Unix timestamp (s) | Unix タイムスタンプ (秒) | Unix timestamp (s) |  |
 
 ## 错误处理
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 错误码 | error code | エラーコード | |
-| 错误信息 | error message | エラーメッセージ | |
-| 异常 | error | エラー | "异常"在钉钉文档语境多指 API 错误，不译 exception |
-| 异常处理 | error handling | エラーハンドリング | |
-| 错误处理 | error handling | エラーハンドリング | |
-| 调用失败 | The call failed | 呼び出しに失敗 | |
-| 调用成功 | The call succeeded | 呼び出しに成功 | |
-| 业务错误 | business error | ビジネスエラー | |
-| 系统错误 | system error | システムエラー | |
-| 参数错误 | parameter error | パラメータエラー | |
-| 权限不足 | insufficient permissions | 権限不足 | |
-| 鉴权失败 | authentication failed | 認証失敗 | |
-| 令牌过期 | token expired | トークンの有効期限切れ | |
-| 重试 | retry | 再試行 | |
-| 重试机制 | retry mechanism | リトライ機構 | |
-| 指数退避 | exponential backoff | 指数バックオフ | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 错误码 | error code | エラーコード | Kode error |  |
+| 错误信息 | error message | エラーメッセージ | Pesan error |  |
+| 异常 | error | エラー | Error | "异常"在钉钉文档语境多指 API 错误，不译 exception |
+| 异常处理 | error handling | エラーハンドリング | Penanganan error |  |
+| 错误处理 | error handling | エラーハンドリング | Penanganan error |  |
+| 调用失败 | The call failed | 呼び出しに失敗 | Panggilan gagal |  |
+| 调用成功 | The call succeeded | 呼び出しに成功 | Panggilan berhasil |  |
+| 业务错误 | business error | ビジネスエラー | Error bisnis |  |
+| 系统错误 | system error | システムエラー | Error sistem |  |
+| 参数错误 | parameter error | パラメータエラー | Error parameter |  |
+| 权限不足 | insufficient permissions | 権限不足 | Izin tidak memadai |  |
+| 鉴权失败 | authentication failed | 認証失敗 | Autentikasi gagal |  |
+| 令牌过期 | token expired | トークンの有効期限切れ | Token kedaluwarsa |  |
+| 重试 | retry | 再試行 | Coba lagi |  |
+| 重试机制 | retry mechanism | リトライ機構 | Mekanisme coba-lagi |  |
+| 指数退避 | exponential backoff | 指数バックオフ | Exponential backoff |  |
 
 ## 事件 / 回调 / Webhook
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 事件 | event | イベント | |
-| 事件订阅 | event subscription | イベントサブスクリプション | |
-| 事件类型 | event type | イベントタイプ | |
-| 事件回调 | event callback | イベントコールバック | |
-| 回调 | callback | コールバック | |
-| 回调地址 / 回调 URL | callback URL | コールバック URL | |
-| 同步回调 | synchronous callback | 同期コールバック | |
-| 异步回调 | asynchronous callback | 非同期コールバック | |
-| 服务端事件 | server event | サーバーイベント | |
-| 推送 | push | プッシュ | |
-| 消息推送 | Message push | メッセージプッシュ | |
-| 注册回调 | Register a callback | コールバックを登録 | 动词短语 |
-| 注销回调 | Unregister a callback | コールバックを解除 | |
-| 群机器人 Webhook | Group bot webhook | グループボット Webhook | "群机器人 → Group bot" |
-| outgoing 机制 | outgoing webhook | アウトゴーイング Webhook | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 事件 | event | イベント | Peristiwa |  |
+| 事件订阅 | event subscription | イベントサブスクリプション | Langganan peristiwa |  |
+| 事件类型 | event type | イベントタイプ | Tipe peristiwa |  |
+| 事件回调 | event callback | イベントコールバック | Callback peristiwa |  |
+| 回调 | callback | コールバック | Callback |  |
+| 回调地址 / 回调 URL | callback URL | コールバック URL | URL callback |  |
+| 同步回调 | synchronous callback | 同期コールバック | Callback sinkron |  |
+| 异步回调 | asynchronous callback | 非同期コールバック | Callback asinkron |  |
+| 服务端事件 | server event | サーバーイベント | Peristiwa server |  |
+| 推送 | push | プッシュ | Push |  |
+| 消息推送 | Message push | メッセージプッシュ | Push pesan |  |
+| 注册回调 | Register a callback | コールバックを登録 | Daftarkan callback | 动词短语 |
+| 注销回调 | Unregister a callback | コールバックを解除 | Batalkan pendaftaran callback |  |
+| 群机器人 Webhook | Group bot webhook | グループボット Webhook | Webhook bot grup | "群机器人 → Group bot" |
+| outgoing 机制 | outgoing webhook | アウトゴーイング Webhook | Webhook keluar (outgoing webhook) |  |
 
 ## 服务端 API / JSAPI / SDK
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 服务端 API / 服务端API | Server API | サーバー API | DingTalk 开放平台一级分类；保持半角空格 |
-| 服务端 | Server-side | サーバーサイド | |
-| 客户端 | Client-side | クライアントサイド | |
-| 新版服务端 API | Server API v2 | サーバー API v2 | 钉钉的"新版"特指 v2 |
-| 旧版 API | Legacy API | 旧版 API | |
-| JSAPI | JSAPI | JSAPI | DingTalk 前端 JS 桥；保持原样不译 |
-| H5 JSAPI | H5 JSAPI | H5 JSAPI | |
-| 小程序 JSAPI | Mini program JSAPI | ミニプログラム JSAPI | |
-| SDK | SDK | SDK | |
-| 服务端 SDK | Server SDK | サーバー SDK | |
-| 接入指南 | Integration guide | 統合ガイド | |
-| 调用指南 | Usage guide | 使用ガイド | |
-| 开发指南 | Developer guide | 開発者ガイド | |
-| 快速开始 | Quickstart | クイックスタート | |
-| 入门指南 | Getting started | はじめに | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 服务端 API / 服务端API | Server API | サーバー API | Server API | DingTalk 开放平台一级分类；保持半角空格 |
+| 服务端 | Server-side | サーバーサイド | Sisi server |  |
+| 客户端 | Client-side | クライアントサイド | Sisi klien |  |
+| 新版服务端 API | Server API v2 | サーバー API v2 | Server API v2 | 钉钉的"新版"特指 v2 |
+| 旧版 API | Legacy API | 旧版 API | API lama |  |
+| JSAPI | JSAPI | JSAPI | JSAPI | DingTalk 前端 JS 桥；保持原样不译 |
+| H5 JSAPI | H5 JSAPI | H5 JSAPI | H5 JSAPI |  |
+| 小程序 JSAPI | Mini program JSAPI | ミニプログラム JSAPI | JSAPI mini program |  |
+| SDK | SDK | SDK | SDK |  |
+| 服务端 SDK | Server SDK | サーバー SDK | Server SDK |  |
+| 接入指南 | Integration guide | 統合ガイド | Panduan integrasi |  |
+| 调用指南 | Usage guide | 使用ガイド | Panduan penggunaan |  |
+| 开发指南 | Developer guide | 開発者ガイド | Panduan developer |  |
+| 快速开始 | Quickstart | クイックスタート | Panduan cepat |  |
+| 入门指南 | Getting started | はじめに | Memulai |  |
 
 ## 机器人 / Bot（**关键强约束：永远 Bot，绝不 Robot**）
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 机器人 | Bot | ボット | **强约束**：DingTalk 聊天机器人语境单数；official "Bots" 仅用在列表性语境 |
-| 钉钉机器人 | DingTalk Bot | DingTalk ボット | |
-| 群机器人 | Group bot | グループボット | |
-| 智能机器人 | Bot | ボット | |
-| 单聊机器人 | Single-chat bot | シングルチャットボット | |
-| 企业机器人 | Enterprise bot | 社内ボット | |
-| 自定义机器人 | Custom bot | カスタムボット | |
-| 机器人消息 | Bot message | ボットメッセージ | |
-| 机器人卡片 | Bot card | ボットカード | |
-| Stream 模式机器人 | Stream-mode bot | Stream モードボット | |
-| 机器人接入 | Bot integration | ボット統合 | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 机器人 | Bot | ボット | Bot | **强约束**：DingTalk 聊天机器人语境单数；official "Bots" 仅用在列表性语境 |
+| 钉钉机器人 | DingTalk Bot | DingTalk ボット | DingTalk Bot |  |
+| 群机器人 | Group bot | グループボット | Bot grup |  |
+| 智能机器人 | Bot | ボット | Bot |  |
+| 单聊机器人 | Single-chat bot | シングルチャットボット | Bot obrolan tunggal |  |
+| 企业机器人 | Enterprise bot | 社内ボット | Bot perusahaan |  |
+| 自定义机器人 | Custom bot | カスタムボット | Bot kustom |  |
+| 机器人消息 | Bot message | ボットメッセージ | Pesan Bot |  |
+| 机器人卡片 | Bot card | ボットカード | Kartu Bot |  |
+| Stream 模式机器人 | Stream-mode bot | Stream モードボット | Bot mode Stream |  |
+| 机器人接入 | Bot integration | ボット統合 | Integrasi Bot |  |
 
 ## 即时通信 / 消息 / 卡片
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 即时通信 / IM | IM | IM | 保持缩写 |
-| 群 / 群组 | group | グループ | "群"高频；"群组"二字时同义合并 |
-| 群成员 | group member | グループメンバー | |
-| 群主 | group owner | グループオーナー | |
-| 群管理员 | group admin | グループ管理者 | |
-| 会话 | conversation | 会話 | official "Chat" 偏聊天界面；"会话 ID / 会话类型"语境用 conversation 更标准 |
-| 会话 ID | conversation ID | 会話 ID | |
-| 会话类型 | conversation type | 会話タイプ | |
-| 单聊 | one-to-one chat | 1 対 1 チャット | official "Direct Message" 偏私信平台用语；DingTalk 开放平台沿用 one-to-one |
-| 群聊 | group chat | グループチャット | official 一致 |
-| 消息 | message | メッセージ | |
-| 主动发送消息 | Send a message | メッセージを送信 | |
-| 撤回消息 | Recall a message | メッセージを取り消し | |
-| 模板消息 | Template message | テンプレートメッセージ | |
-| 工作通知 | Work notification | 業務通知 | DingTalk 专有概念 |
-| 普通消息 | Plain message | 通常メッセージ | |
-| 卡片消息 | Card message | カードメッセージ | |
-| 交互式卡片 | Interactive card | インタラクティブカード | |
-| 卡片回调 | Card callback | カードコールバック | |
-| AI 卡片 | AI card | AI カード | |
-| @消息 | Mention | メンション | |
-| @所有人 | Mention all | 全員メンション | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 即时通信 / IM | IM | IM | IM | 保持缩写 |
+| 群 / 群组 | group | グループ | Grup | "群"高频；"群组"二字时同义合并 |
+| 群成员 | group member | グループメンバー | Anggota grup |  |
+| 群主 | group owner | グループオーナー | Pemilik grup |  |
+| 群管理员 | group admin | グループ管理者 | Admin grup |  |
+| 会话 | conversation | 会話 | Percakapan | official "Chat" 偏聊天界面；"会话 ID / 会话类型"语境用 conversation 更标准 |
+| 会话 ID | conversation ID | 会話 ID | ID percakapan |  |
+| 会话类型 | conversation type | 会話タイプ | Tipe percakapan |  |
+| 单聊 | one-to-one chat | 1 対 1 チャット | Chat satu lawan satu | official "Direct Message" 偏私信平台用语；DingTalk 开放平台沿用 one-to-one |
+| 群聊 | group chat | グループチャット | Chat grup | official 一致 |
+| 消息 | message | メッセージ | Pesan |  |
+| 主动发送消息 | Send a message | メッセージを送信 | Kirim pesan |  |
+| 撤回消息 | Recall a message | メッセージを取り消し | Tarik pesan |  |
+| 模板消息 | Template message | テンプレートメッセージ | Pesan template |  |
+| 工作通知 | Work notification | 業務通知 | Notifikasi kerja | DingTalk 专有概念 |
+| 普通消息 | Plain message | 通常メッセージ | Pesan teks biasa |  |
+| 卡片消息 | Card message | カードメッセージ | Pesan kartu |  |
+| 交互式卡片 | Interactive card | インタラクティブカード | Kartu interaktif |  |
+| 卡片回调 | Card callback | カードコールバック | Callback kartu |  |
+| AI 卡片 | AI card | AI カード | Kartu AI |  |
+| @消息 | Mention | メンション | Sebut (Mention) |  |
+| @所有人 | Mention all | 全員メンション | Sebut semua |  |
 
 ## 通讯录扩展（official 已覆盖大部分，仅补缺口）
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 子部门 | sub-department | 子部門 | |
-| 父部门 | parent department | 親部門 | |
-| 根部门 | root department | ルート部門 | |
-| 部门 ID | department ID | 部門 ID | |
-| 部门列表 | department list | 部門リスト | |
-| 用户 ID / userid | user ID | ユーザー ID | JSON 字段 `userid` 保持原样 |
-| 员工 | employee | 従業員 | 等同 user 时优先 user |
-| 成员 | member | メンバー | 群成员、部门成员场景 |
-| 角色组 | role group | ロールグループ | |
-| 外部联系人 | external contact | 社外連絡先 | |
-| 企业账号 | enterprise account | 企業アカウント | |
-| 企业 | organization | 組織 | DingTalk 国际化语境 organization 比 enterprise 更通用 |
-| 组织 | organization | 組織 | |
-| 组织 ID / corpId | organization ID | 組織 ID | JSON 字段 `corpId` 保持原样 |
-| unionId | unionId | unionId | 保持原样 |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 子部门 | sub-department | 子部門 | Subdepartemen |  |
+| 父部门 | parent department | 親部門 | Departemen induk |  |
+| 根部门 | root department | ルート部門 | Departemen root |  |
+| 部门 ID | department ID | 部門 ID | ID departemen |  |
+| 部门列表 | department list | 部門リスト | Daftar departemen |  |
+| 用户 ID / userid | user ID | ユーザー ID | ID pengguna | JSON 字段 `userid` 保持原样 |
+| 员工 | employee | 従業員 | Karyawan | 等同 user 时优先 user |
+| 成员 | member | メンバー | Anggota | 群成员、部门成员场景 |
+| 角色组 | role group | ロールグループ | Grup peran |  |
+| 外部联系人 | external contact | 社外連絡先 | Kontak eksternal |  |
+| 企业账号 | enterprise account | 企業アカウント | Akun perusahaan |  |
+| 企业 | organization | 組織 | Organisasi | DingTalk 国际化语境 organization 比 enterprise 更通用 |
+| 组织 | organization | 組織 | Organisasi |  |
+| 组织 ID / corpId | organization ID | 組織 ID | ID organisasi | JSON 字段 `corpId` 保持原样 |
+| unionId | unionId | unionId | unionId | 保持原样 |
 
 ## 日程 / 会议 / 音视频
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 日程 | event | 予定 | official 已有 |
-| 日历 | calendar | カレンダー | |
-| 日程参与者 | event attendee | 予定参加者 | |
-| 忙闲 | free/busy | フリー/ビジー | |
-| 会议 | conference | 会議 | |
-| 会议室 | meeting room | 会議室 | |
-| 智能会议室 | Smart meeting room | スマート会議室 | |
-| 视频会议 | video conference | ビデオ会議 | |
-| 入会 | join the conference | 会議に参加 | |
-| 主持人 | host | ホスト | |
-| 与会者 | participant | 参加者 | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 日程 | event | 予定 | Peristiwa | official 已有 |
+| 日历 | calendar | カレンダー | Kalender |  |
+| 日程参与者 | event attendee | 予定参加者 | Peserta acara |  |
+| 忙闲 | free/busy | フリー/ビジー | Senggang/sibuk |  |
+| 会议 | conference | 会議 | Konferensi |  |
+| 会议室 | meeting room | 会議室 | Ruang rapat |  |
+| 智能会议室 | Smart meeting room | スマート会議室 | Ruang rapat pintar |  |
+| 视频会议 | video conference | ビデオ会議 | Konferensi video |  |
+| 入会 | join the conference | 会議に参加 | Gabung ke konferensi |  |
+| 主持人 | host | ホスト | Host |  |
+| 与会者 | participant | 参加者 | Partisipan |  |
 
 ## 文档 / 文件 / 知识库
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 文档 | document | ドキュメント | 通用语境；品牌名 DingTalk Docs 保留 |
-| 文件 | file | ファイル | |
-| 文件夹 | folder | フォルダ | |
-| 文件节点 / dentry | dentry | dentry | 钉钉文档 API 内部数据结构名，保持不译 |
-| 工作空间 / workspace | workspace | ワークスペース | |
-| 知识库 | Knowledge Base | ナレッジベース | 与已有一致 |
-| 上传 | Upload | アップロード | |
-| 下载 | Download | ダウンロード | |
-| 分块上传 | Multipart upload | マルチパートアップロード | |
-| 初始化分块上传 | Initiate a multipart upload | マルチパートアップロードを開始 | |
-| 上传完成 | Complete upload | アップロードを完了 | |
-| 文件预览 | File preview | ファイルプレビュー | |
-| 转码 | Transcode | トランスコード | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 文档 | document | ドキュメント | Dokumen | 通用语境；品牌名 DingTalk Docs 保留 |
+| 文件 | file | ファイル | File |  |
+| 文件夹 | folder | フォルダ | Folder |  |
+| 文件节点 / dentry | dentry | dentry | dentry | 钉钉文档 API 内部数据结构名，保持不译 |
+| 工作空间 / workspace | workspace | ワークスペース | Ruang kerja |  |
+| 知识库 | Knowledge Base | ナレッジベース | Basis Pengetahuan | 与已有一致 |
+| 上传 | Upload | アップロード | Unggah |  |
+| 下载 | Download | ダウンロード | Unduh |  |
+| 分块上传 | Multipart upload | マルチパートアップロード | Unggahan multipart |  |
+| 初始化分块上传 | Initiate a multipart upload | マルチパートアップロードを開始 | Inisiasi unggahan multipart |  |
+| 上传完成 | Complete upload | アップロードを完了 | Selesaikan unggahan |  |
+| 文件预览 | File preview | ファイルプレビュー | Pratinjau file |  |
+| 转码 | Transcode | トランスコード | Transkode |  |
 
 ## AI 表格 / 数据 / 字段
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 数据表 | data table | データテーブル | open 语境用 data table 而非 base，避免与 AI Table 品牌词混淆 |
-| 数据表 ID | data table ID | データテーブル ID | |
-| 字段 | field | フィールド | |
-| 记录 | record | レコード | |
-| 工作表 | sheet | シート | DingTalk Spreadsheet 语境 |
-| 单元格 | cell | セル | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 数据表 | data table | データテーブル | Tabel data | open 语境用 data table 而非 base，避免与 AI Table 品牌词混淆 |
+| 数据表 ID | data table ID | データテーブル ID | ID tabel data |  |
+| 字段 | field | フィールド | Bidang |  |
+| 记录 | record | レコード | Rekaman |  |
+| 工作表 | sheet | シート | Sheet | DingTalk Spreadsheet 语境 |
+| 单元格 | cell | セル | Sel |  |
 
 ## 待办 / 审批 / 其他业务
 
-| 中文 | 英文 | 日文 | 备注 |
-|---|---|---|---|
-| 待办 | task | タスク | official "To-Do" 在国际版用 task 更普适 |
-| 待办列表 | Task list | タスクリスト | |
-| 审批 | approval | 承認 | official 已有 |
-| 审批单 | Approval form | 承認フォーム | |
-| 审批流程 | Approval workflow | 承認ワークフロー | |
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 待办 | task | タスク | Tugas | official "To-Do" 在国际版用 task 更普适 |
+| 待办列表 | Task list | タスクリスト | Daftar tugas |  |
+| 审批 | approval | 承認 | Persetujuan | official 已有 |
+| 审批单 | Approval form | 承認フォーム | Formulir persetujuan |  |
+| 审批流程 | Approval workflow | 承認ワークフロー | Alur kerja persetujuan |  |
 
 ## Heading 大小写规范实例（专业性体现）
 

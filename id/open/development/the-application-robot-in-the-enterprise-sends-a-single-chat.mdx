@@ -1,0 +1,191 @@
+---
+title: "Kirim pesan langsung dengan bot perusahaan"
+description: "Pelajari cara mengirim pesan langsung dengan Bot perusahaan di DingTalk — mulai dari persyaratan, prasyarat, demo cepat, hingga panduan langkah demi langkah untuk developer memanfaatkan Server API."
+---
+
+Jika Anda perlu mengirim pesan langsung melalui Bot perusahaan, ikuti langkah-langkah pada dokumen ini.
+
+## Tentukan kebutuhan Anda
+
+Sebelum memulai pengembangan, tinjau ikhtisar berikut. Dokumen ini membantu Anda, dalam mode Stream, mengirim pesan ke Bot selama obrolan langsung. Bot kemudian membalas pesan Anda dengan memanggil API [Kirim pesan obrolan satu lawan satu antara pengguna dan bot secara massal](/id/open/development/chatbots-send-one-on-one-chat-messages-in-batches). Coba jalankan demo contoh yang disediakan di bagian "Mulai cepat" untuk mendapatkan pengalaman langsung dengan Bot perusahaan.
+
+## Prasyarat
+
+1. Selesaikan proses [Konfigurasikan Bot perusahaan](/id/open/dingstart/configure-the-robot-application) (pilih mode Stream untuk mode penerimaan pesan).
+2. Selesaikan [pengajuan izin API](/id/open/development/add-api-permission) untuk endpoint OpenAPI. Ajukan cakupan `Permission to send messages from an internal bot`.
+3. Siapkan lingkungan pengembangan:
+
+   | **Lingkungan pengembangan** | **Deskripsi** |
+   | --- | --- |
+   | Java | - JDK 1.8 atau yang lebih baru telah diinstal - Maven 3 telah diinstal |
+   | Python | - Python 3 |
+
+## Mulai cepat
+
+1. Unduh demo contoh:
+
+   | **Contoh** | **Deskripsi** |
+   | --- | --- |
+   | Java | [stream-robot-private-message-quick-start-java.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/llkrhu/stream-robot-private-message-quick-start-java.zip) |
+   | Python | [stream-robot-private-message-quick-start-python.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250519/senypi/stream-robot-private-message-quick-start-python.zip) |
+2. Jalankan demo contoh:
+
+   | **Tipe** | **Deskripsi** |
+   | --- | --- |
+   | Java | 1. Ubah parameter di file konfigurasi application.properties: - app.appKey: Client ID aplikasi. Untuk detailnya, lihat [Client ID](/id/open/dingstart/basic-concepts-beta). - app.appSecret: Client Secret aplikasi. Untuk detailnya, lihat [Client Secret](/id/open/dingstart/basic-concepts-beta). - robot.code: kode Bot. Untuk detailnya, lihat [Bot ID](/id/open/development/development-robot-overview). 2. Jalankan file Application.java. 3. Kirim pesan ke Bot dalam obrolan langsung, misalnya, "Hello". Anda kemudian dapat melihat pesan yang dikirim oleh Bot. |
+   | Python | 1. Instal dependensi: `pip install alibabacloud-dingtalk dingtalk-stream`. 2. Di direktori file saat ini, jalankan perintah startup: `python3 send_robot_private_message.py --client_id="your app client id" --client_secret="your app client secret" --robot_code="your robot code"`. Ganti client_id, client_secret, dan robot_code. Untuk cara memperoleh parameter ini, lihat instruksi di bagian Java. 3. Kirim pesan ke Bot dalam obrolan langsung, misalnya, "Hello". |
+
+## Prosedur
+
+> Berikut adalah contoh Java. Untuk contoh Python, unduh demo dari bagian di atas.
+
+1. Tambahkan dependensi ke file `pom.xml` proyek.
+
+   ```xml lines
+    <dependencies>
+           <dependency>
+               <groupId>com.dingtalk.open</groupId>
+               <artifactId>dingtalk-stream</artifactId>
+               <version>1.1.0</version>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-web</artifactId>
+               <version>2.7.4</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>dingtalk</artifactId>
+               <version>2.0.76</version>
+           </dependency>
+
+           <dependency>
+               <groupId>org.projectlombok</groupId>
+               <artifactId>lombok</artifactId>
+               <version>1.18.26</version>
+               <optional>true</optional>
+           </dependency>
+
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>fastjson</artifactId>
+               <version>1.2.68</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Buat metode main dan jalankan.
+
+   ```java lines
+   import com.alibaba.fastjson.JSONObject;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
+   import com.aliyun.dingtalkrobot_1_0.Client;
+   import com.aliyun.dingtalkrobot_1_0.models.BatchSendOTOHeaders;
+   import com.aliyun.dingtalkrobot_1_0.models.BatchSendOTORequest;
+   import com.aliyun.dingtalkrobot_1_0.models.BatchSendOTOResponse;
+   import com.aliyun.tea.TeaException;
+   import com.aliyun.teaopenapi.models.Config;
+   import com.aliyun.teautil.models.RuntimeOptions;
+   import com.dingtalk.open.app.api.OpenDingTalkClient;
+   import com.dingtalk.open.app.api.OpenDingTalkStreamClientBuilder;
+   import com.dingtalk.open.app.api.callback.OpenDingTalkCallbackListener;
+   import com.dingtalk.open.app.api.security.AuthClientCredential;
+   import lombok.extern.slf4j.Slf4j;
+
+   import java.util.Objects;
+
+   @Slf4j
+   public class sendPrivateMessage {
+
+       public static final String CLIENT_ID = "< your client id>";
+
+       public static final String CLIENT_SECRET = "<your client secret>";
+
+       public static void main(String[] args) throws Exception {
+           OpenDingTalkClient client = OpenDingTalkStreamClientBuilder
+                   .custom()
+                   .credential(new AuthClientCredential(CLIENT_ID, CLIENT_SECRET))
+                   .registerCallbackListener("/v1.0/im/bot/messages/get", new sendPrivateMessage.RobotMsgCallbackConsumer())
+                   .build();
+           client.start();
+       }
+
+       public static class RobotMsgCallbackConsumer implements OpenDingTalkCallbackListener<JSONObject, JSONObject> {
+
+           /*
+            * @param request
+            * @return
+            */
+           @Override
+           public JSONObject execute(JSONObject request) {
+               String userId = request.get("senderStaffId").toString();
+               String content = request.getJSONObject("text").getString("content");
+               String robotCode = request.get("robotCode").toString();
+               log.info("receive bot message from user={}, msg={},robotCode={} ", userId, content,robotCode);
+
+               BatchSendOTOHeaders batchSendOTOHeaders = new BatchSendOTOHeaders();
+               batchSendOTOHeaders.setXAcsDingtalkAccessToken(getToken());
+
+               BatchSendOTORequest batchSendOTORequest = new BatchSendOTORequest();
+               batchSendOTORequest.setMsgKey("sampleText");
+               batchSendOTORequest.setRobotCode(robotCode);
+               batchSendOTORequest.setUserIds(java.util.Arrays.asList(userId));
+
+               JSONObject msgParam = new JSONObject();
+               msgParam.put("content", "java-getting-start say : " + "hello");
+               batchSendOTORequest.setMsgParam(msgParam.toJSONString());
+               try {
+                   Config config = new Config();
+                   config.protocol = "https";
+                   config.regionId = "central";
+                   com.aliyun.dingtalkrobot_1_0.Client client = new Client(config);
+                   BatchSendOTOResponse batchSendOTOResponse = client.batchSendOTOWithOptions(batchSendOTORequest, batchSendOTOHeaders, new RuntimeOptions());
+                   if (Objects.isNull(batchSendOTOResponse) || Objects.isNull(batchSendOTOResponse.getBody())) {
+                       log.error("RobotPrivateMessages_send batchSendOTOResponse return error, response={}",
+                               batchSendOTOResponse);
+                       return null;
+                   }
+                   return new JSONObject();
+               } catch (TeaException e) {
+                   log.error("RobotPrivateMessages_send batchSendOTOResponse throw TeaException, errCode={}, " +
+                           "errorMessage={}", e.getCode(), e.getMessage(), e);
+                   throw e;
+               } catch (Exception e) {
+                   log.error("RobotPrivateMessages_send batchSendOTOResponse throw Exception", e);
+                   try {
+                       throw e;
+                   } catch (Exception ex) {
+                       throw new RuntimeException(ex);
+                   }
+               }
+           }
+
+           public static String getToken() {
+               GetAccessTokenRequest getAccessTokenRequest = new GetAccessTokenRequest();
+               getAccessTokenRequest.setAppKey(CLIENT_ID);
+               getAccessTokenRequest.setAppSecret(CLIENT_SECRET);
+               Config config = new Config();
+               config.protocol = "https";
+               config.regionId = "central";
+               try {
+                   com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+                   GetAccessTokenResponse accessToken = client.getAccessToken(getAccessTokenRequest);
+                   return accessToken.getBody().getAccessToken();
+               } catch (Exception e) {
+                   throw new RuntimeException(e);
+               }
+           }
+       }
+   }
+   ```
+3. Kirim pesan ke Bot dalam obrolan langsung.
+
+   Anda kemudian dapat melihat pesan yang dikirim oleh Bot.
+
+## Dokumen terkait
+
+- [Bot menerima pesan](/id/open/dingstart/robot-receive-message)
+- Mode Stream sisi server
+- Tipe pesan yang didukung oleh Bot perusahaan
+- [Kirim pesan obrolan satu lawan satu antara pengguna dan bot secara massal](/id/open/development/chatbots-send-one-on-one-chat-messages-in-batches)

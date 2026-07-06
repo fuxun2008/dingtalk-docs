@@ -1,0 +1,127 @@
+---
+title: "Mengunggah file media"
+description: "Panggil API DingTalk ini untuk mengunggah gambar, file suara, dan file media biasa. API mengembalikan mediaId yang dapat digunakan untuk mengirim pesan dan skenario lainnya."
+---
+
+## Deskripsi panggilan API
+
+Panggil API ini untuk mengunggah file media dan memperoleh pengenal sumber daya media media_id. Tentang media_id:
+
+- Gunakan multipart/form-data POST untuk mengunggah file. Nama pengenal file adalah media.
+- media_id dapat digunakan kembali. media_id yang sama dapat digunakan berkali-kali.
+- File sumber daya yang berkaitan dengan media_id hanya dapat digunakan di dalam klien DingTalk.
+- File media menggunakan ruang penyimpanan khusus yang disediakan DingTalk untuk organisasi. File yang diunggah melalui API ini tidak memakai ruang DingTalk Drive milik organisasi Anda.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://oapi.dingtalk.io/media/upload |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Internal app appType-Third-party enterprise app |
+| Izin yang diperlukan | permission-qyapi_base-Basic permissions required to call enterprise APIs |
+
+### Parameter query
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Untuk aplikasi internal, peroleh melalui API untuk mendapatkan access_token aplikasi internal. - Untuk aplikasi perusahaan pihak ketiga, peroleh melalui API untuk mendapatkan access_token perusahaan pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| type | String | Ya | image | Tipe file media:   - **image**: Gambar. Ukuran maksimum 20 MB. Format yang didukung: jpg, gif, png, bmp. - **voice**: Suara. Ukuran maksimum 2 MB. Format yang didukung: amr, mp3, wav. - **video**: Video. Ukuran maksimum 20 MB. Format yang didukung: mp4. - **file**: File biasa. Ukuran maksimum 20 MB. Format yang didukung: doc, docx, xls, xlsx, ppt, pptx, zip, pdf, rar.   **Penting**  Jika Anda memanggil API ini di C# dan menerima error **40004** (tipe file media tidak valid), tambahkan parameter **type** ke URL permintaan. |
+| media | FileItem | Ya | C:/Users/Desktop/222.png | File media yang akan diunggah.  Di dalam form-data, pengenal file media berisi informasi seperti filename, filelength, dan content-type. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/media/upload" \
+-H 'Content-Type:multipart/form-data;charset=utf-8' \
+-F 'access_token=4c813ba0-2363-4927-9de0-376b0e6853a2' \
+-F 'type=image' \
+-F 'media=@"C:/Users/Desktop/222.png"'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/media/upload");
+OapiMediaUploadRequest req = new OapiMediaUploadRequest();
+req.setType("image");
+// File media yang akan diunggah
+FileItem item = new FileItem("C:/Users/Desktop/222.png");
+req.setMedia(item);
+OapiMediaUploadResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMediaUploadRequest("https://oapi.dingtalk.io/media/upload")
+
+req.type="image"
+req.media=dingtalk.api.FileItem('abc.jpg',open('abc.jpg','rb'))
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMediaUploadRequest;
+$req->setType("image");
+
+$req->setMedia("C:/Users/Desktop/222.png");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/media/upload");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/media/upload");
+OapiMediaUploadRequest req = new OapiMediaUploadRequest();
+req.Type = "image";
+req.Media = new FileItem("C:/Users/Desktop/222.png");
+OapiMediaUploadResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | Kode kembalian. |
+| errmsg | String | ok | Deskripsi kode kembalian. |
+| type | String | file | Tipe file media:   - **image**: Gambar - **voice**: Suara - **file**: File biasa - **video**: Video |
+| media_id | String | @#lAzPDgCwPn1mJiDOQoLpxxxx | Pengenal unik yang diperoleh setelah file media diunggah. |
+| created_at | Number | 1599556098964 | Stempel waktu saat file media diunggah. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "errmsg": "ok",
+  "media_id": "$iAEKAqNwbmcDBgTNAk",
+  "created_at": 1605863153573,
+  "type": "image"
+}
+```
+
+### Kode error
+
+Jika terjadi error saat memanggil API ini, lihat dokumen [Kode error global](/id/open/development/server-api-error-codes-1) untuk menemukan solusinya.

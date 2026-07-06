@@ -1,0 +1,401 @@
+---
+title: "FAQ"
+description: "Pertanyaan umum seputar pengembangan DingTalk Docs — dua cara menulis Markdown ke dalam dokumen, poin penting operasi elemen blok, serta catatan penggunaan API kueri."
+---
+
+## Menulis konten
+
+### Bagaimana cara menulis konten Markdown ke dalam dokumen DingTalk Docs?
+
+- **Opsi 1: Sisipkan konten (menambahkan tanpa memengaruhi konten yang sudah ada)**
+
+  Panggil API [Sisipkan konten](/id/open/development/api-insertcontent) untuk menyisipkan konten Markdown pada lokasi tertentu dalam dokumen:
+
+  ```bash lines
+  curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{documentId}/content?operatorId={operatorId}' \
+  --header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": {
+      "type": "markdown",
+      "content": "# Heading 1\n\nIni adalah paragraf konten isi."
+    }
+  }'
+  ```
+- **Opsi 2: Timpa dokumen (menghapus dan menulis ulang)**
+
+  Panggil API [Timpa dokumen (Otorisasi App)](/id/open/development/api-doc-updatecontent) untuk menimpa seluruh konten dokumen dalam format Markdown:
+
+  ```bash lines
+  curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/overwriteContent?operatorId={operatorId}' \
+  --header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "# Judul dokumen\n\nKonten isi.",
+    "dataType": "markdown"
+  }'
+  ```
+
+  Menimpa akan **menghapus** seluruh konten yang sudah ada di dalam dokumen. Ini merupakan tindakan destruktif, jadi gunakan dengan hati-hati. Untuk hanya menambahkan konten, gunakan API Sisipkan konten.
+
+## Operasi elemen blok
+
+### Bagaimana cara menyisipkan paragraf beserta kontennya
+
+Panggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks) untuk menyisipkan blok paragraf ke dalam dokumen, dan gunakan bidang `children` untuk menentukan elemen inline di dalam paragraf tersebut:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{dentryUuid}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "paragraph",
+    "paragraph": {},
+    "children": [
+      {
+        "text": "Ini adalah teks tebal berwarna merah",
+        "bold": true,
+        "color": "#FF5733"
+      },
+      {
+        "elementType": "sticker",
+        "properties": { "code": "大笑"  // Tertawa }
+      }
+    ]
+  }
+}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "result": {
+    "data": {
+      "paragraph": { "text": "Ini adalah teks tebal berwarna merah" },
+      "blockType": "paragraph",
+      "index": 0,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+Object `paragraph` tidak boleh dihilangkan. Meskipun paragraf tidak memiliki atribut khusus, kirimkan object kosong `{}`.
+
+### Bagaimana cara menyisipkan elemen blok pada lokasi tertentu (bukan di akhir)
+
+Saat memanggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks), tentukan lokasi target dengan `blockId` atau `index`, dan gunakan parameter `where` untuk mengontrol apakah penyisipan dilakukan sebelum atau sesudah target:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "paragraph",
+    "paragraph": {}
+  },
+  "blockId": "lc4si5p3n84zwqxxx",
+  "where": "before"
+}'
+```
+
+| Parameter | Deskripsi |
+| --- | --- |
+| `blockId` | Identifier unik dari blok target. Blok baru disisipkan sebelum atau sesudah blok ini. |
+| `index` | Ketika `blockId` tidak disediakan, blok tingkat teratas ke-`index` dalam dokumen digunakan sebagai lokasi target (dimulai dari 0). |
+| `where` | `"before"` menyisipkan sebelum lokasi target; `"after"` menyisipkan setelahnya (default: `"after"`). |
+
+### Bagaimana cara menyisipkan heading
+
+Panggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks). Setel `blockType` ke `heading` dan gunakan `level` di dalam object `heading` untuk menentukan tingkat heading (1–6):
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "heading",
+    "heading": {
+      "level": 2,
+      "text": "Ini adalah Heading 2"
+    }
+  }
+}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "success": true
+}
+```
+
+Pemetaan antara `heading.level` dan tingkat heading:
+
+| level | Heading |
+| --- | --- |
+| `1` | Heading 1 (H1) |
+| `2` | Heading 2 (H2) |
+| `3` | Heading 3 (H3) |
+| `4` | Heading 4 (H4) |
+| `5` | Heading 5 (H5) |
+| `6` | Heading 6 (H6) |
+
+### Bagaimana cara menyisipkan blok Kutip
+
+Panggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks). Setel `blockType` ke `blockquote` dan kirimkan konten kutipan di dalam object `blockquote`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "blockquote",
+    "blockquote": {
+      "text": "Ini adalah sepenggal konten kutipan"
+    }
+  }
+}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "blockquote",
+      "index": 4,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+### Bagaimana cara menyisipkan blok Sorot dengan paragraf bersarang
+
+`children` dari blok Sorot harus berupa array `BlockElement`. Saat memanggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks), kirimkan paragraf anak di dalam `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "callout",
+    "callout": {
+      "sticker": "灯泡",  // Bohlam
+      "showstk": true,
+      "bgcolor": "#FFF9C4",
+      "border": "#FFD700"
+    },
+    "children": [
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "Ini adalah konten paragraf di dalam blok Sorot" }
+      }
+    ]
+  }
+}'
+```
+
+Tipe elemen blok yang berbeda menerima tipe `children` yang berbeda pula. `children` dari blok paragraf hanya boleh berupa elemen inline, sedangkan `children` dari blok Sorot hanya boleh berupa elemen blok.
+
+### Bagaimana cara menyisipkan kolom
+
+Panggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks). Setel `blockType` ke `columns`, gunakan `columns.size` untuk menentukan jumlah kolom, dan kirimkan konten elemen blok untuk setiap kolom di dalam `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "columns",
+    "columns": {
+      "size": 2,
+      "noFill": false
+    },
+    "children": [
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "Konten kolom kiri" }
+      },
+      {
+        "blockType": "paragraph",
+        "paragraph": { "text": "Konten kolom kanan" }
+      }
+    ]
+  }
+}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "result": {
+    "data": {
+      "columns": { "size": 2 },
+      "blockType": "columns",
+      "index": 7,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+Bidang-bidang object `columns`:
+
+| Bidang | Tipe | Deskripsi |
+| --- | --- | --- |
+| `size` | Number | Jumlah kolom. |
+| `noFill` | Boolean | Apakah warna latar diisi secara otomatis. Default: `false`. |
+
+`children` dari `columns` harus berupa **array BlockElement**, bukan elemen inline.
+
+### Bagaimana cara menyisipkan Daftar Bernomor
+
+Panggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks). Setel `blockType` ke `orderedList`, kirimkan atribut daftar di dalam object `orderedList`, dan kirimkan teks item daftar di dalam `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "orderedList",
+    "orderedList": {
+      "list": {
+        "listId": "my-ordered-list-001",
+        "level": 0,
+        "listStyleType": "decimal",
+        "listStyle": {
+          "format": "decimal",
+          "text": "%1.",
+          "align": "left"
+        }
+      }
+    },
+    "children": [
+      { "text": "Item pertama Daftar Bernomor" }
+    ]
+  }
+}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "orderedList",
+      "index": 6,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+Bidang-bidang umum object `list`:
+
+| Bidang | Tipe | Deskripsi |
+| --- | --- | --- |
+| `listId` | String | Identifier unik dari daftar. Beberapa item daftar dalam daftar yang sama harus berbagi `listId` yang sama. |
+| `level` | Number | Tingkat indentasi daftar, dimulai dari `0`. |
+| `listStyleType` | String | Tipe gaya daftar. Gunakan `"decimal"` untuk Daftar Bernomor. |
+
+### Bagaimana cara menyisipkan Daftar Berpoin
+
+Panggil API [Sisipkan elemen blok](/id/open/development/api-docinsertblocks). Setel `blockType` ke `unorderedList`, kirimkan atribut daftar di dalam object `unorderedList`, dan kirimkan teks item daftar di dalam `children`:
+
+```bash
+curl --location --request POST 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}' \
+--header 'Content-Type: application/json' \
+--data '{
+  "element": {
+    "blockType": "unorderedList",
+    "unorderedList": {
+      "list": {
+        "listId": "my-unordered-list-001",
+        "level": 0,
+        "listStyleType": "disc",
+        "listStyle": {
+          "format": "disc",
+          "text": "%1",
+          "align": "left"
+        }
+      }
+    },
+    "children": [
+      { "text": "Item pertama Daftar Berpoin" }
+    ]
+  }
+}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "result": {
+    "data": {
+      "blockType": "unorderedList",
+      "index": 8,
+      "id": "......"
+    }
+  },
+  "success": true
+}
+```
+
+`listId` dari Daftar Bernomor atau Daftar Berpoin mengaitkan beberapa item daftar dengan daftar yang sama. Untuk menyisipkan beberapa item yang termasuk dalam daftar yang sama, gunakan `listId` yang sama untuk setiap item. Anda dapat menyisipkan semua item dalam satu panggilan menggunakan API BatchOperate.
+
+## Operasi kueri
+
+### Bagaimana cara mendapatkan blockId dari semua elemen blok dalam sebuah dokumen?
+
+Panggil API [Kueri elemen blok](/id/open/development/api-docblocksquery) untuk mengambil daftar elemen blok tingkat teratas di bawah node akar dokumen. Setiap elemen menyertakan `id`-nya (yaitu `blockId`):
+
+```bash
+curl --location --request GET 'https://api.dingtalk.io/v1.0/doc/suites/documents/{docKey}/blocks?operatorId={operatorId}' \
+--header 'x-acs-dingtalk-access-token: {ACCESS_TOKEN}'
+```
+
+Jika panggilan berhasil, respons akan berupa format berikut:
+
+```json
+{
+  "success": true,
+  "result": {
+    "data": [
+      {
+        "heading": { "level": "heading-1", "text": "Judul dokumen" },
+        "blockType": "heading",
+        "index": 0,
+        "id": "......"
+      },
+      {
+        "paragraph": { "text": "Konten isi." },
+        "blockType": "paragraph",
+        "index": 1,
+        "id": "......"
+      }
+    ]
+  }
+}
+```
+
+API Kueri elemen blok saat ini **hanya mendukung kueri elemen blok tingkat teratas di bawah node akar dokumen**. Kueri rekursif pada blok anak yang bersarang di dalam kontainer seperti blok Sorot tidak didukung.

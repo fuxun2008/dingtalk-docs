@@ -1,0 +1,217 @@
+---
+title: "Unduh sebagian konten dengan menentukan Range"
+description: "Pelajari cara menggunakan HTTP Range request untuk mengunduh sebagian konten file OSS berukuran besar (di atas 100M) saat transfer gagal akibat kondisi jaringan, lengkap dengan contoh penggunaan."
+---
+
+# Unduh sebagian konten dengan menentukan Range
+
+## Apa itu unduhan HTTP Range
+
+Saat mengunduh file berukuran besar (di atas 100 MB) dari OSS, transfer dapat gagal akibat kondisi jaringan. Dalam kasus ini, gunakan HTTP Range request untuk mengambil sebagian konten dari file besar tersebut, seperti ditunjukkan pada contoh berikut.
+
+```text
+Get /ObjectName HTTP/1.1
+Host:xxxx.oss-cn-hangzhou.aliyuncs.com
+Date:Tue, 17 Nov 2015 17:27:45 GMT
+Authorization:SignatureValue
+Range:bytes=[$ByteRange]
+```
+
+<Note>
+[$ByteRange] menunjukkan rentang resource yang diminta, dalam satuan byte. Contohnya ditunjukkan di bawah ini.
+</Note>
+
+- `Range: bytes=0-499` menunjukkan konten dari byte 0 hingga byte 499.
+- `Range: bytes=500-999` menunjukkan konten dari byte 500 hingga byte 999.
+- `Range: bytes=-500` menunjukkan 500 byte terakhir.
+- `Range: bytes=500-` menunjukkan konten dari byte 500 hingga akhir file.
+- `Range: bytes=0-` menunjukkan konten dari byte pertama hingga byte terakhir, yaitu seluruh file.
+- OSS tidak mendukung beberapa parameter Range, artinya Anda tidak dapat menentukan beberapa rentang sekaligus. Jika beberapa rentang ditentukan, OSS hanya mengembalikan data dari Range pertama. Sebagai contoh, untuk `Range:bytes=0-499,500-999`, OSS hanya mengembalikan konten dari byte 0 hingga byte 499.
+- Interval valid dari [$ByteRange] adalah dari 0 hingga `content-length - 1`.
+
+Jika HTTP Range request valid, respons mengembalikan `206` dan menyertakan `Content-Range` pada Header respons. Jika HTTP Range request tidak valid, atau rentang yang ditentukan berada di luar interval valid, Range tidak berlaku, respons mengembalikan `200`, dan seluruh konten Object ditransfer. Berikut adalah contoh HTTP Range request yang tidak valid beserta deskripsi error yang sesuai.
+
+<Note>
+Asumsikan ukuran resource Object adalah 1000 byte, dan interval Range valid adalah dari 0 hingga 999.
+</Note>
+
+- `Range: byte=0-499`: Error format. `byte` seharusnya `bytes`.
+- `Range: bytes=0-1000`: Byte terakhir 1000 melebihi interval valid.
+- `Range: bytes=1000-2000`: Rentang yang ditentukan melebihi interval valid.
+- `Range: bytes=1000-`: Byte pertama melebihi interval valid.
+- `Range: bytes=-2000`: Rentang yang ditentukan melebihi interval valid.
+
+### Perilaku kompatibel
+
+Saat menggunakan HTTP Range, tambahkan Header permintaan `x-oss-range-behavior:standard` untuk mengubah perilaku OSS ketika rentang yang ditentukan berada di luar interval valid. Contoh berikut menggambarkan perilaku yang berubah:
+
+<Note>
+Asumsikan ukuran resource Object adalah 1000 byte, dan interval Range valid adalah dari 0 hingga 999. Saat mengambil sebagian konten dari file besar melalui HTTP Range request, jika rentang yang dipilih tidak valid, OSS mengembalikan Kode error InvalidRange. Pesan error lengkapnya adalah sebagai berikut: `The requested range cannot be satisfied`
+</Note>
+
+- `Range: bytes=500-2000`: Byte terakhir melebihi interval valid. Mengembalikan konten dari byte 500 hingga byte 999.
+- `Range: bytes=1000-2000`: Byte pertama melebihi interval valid. Mengembalikan error `416 (InvalidRange)`.
+- `Range: bytes=1000-`: Byte pertama melebihi interval valid. Mengembalikan error `416 (InvalidRange)`.
+- `Range: bytes=-2000`: Rentang yang ditentukan melebihi interval valid. Mengembalikan byte 0 hingga 999, yaitu seluruh file.
+
+## Contoh
+
+Berdasarkan konten di atas, topik ini menyediakan contoh HTTP Range request berikut.
+
+<Note>
+Asumsikan ukuran resource Object adalah 1000 byte, dan interval Range valid adalah dari 0 hingga 999.
+</Note>
+
+### Contoh request normal
+
+- Minta konten dari byte 0 hingga byte 499 dari resource Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-499
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:51:30 GMT
+  Authorization: Sigature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 0-499/1000
+  connection: keep-alive
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA928B227D52731327DE078
+  date: Fri, 18 Oct 2019 02:51:30 GMT
+  [500 bytes of object data]
+  ```
+- Minta konten dari byte 500 hingga akhir resource Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=500-
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:24:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9307750EBE33332E3720A
+  date: Fri, 18 Oct 2019 03:24:39 GMT
+  [500 bytes of object data]
+  ```
+- Minta 500 byte terakhir dari resource Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=-500
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:23:22 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9302A6646AC37397F7039
+  date: Fri, 18 Oct 2019 03:23:22 GMT
+  [500 bytes of object data]
+  ```
+
+### Contoh request di luar rentang
+
+- Byte terakhir 1000 melebihi interval valid, sehingga Range tidak berlaku. Respons mengembalikan `200` dan mentransfer seluruh konten Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-1000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:00:02 GMT
+  Authorization: Signature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA92AB204321E36347F3E7D
+  date: Fri, 18 Oct 2019 03:00:02 GMT
+  [1000 bytes of object data]
+  ```
+- Rentang yang ditentukan melebihi interval valid, sehingga Range tidak berlaku. Respons mengembalikan `200` dan mentransfer seluruh konten Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:56:24 GMT
+  Authorization: Sigature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA929D9CCCC823835CBE134
+  date: Fri, 18 Oct 2019 02:56:25 GMT
+  [1000 bytes of object data]
+  ```
+
+### Contoh request perilaku kompatibel
+
+- Tambahkan Header permintaan `x-oss-range-behavior:standard`. Byte terakhir melebihi interval valid, sehingga konten dari byte 500 hingga byte 999 dikembalikan.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=500-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:02:23 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9637FB3B1C73234CC59EB
+  date: Fri, 18 Oct 2019 07:02:23 GMT
+  [500 bytes of object data]
+  ```
+- Tambahkan Header permintaan `x-oss-range-behavior:standard`. Byte pertama melebihi interval valid, sehingga error `416` dikembalikan.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:04:23 GMT
+  Authorization: Signature
+
+  416 (Requested Range Not Satisfiable)
+  content-length: 345
+  x-oss-request-id: 5DA963F7CEBFAA3931BF91F5
+  date: Fri, 18 Oct 2019 07:04:23 GMT
+  content-type: application/xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <Error>
+    <Code>InvalidRange</Code>
+    <Message>The requested range cannot be satisfied</Message>
+    <RequestId>5DA963F7CEBFAA3931BF91F5</RequestId>
+    <HostId>bucket.oss-cn-hangzhou.aliyuncs.com</HostId>
+    <ActualObjectSize>1000</ActualObjectSize>
+    <RangeRequested>bytes=1000-2000</RangeRequested>
+  </Error>
+  ```
+- Tambahkan Header permintaan `x-oss-range-behavior:standard`. Rentang yang ditentukan melebihi interval valid, sehingga byte 0 hingga 999 dikembalikan, yaitu seluruh file.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:06:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 1000
+  content-range: bytes 0-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9647FC4334F3534AF9A83
+  date: Fri, 18 Oct 2019 07:06:39 GMT
+  [1000 bytes of object data]
+  ```

@@ -1,0 +1,209 @@
+---
+title: "Mengunggah file ke Knowledge Base"
+description: "Pelajari cara mengunggah file ke direktori Knowledge Base (Ruang tim) DingTalk dalam tiga langkah: memperoleh kredensial unggah, mengunggah file ke OSS, dan commit file melalui Server API."
+---
+
+## Ikhtisar
+
+1. **Dapatkan informasi unggah file**: Minta kredensial unggah dari server (URL OSS + Header tanda tangan).
+2. **Unggah file ke OSS**: Gunakan URL dan Header yang dikembalikan pada langkah 1 untuk melakukan PUT konten file ke OSS.
+3. **Commit file**: Beri tahu server bahwa unggahan telah selesai untuk memfinalisasi penyimpanan file.
+
+<Warning>
+Ketiga langkah harus dijalankan secara berurutan. Unggahan file tidak dapat diselesaikan jika ada langkah yang terlewat.
+</Warning>
+
+---
+
+## Langkah 1: Dapatkan informasi unggah file
+
+Panggil API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query`, dengan mengirimkan `parentDentryUuid` (pengidentifikasi unik dari direktori induk) dari direktori target dan `unionId` operator untuk memperoleh kredensial yang dibutuhkan untuk unggahan ini.
+
+<Note>
+Untuk detail API, lihat dokumentasi [Dapatkan informasi unggah file](/id/open/development/obtain-file-upload-informations). Untuk petunjuk memanggil API, lihat dokumentasi tentang cara memanggil Server API.
+</Note>
+
+### Parameter permintaan utama:
+
+- `parentDentryUuid` (Path): dentryUuid dari direktori unggah target. Untuk mengunggah ke direktori root Knowledge Base, dapatkan dentryUuid direktori root dengan salah satu dari dua cara berikut:
+
+  - Panggil API [Dapatkan informasi Knowledge Base Dokumen Saya](/id/open/development/get-my-documents) dan ambil nilai bidang `rootNodeId` di bawah `workspace` pada respons.
+  - Panggil API [Dapatkan daftar Knowledge Base](/id/open/development/get-knowledge-base-list) dan ambil nilai bidang `rootNodeId` di bawah `workspaces` pada respons.
+- `unionId` (Query): unionId operator. Panggil API [Kueri detail pengguna](/id/open/development/query-user-details) untuk memperolehnya.
+- `protocol` (Body): Nilai tetap `HEADER_SIGNATURE`.
+- `option.preCheckParam.name` (Body): Nama file (termasuk ekstensi). Tidak boleh mengandung karakter khusus (`*`, `"`, `<`, `>`, `|`) dan tidak boleh diakhiri dengan `.`.
+
+### Parameter respons:
+
+- `uploadKey`: Pengidentifikasi unik untuk unggahan ini, digunakan pada langkah 3.
+- `headerSignatureInfo.resourceUrls`: URL unggah OSS, digunakan pada langkah 2.
+- `headerSignatureInfo.headers`: Header permintaan OSS, digunakan pada langkah 2.
+- `expirationSeconds`: Waktu kedaluwarsa kredensial (dalam detik). Selesaikan langkah-langkah berikutnya sebelum kedaluwarsa.
+
+**Contoh HTTP**:
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "protocol": "HEADER_SIGNATURE",
+  "option": {
+    "storageDriver": "DINGTALK",
+    "preCheckParam": {
+      "size": 512,
+      "name": "TestFile.xlsx"
+    }
+  }
+}
+```
+
+## Langkah 2: Unggah file ke OSS
+
+Gunakan `resourceUrls[0]` yang dikembalikan pada langkah 1 sebagai URL unggah dan `headers` sebagai header permintaan. Unggah konten file lokal langsung ke OSS melalui metode HTTP `PUT`.
+
+<Note>
+`Content-Type` harus disetel secara eksplisit menjadi string kosong. Jika tidak, verifikasi tanda tangan akan gagal.
+</Note>
+
+**Contoh kode**:
+
+Java
+
+```java
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+
+public void uploadToOss(String resourceUrl, Map<String, String> headers, String filePath) throws Exception {
+  URL url = new URL(resourceUrl);
+  HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+  // Setel header yang dikembalikan pada langkah 1
+  if (headers != null) {
+    for (Map.Entry<String, String> entry : headers.entrySet()) {
+      connection.setRequestProperty(entry.getKey(), entry.getValue());
+    }
+  }
+
+  connection.setDoOutput(true);
+  connection.setRequestMethod("PUT");
+  connection.setUseCaches(false);
+  connection.setReadTimeout(10000);
+  connection.setConnectTimeout(10000);
+  connection.connect();
+
+  // Tulis konten file
+  OutputStream out = connection.getOutputStream();
+  InputStream is = new FileInputStream(new File(filePath));
+
+  byte[ ] buffer = new byte[1024];
+
+  int bytesRead;
+  while ((bytesRead = is.read(buffer)) != -1) {
+    out.write(buffer, 0, bytesRead);
+  }
+  out.flush();
+  out.close();
+  is.close();
+
+  int responseCode = connection.getResponseCode();
+  connection.disconnect();
+
+  if (responseCode == 200) {
+    System.out.println("OSS upload succeeded");
+  } else {
+    System.out.println("OSS upload failed. Status code: " + responseCode);
+  }
+}
+```
+
+Python
+
+```python
+import requests
+
+resource_url = '<resourceUrls[0] yang dikembalikan pada langkah 1>'
+headers = <headers yang dikembalikan pada langkah 1>
+
+  # Catatan: content-type harus disetel menjadi kosong
+  headers['content-type'] = ''
+
+result = requests.put(resource_url, data=open('<jalur file lokal>', 'rb'), headers=headers)
+print(result.status_code)  # 200 menandakan unggahan berhasil
+```
+
+Node.js
+
+```javascript
+const fs = require('fs');
+const request = require('request-promise');
+
+const url = '<resourceUrls[0] yang dikembalikan pada langkah 1>';
+const headers = <headers yang dikembalikan pada langkah 1>;
+
+// Catatan: content-type harus disetel secara eksplisit menjadi kosong
+headers['content-type'] = '';
+
+fs.createReadStream('/path/to/local/file.txt')
+  .pipe(request({ method: 'PUT', url, headers }))
+  .then(() => console.log('OSS upload succeeded'))
+  .catch(err => console.log('OSS upload failed', err));
+```
+
+## Langkah 3: Commit file
+
+Setelah unggahan OSS selesai, panggil API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit` untuk secara resmi menulis file ke direktori Knowledge Base dan menyelesaikan seluruh proses unggah.
+
+### Catatan
+
+- Panggilan API yang berhasil mengembalikan informasi file (`dentry`), termasuk ID file, uuid, dan ruang tempat file itu berada. Unggahan selesai.
+- Untuk detail API, lihat dokumentasi [Commit file](/id/open/development/submittal-file). Untuk petunjuk memanggil API, lihat dokumentasi tentang cara memanggil Server API.
+
+### Parameter permintaan utama:
+
+- `parentDentryUuid` (Path): Jaga konsistensi dengan langkah 1.
+- `unionId` (Query): unionId operator. Panggil API [Kueri detail pengguna](/id/open/development/query-user-details) untuk memperolehnya.
+- `uploadKey` (Body): uploadKey yang dikembalikan pada langkah 1, digunakan untuk mengaitkan unggahan ini.
+- `name` (Body): Nama file (termasuk ekstensi).
+- `option.conflictStrategy` (Body): Strategi konflik nama file. Opsi: `AUTO_RENAME` (default, otomatis mengganti nama) atau `OVERWRITE` (timpa).
+
+### Contoh HTTP:
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "uploadKey": "uploadKey returned in step 1",
+  "name": "TestFile.xlsx",
+  "option": {
+    "conflictStrategy": "AUTO_RENAME"
+  }
+}
+```
+
+## Ringkasan proses lengkap
+
+```text
+[Langkah 1] Panggil API "Dapatkan informasi unggah file"
+         → Mengembalikan uploadKey + resourceUrls + headers (dengan waktu kedaluwarsa; selesaikan langkah-langkah berikutnya secepat mungkin)
+
+[Langkah 2] Gunakan resourceUrls[0] + headers untuk mengunggah konten file ke OSS melalui HTTP PUT
+         → OSS mengembalikan 200 untuk menandakan unggahan berhasil
+
+[Langkah 3] Panggil API "Commit file", dengan mengirimkan uploadKey + nama file
+         → Mengembalikan informasi file (dentry). File tersimpan secara resmi, dan unggahan selesai.
+```
+
+## Catatan
+
+- Selama unggahan pada langkah 2, `Content-Type` harus disetel menjadi string kosong. Jika tidak, verifikasi tanda tangan OSS akan gagal.
+- Kredensial unggah yang dikembalikan pada langkah 1 memiliki waktu kedaluwarsa (`expirationSeconds`). Selesaikan langkah 2 dan 3 sebelum kedaluwarsa. Jika tidak, Anda harus memanggil langkah 1 lagi.
+- Ketika tipe ruang penyimpanan adalah `USER`, hanya pemilik ruang dan administrator yang memiliki izin operasi. Karyawan lain harus terlebih dahulu diberi otorisasi melalui API "Tambah Izin".
+- Ketika tipe ruang penyimpanan adalah `APP`, siapa pun yang melakukan operasi harus terlebih dahulu diberi otorisasi melalui API "Tambah Izin".

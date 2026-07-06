@@ -1,0 +1,244 @@
+---
+title: "Mengubah izin Knowledge Base"
+description: "Pelajari cara mengubah izin dokumen, file, dan folder di Knowledge Base DingTalk — mulai dari menambah, mengubah, hingga menghapus izin, serta mengatur pewarisan izin bagi admin."
+---
+
+Dokumen ini menjelaskan cara mengubah izin dokumen, file, atau folder di Knowledge Base.
+
+## Ikhtisar
+
+Dokumen ini menjelaskan cara mengubah izin dokumen, file, atau folder di Knowledge Base, termasuk:
+
+- **Menambah izin** — Memberikan pengguna akses ke file atau folder.
+- **Menghapus izin** — Mencabut akses pengguna ke file atau folder.
+- **Mengubah izin** — Mengubah peran izin pengguna pada file atau folder.
+- **Mengatur mode pewarisan izin** — Mengontrol apakah file atau folder mewarisi izin dari node induknya.
+- **Mendapatkan mode pewarisan izin** — Menanyakan mode pewarisan izin saat ini pada file atau folder.
+
+> **Konsep inti**: Semua operasi izin didasarkan pada `dentryUuid` file (pengenal file yang unik). Operator harus memiliki kemampuan pengelolaan izin pada file target.
+
+## Ikhtisar izin
+
+Berikut menjelaskan berbagai tipe pengguna dan peran izin, beserta kemampuan yang diberikan oleh setiap peran.
+
+### Peran izin (roleId)
+
+Saat mengubah izin, Anda harus menentukan peran izin:
+
+| roleId | Nama peran | Kemampuan |
+| --- | --- | --- |
+| **OWNER** | Pemilik | Izin tertinggi. Baca, tulis, kelola izin, dan tetapkan izin. |
+| **MANAGER** | Manajer | Baca, tulis, dan kelola izin (tidak dapat menetapkan izin). |
+| **EDITOR** | Editor | Tampilkan, edit, unduh, dan tambah. |
+| **DOWNLOADER** | Penampil dengan unduh | Tampilkan dan unduh. |
+| **READER** | Hanya tampilan | Hanya tampilan. Tidak dapat mengunduh. |
+
+### Tipe anggota (members.type)
+
+| Nilai type | Deskripsi | Arti members.id |
+| --- | --- | --- |
+| **USER** | Pengguna | userId Karyawan |
+| **ORG** | Organisasi | ID Organisasi |
+| **DEPT** | Departemen | ID departemen |
+| **TAG** | Tag kustom | ID Tag |
+| **CONVERSATION** | Obrolan | ID percakapan |
+
+## Implementasi: Menambah izin
+
+Panggil API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` untuk memberikan anggota tertentu akses ke file atau folder.
+
+<Note>
+Untuk detail API, lihat dokumen [Menambah izin](/id/open/development/add-permissions-file). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+</Note>
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengenal unik dari file atau folder target. Dapatkan melalui API [Pencarian File](/id/open/development/search-for-files).
+- `unionId` (Query): unionId operator. Dapatkan dengan memanggil API [Menanyakan detail pengguna](/id/open/development/query-user-details).
+- `roleId` (Body): Peran izin yang diberikan, misalnya **EDITOR**.
+- `members` (Body): Daftar anggota yang akan diberi otorisasi. Untuk setiap anggota, tentukan `type` (tipe anggota) dan `id` (ID anggota).
+
+**Contoh HTTP**:
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Implementasi: Mengubah izin
+
+Panggil API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` untuk mengubah peran izin anggota tertentu menjadi peran baru.
+
+**Batasan penting saat menurunkan izin**: Jika izin anggota saat ini **diwarisi dari node induk**, dan peran yang diwarisi **lebih tinggi daripada** peran target yang ingin Anda tetapkan, maka perubahan tidak akan berlaku.
+
+- **Contoh**: Jika folder induk memberikan izin **EDITOR** kepada pengguna, mengubah pengguna menjadi **READER** pada subfolder akan gagal karena izin **EDITOR** yang diwarisi masih berlaku.
+- **Solusi**: Pertama, panggil API [Mengatur mode pewarisan izin](/id/open/development/set-permission-inheritance-mode) pada file atau folder, atur mode pewarisan ke **BREAK** untuk menghentikan pewarisan izin induk, lalu ubah izinnya.
+
+<Note>
+Untuk detail API, lihat dokumen [Mengubah izin](/id/open/development/modify-permissions-file). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+</Note>
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengenal unik dari file atau folder target. Dapatkan melalui API [Pencarian File](/id/open/development/search-for-files).
+- `unionId` (Query): unionId operator. Dapatkan dengan memanggil API [Menanyakan detail pengguna](/id/open/development/query-user-details).
+- `roleId` (Body): Peran izin target setelah perubahan (misalnya, mengubah dari **EDITOR** menjadi **READER**).
+- `members` (Body): Daftar anggota yang izinnya akan diubah.
+
+**Contoh HTTP**:
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Implementasi: Menghapus izin
+
+Panggil API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove` untuk menghapus akses anggota tertentu ke file atau folder.
+
+<Note>
+Untuk detail API, lihat dokumen [Menghapus izin](/id/open/development/delete-permissions-file). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+</Note>
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengenal unik dari file atau folder target. Dapatkan melalui API [Pencarian File](/id/open/development/search-for-files).
+- `unionId` (Query): unionId operator. Dapatkan dengan memanggil API [Menanyakan detail pengguna](/id/open/development/query-user-details).
+- `roleId` (Body): Peran izin yang akan dihapus (harus sesuai dengan peran yang saat ini dimiliki anggota).
+- `members` (Body): Daftar anggota yang izinnya akan dihapus.
+
+**Contoh HTTP**:
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Implementasi: Mengatur mode pewarisan izin
+
+Panggil API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` untuk mengontrol apakah file atau folder mewarisi izin dari node induknya.
+
+### Dua mode pewarisan
+
+- **PASS_ON** (Teruskan): Node saat ini mewarisi semua izin dari node induknya. Untuk anggota yang sama, peran tertinggi yang berlaku. (**Mode default**)
+- **BREAK** (Putus): Pewarisan izin diputus pada node saat ini, dan node tidak lagi mewarisi izin induk. Gunakan mode ini saat Anda memerlukan izin independen pada suatu node.
+
+### Catatan
+
+- Mode **BREAK** tidak dapat diterapkan pada peran **OWNER** atau **MANAGER**.
+- Untuk detail API, lihat dokumen [Mengatur mode pewarisan izin](/id/open/development/set-permission-inheritance-mode). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengenal unik dari file atau folder target. Dapatkan melalui API [Pencarian File](/id/open/development/search-for-files).
+- `unionId` (Query): unionId operator. Dapatkan dengan memanggil API [Menanyakan detail pengguna](/id/open/development/query-user-details).
+- `inheritance` (Body): Mode pewarisan, baik **PASS_ON** maupun **BREAK**.
+
+**Contoh HTTP**:
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "inheritance": "BREAK"
+}
+```
+
+## Implementasi: Mendapatkan mode pewarisan izin
+
+Panggil API `GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` untuk menanyakan mode pewarisan izin saat ini pada file atau folder.
+
+### Catatan
+
+- API mengembalikan bidang `inheritance`, dengan nilai **PASS_ON** (Teruskan) atau **BREAK** (Putus).
+- Untuk detail API, lihat dokumen [Mendapatkan mode pewarisan izin](/id/open/development/get-permission-inheritance-mode). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengenal unik dari file atau folder target. Dapatkan melalui API [Pencarian File](/id/open/development/search-for-files).
+- `unionId` (Query): unionId operator. Dapatkan dengan memanggil API [Menanyakan detail pengguna](/id/open/development/query-user-details).
+
+**Contoh HTTP**:
+
+```http
+GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+```
+
+## Skenario umum dan langkahnya
+
+### Skenario 1: Memberikan izin edit pada file kepada pengguna
+
+1. Panggil API [Pencarian File](/id/open/development/search-for-files) untuk mendapatkan `dentryUuid` dari file target.
+2. Panggil API [Menanyakan detail pengguna](/id/open/development/query-user-details) untuk mendapatkan `userId` pengguna target dan `unionId` operator.
+3. Panggil API [Menambah izin](/id/open/development/add-permissions-file) dengan `roleId = "EDITOR"`, `members[0].type = "USER"`, dan `members[0].id = userId pengguna target`.
+
+### Skenario 2: Menurunkan izin pengguna dari Editor menjadi Hanya Baca
+
+1. Panggil API [Pencarian File](/id/open/development/search-for-files) untuk mendapatkan `dentryUuid` dari file target.
+2. Panggil API [Menanyakan detail pengguna](/id/open/development/query-user-details) untuk mendapatkan `userId` pengguna target.
+3. Panggil API [Mengubah izin](/id/open/development/modify-permissions-file) dengan `roleId = "READER"`, dan tentukan pengguna target di `members`.
+
+### Skenario 3: Menghapus semua izin pengguna pada suatu file
+
+1. Panggil API [Pencarian File](/id/open/development/search-for-files) untuk mendapatkan `dentryUuid` dari file target.
+2. Panggil API [Menanyakan detail pengguna](/id/open/development/query-user-details) untuk mendapatkan `userId` pengguna target.
+3. Panggil API [Menghapus izin](/id/open/development/delete-permissions-file) dengan `roleId` diatur ke peran izin yang saat ini dimiliki pengguna, dan tentukan pengguna target di `members`.
+
+### Skenario 4: Mengatur izin independen untuk subfolder (tanpa mewarisi dari folder induk)
+
+1. Panggil API [Pencarian File](/id/open/development/search-for-files) untuk mendapatkan `dentryUuid` dari subfolder.
+2. Panggil API [Mengatur mode pewarisan izin](/id/open/development/set-permission-inheritance-mode) dengan `inheritance = "BREAK"` untuk memutus pewarisan izin.
+3. Panggil API [Menambah izin](/id/open/development/add-permissions-file) untuk mengonfigurasi anggota dan peran izin yang diperlukan untuk folder secara independen.
+
+## Catatan
+
+- Operator (`unionId`) harus memiliki kemampuan pengelolaan izin pada file target. Jika tidak, error Izin tidak memadai akan dikembalikan.
+- Saat menghapus izin, `roleId` harus sesuai dengan peran izin yang saat ini dimiliki anggota. Jika tidak, operasi akan menjadi tidak valid.
+- Pewarisan peran **OWNER** dan **MANAGER** tidak dapat diputus menggunakan mode **BREAK**.
+- Daftar `members` mendukung hingga 30 anggota per panggilan. Untuk anggota yang lebih banyak, kirim permintaan secara bertahap.
+- Saat ini, semua API izin hanya didukung oleh aplikasi internal. Aplikasi pihak ketiga tidak didukung.

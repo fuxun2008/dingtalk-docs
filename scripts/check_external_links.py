@@ -126,14 +126,16 @@ def discover_mdx(root: Optional[str], lang: str) -> list[Path]:
         if any(part in EXCLUDE_DIRS for part in parts):
             continue
         first = parts[0]
-        if lang == "en" and first in ("zh", "ja"):
+        if lang == "en" and first in ("zh", "ja", "id"):
             continue
         if lang == "zh" and first != "zh":
             continue
         if lang == "ja" and first != "ja":
             continue
+        if lang == "id" and first != "id":
+            continue
         if root:
-            if first in ("zh", "ja"):
+            if first in ("zh", "ja", "id"):
                 if len(parts) < 2 or parts[1] != root:
                     continue
             else:
@@ -439,7 +441,7 @@ def write_reports(occurrences: list[LinkOccurrence], by_url: dict[str, list[int]
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="钉钉外链死链探针（asyncio + httpx）")
     p.add_argument("--root", default=None, help="限定单产品根，如 docs / aitable")
-    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja"])
+    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id"])
     p.add_argument("--apply", action="store_true", help="实际写盘修复（默认 dry-run）")
     p.add_argument("--limit", type=int, default=0, help="只扫前 N 个 mdx")
     p.add_argument("--concurrency", type=int, default=8, help="并发请求数（默认 8）")

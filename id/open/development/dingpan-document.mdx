@@ -1,0 +1,171 @@
+---
+title: "Unggah, pratinjau, dan unduh file di Drive"
+description: "Pelajari cara mengunggah, mempratinjau, dan mengunduh file di DingTalk Drive melalui Document dan File API — mencakup prasyarat, pembuatan aplikasi, hingga konfigurasi web app untuk developer organisasi."
+---
+
+Dokumen ini menjelaskan cara mengunggah, mempratinjau, dan mengunduh file di Drive melalui Document dan File API. Panduan ini membantu developer memahami dan mengintegrasikan kemampuan API terkait Drive dengan cepat.
+
+## Ikhtisar
+
+### Apa yang akan Anda pelajari
+
+Tutorial ini memandu Anda melalui langkah-langkah dan contoh untuk membantu developer organisasi mengunggah, mengunduh, dan mempratinjau file di Drive dengan cepat.
+
+### Tujuan pembelajaran
+
+Membantu developer membangun aplikasi mereka sendiri dengan cepat dan mengintegrasikan kemampuan unggah, pratinjau, serta unduh file Drive dengan memanggil API dasar DingTalk.
+
+### Target pembaca
+
+Semua developer DingTalk.
+
+## Prasyarat
+
+- Anda telah memperoleh izin developer.
+- Anda telah menginstal IDE atau alat pengembangan lainnya.
+- Anda telah membuat folder bernama "Test Folder" di Drive khusus untuk keperluan pengujian.
+- Anda telah menginstal [Node.js](https://nodejs.org/en/download) dan menyelesaikan [konfigurasi lingkungan](https://m.runoob.com/nodejs/nodejs-install-setup.html).
+- Anda telah menginstal [Maven](https://maven.apache.org/) dan menyelesaikan [konfigurasi lingkungan](https://maven.apache.org/install.html).
+- Anda telah menginstal [JDK](https://www.oracle.com/java/technologies/downloads/?er=221886) dan menyelesaikan [konfigurasi lingkungan](https://docs.oracle.com/en/java/javase/24/install/overview-jdk-installation.html).
+
+## Alur pengembangan
+
+1. Gunakan Login senyap untuk memperoleh nama dan peran pengguna yang sedang masuk. Untuk proses masuk, lihat Login senyap untuk web app (H5 micro app).
+2. Unggah file ke Drive.
+
+   1. Panggil API [Pencarian File](/id/open/development/search-for-files) untuk mencari folder bernama "Test Folder" di Drive dan mengembalikan `dentryUuid` folder tersebut.
+
+### Catatan
+
+      Sebelum memanggil API ini, pastikan hanya ada satu folder bernama "Test Folder" di Drive. Jika tidak, error dapat terjadi.
+   2. Panggil API [Get File Upload Information](/id/open/development/obtain-file-upload-informations) dengan `dentryUuid` untuk memperoleh informasi unggah file, termasuk nilai parameter `resourceUrls` dan `headers`.
+   3. Unggah file menggunakan metode OSS header sign request. Untuk detailnya, lihat langkah 2 pada API [Get File Upload Information](/id/open/development/obtain-file-upload-informations).
+   4. Panggil API [Submit File](/id/open/development/submittal-file) untuk mengirim file ke Drive dan memperoleh nilai parameter `spaceId`, `parentId`, `path`, dan `uuid` yang dikembalikan.
+3. Pratinjau file di Drive.
+
+   1. Gunakan `uuid` yang diperoleh dari pengiriman terakhir saat mengunggah file untuk menyusun URL dan membuka file untuk pratinjau.
+4. Unduh file dari Drive.
+
+   1. Panggil API [Get Space List](/id/open/development/queries-a-space-list) untuk memperoleh informasi ruang Drive, termasuk `spaceId`.
+   2. Panggil API [Get File or Folder List](/id/open/development/get-a-list-of-files-or-folders) dengan `spaceId` untuk memperoleh `fileId` dan nama file `name`.
+   3. Panggil API [Get File Download Information](/id/open/development/obtains-the-download-information-about-a-file) dengan `fileId` dan `name` untuk memperoleh informasi unduh file, termasuk nilai parameter `internalResourceUrls` dan `headers`.
+   4. Gunakan informasi di atas untuk melakukan pengunduhan. Untuk kode unduh, lihat langkah 2 pada [Get File Download Information](/id/open/development/obtains-the-download-information-about-a-file).
+
+      Catatan
+
+### Catatan
+
+      Path file adalah path proyek saat ini ditambah nama file. Oleh karena itu, setelah file diunduh, file akan otomatis tersimpan ke direktori proyek. Periksa sesuai kebutuhan.
+
+## Langkah 1: Buat aplikasi
+
+1. Masuk ke [Developer Console](https://open-dev.dingtalk.io/#/).
+2. Klik **App Development** > **Internal App** > **DingTalk App** > **Create App**.
+
+3. Masukkan informasi aplikasi.
+
+   | **Item** | **Wajib** | **Deskripsi** |
+   | --- | --- | --- |
+   | Nama aplikasi | Ya | Masukkan nama aplikasi. Panjang minimum adalah 2 karakter. |
+   | Deskripsi aplikasi | Ya | Deskripsikan secara singkat produk atau layanan yang disediakan aplikasi. Panjang minimum adalah 4 karakter. |
+   | **Ikon aplikasi** | Tidak | Unggah ikon aplikasi. Ikon harus dalam format JPG/PNG, minimal 240 px \* 240 px, dengan rasio aspek 1:1, tanpa sudut membulat, dan tidak lebih besar dari 2 MB. |
+4. Klik **Save** untuk masuk ke halaman detail aplikasi.
+
+   Setelah dibuat, klik **Basic Information** > **Credentials and Basic Information** untuk melihat Client ID, Client Secret, dan Agent ID aplikasi.
+
+## Langkah 2: Konfigurasikan web app
+
+1. Pada halaman detail aplikasi, klik **App Capabilities** > **Add App Capability**.
+2. Pilih Add web app.
+3. Konfigurasikan informasi web app (H5):
+
+   | **Item** | **Deskripsi** |
+   | --- | --- |
+   | URL halaman beranda aplikasi | Masukkan URL halaman beranda aplikasi. Contoh ini menggunakan `http://localhost:5173?corpid=$CORPID$` untuk pengujian berikutnya. Contoh ini hanya untuk pengujian lokal. image |
+   | URL halaman beranda PC |
+4. Setelah konfigurasi selesai, klik **Save**.
+
+## Langkah 3: Tambahkan izin API
+
+Untuk pengujian formal, tambahkan izin berikut:
+
+- Izin Pencarian File: `Storage.Dentry.Search`
+- Izin baca informasi unggah file penyimpanan organisasi: `Storage.UploadInfo.Read`
+- Izin tulis file penyimpanan organisasi: `Storage.File.Write`
+- Izin baca ruang aplikasi Drive: `Drive.Space.Read`
+- Izin baca file penyimpanan organisasi: `Storage.File.Read`
+- Izin baca informasi unduh file penyimpanan organisasi: `Storage.DownloadInfo.Read`
+
+## Langkah 4: Rilis aplikasi
+
+1. Setelah konfigurasi aplikasi selesai, Anda perlu merilis aplikasi. Pada halaman detail aplikasi, klik **App Release** > **Version Management and Release**.
+
+2. Klik **Create New Version** untuk masuk ke halaman detail versi.
+3. Konfigurasikan informasi versi:
+
+   | **Item** | **Deskripsi** |
+   | --- | --- |
+   | Nomor versi aplikasi | Masukkan nomor versi aplikasi. Gunakan versi default. |
+   | Deskripsi versi | Masukkan deskripsi versi. Sesuaikan seperlunya. |
+   | Konten yang akan dirilis | Kemampuan aplikasi yang ditampilkan di workbench: - Pilih web app |
+
+   Setelah konfigurasi selesai, klik Save di bagian bawah.
+4. Pada halaman dialog berhasil, klik Publish secara langsung.
+
+   > *Jika Anda bukan Admin Organisasi, merilis aplikasi memerlukan persetujuan dari Admin Organisasi. Merilis untuk visibilitas kepada diri sendiri saja tidak memerlukan persetujuan admin.*
+
+## Langkah 5: Bangun layanan
+
+1. Pastikan Anda telah menyelesaikan langkah-langkah di atas dan memperoleh informasi parameter yang diperlukan untuk menjalankan demo berikut.
+2. Unduh demo [file-demo.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250807/zkuhco/file-demo.zip).
+3. Buka IDE dan impor demo yang telah diunduh.
+
+   > Kode contoh dibagi menjadi backend (direktori kode backend) dan frontend (direktori kode frontend).
+
+4. Buka direktori kode backend. Di direktori resources, edit file `application.properties` dan masukkan parameter `clientId (app Client ID)` dan `clientSecret (app Client Secret)`.
+
+5. Klik untuk memulai layanan backend.
+
+   **Catatan**
+   - Sebelum memulai layanan backend, pastikan Maven dan JDK terinstal dengan benar dan lingkungan terkait telah dikonfigurasi. Jika ini pertama kalinya Anda menginstal IDE, ubah file konfigurasi terkait di IDE.
+   - Pastikan port 5173 dan 8080 tidak sedang digunakan.
+
+6. Buka direktori kode frontend, edit `vite.config.ts`, dan masukkan `clientId (app Client ID)` yang benar.
+
+7. Klik file proyek frontend, klik kanan, dan pilih **Terminal** untuk membukanya.
+
+8. Di jendela terminal, jalankan perintah berikut:
+
+   1. `npm install`
+   2. `npm run dev`
+
+      > Catatan: Pada Windows, gunakan `npm run dev:raw` untuk memulai.
+9. Layanan frontend dan backend kini telah berhasil dimulai.
+
+## Langkah 6: Uji aplikasi
+
+1. Masuk ke DingTalk Sisi klien dan pilih organisasi tempat aplikasi berada.
+
+2. Klik **Workbench** > **Add**, cari aplikasi organisasi yang Anda buat di atas, lalu tambahkan.
+
+3. Buka aplikasi dan klik **Select Local File** untuk mengunggah file lokal ke Drive.
+
+   Setelah memilih file, klik **Submit**. Pada halaman konfirmasi informasi file, Anda dapat melihat ID pengguna, Nama File, dan Ukuran File.
+
+4. Setelah unggah berhasil, hasilnya ditampilkan seperti di bawah ini:
+
+### Catatan
+
+   Anda dapat mengklik tautan untuk membuka file secara langsung, atau mengklik tombol **Open File** untuk melihat file.
+
+   Setelah unggah berhasil, Anda dapat melihat file yang diunggah di "Test Folder" pada Drive.
+
+5. Klik tombol unduh file untuk mengunduh file.
+
+### Penting
+
+   Jika Pesan error "**auth level of org is not enough**" muncul saat mengunduh file, ini menandakan bahwa level autentikasi organisasi saat ini terlalu rendah dan perlu ditingkatkan sebelum digunakan. Untuk detailnya, lihat deskripsi Kode error pada API [Get File Download Information](/id/open/development/obtains-the-download-information-about-a-file).
+
+   Setelah unduh berhasil, Anda dapat melihat file yang diunduh di direktori proyek.
+
+6. Anda kini telah menyelesaikan semua operasi untuk mengunggah, mempratinjau, dan mengunduh file di Drive.
