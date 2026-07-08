@@ -1,0 +1,122 @@
+---
+title: "Obtain the access_token of an internal app"
+description: "An internal app calls this API to obtain the access_token. When calling server-side APIs to access app resources, you need to use the access_token to authenticate and authorize the caller's identity."
+---
+
+<Note>
+This API is a legacy version. For newly integrated apps, we recommend using the [Get the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app) API to obtain the access credential.
+</Note>
+
+## API call description
+
+This API is used to obtain the access credential required for an internal app to call DingTalk open capabilities. Note the following when using it:
+
+- Call this API to obtain the access_token before the app starts or before you call an API for the first time.
+- Cache the access_token yourself and store it separately by app dimension, because the access_token of each internal app is independent.
+- We recommend setting the cache expiration time slightly less than 7200 seconds (for example, 7000 seconds) to implement an automatic refresh mechanism and prevent credential invalidation caused by time deviation.
+- Do not call this API frequently to obtain the credential. Otherwise, the rate limiting policy may be triggered and affect service stability.
+
+## Request
+
+| **Basic information** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/gettoken |
+| HTTP Method | GET |
+| Supported app types | appType-Internal app |
+| Permission requirements | permission-qyapi_base-Basic permission required to call enterprise APIs |
+
+### Query parameters
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| appkey | String | Yes | dingeqqpkv3xxxxxx | The Client ID (formerly AppKey) of the created internal app. For how to obtain it, see the [Client ID/Client Secret](/open/dingstart/basic-concepts-beta) document. |
+| appsecret | String | Yes | GT-lsu-taDAxxxsTsxxxx | The Client Secret (formerly AppSecret) of the created internal app. For how to obtain it, see the [Client ID/Client Secret](/open/dingstart/basic-concepts-beta) document.  **Note**  Keep the Client Secret safe and avoid leaking it. |
+
+### Request example
+
+```curl
+curl 'https://oapi.dingtalk.io/gettoken?appkey=dingeqqpkv3xxxxxx&appsecret=GT-lsu-taDAxxxsTsxxxx'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.setAppkey("dingeqqpkv3xxxxxx");
+req.setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+req.setHttpMethod("GET");
+OapiGettokenResponse rsp = client.execute(req);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiGettokenRequest("https://oapi.dingtalk.io/gettoken")
+
+req.appkey="dingeqqpkv3xxxxxx"
+req.appsecret="GT-lsu-taDAxxxsTsxxxx"
+try:
+  resp= req.getResponse()
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_GET, DingTalkConstant::$FORMAT_JSON);
+$req = new OapiGettokenRequest;
+$req->setAppkey("dingeqqpkv3xxxxxx");
+$req->setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+$resp = $c->execute($req, null, "https://oapi.dingtalk.io/gettoken");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.Appkey = "dingeqqpkv3xxxxxx";
+req.Appsecret = "GT-lsu-taDAxxxsTsxxxx";
+req.SetHttpMethod("GET");
+OapiGettokenResponse rsp = client.Execute(req);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | The return code. |
+| errmsg | String | ok | The description of the return code. |
+| access_token | String | 797ce303b1xxxxxxfd9e93e9c15a2d34 | The generated access_token. |
+| expires_in | Number | 7200 | The expiration time of the access_token, in seconds. The validity period is 7200 seconds (2 hours). Obtaining it repeatedly within the validity period returns the same result and automatically renews it. After it expires, obtaining it returns a new access_token. |
+
+### Response example
+
+```json
+{
+  "errcode": 0,
+  "access_token": "797ce303b1xxxxxxfd9e93e9c15a2d34",
+  "errmsg": "ok",
+  "expires_in": 7200
+}
+```
+
+### Error codes
+
+If an error is returned when you call this API, see the [Global error codes](/open/development/server-api-error-codes-1) document for a solution based on the error message.
+
+| Error code (errcode) | Error message (errmsg) | Solution |
+| --- | --- | --- |
+| 40089 | Invalid appkey or appsecret | Check whether the appkey and appsecret are correct. |
+| 90002 | The appkey parameter is empty | Check whether the appkey parameter is filled in. |
+| 90003 | The appsecret parameter is empty | Check whether the appsecret parameter is filled in. |

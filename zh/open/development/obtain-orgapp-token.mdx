@@ -1,0 +1,122 @@
+---
+title: "获取企业内部应用的access_token"
+description: "企业内部应用调用本接口获取access_token。调用服务端API获取应用资源时,需要通过access_token来鉴权调用者身份进行授权。"
+---
+
+<Note>
+本接口为历史版本接口，新接入的应用推荐使用[获取企业内部应用的accessToken](/zh/open/development/obtain-the-access-token-of-an-internal-app)接口获取访问凭证。
+</Note>
+
+## 接口调用说明
+
+本接口用于获取企业内部应用调用钉钉开放能力所需的访问凭证。使用时请注意以下几点：
+
+- 应用启动或首次调用API前，调用本接口获取access_token。
+- 开发者应自行缓存access_token，并按应用维度区分存储，因为每个企业内部应用的access_token相互独立。
+- 建议设置缓存过期时间略小于7200秒（例如7000秒），实现自动刷新机制，防止因时间偏差导致凭证失效。
+- 不可频繁调用本接口获取凭证，否则可能触发频率限制策略，影响服务稳定性。
+
+## 请求
+
+| **基本信息** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/gettoken |
+| HTTP Method | GET |
+| 支持的应用类型 | appType-企业内部应用 |
+| 权限要求 | permission-qyapi_base-调用企业API时需要具备的基本权限 |
+
+### 请求参数
+
+| 名称 | 类型 | 是否必填 | 示例值 | 描述 |
+| --- | --- | --- | --- | --- |
+| appkey | String | 是 | dingeqqpkv3xxxxxx | 已创建的企业内部应用的 Client ID（原 AppKey），获取方式可参考[Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)文档说明。 |
+| appsecret | String | 是 | GT-lsu-taDAxxxsTsxxxx | 已创建的企业内部应用的 Client Secret（原 AppSecret），获取方式可参考[Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)文档说明。  **说明**  请妥善保管Client Secret，避免泄露。 |
+
+### 请求示例
+
+```curl
+curl 'https://oapi.dingtalk.io/gettoken?appkey=dingeqqpkv3xxxxxx&appsecret=GT-lsu-taDAxxxsTsxxxx'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.setAppkey("dingeqqpkv3xxxxxx");
+req.setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+req.setHttpMethod("GET");
+OapiGettokenResponse rsp = client.execute(req);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiGettokenRequest("https://oapi.dingtalk.io/gettoken")
+
+req.appkey="dingeqqpkv3xxxxxx"
+req.appsecret="GT-lsu-taDAxxxsTsxxxx"
+try:
+  resp= req.getResponse()
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_GET, DingTalkConstant::$FORMAT_JSON);
+$req = new OapiGettokenRequest;
+$req->setAppkey("dingeqqpkv3xxxxxx");
+$req->setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+$resp = $c->execute($req, null, "https://oapi.dingtalk.io/gettoken");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.Appkey = "dingeqqpkv3xxxxxx";
+req.Appsecret = "GT-lsu-taDAxxxsTsxxxx";
+req.SetHttpMethod("GET");
+OapiGettokenResponse rsp = client.Execute(req);
+Console.WriteLine(rsp.Body);
+```
+
+## 响应
+
+### 响应体
+
+| 名称 | 类型 | 示例值 | 描述 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | 返回码。 |
+| errmsg | String | ok | 返回码描述。 |
+| access_token | String | 797ce303b1xxxxxxfd9e93e9c15a2d34 | 生成的access_token。 |
+| expires_in | Number | 7200 | access_token的过期时间，单位秒。有效期为7200秒（2小时），有效期内重复获取会返回相同结果并自动续期，过期后获取会返回新的access_token。 |
+
+### 响应体示例
+
+```json
+{
+  "errcode": 0,
+  "access_token": "797ce303b1xxxxxxfd9e93e9c15a2d34",
+  "errmsg": "ok",
+  "expires_in": 7200
+}
+```
+
+### 错误码
+
+若调用该接口报错，可根据错误信息在[全局错误码](/zh/open/development/server-api-error-codes-1)文档中查找解决方案。
+
+| 错误码（errcode） | 错误码描述（errmsg） | 解决方案 |
+| --- | --- | --- |
+| 40089 | 不合法的appkey或者appsecret | 请检查appkey和appsecret是否正确 |
+| 90002 | appkey参数为空 | 请检查appkey参数是否已填写 |
+| 90003 | appsecret参数为空 | 请检查appsecret参数是否已填写 |
