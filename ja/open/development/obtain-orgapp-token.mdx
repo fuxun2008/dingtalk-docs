@@ -1,0 +1,122 @@
+---
+title: "社内アプリの access_token を取得する"
+description: "社内アプリが本インターフェースを呼び出して access_token を取得します。サーバー API を呼び出してアプリリソースを取得する際は、access_token を使用して呼び出し元の身元を認証・認可する必要があります。"
+---
+
+<Note>
+本インターフェースは歴史バージョンのインターフェースです。新規に接続するアプリには、[社内アプリの accessToken を取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app)インターフェースの使用を推奨します。
+</Note>
+
+## API 呼び出し説明
+
+本インターフェースは、社内アプリが DingTalk のオープン機能を呼び出すために必要なアクセス認証情報を取得するために使用します。使用時は以下の点にご注意ください。
+
+- アプリの起動時、または API を初めて呼び出す前に、本インターフェースを呼び出して access_token を取得します。
+- access_token は開発者側でキャッシュし、アプリ単位で区別して保存してください。各社内アプリの access_token は相互に独立しているためです。
+- キャッシュの有効期限は 7200 秒よりわずかに短く（例：7000 秒）設定し、自動更新の仕組みを実装して、時刻のずれによる認証情報の失効を防ぐことを推奨します。
+- 本インターフェースを頻繁に呼び出して認証情報を取得しないでください。頻度制限ポリシーがトリガーされ、サービスの安定性に影響する可能性があります。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/gettoken |
+| HTTP Method | GET |
+| サポートするアプリタイプ | appType-社内アプリ |
+| 権限要件 | permission-qyapi_base-企業 API を呼び出す際に必要な基本権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| appkey | String | はい | dingeqqpkv3xxxxxx | 作成済みの社内アプリの Client ID（旧 AppKey）。取得方法は[Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta)ドキュメントをご参照ください。 |
+| appsecret | String | はい | GT-lsu-taDAxxxsTsxxxx | 作成済みの社内アプリの Client Secret（旧 AppSecret）。取得方法は[Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta)ドキュメントをご参照ください。  **説明**  Client Secret は適切に保管し、漏洩を防いでください。 |
+
+### リクエスト例
+
+```curl
+curl 'https://oapi.dingtalk.io/gettoken?appkey=dingeqqpkv3xxxxxx&appsecret=GT-lsu-taDAxxxsTsxxxx'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.setAppkey("dingeqqpkv3xxxxxx");
+req.setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+req.setHttpMethod("GET");
+OapiGettokenResponse rsp = client.execute(req);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiGettokenRequest("https://oapi.dingtalk.io/gettoken")
+
+req.appkey="dingeqqpkv3xxxxxx"
+req.appsecret="GT-lsu-taDAxxxsTsxxxx"
+try:
+  resp= req.getResponse()
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_GET, DingTalkConstant::$FORMAT_JSON);
+$req = new OapiGettokenRequest;
+$req->setAppkey("dingeqqpkv3xxxxxx");
+$req->setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+$resp = $c->execute($req, null, "https://oapi.dingtalk.io/gettoken");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.Appkey = "dingeqqpkv3xxxxxx";
+req.Appsecret = "GT-lsu-taDAxxxsTsxxxx";
+req.SetHttpMethod("GET");
+OapiGettokenResponse rsp = client.Execute(req);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | リターンコード。 |
+| errmsg | String | ok | リターンコードの説明。 |
+| access_token | String | 797ce303b1xxxxxxfd9e93e9c15a2d34 | 生成された access_token。 |
+| expires_in | Number | 7200 | access_token の有効期限（秒単位）。有効期間は 7200 秒（2 時間）です。有効期間内に繰り返し取得すると同じ結果が返され自動的に延長され、期限切れ後に取得すると新しい access_token が返されます。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "access_token": "797ce303b1xxxxxxfd9e93e9c15a2d34",
+  "errmsg": "ok",
+  "expires_in": 7200
+}
+```
+
+### エラーコード
+
+本インターフェースの呼び出しでエラーが発生した場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を検索してください。
+
+| エラーコード（errcode） | エラーコードの説明（errmsg） | 解決方法 |
+| --- | --- | --- |
+| 40089 | 不正な appkey または appsecret | appkey と appsecret が正しいかご確認ください。 |
+| 90002 | appkey パラメータが空です | appkey パラメータが入力されているかご確認ください。 |
+| 90003 | appsecret パラメータが空です | appsecret パラメータが入力されているかご確認ください。 |
