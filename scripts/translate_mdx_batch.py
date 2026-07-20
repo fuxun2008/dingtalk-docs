@@ -66,6 +66,14 @@ SYSTEM_RULES = """你是钉钉国际版帮助中心的资深技术文档翻译�
 9. 中文标点改为目标语言习惯：英文用 . , ? ! "" ()；日文用 。、「」（）。
 10. 技术词如 API / SDK / URL / JSON / SaaS 保持英文；钉钉品牌词遵循术语表。"""
 
+# --keep-media 模式覆盖段：保留图片，不删除（用于三语共用 zh 截图但组件结构不破的场景）
+KEEP_MEDIA_OVERRIDE = """【最高优先级覆盖 — 覆盖上面铁律 4】本次任务保留所有图片，禁止删除：
+- 保留所有图片引用 ![alt](path)、HTML <img ... /> 标签、<Frame>...</Frame> 及其全部 props（src / style / width / alt / caption ...）完全不动，位置不变。
+- 仅可翻译图片的 alt="..." 文本与 <Frame caption="..."> 的 caption 文本（可见描述）；src / 样式 / 布局一律不动。
+- <video> / <iframe> 若存在同样保留不动。
+- 结构 1:1 镜像：图片行、Frame 块与源文件位置完全对应，不增不减不移动。"""
+
+
 STYLE_EN = """风格指南（英文）：
 - 目标读者：钉钉国际版企业用户与 IT 管理员
 - 语气：清晰、专业、动作导向（imperative voice：Click X，不写 You can click X）
@@ -238,7 +246,7 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
     )
 
 
-def build_system_prompt(lang: str, root: str = "") -> str:
+def build_system_prompt(lang: str, root: str = "", keep_media: bool = False) -> str:
     style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID}[lang]
     target = {
         "en": "英文（American English）",
@@ -248,6 +256,8 @@ def build_system_prompt(lang: str, root: str = "") -> str:
     sections = [SYSTEM_RULES, style]
     if root == "open":
         sections.append(OPEN_PLATFORM_RULES)
+    if keep_media:
+        sections.append(KEEP_MEDIA_OVERRIDE)
     sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
     return "\n\n".join(sections)
 
@@ -324,6 +334,7 @@ async def translate_one(
     dry_run: bool,
     sem: asyncio.Semaphore,
     force: bool,
+    keep_media: bool = False,
 ) -> FileResult:
     rel = task.rel
     try:
@@ -350,7 +361,10 @@ async def translate_one(
             try:
                 result_text, usage = await call_claude_cli(system_prompt, user_msg, model, timeout_s)
                 elapsed = time.time() - t0
-                cleaned = sanitize_media(strip_code_fence_wrapper(result_text))
+                unwrapped = strip_code_fence_wrapper(result_text)
+                cleaned = unwrapped if keep_media else sanitize_media(unwrapped)
+                if keep_media:
+                    cleaned = MULTI_EMPTY_LINE_RE.sub("\n\n", cleaned).strip() + "\n"
                 task.target.parent.mkdir(parents=True, exist_ok=True)
                 task.target.write_text(cleaned, encoding="utf-8")
                 return FileResult(
@@ -482,7 +496,7 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
     glossary = load_glossary(args.lang)
-    system_prompt = build_system_prompt(args.lang, args.root)
+    system_prompt = build_system_prompt(args.lang, args.root, args.keep_media)
     sem = asyncio.Semaphore(args.concurrency)
 
     tasks = gather_tasks(args.root, args.lang, args.only, args.bucket_id, args.bucket_count)
@@ -500,7 +514,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
     started = time.time()
     coros = [
-        translate_one(t, glossary, system_prompt, model, args.timeout, args.dry_run, sem, args.force)
+        translate_one(t, glossary, system_prompt, model, args.timeout, args.dry_run, sem, args.force, args.keep_media)
         for t in tasks
     ]
     results: list[FileResult] = []
@@ -543,6 +557,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--only", default=None, help="只跑路径前缀，如 docs/dingtalk-docs")
     p.add_argument("--limit", type=int, default=0, help="只跑前 N 篇")
     p.add_argument("--force", action="store_true", help="覆盖非占位的已译文件")
+    p.add_argument("--keep-media", action="store_true", dest="keep_media",
+                   help="保留图片/Frame（只译 alt/caption），不删除媒体；用于三语共用 zh 截图")
     p.add_argument("--dry-run", action="store_true", help="只列任务 + 命中术语")
     p.add_argument("--bucket-id", type=int, default=None, dest="bucket_id",
                    help="多进程分桶：本进程跑桶 N（0..bucket_count-1），与 --bucket-count 配合")
