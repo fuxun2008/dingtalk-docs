@@ -1,0 +1,491 @@
+---
+title: "サードパーティフローとページの統合"
+description: "DingTalk OA承認でサードパーティフローとページを統合する方法を、開発者向けに解説します。サードパーティ業務システムのフローとページを DingTalk に統合し、データ連携、フロー共有、統一された操作画面を実現します。"
+polished: true
+---
+
+## 一、機能概要
+
+企業の情報化が進むにつれて、OA システムをサードパーティ業務システム（ERP、CRM、財務システムなど）と統合するニーズが高まっています。**サードパーティフローとページの統合** により、データ連携、フロー共有、統一された操作画面などを実現し、業務効率と管理連携能力を全体的に向上できます。本マニュアルでは、開発者やシステム管理者が OA プラットフォーム上で **サードパーティフローとページの統合** を設定・完了し、システム統合を迅速に実現できるよう手順を解説します。
+
+## 二、適用シーン
+
+業務システムでフローを開始し、DingTalk 独自の OA承認関連 API を呼び出して DingTalk OA承認フローを作成します。DingTalk 側では業務システムの承認詳細ページを開いてフローを処理できます。
+
+## 三、操作フロー
+
+業務システムと DingTalk 側との全体的なインタラクションフローは次のとおりです。
+
+<Frame>
+
+![サードパーティフローとページ統合の操作フロー図。業務システムで承認を開始し API を呼び出して同期、DingTalk 側で業務システムの承認詳細ページを開いて処理する](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/RV3Wwboa0iJkxNeP/b49137a5a4a0483494d69567bb788ca40794.png)
+</Frame>
+
+## 四、実装効果
+
+### 1、DingTalk OA承認リストから業務システムの承認詳細ページを開いて承認
+
+出張申請フォームを例にすると、DingTalk OA承認リストで承認フォームをタップすることで、業務システムの詳細ページを直接開いて処理できます。
+
+<Frame>
+
+![DingTalk OA承認リストから業務システムの出張申請フォーム詳細ページを開いて承認する画面](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/3BMqYybPMMZ1mqwZ/img/33bd21bc-aeac-44b7-b740-0e1079b42bb7.png)
+</Frame>
+
+### 2、DingTalk タスクから業務システムの承認詳細ページを開いて承認
+
+DingTalk タスクセンターでタスクをタップすると、同様に業務システムの詳細ページを開いて処理できます。
+
+<Frame>
+
+![DingTalk タスクセンターから業務システムの承認詳細ページを開いて承認する画面](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/3BMqYybPMMZ1mqwZ/img/925b83f5-b755-4733-9347-c320abcc332e.png)
+</Frame>
+
+## 五、開発フロー
+
+ここでは、企業が社内アプリを開発して機能統合を実現し、業務システム側から開始して DingTalk 側で業務システムの詳細ページを開いて承認を行う例を示します。具体的な実装フローは下図のとおりです。**（このシーンでは、承認タスクの同期フローはステップ 5 に従って実行される点にご注意ください）**
+
+<Frame>
+
+![開発者、DingTalk オープンプラットフォーム、DingTalk OA承認の間の API 呼び出しシーケンス図。テンプレート、インスタンス、タスクの作成と状態同期を含む](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/3BMqYybPMMZ1mqwZ/img/e823e6be-44c4-4b5b-83a2-7603d50cb262.png)
+</Frame>
+
+### 統合フローの概要
+
+本ドキュメントでは、社内アプリを作成し、OA承認フローセンターが提供する API を使用して、サードパーティ承認テンプレートの作成／更新／削除、承認インスタンスの作成／更新、承認タスクの作成／更新／照会、OA承認データのクリーンアップなどの API を通じて、業務システム側から開始して DingTalk 側で業務システムの詳細ページを開いて統合するシーンのケースをご紹介します。
+
+前提条件：**アプリ作成** のフローを完了していること。
+
+ステップ一：アプリ詳細ページに入り、クライアント ID と Client Secret を取得します。
+
+ステップ二：API 権限を申請し、「OA承認」に対応する権限を申請します。
+
+ステップ三：アプリのアクセス認証情報 **社内アプリのアクセストークン取得** を取得します。API を呼び出す際、アクセストークンで呼び出し元の身元を認証します。
+
+ステップ四：OA承認関連 API を呼び出します。
+
+1.  **承認テンプレートデータを DingTalk に同期：** 新バージョンのサーバー API - **承認テンプレートの作成または更新** インターフェースを呼び出し、テンプレートの一意の識別子 `processCode` を取得します。
+
+    <Note>
+    注：このシーンでは、processFeatureConfig のフローセンター統合関連設定は不要で、デフォルトで業務システムの詳細ページを開く方式で承認が行われます。
+    </Note>
+    ```json
+    {
+
+        "name": "サードパーティフローとページで DingTalk OA を統合",
+        "description": "DingTalk OA承認は、外部システム（企業自社開発または調達したサードパーティシステム）の承認タスクを DingTalk 承認アプリにプッシュすることをサポートし、ユーザーは DingTalk 承認内ですべての承認を統一的に閲覧・処理でき、ワンストップの承認体験を享受できます。",
+        "formComponents": [
+            {
+                "componentType": "TextField",
+                "props": {
+                    "componentId": "TextField-1",
+                    "label": "単一行入力ボックス",
+                    "required": true,
+                    "bizAlias": "TextField-bizAlias",
+                    "disabled": false
+                }
+            },
+            {
+                "componentType": "TextareaField",
+                "props": {
+                    "placeholder": "入力してください",
+                    "label": "複数行入力ボックス"
+                }
+            },
+            {
+                "componentType": "NumberField",
+                "props": {
+                    "placeholder": "数値を入力してください",
+                    "label": "数値入力ボックス",
+                    "id": "NumberField-1"
+                }
+            },
+            {
+                "componentType": "DDSelectField",
+                "props": {
+                    "options": [ // 選択可能なオプションリスト
+                        {
+                            "value": "オプション 1", // オプション表示名
+                            "key": "option_0" // コントロール内のユニークキー、任意、システムがデフォルトで生成
+                        },
+                        {
+                            "value": "オプション 2",
+                            "key": "option_1"
+                        },
+                        {
+                            "value": "オプション 3",
+                            "key": "option_2"
+                        },
+                        {
+                            "key": "other", // その他項目の特殊キー
+                            "value": "その他"
+                        }
+                    ],
+                    "label": "単一選択ボックス",
+                    "placeholder": "選択してください",
+                    "componentId": "DDSelectField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDMultiSelectField",
+                "props": {
+                    "options": [
+                        {
+                            "value": "オプション 1",
+                            "key": "option_0"
+                        },
+                        {
+                            "value": "オプション 2",
+                            "key": "option_1"
+                        },
+                        {
+                            "value": "オプション 3",
+                            "key": "option_2"
+                        },
+                        {
+                            "key": "other", // その他項目の特殊キー
+                            "value": "その他"
+                        }
+                    ],
+                    "label": "複数選択ボックス",
+                    "placeholder": "選択してください",
+                    "componentId": "DDMultiSelectField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDDateField",
+                "props": {
+                    "unit": "時間", // 日付形式、列挙値（時間、日）
+                    "format": "yyyy-MM-dd HH:mm", // 日付形式、任意、時間は yyyy-MM-dd HH:mm、日は yyyy-MM-dd に対応
+                    "bizAlias": "",
+                    "label": "日付",
+                    "placeholder": "選択してください",
+                    "componentId": "DDDateField_1",
+                    "required": false,
+                    "defaultValue": "2021-12-21 17:46" // デフォルト
+                }
+            },
+            {
+                "componentType": "DDDateRangeField",
+                "props": {
+                    "unit": "日",
+                    "format": "yyyy-MM-dd",
+                    "bizAlias": "",
+                    "label": "[\"開始時間\",\"終了時間\"]",
+                    "placeholder": "選択してください",
+                    "componentId": "DDDateRangeField_1",
+                    "duration": true, // 期間を自動計算するかどうか
+                    "durationLabel": "期間", // 期間計算の表示テキスト
+                    "required": false
+                }
+            },
+            {
+                "componentType": "TextNote",
+                "props": {
+                    "link": "https://www.dingtalk.io/", // ハイパーリンク
+                    "notPrint": "0",
+                    "bizAlias": "",
+                    "componentId": "TextNote_1",
+                    "content": "これは説明文です" // 説明文
+                }
+            },
+            {
+                "componentType": "DDPhotoField",
+                "props": {
+                    "label": "画像",
+                    "componentId": "DDPhotoField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "MoneyField",
+                "props": {
+                    "upper": "0", // 金額を大文字表記する必要があるか（0 は大文字なし、1 は大文字必要）、デフォルトは大文字必要
+                    "label": "金額（元）",
+                    "placeholder": "金額を入力してください",
+                    "componentId": "MoneyField_1",
+                    "required": false
+                }
+            },
+            {
+                "children": [
+                    {
+                        "componentType": "TextField",
+                        "props": {
+                            "label": "単一行入力ボックス",
+                            "placeholder": "入力してください",
+                            "componentId": "TextField_1UE1ZY1A28AO0",
+                            "required": false
+                        }
+                    },
+                    {
+                        "componentType": "MoneyField",
+                        "props": {
+                            "upper": "0",
+                            "bizAlias": "",
+                            "label": "金額（元）",
+                            "placeholder": "金額を入力してください",
+                            "componentId": "MoneyField_1S85G0",
+                            "required": false
+                        }
+                    },
+                    {
+                        "componentType": "NumberField",
+                        "props": {
+                            "unit": "元",
+                            "bizAlias": "",
+                            "label": "数値入力ボックス",
+                            "placeholder": "数値を入力してください",
+                            "componentId": "NumberField_1XP6A",
+                            "required": false
+                        }
+                    }
+                ],
+                "componentType": "TableField",
+                "props": {
+                    "tableViewMode": "table",
+                    "verticalPrint": true,
+                    "statField": [
+                        {
+                            "componentId": "MoneyField_1S85G0",
+                            "label": "金額（元）"
+                        },
+                        {
+                            "componentId": "NumberField_1XP6A",
+                            "label": "数値入力ボックス"
+                        }
+                    ],
+                    "bizAlias": "table",
+                    "label": "スプレッドシート",
+                    "componentId": "TableField_1MLEPEA"
+                }
+            },
+            {
+                "componentType": "DDAttachment",
+                "props": {
+                    "label": "添付",
+                    "componentId": "DDAttachment_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "InnerContactField",
+                "props": {
+                    "label": "連絡先",
+                    "placeholder": "選択してください",
+                    "componentId": "InnerContactField_1",
+                    "choice": "1", // 列挙値：1 は複数選択サポート、0 は単一選択、デフォルトは 0
+                    "required": false,
+                    "bizAlias": ""
+                }
+            },
+            {
+                "componentType": "DepartmentField",
+                "props": {
+                    "multiple": false, // 複数選択をサポートするかどうか、true は複数選択、false は単一選択
+                    "label": "部門",
+                    "placeholder": "選択してください",
+                    "componentId": "DepartmentField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "RelateField",
+                "props": {
+                    "label": "関連承認フォーム",
+                    "placeholder": "選択してください",
+                    "componentId": "RelateField_1",
+                    "required": false,
+                    "bizAlias": "",
+                    "availableTemplates": [ // 関連付け可能な承認テンプレートリスト、空の場合はすべての承認テンプレートのインスタンスデータを関連付け可能を示す
+                    ]
+                }
+            },
+            {
+                "componentType": "AddressField",
+                "props": {
+                    "addressModel": "district", // 列挙値、city は省市、district は省市区、street は省市区-街道
+                    "bizAlias": "",
+                    "label": "省市区",
+                    "componentId": "AddressField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "StarRatingField",
+                "props": {
+                    "limit": 5, // 列挙値：5 段階評価、10 段階評価
+                    "label": "評価点",
+                    "placeholder": "入力してください",
+                    "componentId": "StarRatingField_1",
+                    "required": false,
+                    "bizAlias": ""
+                }
+            }
+        ],
+        "templateConfig": {
+            "hiddenProcess": true,
+            "createInstanceMobileUrl": "https://www.dingtalk.io",
+            "createInstancePcUrl": "https://www.dingtalk.io",
+            "templateEditUrl": "https://www.dingtalk.io",
+            "disableSendCard": false
+        }
+    }
+    ```
+
+2.  `processCode` を保存していない場合は、**テンプレート code の取得** インターフェースを呼び出して `processCode` を取得できます。
+
+3.  承認テンプレートの作成が成功すると、ユーザーは DingTalk OA承認管理コンソールで、サードパーティ独自の承認フォームテンプレートの閲覧、テンプレートデータの閲覧／検索、テンプレートデータのエクスポート／削除などを行えます。
+
+4.  承認インスタンスデータを DingTalk に同期：テンプレートコード `processCode` に基づいて、新バージョンのサーバー API - **インスタンスの作成** インターフェースを呼び出して承認インスタンスを開始し、承認インスタンス `processInstanceId` を取得します。
+
+    ```json
+    {
+        "formComponentValueList": [
+            {
+                "name": "単一行入力ボックス",
+                "value": "DingTalk"
+            },
+            {
+                "name": "複数行入力ボックス",
+                "value": "複数行テキストコンテンツを入力してください。改行が必要な場合は入力してください\r\n複数行テキストコンテンツを入力してください。改行が必要な場合は入力してください\r\n"
+            },
+            {
+                "name": "数値入力ボックス",
+                "value": "100"
+            },
+            {
+                "name": "単一選択ボックス",
+                "value": "オプション 1"
+            },
+            {
+                "name": "複数選択ボックス",
+                "value": "[\"オプション 1\",\"オプション 2\"]"
+            },
+            {
+                "name": "日付",
+                "value": "2021-08-17 11:11"
+            },
+            {
+                "name": "[\"開始時間\",\"終了時間\"]",
+                "value": "[\"2019-02-19 11:11\",\"2019-02-25 11:11\"]"
+            },
+            {
+                "name": "画像",
+                "value": "[\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"http://url3\"]"
+            },
+            {
+                "name": "スプレッドシート",
+                "value": "[{\"name\":\"単一行入力ボックス\",\"value\":\"[DingTalk\"},{\"name\":\"数値入力ボックス\",\"value\":\"100\"}]]"
+            },
+            {
+                "name": "金額（元）",
+                "value": "100"
+            },
+            {
+                "name": "添付",
+                "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": \"643xxxx140\"}]"
+            },
+            {
+                "name": "連絡先",
+                "value": "[\"0135185610551036178639\"]"
+            },
+            {
+                "name": "関連承認フォーム",
+                "value": "[\"9XCLWKxNTom6W_u88iKbug09641720074458\", \"9XCLWKxNTom6W_u88iKbug09641720074458\"]"
+            },
+            {
+                "name": "電話番号",
+                "value": "18015586666"
+            },
+            {
+                "name": "省市区",
+                "value": "北京,北京市,河東区"
+            },
+            {
+                "name": "評価点",
+                "value": "5"
+            },
+            {
+                "name": "部門",
+                "value": "714738614"
+            }
+        ],
+        "title": "サードパーティフローとページで DingTalk OA を統合",
+        "processCode": "PROC-39B555F8-FFC6-4CCC-AC5F-xxx",
+        "originatorUserId": "manager9814",
+        "url": "http://www.dingtalk.io",
+        "notifiers": [
+            {
+                "userid": "manager9814",
+                "position": "start"
+            }
+        ],
+        "bizData": "{\"apiKey\":\"apiKey\",\"appUuid\":\"appUuid\",\"version\":\"1\"}"
+    }
+    ```
+
+5.  承認インスタンスの作成が成功すると、ユーザーは DingTalk OA承認センターに入り、承認の 4 大リスト（未処理、処理済み、開始済み、受信済み）の閲覧、承認インスタンスデータの検索、承認の実行などの操作を行えます。
+
+6.  承認タスクデータを DingTalk に同期：承認インスタンス `processInstanceId` とタスクリスト tasks に基づいて、**フローセンター未処理タスクの作成** インターフェースを呼び出すことで、サードパーティシステム内の承認ノード情報を DingTalk OA承認に同期し、タスクの taskId を取得して対応する DingTalk タスクを生成できます。ご注意：このシーンで同期された承認タスクは、業務システムの詳細ページを開く方式で承認が行われます。
+
+    ```json
+    {
+        "processInstanceId": "zG1X1zwFTEiwzI0JB5w38A0964172381_xxxx",
+        "activityId": "activityId_xxx",
+        "tasks": [
+            {
+                "userId": "manager9814",
+                "url": "https://www.dingtalk.io"
+            }
+        ]
+    }
+    ```
+
+7.  未処理タスクの作成が成功したら、**フローセンター経由で統合された OA承認タスクの照会** インターフェースを呼び出すと、ユーザーの実行中の承認タスクを照会できます。
+
+8.  承認タスクの状態を DingTalk に同期：承認インスタンス `processInstanceId` と承認タスクの taskId に基づいて、**フローセンタータスク状態の更新** インターフェースを呼び出し、独自の承認タスク状態の更新を同期完了できます。代理承認などのシーンでは、**OA承認未処理タスクの一括キャンセル** インターフェースを呼び出して、承認インスタンス配下で実行中のタスクを一括で CANCELED に設定できます。
+
+9.  承認インスタンスの状態を DingTalk に同期：承認インスタンス `processInstanceId`、インスタンス状態 status、インスタンス結果 result などに基づいて、**インスタンス状態の更新** または **インスタンス状態の一括更新** インターフェースを呼び出して、インスタンス状態を更新できます。
+
+10.  最後に、承認テンプレートデータをクリーンアップする必要がある場合、**テンプレートの削除** インターフェースを呼び出して、企業のために作成された承認テンプレートを削除し、同時にそのテンプレート配下で作成されたインスタンスとタスクも削除できます。
+
+## 六、使用する API
+
+### 1、承認フォーム
+
+| API | 説明 | 新バージョン仕様（新バージョンサーバー API） |
+| --- | --- | --- |
+| 承認テンプレートの作成または更新 | 承認テンプレートを作成または更新します。 | **承認テンプレートの作成または更新** |
+| テンプレート code の取得 | テンプレート名に基づいて process_code を照会します。 | **テンプレート code の取得** |
+| テンプレートの削除 | 企業のために作成された承認テンプレートを削除し、同時にそのテンプレート配下で作成されたインスタンスとタスクも削除します。 | **テンプレートの削除** |
+
+### 2、承認インスタンス
+
+| API | 説明 | 新バージョン仕様（新バージョンサーバー API） |
+| --- | --- | --- |
+| インスタンスの作成 | フローなしの承認インスタンスを作成します。 | **インスタンスの作成** |
+| インスタンス状態の更新 | インスタンス状態を更新します。 | **インスタンス状態の更新** |
+| インスタンス状態の一括更新 | インスタンス状態を一括更新します。 | **インスタンス状態の一括更新** |
+
+### 3、フローセンタータスク
+
+| API | 説明 | 新バージョン仕様（新バージョンサーバー API） |
+| --- | --- | --- |
+| フローセンター未処理タスクの作成 | OA承認のタスクを作成します。 | **フローセンター未処理タスクの作成** |
+| フローセンター経由で統合された OA承認タスクの照会 | ユーザーの実行中の承認タスクを照会します。 | **フローセンター経由で統合された OA承認タスクの照会** |
+| フローセンタータスク状態の更新 | タスクの状態を更新します。 | **フローセンタータスク状態の更新** |
+| フローセンター未処理タスクの一括キャンセル | フローセンター未処理タスクを一括キャンセルします。 | **フローセンター未処理タスクの一括キャンセル** |
+
+## 七、関連ドキュメント
+
+<CardGroup cols={2}>
+  <Card title="フローセンターオープンソリューション" icon="sitemap" href="/zh/approval/open-solution-overview">
+    企業業務システムを DingTalk OA承認に統合する 4 つのソリューションを概観
+  </Card>
+  <Card title="DingTalk フローページ統合" icon="link" href="/zh/approval/open-dingtalk-process">
+    業務システムから開始し、DingTalk 側で公式 OA承認詳細ページを開いて承認
+  </Card>
+</CardGroup>

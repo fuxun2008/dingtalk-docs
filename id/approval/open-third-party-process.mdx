@@ -1,0 +1,491 @@
+---
+title: "Integrasi proses dan halaman pihak ketiga"
+description: "Panduan bagi developer untuk mengonfigurasi proses dan halaman pihak ketiga di DingTalk Persetujuan OA: integrasikan proses dan halaman dari sistem bisnis pihak ketiga ke DingTalk untuk mewujudkan interoperabilitas data, berbagi proses, dan antarmuka operasi terpadu."
+polished: true
+---
+
+## 1. Pengenalan fitur
+
+Seiring dengan pendalaman pembangunan informatisasi perusahaan, semakin banyak organisasi perlu mengintegrasikan sistem OA dengan sistem bisnis pihak ketiga (seperti ERP, CRM, atau sistem keuangan). Melalui **integrasi proses dan halaman pihak ketiga**, Anda dapat mewujudkan interoperabilitas data, berbagi proses, antarmuka operasi terpadu, dan fitur lainnya, sehingga meningkatkan efisiensi kerja serta kemampuan kolaborasi manajemen secara keseluruhan. Panduan ini bertujuan memandu developer atau administrator sistem dalam mengonfigurasi dan menyelesaikan **integrasi proses dan halaman pihak ketiga** di platform OA, sehingga integrasi sistem dapat diwujudkan dengan cepat.
+
+## 2. Skenario penggunaan
+
+Mulai proses di sistem bisnis, panggil API terkait Persetujuan OA milik DingTalk untuk membuat proses Persetujuan OA DingTalk, lalu buka halaman detail persetujuan sistem bisnis di sisi DingTalk untuk memproses persetujuan.
+
+## 3. Alur operasi
+
+Alur interaksi keseluruhan antara sistem bisnis dan sisi DingTalk adalah sebagai berikut:
+
+<Frame>
+
+![Diagram alur operasi integrasi proses dan halaman pihak ketiga: sistem bisnis memulai persetujuan dan memanggil API untuk sinkronisasi, lalu membuka halaman detail persetujuan sistem bisnis di sisi DingTalk untuk pemrosesan](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/RV3Wwboa0iJkxNeP/b49137a5a4a0483494d69567bb788ca40794.png)
+</Frame>
+
+## 4. Hasil implementasi
+
+### 1. Buka halaman detail persetujuan sistem bisnis dari Daftar Persetujuan OA DingTalk
+
+Contoh formulir pengajuan perjalanan bisnis: pada Daftar Persetujuan OA DingTalk, klik Formulir persetujuan untuk langsung membuka halaman detail sistem bisnis dan memprosesnya:
+
+<Frame>
+
+![Buka halaman detail formulir pengajuan perjalanan bisnis dari sistem bisnis pada Daftar Persetujuan OA DingTalk untuk melakukan persetujuan](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/3BMqYybPMMZ1mqwZ/img/33bd21bc-aeac-44b7-b740-0e1079b42bb7.png)
+</Frame>
+
+### 2. Buka halaman detail persetujuan sistem bisnis dari Tugas DingTalk
+
+Pada Pusat Tugas DingTalk, klik tugas untuk membuka halaman detail sistem bisnis dan memprosesnya:
+
+<Frame>
+
+![Buka halaman detail persetujuan sistem bisnis dari Pusat Tugas DingTalk untuk melakukan persetujuan](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/3BMqYybPMMZ1mqwZ/img/925b83f5-b755-4733-9347-c320abcc332e.png)
+</Frame>
+
+## 5. Alur pengembangan
+
+Berikut contoh perusahaan mengembangkan Aplikasi internal untuk mewujudkan integrasi kapabilitas, di mana sistem bisnis memulai persetujuan dan halaman detail sistem bisnis dibuka di sisi DingTalk untuk pemrosesan. Alur implementasi spesifik ditunjukkan pada diagram di bawah: **(perhatikan bahwa dalam skenario ini, alur sinkronisasi tugas persetujuan dijalankan sesuai langkah 5.)**
+
+<Frame>
+
+![Diagram urutan pemanggilan API antara developer, DingTalk Open Platform, dan DingTalk Persetujuan OA, mencakup pembuatan dan sinkronisasi status templat, instance, serta tugas](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/3BMqYybPMMZ1mqwZ/img/e823e6be-44c4-4b5b-83a2-7603d50cb262.png)
+</Frame>
+
+### Pengenalan alur integrasi
+
+Dokumen ini menjelaskan cara membuat Aplikasi internal dan menggunakan API yang disediakan oleh Persetujuan OA Process Center, seperti buat/perbarui/hapus templat persetujuan pihak ketiga, buat/perbarui instance persetujuan, buat/perbarui/kueri tugas tunggu persetujuan, dan bersihkan data Persetujuan OA, untuk mewujudkan skenario integrasi di mana sistem bisnis memulai persetujuan dan halaman detail sistem bisnis dibuka di sisi DingTalk.
+
+Prasyarat: selesaikan alur **Buat Aplikasi**.
+
+Langkah 1: Masuk ke halaman detail aplikasi, dapatkan Client ID dan Client Secret aplikasi.
+
+Langkah 2: Ajukan Izin API, ajukan izin terkait "Persetujuan OA".
+
+Langkah 3: Dapatkan Kredensial akses aplikasi **Dapatkan access token untuk Aplikasi internal**. Saat memanggil API, gunakan access token untuk mengautentikasi identitas pemanggil.
+
+Langkah 4: Panggil API terkait Persetujuan OA:
+
+1.  **Sinkronkan data templat persetujuan ke DingTalk:** panggil Server API versi baru — **Buat atau perbarui templat persetujuan** untuk mendapatkan kode unik templat `processCode`;
+
+    <Note>
+    Catatan: dalam skenario ini, Anda tidak perlu mengatur konfigurasi integrasi processFeatureConfig terkait Process Center. Secara default, persetujuan dilakukan dengan cara membuka halaman detail sistem bisnis.
+    </Note>
+    ```json
+    {
+    
+        "name": "Gunakan proses dan halaman pihak ketiga untuk integrasi DingTalk Persetujuan OA",
+        "description": "DingTalk Persetujuan OA mendukung push tugas persetujuan dari sistem eksternal (dikembangkan sendiri oleh perusahaan atau sistem pihak ketiga yang dibeli) ke aplikasi Persetujuan DingTalk. Pengguna dapat melihat dan memproses semua persetujuan secara terpadu di Persetujuan DingTalk, menikmati pengalaman persetujuan terintegrasi.",
+        "formComponents": [
+            {
+                "componentType": "TextField",
+                "props": {
+                    "componentId": "TextField-1",
+                    "label": "Kotak input baris tunggal",
+                    "required": true,
+                    "bizAlias": "TextField-bizAlias",
+                    "disabled": false
+                }
+            },
+            {
+                "componentType": "TextareaField",
+                "props": {
+                    "placeholder": "Silakan masukkan",
+                    "label": "Kotak input multi-baris"
+                }
+            },
+            {
+                "componentType": "NumberField",
+                "props": {
+                    "placeholder": "Silakan masukkan angka",
+                    "label": "Kotak input angka",
+                    "id": "NumberField-1"
+                }
+            },
+            {
+                "componentType": "DDSelectField",
+                "props": {
+                    "options": [ // Daftar opsi yang tersedia
+                        {
+                            "value": "Opsi 1", // Nama tampilan opsi
+                            "key": "option_0" // Key unik dalam komponen, opsional, sistem akan menghasilkan secara default
+                        },
+                        {
+                            "value": "Opsi 2",
+                            "key": "option_1"
+                        },
+                        {
+                            "value": "Opsi 3",
+                            "key": "option_2"
+                        },
+                        {
+                            "key": "other", // Key khusus untuk opsi lainnya
+                            "value": "Lainnya"
+                        }
+                    ],
+                    "label": "Kotak pilihan tunggal",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "DDSelectField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDMultiSelectField",
+                "props": {
+                    "options": [
+                        {
+                            "value": "Opsi 1",
+                            "key": "option_0"
+                        },
+                        {
+                            "value": "Opsi 2",
+                            "key": "option_1"
+                        },
+                        {
+                            "value": "Opsi 3",
+                            "key": "option_2"
+                        },
+                        {
+                            "key": "other", // Key khusus untuk opsi lainnya
+                            "value": "Lainnya"
+                        }
+                    ],
+                    "label": "Kotak Pilih Banyak",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "DDMultiSelectField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDDateField",
+                "props": {
+                    "unit": "小时", // Format tanggal, nilai enum (小时=Jam, 天=Hari)
+                    "format": "yyyy-MM-dd HH:mm", // Format tanggal, opsional, jam sesuai yyyy-MM-dd HH:mm, hari sesuai yyyy-MM-dd
+                    "bizAlias": "",
+                    "label": "Tanggal",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "DDDateField_1",
+                    "required": false,
+                    "defaultValue": "2021-12-21 17:46" // Nilai default
+                }
+            },
+            {
+                "componentType": "DDDateRangeField",
+                "props": {
+                    "unit": "天",
+                    "format": "yyyy-MM-dd",
+                    "bizAlias": "",
+                    "label": "[\"Waktu Mulai\",\"Waktu Selesai\"]",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "DDDateRangeField_1",
+                    "duration": true, // Apakah menghitung durasi secara otomatis
+                    "durationLabel": "Durasi", // Teks tampilan hasil hitung durasi
+                    "required": false
+                }
+            },
+            {
+                "componentType": "TextNote",
+                "props": {
+                    "link": "https://www.dingtalk.io/", // Hyperlink
+                    "notPrint": "0",
+                    "bizAlias": "",
+                    "componentId": "TextNote_1",
+                    "content": "Ini adalah teks keterangan" // Teks keterangan
+                }
+            },
+            {
+                "componentType": "DDPhotoField",
+                "props": {
+                    "label": "Gambar",
+                    "componentId": "DDPhotoField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "MoneyField",
+                "props": {
+                    "upper": "0", // Apakah jumlah perlu dalam huruf kapital (0 tidak, 1 ya), default perlu
+                    "label": "Jumlah (IDR)",
+                    "placeholder": "Silakan masukkan jumlah",
+                    "componentId": "MoneyField_1",
+                    "required": false
+                }
+            },
+            {
+                "children": [
+                    {
+                        "componentType": "TextField",
+                        "props": {
+                            "label": "Kotak input baris tunggal",
+                            "placeholder": "Silakan masukkan",
+                            "componentId": "TextField_1UE1ZY1A28AO0",
+                            "required": false
+                        }
+                    },
+                    {
+                        "componentType": "MoneyField",
+                        "props": {
+                            "upper": "0",
+                            "bizAlias": "",
+                            "label": "Jumlah (IDR)",
+                            "placeholder": "Silakan masukkan jumlah",
+                            "componentId": "MoneyField_1S85G0",
+                            "required": false
+                        }
+                    },
+                    {
+                        "componentType": "NumberField",
+                        "props": {
+                            "unit": "IDR",
+                            "bizAlias": "",
+                            "label": "Kotak input angka",
+                            "placeholder": "Silakan masukkan angka",
+                            "componentId": "NumberField_1XP6A",
+                            "required": false
+                        }
+                    }
+                ],
+                "componentType": "TableField",
+                "props": {
+                    "tableViewMode": "table",
+                    "verticalPrint": true,
+                    "statField": [
+                        {
+                            "componentId": "MoneyField_1S85G0",
+                            "label": "Jumlah (IDR)"
+                        },
+                        {
+                            "componentId": "NumberField_1XP6A",
+                            "label": "Kotak input angka"
+                        }
+                    ],
+                    "bizAlias": "table",
+                    "label": "Spreadsheet",
+                    "componentId": "TableField_1MLEPEA"
+                }
+            },
+            {
+                "componentType": "DDAttachment",
+                "props": {
+                    "label": "Lampiran",
+                    "componentId": "DDAttachment_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "InnerContactField",
+                "props": {
+                    "label": "Kontak",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "InnerContactField_1",
+                    "choice": "1", // Nilai enum: 1 mendukung Pilih Banyak, 0 pilih tunggal, default 0
+                    "required": false,
+                    "bizAlias": ""
+                }
+            },
+            {
+                "componentType": "DepartmentField",
+                "props": {
+                    "multiple": false, // Apakah mendukung Pilih Banyak, true=Pilih Banyak, false=pilih tunggal
+                    "label": "Departemen",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "DepartmentField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "RelateField",
+                "props": {
+                    "label": "Asosiasi Formulir persetujuan",
+                    "placeholder": "Silakan pilih",
+                    "componentId": "RelateField_1",
+                    "required": false,
+                    "bizAlias": "",
+                    "availableTemplates": [ // Daftar templat persetujuan yang dapat diasosiasikan; jika kosong, dapat mengasosiasikan data instance dari semua templat persetujuan
+                    ]
+                }
+            },
+            {
+                "componentType": "AddressField",
+                "props": {
+                    "addressModel": "district", // Nilai enum, city=Provinsi/Kota, district=Provinsi/Kota/Kabupaten, street=Provinsi/Kota/Kabupaten-Jalan
+                    "bizAlias": "",
+                    "label": "Provinsi/Kota/Kabupaten",
+                    "componentId": "AddressField_1",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "StarRatingField",
+                "props": {
+                    "limit": 5, // Nilai enum: skala 5, skala 10
+                    "label": "Peringkat",
+                    "placeholder": "Silakan masukkan",
+                    "componentId": "StarRatingField_1",
+                    "required": false,
+                    "bizAlias": ""
+                }
+            }
+        ],
+        "templateConfig": {
+            "hiddenProcess": true,
+            "createInstanceMobileUrl": "https://www.dingtalk.io",
+            "createInstancePcUrl": "https://www.dingtalk.io",
+            "templateEditUrl": "https://www.dingtalk.io",
+            "disableSendCard": false
+        }
+    }
+    ```
+
+2.  Jika `processCode` tidak disimpan, Anda dapat memanggil API **Dapatkan code templat** untuk mendapatkan `processCode`;
+
+3.  Setelah templat persetujuan berhasil dibuat, pengguna dapat masuk ke Admin Console Persetujuan OA DingTalk untuk melihat templat Formulir persetujuan milik pihak ketiga, melihat/mencari data templat, mengekspor/menghapus data templat, dan tindakan lainnya;
+
+4.  Sinkronkan data instance persetujuan ke DingTalk: berdasarkan kode templat `processCode`, panggil Server API versi baru — **Buat instance** untuk memulai instance persetujuan dan mendapatkan `processInstanceId` instance persetujuan.
+
+    ```json
+    {
+        "formComponentValueList": [
+            {
+                "name": "Kotak input baris tunggal",
+                "value": "DingTalk"
+            },
+            {
+                "name": "Kotak input multi-baris",
+                "value": "Silakan masukkan konten Teks multi-baris. Untuk baris baru, silakan masukkan \r\nSilakan masukkan konten Teks multi-baris. Untuk baris baru, silakan masukkan \r\n"
+            },
+            {
+                "name": "Kotak input angka",
+                "value": "100"
+            },
+            {
+                "name": "Kotak pilihan tunggal",
+                "value": "Opsi 1"
+            },
+            {
+                "name": "Kotak Pilih Banyak",
+                "value": "[\"Opsi 1\",\"Opsi 2\"]"
+            },
+            {
+                "name": "Tanggal",
+                "value": "2021-08-17 11:11"
+            },
+            {
+                "name": "[\"Waktu Mulai\",\"Waktu Selesai\"]",
+                "value": "[\"2019-02-19 11:11\",\"2019-02-25 11:11\"]"
+            },
+            {
+                "name": "Gambar",
+                "value": "[\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"http://url3\"]"
+            },
+            {
+                "name": "Spreadsheet",
+                "value": "[{\"name\":\"Kotak input baris tunggal\",\"value\":\"[DingTalk\"},{\"name\":\"Kotak input angka\",\"value\":\"100\"}]]"
+            },
+            {
+                "name": "Jumlah (IDR)",
+                "value": "100"
+            },
+            {
+                "name": "Lampiran",
+                "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": \"643xxxx140\"}]"
+            },
+            {
+                "name": "Kontak",
+                "value": "[\"0135185610551036178639\"]"
+            },
+            {
+                "name": "Asosiasi Formulir persetujuan",
+                "value": "[\"9XCLWKxNTom6W_u88iKbug09641720074458\", \"9XCLWKxNTom6W_u88iKbug09641720074458\"]"
+            },
+            {
+                "name": "Telepon",
+                "value": "18015586666"
+            },
+            {
+                "name": "Provinsi/Kota/Kabupaten",
+                "value": "Beijing,Kota Beijing,Distrik Hedong"
+            },
+            {
+                "name": "Peringkat",
+                "value": "5"
+            },
+            {
+                "name": "Departemen",
+                "value": "714738614"
+            }
+        ],
+        "title": "Gunakan proses dan halaman pihak ketiga untuk integrasi DingTalk Persetujuan OA",
+        "processCode": "PROC-39B555F8-FFC6-4CCC-AC5F-xxx",
+        "originatorUserId": "manager9814",
+        "url": "http://www.dingtalk.io",
+        "notifiers": [
+            {
+                "userid": "manager9814",
+                "position": "start"
+            }
+        ],
+        "bizData": "{\"apiKey\":\"apiKey\",\"appUuid\":\"appUuid\",\"version\":\"1\"}"
+    }
+    ```
+
+5.  Setelah instance persetujuan berhasil dibuat, pengguna juga dapat masuk ke Pusat Persetujuan DingTalk untuk melihat empat daftar persetujuan (Menunggu Pemrosesan, Sudah Diproses, Sudah Dimulai, Diterima Saya), mencari data instance persetujuan, menjalankan persetujuan, dan tindakan lainnya;
+
+6.  Sinkronkan data tugas persetujuan ke DingTalk: berdasarkan `processInstanceId` instance persetujuan dan daftar tugas tunggu tasks, panggil API **Buat tugas tunggu Process Center** untuk menyinkronkan informasi node persetujuan dari sistem pihak ketiga ke DingTalk Persetujuan OA, dapatkan taskId dari tugas tunggu, dan hasilkan tugas Tugas DingTalk yang sesuai. Perhatikan: tugas persetujuan yang disinkronkan dalam skenario ini akan diproses dengan cara membuka halaman detail sistem bisnis;
+
+    ```json
+    {
+        "processInstanceId": "zG1X1zwFTEiwzI0JB5w38A0964172381_xxxx",
+        "activityId": "activityId_xxx",
+        "tasks": [
+            {
+                "userId": "manager9814",
+                "url": "https://www.dingtalk.io"
+            }
+        ]
+    }
+    ```
+
+7.  Setelah tugas tunggu berhasil dibuat, panggil API **Kueri tugas Persetujuan OA yang terintegrasi melalui Process Center** untuk mengueri tugas persetujuan yang sedang berjalan milik pengguna;
+
+8.  Sinkronkan status tugas persetujuan ke DingTalk: berdasarkan `processInstanceId` instance persetujuan dan taskId tugas tunggu persetujuan, panggil API **Perbarui status tugas Process Center** untuk menyelesaikan pembaruan status tugas persetujuan mandiri. Dalam skenario persetujuan paralel dan lainnya, Anda dapat memanggil API **Batalkan tugas tunggu Persetujuan OA secara massal** untuk mengatur secara massal tugas tunggu yang sedang berjalan di bawah instance persetujuan menjadi CANCELED;
+
+9.  Sinkronkan status instance persetujuan ke DingTalk: berdasarkan `processInstanceId` instance persetujuan, status instance, hasil instance result, dan sebagainya, Anda dapat memanggil API **Perbarui status instance** atau **Perbarui status instance secara massal** untuk memperbarui status instance;
+
+10.  Terakhir, jika perlu membersihkan data templat persetujuan, Anda dapat memanggil API **Hapus templat** untuk menghapus templat persetujuan yang dibuat untuk Organisasi, sekaligus menghapus instance dan tugas tunggu yang dibuat di bawah templat tersebut.
+
+## 6. API yang digunakan
+
+### 1. Formulir persetujuan
+
+| API | Deskripsi | Spesifikasi versi baru (Server API versi baru) |
+| --- | --- | --- |
+| Buat atau perbarui templat persetujuan | Buat atau perbarui templat persetujuan. | **Buat atau perbarui templat persetujuan** |
+| Dapatkan code templat | Kueri process_code berdasarkan nama templat. | **Dapatkan code templat** |
+| Hapus templat | Hapus templat persetujuan yang dibuat untuk Organisasi, sekaligus hapus instance dan tugas tunggu yang dibuat di bawah templat tersebut. | **Hapus templat** |
+
+### 2. Instance persetujuan
+
+| API | Deskripsi | Spesifikasi versi baru (Server API versi baru) |
+| --- | --- | --- |
+| Buat instance | Buat instance persetujuan tanpa proses. | **Buat instance** |
+| Perbarui status instance | Perbarui status instance. | **Perbarui status instance** |
+| Perbarui status instance secara massal | Perbarui status instance secara massal. | **Perbarui status instance secara massal** |
+
+### 3. Tugas Process Center
+
+| API | Deskripsi | Spesifikasi versi baru (Server API versi baru) |
+| --- | --- | --- |
+| Buat tugas tunggu Process Center | Buat tugas tunggu Persetujuan OA. | **Buat tugas tunggu Process Center** |
+| Kueri tugas Persetujuan OA yang terintegrasi melalui Process Center | Kueri tugas persetujuan yang sedang berjalan milik pengguna. | **Kueri tugas Persetujuan OA yang terintegrasi melalui Process Center** |
+| Perbarui status tugas Process Center | Perbarui status tugas tunggu. | **Perbarui status tugas Process Center** |
+| Batalkan tugas tunggu Process Center secara massal | Batalkan tugas tunggu Process Center secara massal. | **Batalkan tugas tunggu Process Center secara massal** |
+
+## 7. Dokumen terkait
+
+<CardGroup cols={2}>
+  <Card title="Ringkasan solusi terbuka Process Center" icon="sitemap" href="/zh/approval/open-solution-overview">
+    Ringkasan empat solusi untuk mengintegrasikan sistem bisnis perusahaan ke DingTalk Persetujuan OA
+  </Card>
+  <Card title="Integrasi proses dan halaman DingTalk" icon="link" href="/zh/approval/open-dingtalk-process">
+    Sistem bisnis memulai persetujuan; halaman detail Persetujuan OA resmi dibuka di sisi DingTalk untuk pemrosesan
+  </Card>
+</CardGroup>
