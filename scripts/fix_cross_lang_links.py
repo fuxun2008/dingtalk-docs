@@ -49,6 +49,15 @@ SITE_HOST = "help.dingtalk.io"
 # path 内不能含 ) 或 空格（除非进入 title 段）
 RE_LINK = re.compile(r'\]\((?P<path>[^)\s]+)(?:\s+"(?P<title>[^"]*)")?\)')
 
+# JSX 属性形态：href="path" / href='path'（Card / CardGroup 等组件）
+RE_HREF = re.compile(r'href=(?P<q>["\'])(?P<path>[^"\']+)(?P=q)')
+
+# EN 站点顶层内容目录：ja/zh/id 文件中出现这些裸前缀即视为误指 EN
+EN_CONTENT_DIRS = (
+    "ai-minutes", "aitable", "approval", "attendance", "calendar", "contacts",
+    "docs", "drive", "guides", "im", "mail", "meetings", "open", "quickstart",
+)
+
 
 @dataclass
 class Issue:
@@ -135,7 +144,7 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
         if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
-            if first_seg in ("docs", "aitable", "guides", "quickstart"):
+            if first_seg in EN_CONTENT_DIRS:
                 new = "/zh" + norm
                 return new, "bare_in_zh"
         if is_full and norm.startswith("/zh/"):
@@ -152,7 +161,7 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
         if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
-            if first_seg in ("docs", "aitable", "guides", "quickstart"):
+            if first_seg in EN_CONTENT_DIRS:
                 new = "/ja" + norm
                 return new, "bare_in_ja"
         if is_full and norm.startswith("/ja/"):
@@ -169,7 +178,7 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
         if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
-            if first_seg in ("docs", "aitable", "guides", "quickstart"):
+            if first_seg in EN_CONTENT_DIRS:
                 new = "/id" + norm
                 return new, "bare_in_id"
         if is_full and norm.startswith("/id/"):
@@ -224,12 +233,37 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
         if exists:
             replacements.append((m.start(), m.end(), new_link))
 
+    # JSX href 属性形态（Card / CardGroup 等）
+    for m in RE_HREF.finditer(src):
+        url = m.group("path")
+        fixed_url, kind = fix_url_for_lang(url, lang)
+        if not fixed_url or fixed_url == url:
+            continue
+
+        target = target_mdx_path(fixed_url)
+        exists = target is not None
+
+        q = m.group("q")
+        new_link = f'href={q}{fixed_url}{q}'
+
+        issues.append(Issue(
+            file=str(rel),
+            line=find_line(src, m.start()),
+            before=m.group(0),
+            after=new_link,
+            kind=kind + "_href",
+            target_exists=exists,
+            note="" if exists else "目标 mdx 不存在，跳过自动修复",
+        ))
+        if exists:
+            replacements.append((m.start(), m.end(), new_link))
+
     if not replacements:
         return issues, None
 
-    # 从后往前替换
+    # 按位置从后往前替换（两类正则命中区间互不重叠）
     fixed = src
-    for start, end, new in reversed(replacements):
+    for start, end, new in sorted(replacements, reverse=True):
         fixed = fixed[:start] + new + fixed[end:]
     return issues, fixed
 
