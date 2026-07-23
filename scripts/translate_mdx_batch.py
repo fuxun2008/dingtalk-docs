@@ -159,6 +159,30 @@ M. 英文：Name / Type / Required / Example / Description（不写 "Required or
 N. 日文：名前 / タイプ / 必須 / 例 / 説明"""
 
 
+# 考勤 / 审批 (Attendance / Approval) 帮助文档专属规则 — 仅 root=attendance / approval 注入
+HELP_ATTENDANCE_APPROVAL_RULES = """考勤 / 审批帮助文档专属规则：
+
+【模块背景】
+本批文档是钉钉国际版帮助中心的假勤（考勤打卡）与 OA 审批模块，面向企业管理员与普通员工，
+内容为产品操作指引与 FAQ。语气面向终端用户（非开发者），操作路径使用 UI 面包屑格式
+（如 电脑端钉钉 > 工作台 > 考勤打卡）保持层级结构，仅翻译各级菜单名。
+
+【语境术语 — 覆盖词库】
+A. 「撤销」在审批单语境（撤销审批/撤销申请）译 **withdraw / 取り下げ / menarik kembali**，
+   不用词库的 Undo / 元に戻す / Urungkan（那是编辑器语境）。
+B. 「加签」在审批流程语境（增加审批人）译 **add approver / 承認者の追加 / tambah pemberi persetujuan**，
+   不用词库的 sign request（那是 API 签名语境）。
+C. 「打卡」统一 clock in（动词）/ clock-in（名词修饰）；日文一律「打刻」；印尼语动词 absen。
+D. UI 按钮 / 菜单名与 18 篇既有译文对齐：管理后台=Admin Console、工作台=Workbench，
+   印尼语版本中 Admin Console / Workbench 保持英文不译。
+E. 域名 oa.dingtalk.io 等 URL 与链接路径一律不动（铁律 5）。
+
+【版式惯例】
+F. FAQ 型文档的 <Accordion title="..."> 问句译为自然问句（en 以 ? 结尾；ja 以「〜には？/〜できますか？」；id 以 ? 结尾）。
+G. 表格中的「操作路径」列保持面包屑 > 分隔符不变。
+H. 中文序号标题（一、二、三 / 1、2、3）转为目标语言习惯：en/id 用 1. 2. 3. 数字层级语义即可，heading 文本本身不保留「一、」前缀，直接译标题内容。"""
+
+
 # ---------------------------------------------------------------------------
 # 工具：占位检测、命中术语、sanitize
 # ---------------------------------------------------------------------------
@@ -256,6 +280,8 @@ def build_system_prompt(lang: str, root: str = "", keep_media: bool = False) -> 
     sections = [SYSTEM_RULES, style]
     if root == "open":
         sections.append(OPEN_PLATFORM_RULES)
+    if root in ("attendance", "approval"):
+        sections.append(HELP_ATTENDANCE_APPROVAL_RULES)
     if keep_media:
         sections.append(KEEP_MEDIA_OVERRIDE)
     sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")

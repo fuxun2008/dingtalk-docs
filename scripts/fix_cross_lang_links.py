@@ -65,9 +65,9 @@ class Issue:
 
 
 def file_lang(rel: Path) -> str:
-    """返回 'en' / 'zh' / 'ja'。"""
+    """返回 'en' / 'zh' / 'ja' / 'id'。"""
     first = rel.parts[0] if rel.parts else ""
-    if first in ("zh", "ja"):
+    if first in ("zh", "ja", "id"):
         return first
     return "en"
 
@@ -108,25 +108,31 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
     is_full = url != norm  # 原本是完整 URL
 
     if lang == "en":
-        # EN 文件：剥 /zh/ /ja/
+        # EN 文件：剥 /zh/ /ja/ /id/
         if norm.startswith("/zh/"):
             new = "/" + norm[len("/zh/"):]
             return new, "zh_in_en"
         if norm.startswith("/ja/"):
             new = "/" + norm[len("/ja/"):]
             return new, "ja_in_en"
+        if norm.startswith("/id/"):
+            new = "/" + norm[len("/id/"):]
+            return new, "id_in_en"
         # 完整 URL 但路径正确：仍然把 https:// 形式改为相对
         if is_full and norm.startswith("/"):
             return norm, "full_to_relative_en"
         return None, ""
 
     if lang == "zh":
-        # ZH 文件：/ja/ → /zh/；裸 /docs/ /aitable/ → /zh/docs/ /zh/aitable/
+        # ZH 文件：/ja/ /id/ → /zh/；裸 /docs/ /aitable/ → /zh/docs/ /zh/aitable/
         if norm.startswith("/ja/"):
             new = "/zh/" + norm[len("/ja/"):]
             return new, "ja_in_zh"
+        if norm.startswith("/id/"):
+            new = "/zh/" + norm[len("/id/"):]
+            return new, "id_in_zh"
         # 仅当裸 /docs/* /aitable/* 等（未带语言前缀）且目标在 zh/ 下存在
-        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/")):
+        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
             if first_seg in ("docs", "aitable", "guides", "quickstart"):
@@ -140,7 +146,10 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
         if norm.startswith("/zh/"):
             new = "/ja/" + norm[len("/zh/"):]
             return new, "zh_in_ja"
-        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/")):
+        if norm.startswith("/id/"):
+            new = "/ja/" + norm[len("/id/"):]
+            return new, "id_in_ja"
+        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
             if first_seg in ("docs", "aitable", "guides", "quickstart"):
@@ -148,6 +157,23 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
                 return new, "bare_in_ja"
         if is_full and norm.startswith("/ja/"):
             return norm, "full_to_relative_ja"
+        return None, ""
+
+    if lang == "id":
+        if norm.startswith("/zh/"):
+            new = "/id/" + norm[len("/zh/"):]
+            return new, "zh_in_id"
+        if norm.startswith("/ja/"):
+            new = "/id/" + norm[len("/ja/"):]
+            return new, "ja_in_id"
+        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
+            stripped = norm.lstrip("/")
+            first_seg = stripped.split("/", 1)[0]
+            if first_seg in ("docs", "aitable", "guides", "quickstart"):
+                new = "/id" + norm
+                return new, "bare_in_id"
+        if is_full and norm.startswith("/id/"):
+            return norm, "full_to_relative_id"
         return None, ""
 
     return None, ""
@@ -304,7 +330,7 @@ def write_reports(issues: list[Issue], applied: dict[str, int], scanned: int, mo
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="跨语言链接污染清理")
-    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja"])
+    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id"])
     p.add_argument("--apply", action="store_true", help="实际写盘修复（默认 dry-run）")
     p.add_argument("--limit", type=int, default=0)
     return p.parse_args()
