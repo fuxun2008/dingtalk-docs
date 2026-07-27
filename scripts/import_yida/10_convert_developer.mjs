@@ -265,6 +265,16 @@ function convertAttrTables(body, file) {
   return out;
 }
 
+// 加粗尾部标点 + 闭合 ** 后紧跟文字 → CommonMark 不闭合（页面裸显 **）：标点移出加粗
+const BOLD_PUNCT_RE = /\*\*([^*\n]*[^\s*：:；;，,、。．.！!？?])([：:；;，,、。．.！!？?]+)\*\*(?=[\w\u4e00-\u9fff])/g;
+
+function fixBoldPunct(body) {
+  return body
+    .split(/(```[\s\S]*?```)/)
+    .map((seg, i) => (i % 2 ? seg : seg.replace(BOLD_PUNCT_RE, '**$1**$2')))
+    .join('');
+}
+
 function frameImages(body) {
   // 独立成段的图片包 Frame（跳过代码块）
   const parts = body.split(/(```[\s\S]*?```)/);
@@ -302,6 +312,7 @@ function convertFile(id) {
   body = convertAttrTables(body, id);
   body = convertCallouts(body, id);
   body = rewriteLinks(body, id);
+  body = fixBoldPunct(body);
   body = frameImages(body);
   body = body.replace(/\n{3,}/g, '\n\n').trim();
 

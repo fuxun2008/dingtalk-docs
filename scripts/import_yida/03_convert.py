@@ -170,10 +170,10 @@ def warn(slug, kind, detail):
 # ---------- 文本与转义 ----------
 
 def esc(text, in_table=False):
-    """MDX 内联文本转义：< { 必须转义；表格单元格内再转义竖线。"""
+    """MDX 内联文本转义：< { 必须转义；字面星号防误解析为强调；表格单元格内再转义竖线。"""
     t = text.replace(ZWSP, "")
     t = t.replace("\\", "\\\\").replace("<", "\\<").replace("{", "\\{")
-    t = t.replace("`", "\\`")
+    t = t.replace("`", "\\`").replace("*", "\\*")
     if in_table:
         t = t.replace("|", "\\|")
     return t
@@ -918,8 +918,14 @@ def drop_excluded_blocks(blocks, slug):
     return out
 
 
-# 去链后残留的纯引导 CTA：行内变体（前接逗号）直接收句
-CTA_INLINE_RE = re.compile(r"[，,]\s*(?:\*\*)?点击(?:体验效果|立即体验)(?:\*\*)?\s*[。.]?")
+# 去链后残留的纯引导 CTA：行内变体（前接逗号，可能被加粗包裹、句号可能在闭合 ** 内）直接收句
+# 变体：「**，点击体验效果**。」整段加粗（逗号在开星内侧），需连开星一起吃掉
+CTA_INLINE_BOLD_RE = re.compile(
+    r"\*\*[，,][ \t]*点击(?:体验效果|立即体验)[ \t]*[。.]?[ \t]*\*\*[ \t]*[。.]?"
+)
+CTA_INLINE_RE = re.compile(
+    r"[，,][ \t]*(?:\*\*)?点击(?:体验效果|立即体验)[ \t]*[。.]?[ \t]*(?:\*\*)?[ \t]*[。.]?"
+)
 # 括号包裹的引导尾注（如「公式编辑 （ **点此查看** ）」）整个删除
 CTA_PAREN_RE = re.compile(r"\s*（\s*\*\*点此查看\*\*\s*）")
 # 整行删除：国内存量组织提示 / 无渠道的反馈・认证・咨询 CTA / 孤立体验引导
@@ -933,12 +939,74 @@ CTA_DROP_LINE_RES = [
 SURVEY_BLOCK_RE = re.compile(
     r"[ \t]*<Warning>(?:(?!</?Warning>)[\s\S])*?调研问卷(?:(?!</?Warning>)[\s\S])*?</Warning>\n*"
 )
+# CTA 清理后的破碎体验引导块：单行「**xxx。</Warning>」未配对形态，整块删除
+BROKEN_CTA_WARNING_RE = re.compile(r"[ \t]*<Warning>\n\*\*[^*\n]{1,40}。\n?</Warning>\n*")
+# 内容被清空后只剩标签的空 callout 壳（Warning/Note/Tip/Info/Check）整块删除
+EMPTY_CALLOUT_RE = re.compile(
+    r"[ \t]*<(Warning|Note|Tip|Info|Check)>\s*</\1>[ \t]*\n?", re.M
+)
+
+
+# 加粗内容以标点/空白开头或结尾时，CommonMark 可能无法闭合（页面裸显 **）；
+# 逐行按 ** 配对后将首尾标点/空白移出加粗范围：**路径：**文本 → **路径**：文本。
+# 用配对而非正则匹配，避免把闭合星号误判为开星（如「保存」**，此时…）。
+_PUNCT = "：:；;，,、。．.！!？?"
+_LEAD_RE = re.compile(rf"^([{_PUNCT}\s]+)(.*)$", re.S)
+_TAIL_RE = re.compile(rf"^(.*?)([{_PUNCT}\s]+)$", re.S)
+_WORD_RE = re.compile(r"[\w\u4e00-\u9fff]")
+
+
+def _norm_bold_line(line):
+    parts = line.split("**")
+    # 无加粗或未配对（奇数个 **）不动，避免误修
+    if len(parts) < 3 or len(parts) % 2 == 0:
+        return line
+    outer = [parts[0]]
+    inners = []
+    for i in range(1, len(parts), 2):
+        inner, after = parts[i], parts[i + 1]
+        prev = outer[-1]
+        # 内容全为标点且闭星后紧跟文字（如「以**?**标识」）：无法合法闭合，改用 code span
+        if inner.strip() and not _WORD_RE.search(inner) and after[:1] and _WORD_RE.match(after[0]):
+            outer[-1] = prev + "`" + inner.strip() + "`" + after
+            continue
+        # 前导标点/空白移出（仅当开星前紧贴文字才会不合法，但统一外移更稳且渲染一致）
+        m = _LEAD_RE.match(inner)
+        if m and m.group(2).strip():
+            prev += m.group(1)
+            inner = m.group(2)
+        # 结尾标点/空白：闭星后紧跟文字时不闭合，移出
+        m = _TAIL_RE.match(inner)
+        if m and m.group(1).strip() and after[:1] and _WORD_RE.match(after[0]):
+            inner = m.group(1)
+            after = m.group(2) + after
+        outer[-1] = prev
+        if inner.strip():
+            inners.append(inner)
+            outer.append(after)
+        else:
+            # 空加粗对直接丢弃
+            outer[-1] += inner + after
+    res = outer[0]
+    for k, inner in enumerate(inners):
+        res += "**" + inner + "**" + outer[k + 1]
+    return res
+
+
+def fix_bold_punct(body):
+    parts = re.split(r"(```[\s\S]*?```)", body)
+    return "".join(
+        p if i % 2 else "\n".join(_norm_bold_line(l) for l in p.split("\n"))
+        for i, p in enumerate(parts)
+    )
 
 
 def polish_unlinked_text(body, slug):
     """死链去链后的文案修复：删失效 CTA、收拢句式，再套用 per-slug 精修。"""
     body = SURVEY_BLOCK_RE.sub("", body)
+    body = CTA_INLINE_BOLD_RE.sub("。", body)
     body = CTA_INLINE_RE.sub("。", body)
+    body = BROKEN_CTA_WARNING_RE.sub("", body)
     body = CTA_PAREN_RE.sub("", body)
     lines = body.split("\n")
     lines = [l for l in lines if not any(r.match(l) for r in CTA_DROP_LINE_RES)]
@@ -948,6 +1016,8 @@ def polish_unlinked_text(body, slug):
             body = body.replace(old, new)
         else:
             warn(slug, "fixup-miss", old[:80])
+    # CTA/行删后残留的空 callout 壳（只剩标签无内容）整块删除，避免渲染空提示框
+    body = EMPTY_CALLOUT_RE.sub("", body)
     # 删行/删块后收敛多余空行
     body = re.sub(r"\n{3,}", "\n\n", body)
     return body
@@ -1016,6 +1086,7 @@ def convert(entry):
         # 裸域名紧贴 [ 会被 autolink 误判为死链，插入空格
         body = re.sub(r"(\w\.(?:com|cn|io|net|org))\[", r"\1 [", body)
         body = oa_domain_fix(body)
+        body = fix_bold_punct(body)
         body = polish_unlinked_text(body, slug)
 
     for old, new in DESC_FIXUPS.get(slug.split("/")[-1], []):
