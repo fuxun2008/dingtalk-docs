@@ -72,16 +72,84 @@ ZWSP = "\u200b"
 # 国际版不适用的页内章节（末段 slug → 需删除的标题列表）：整节删除至下一个同级/更高级标题
 SECTION_EXCLUDE = {
     "kab9piibinwhk1zn": ["历史文档（停止维护）"],
+    # XSwitch 为内网前端代理插件，指向个人语雀，国际版不适用
+    "ocmxyv": ["4.3 前端资源代理插件 XSwitch"],
+    # 宜搭培训（训练营/精品班）为国内服务体系
+    "ykygfr": ["服务支持"],
 }
 
 # 国际版不适用的单个块（末段 slug → 关键词列表）：命中关键词的块整个删除
 BLOCK_EXCLUDE = {
     "kab9piibinwhk1zn": ["旧版帮助手册"],
+    # 国内服务商服务群入口说明（Note 块）
+    "bmprxs4wo1odv1zs": ["宜搭服务群"],
 }
 
 # 死链去链后的文案精修（末段 slug → [(old, new)]）：逐处人工审过的上下文改写，
 # 未命中会记 fixup-miss 告警（源内容变化时提醒复查）
 UNLINK_TEXT_FIXUPS = {
+    # 人民币计价（国内售卖体系）删除：保功能说明、去价格句
+    "asly1w503ereg286": [
+        ("\n\n个数增购包：500元/个/年，仅付费版可增购，免费版需升级。", ""),
+    ],
+    "ykemo6": [
+        (
+            "<tr>\n    <td>**增购逻辑**</td>\n    <td colSpan={6}>手动运行：600元/个<br />自动运行24小时：600元/个<br />自动运行4小时：1200元/个<br />自动运行1小时：1500元/个</td>\n  </tr>\n",
+            "",
+        ),
+    ],
+    "atg6m4uelvovvneu": [
+        (
+            "<li>免费额度用尽后，收费标准为：358元/人/年（10人起购）。日常活动：满1年送2个月，满2年送6个月。</li>",
+            "<li>免费额度用尽后，可联系宜搭团队增购。</li>",
+        ),
+        (
+            "**Q：日常活动：满1年送2个月，满2年送6个月。这里的这个358元一位的人数是跟实际使用组件的人数还是平台里面的人数？如果是实际使用人数，能否控制具体的使用人？**\n\nA：预算费控组件根据实际使用人数进行计费，免费额度用尽后可以增购。组件使用人可以在可以在**智能财务** > **预算费控** > **授权成员**中进行控制。",
+            "**Q：计费人数是按实际使用组件的人数还是平台内的人数？如果是实际使用人数，能否控制具体的使用人？**\n\nA：预算费控组件根据实际使用人数进行计费，免费额度用尽后可以增购。组件使用人可以在**智能财务** > **预算费控** > **授权成员**中进行控制。",
+        ),
+    ],
+    "yah7gsdznnfnsldm": [
+        (
+            "- 收费&增购方式：免费权益用完后，可以进行增购，增购方式请联系服务商购买「智能财务 - 发票管理 3500元」增购包（发票识别次数用完后可增购：发票流量包 1200元/5000次）",
+            "- 收费&增购方式：免费权益用完后，可联系服务商进行增购。",
+        ),
+        ("\n| 支付宝 | 从支付宝中选择发票。 |", ""),
+        ("\n| 微信 | 从微信中选择发票。 |", ""),
+    ],
+    # 国内三方渠道表述收敛（微信/支付宝）
+    "iwq1bg2obuoiocgt": [
+        ("在**钉钉、微信（暂不支持）**等应用内打开", "在**钉钉**等应用内打开"),
+        ("可以借助钉钉（支付宝、微信等后续渠道）的开放平台", "可以借助钉钉的开放平台"),
+    ],
+    # 国内分发渠道列举（服务窗/短视频/直播）收句
+    "pahea0": [
+        ("，比如 服务窗、短视频、直播、各种资源位 等", ""),
+    ],
+    # 叮当打印三方语雀文档（需登录，国际版不可达）
+    "iv93tn": [
+        (
+            "关于叮当打印插件设计器的功能说明可参考文档：[叮当打印插件功能页面介绍](https://dingteam.yuque.com/books/share/e30e6617-bd2a-4174-b5bc-91a8c261594b/hegq2e)\n\n",
+            "",
+        ),
+        (
+            "\n\n更多使用常见问题可[**点击此处**](https://dingteam.yuque.com/books/share/e30e6617-bd2a-4174-b5bc-91a8c261594b/pqn5h3?ddtab=true)查看。",
+            "",
+        ),
+    ],
+    # 宜搭培训（训练营/精品班）为国内服务体系，整节删除后概述句同步收口
+    "ykygfr": [
+        (
+            "包括企业的基础信息、资源消耗情况以及可获得的服务支持等重要信息。",
+            "包括企业的基础信息与资源消耗情况等重要信息。",
+        ),
+    ],
+    # 页脚配置 JSON 示例中的国内售前商机链接换成通用官网（保留示例结构）
+    "zas20t": [
+        (
+            "https://partner.dingtalk.com/opportunity_web.html?templateId=3fe61c97b34b4fa2b1582c52690c1471&channel=%E5%94%AE%E5%89%8D%E5%92%A8%E8%AF%A2-%E5%B0%8F%E8%9C%9C#/consultingService",
+            "https://www.dingtalk.io",
+        ),
+    ],
     # 报名链接已失效：条件句改陈述句；书签卡片残留的图标+标题尾巴删除；Step 内孤立标题行并句
     "ch41p3rm3may1smg": [
         (
@@ -145,6 +213,10 @@ UNLINK_TEXT_FIXUPS = {
 # frontmatter description 的同类修复（摘要取自正文首段，可能带入国内版提示语）
 DESC_FIXUPS = {
     "acu61g": [("适用于未升级到新版信息架构的组织查看使用手册。", "")],
+    # 价格/增购表述从摘要中同步移除
+    "ykemo6": [("、增购逻辑和使用方法", "和使用方法")],
+    # 服务支持（培训）节已删，摘要同步收口
+    "ykygfr": [("、资源消耗情况以及可获得的服务支持等重要数据", "与资源消耗情况等重要数据")],
 }
 
 # 标题精简覆盖（末段 slug → 新标题）：侧边栏展示规范中文 ≤15 字，去冗余前后缀；
@@ -1036,6 +1108,7 @@ def fix_bold_punct(body):
 # 人工逐张审过上下文；宜搭码/页面二维码等「功能教学截图」不在此列，保留。
 # key 为图床 URL 中的时间戳-uuid 前缀，命中即删整个 Frame 块/图片行。
 QR_IMAGE_KEYS = (
+    "1640244562511-2d9d1668",  # 微信群邀请码（条件渲染页 lcgieg，OpenCV 解码 weixin.qq.com）
     "1632807780139-91cbcd43",  # 关注公众号/钉群拼图（页尾推广，53 页）
     "1631861711706-8b6b606d",  # 同上变体
     "1650359196948-09be6f17",  # 页尾推广变体
@@ -1098,6 +1171,106 @@ def qr_cleanup(body, slug):
     body = QR_IMG_LINE_RE.sub("", body)
     body = QR_PROMO_LINE_RE.sub("", body)
     return body
+
+
+# 国内直播推广链接（h5.dingtalk.io 无 group-live-share 服务，系域名替换误伤产物）：整段删除
+LIVE_PROMO_RE = re.compile(
+    r"(?:<br />)?\[《你好低代码-酷应用专题》直播介绍\]\(https://h5\.dingtalk\.io/group-live-share/[^)]*\)\n?"
+)
+
+# 全局错别字/异常字符修正（跳过代码块）：源站笔误，已逐类核过误伤风险
+TYPO_FIXES = [
+    ("登陆", "登录"),
+    ("帐号", "账号"),
+    ("帐户", "账户"),
+    ("专属钉钉钉", "专属钉钉"),
+    ("。。", "。"),
+    ("在在群", "在群"),
+    ("提拱了", "提供了"),
+]
+# 叠字「的的」去重（排除「目的的/有的的/众的的」等合法搭配）
+DEDUP_DE_RE = re.compile(r"(?<![目有众标])的的")
+
+
+def fix_typos(body):
+    """错别字/NBSP/ZWSP/直播推广链清理（代码块内不动；ZWSP 例外，
+    公式示例代码块里的零宽字符会随复制带入用户公式，全局清除）。"""
+    body = body.replace(ZWSP, "")
+    parts = re.split(r"(```[\s\S]*?```)", body)
+
+    def f(seg):
+        seg = seg.replace("\xa0", " ")
+        seg = LIVE_PROMO_RE.sub("", seg)
+        for old, new in TYPO_FIXES:
+            seg = seg.replace(old, new)
+        return DEDUP_DE_RE.sub("的", seg)
+
+    body = "".join(p if i % 2 else f(p) for i, p in enumerate(parts))
+    return re.sub(r"\n{3,}", "\n\n", body)
+
+
+def clean_description(desc):
+    """摘要清洗：源站 meta 截断产生的 U+FFFD 乱码、NBSP/ZWSP、错别字。"""
+    desc = desc.replace("\ufffd", "").replace("\xa0", " ").replace(ZWSP, "")
+    for old, new in TYPO_FIXES:
+        desc = desc.replace(old, new)
+    desc = DEDUP_DE_RE.sub("的", desc)
+    return re.sub(r"\s{2,}", " ", desc).strip()
+
+
+# ---- 标题编号规范化 ----
+# 1) 编号后缺空格（如「## 2.效果演示」「### 1.1功能」）补空格；顿号风格「1、简介」保持原样
+# 2) 删节/源站笔误导致的断号、重号按文档顺序重排（编号回落视为独立新列举，不跨段续号）
+HEAD_SPACE_RE = re.compile(r"^(#{2,5} (?:\d+\.)*\d+\.?)(?=[^\s.\d、])", re.M)
+HEAD_NUM_RE = re.compile(r"^(#{2,5}) ((?:\d+\.)*\d+)([、.．]?) ?(.*)$")
+
+
+def fix_heading_numbers(body):
+    parts = re.split(r"(```[\s\S]*?```)", body)
+    body = "".join(p if i % 2 else HEAD_SPACE_RE.sub(r"\1 ", p) for i, p in enumerate(parts))
+
+    lines = body.split("\n")
+    in_code = False
+    parent_new = {"": ""}  # 旧完整编号 → 新完整编号（供子级级联）
+    sib = {}       # (层级, 新父号) → 当前已分配的末位号
+    prev_old = {}  # (层级, 新父号) → 上一个旧末位号（用于识别编号回落）
+    for i, ln in enumerate(lines):
+        if ln.startswith("```"):
+            in_code = not in_code
+            continue
+        if in_code or not ln.startswith("#"):
+            continue
+        m = HEAD_NUM_RE.match(ln)
+        if not m:
+            continue
+        hashes, old, sep, rest = m.groups()
+        op = old.split(".")
+        np = parent_new.get(".".join(op[:-1]))
+        if np is None:
+            # 父编号未出现过（编号体系不规则）：不动，仅登记供子级查找
+            parent_new[old] = old
+            continue
+        key = (hashes, np)
+        cur = int(op[-1])
+        if key not in sib:
+            new_n = cur  # 首个兄弟保持原起始值
+        elif cur < prev_old[key]:
+            new_n = cur  # 编号回落：独立新列举，按原值重新起算
+        else:
+            new_n = sib[key] + 1
+        sib[key] = new_n
+        prev_old[key] = cur
+        new = (np + "." if np else "") + str(new_n)
+        parent_new[old] = new
+        if new != old:
+            # 保持原分隔风格：有尾点/顿号照旧，无分隔符仅空格
+            if sep == "、":
+                lines[i] = f"{hashes} {new}、{rest}"
+            elif sep:
+                lines[i] = f"{hashes} {new}{sep} {rest}"
+            else:
+                lines[i] = f"{hashes} {new} {rest}"
+    return "\n".join(lines)
 
 
 def polish_unlinked_text(body, slug):
@@ -1242,7 +1415,10 @@ def convert(entry):
         body = qr_cleanup(body, slug)
         body = fix_bold_punct(body)
         body = polish_unlinked_text(body, slug)
+        body = fix_typos(body)
+        body = fix_heading_numbers(body)
 
+    description = clean_description(description)
     for old, new in DESC_FIXUPS.get(slug.split("/")[-1], []):
         description = description.replace(old, new).strip()
 

@@ -46,6 +46,27 @@ const MAX_GROUP_DEPTH = 3; // Mintlify group 最大嵌套层（tab 下）
 // 注意：专属宜搭下的「空间 AI 助理」不在排除范围，按完整 label 精确匹配
 const EXCLUDE_GROUPS = new Set(['AI助理', '联系我们', '产品计费', '大屏设计', '插件中心']);
 
+// 国际版不适用/无实质内容的单页排除（按末段 slug 匹配）：
+// - 空页/占位页：portal 富文本、内嵌页面（敬请期待）；integration 消息节点、Webhook触发、分支节点（源站即空）
+// - 纯目录页（无链接无正文）：应用分发概述、统一流程概述、流程高级设置概述
+// - 内网 epaas 通道文档（s-api.alibaba-inc.com，国际版不可用）：编写更多语言 SDK、宜搭 Open API (旧)
+// - 国内支付/签章功能（支付宝/网商银行/e签宝体系）：电子签章、在线收款、银企支付
+const EXCLUDE_DOCS = new Set([
+  'srsbc47fusf3cnu4', // portal 富文本（敬请期待）
+  'cahqidwksuogo6bl', // portal 内嵌页面（敬请期待）
+  'gilxm02v9uel919u', // integration 消息节点（空）
+  'qfnu8wt7i9689ekk', // integration Webhook触发（敬请期待）
+  'ybagk4dyzisgfkmb', // integration 分支节点（空）
+  'ymt5eevh432paorp', // app-admin 应用分发概述（纯目录）
+  'ea1o8cgypga0lh9t', // process 统一流程目录页
+  'ef8e88',           // process 流程高级设置目录页
+  'li2sf8',           // 编写更多语言 SDK（内网网关）
+  'agb8im',           // 宜搭 Open API (旧)（内网 epaas）
+  'poyf3h',           // 电子签章（e签宝）
+  'ibwgqm8t76c3tsmp', // 在线收款（支付宝/银企支付）
+  'nr00zrwzux7x7xai', // 银企支付
+]);
+
 // 分组名精简（侧边栏展示用，去冗余后缀/历史别名；匹配仍用语雀原 label）
 const GROUP_RENAME = {
   '开发者功能（需有代码基础）': '开发者功能',
@@ -78,6 +99,10 @@ function lastSeg(slug) {
 
 function addDoc(id, label, topGroup, groupPath) {
   const slug = docSlug(id);
+  if (EXCLUDE_DOCS.has(lastSeg(slug))) {
+    console.log('[exclude] 跳过单页:', lastSeg(slug), label);
+    return null;
+  }
   if (seen.has(slug)) {
     console.warn('  [dup] 重复 slug 跳过:', slug, label);
     return null;
