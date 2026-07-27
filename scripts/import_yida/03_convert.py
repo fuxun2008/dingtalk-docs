@@ -24,6 +24,38 @@ STAGING = BASE / "staging" / "html"
 FULL_MAP = {e["slug"]: "/" + e["file"] for e in TOC}
 LAST_MAP = {e["slug"].split("/")[-1]: "/" + e["file"] for e in TOC}
 
+# 已探测确认的死链（05_check_links.py 产出后人工核定）：命中则去链接保留文字
+DEAD_LINKS = set(json.loads((BASE / "dead-links.json").read_text())) if (BASE / "dead-links.json").exists() else set()
+
+# 开发者站组件 demo 链接（www.aliwork.com/developer/<name>）→ 已迁移组件文档路径
+DEV_DEMO_MAP = {
+    "ballon": "advanced/balloon",
+    "banner-container": "advanced/bannerContainer",
+    "button": "basic/button",
+    "childtable-association": "form/tableField",
+    "dialog": "basic/dialog",
+    "drawer": "basic/drawer",
+    "filter": "advanced/filter",
+    "html": "advanced/HTML",
+    "icon": "basic/icon",
+    "iframe": "advanced/Iframe",
+    "image": "basic/image",
+    "jsx": "advanced/JSX",
+    "link": "basic/link",
+    "link-block": "basic/linkBlock",
+    "menu": "advanced/menu",
+    "pagination": "advanced/pagination",
+    "progress": "advanced/progress",
+    "search": "advanced/search",
+    "slider": "advanced/slider",
+    "step": "advanced/steps",
+    "table-pc": "advanced/table",
+    "text": "basic/text",
+    "timeline": "advanced/timeLine",
+    "tree": "advanced/tree",
+    "video": "basic/video",
+}
+
 ALERT_MAP = {
     "info": "Note",
     "tips": "Tip",
@@ -34,7 +66,7 @@ ALERT_MAP = {
     "color5": "Note",
 }
 
-INTRANET_HOSTS = ("alibaba-inc.com",)
+INTRANET_HOSTS = ("alibaba-inc.com", "antfin-inc.com", "yuque.antfin.com")
 ZWSP = "\u200b"
 
 # 国际版不适用的页内章节（末段 slug → 需删除的标题列表）：整节删除至下一个同级/更高级标题
@@ -45,6 +77,70 @@ SECTION_EXCLUDE = {
 # 国际版不适用的单个块（末段 slug → 关键词列表）：命中关键词的块整个删除
 BLOCK_EXCLUDE = {
     "kab9piibinwhk1zn": ["旧版帮助手册"],
+}
+
+# 死链去链后的文案精修（末段 slug → [(old, new)]）：逐处人工审过的上下文改写，
+# 未命中会记 fixup-miss 告警（源内容变化时提醒复查）
+UNLINK_TEXT_FIXUPS = {
+    # 报名链接已失效：条件句改陈述句；书签卡片残留的图标+标题尾巴删除；Step 内孤立标题行并句
+    "ch41p3rm3may1smg": [
+        (
+            "> 如果你也想加入我们，成为行业方案创新加速者，可以点击链接报名。",
+            "> 欢迎加入我们，成为行业方案创新加速者。",
+        ),
+        (
+            "，详见👉![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/lALPDssxhxMkj0fM8Mzw_240_240.png)钉钉酷SaaS工厂 | 钉钉酷SaaS工厂",
+            "。",
+        ),
+        (
+            "      后续如有计划参与宜搭SaaS工厂，请务必知悉\n\n      钉钉酷SaaS工厂共创须知及内测申请 | 钉钉酷SaaS工厂\n\n      相关内测须知，如果符合申请条件，可提交内测申请表单。",
+            "      后续如有计划参与宜搭SaaS工厂，请务必知悉相关内测须知，如果符合申请条件，可提交内测申请表单。",
+        ),
+    ],
+    # 反馈表单已失效；国内企业实例域名改国际版示例占位域名
+    "bl2ba424xi3tww36": [
+        ("可单击此处进行反馈。", "欢迎向宜搭团队反馈。"),
+        ("xmtrf1.aliwork.com", "your-domain.yidaapps.com"),
+    ],
+    # 目标语雀页已失效，删除残留裸 URL 列表项；进销存 demo 列表项同删
+    "dssg6y": [
+        ("\n- 可查看业务关联公式常见问题及解法： https://www.yuque.com/yida/support/hf3pm8", ""),
+        ("\n- 进销存使用场景搭建可 **点击查看**", ""),
+    ],
+    # 体验表单已不可达：仅含引导句的 Warning 块整个删除
+    "yrofmw": [
+        ("\n\n<Warning>\n**字符串处理类函数点击体验效果。**\n</Warning>", ""),
+        ("\n\n<Warning>\n**时间处理类函数点击体验效果。**\n</Warning>", ""),
+    ],
+    # 升级详情页已失效，收拢为陈述句
+    "gv4bgx": [
+        ("- 旧版搜索存储不支持，新版搜索能力升级详情 **点此查看**", "- 旧版搜索存储不支持，新版搜索能力已升级"),
+    ],
+    # 书签卡片残留（图标+404页标题）改写；孤立文档名加书名号
+    "chrmgzrsthf55vp9": [
+        (
+            "，如有问题，请查看![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/TB1Ctzd3VP7gK0jSZFjXXc5aXXa-152-152.png)找不到页面 | 钉钉宜搭·帮助中心",
+            "，如有问题，请联系宜搭团队。",
+        ),
+        ("请参考酷应用高频FAQ及典型场景设计指南", "请参考《酷应用高频FAQ及典型场景设计指南》"),
+    ],
+    "ad8ixp": [
+        ("请参考宜搭模板应用快速酷化&上架到钉钉酷应用市场SOP", "请参考《宜搭模板应用快速酷化&上架到钉钉酷应用市场SOP》"),
+    ],
+    # demo 表单已不可达：去引导尾巴/删引导行
+    "gzllee": [
+        ("，**表单演示参考**。", "。"),
+        ("\n\n点击表单，直接查看步骤条实现效果：**点击查看**", ""),
+    ],
+    # 升级申请表单已失效，补全渠道语义
+    "ez7e7hbgl1fytf78": [
+        ("如需升级新存储，请申请；", "如需升级新存储，请联系宜搭团队申请；"),
+    ],
+}
+
+# frontmatter description 的同类修复（摘要取自正文首段，可能带入国内版提示语）
+DESC_FIXUPS = {
+    "acu61g": [("适用于未升级到新版信息架构的组织查看使用手册。", "")],
 }
 
 # 标题精简覆盖（末段 slug → 新标题）：侧边栏展示规范中文 ≤15 字，去冗余前后缀；
@@ -154,6 +250,10 @@ class LinkRewriter:
     def _map_absolute(self, url, relative):
         # 预发域名不应外泄，归一到正式域名后走既有映射
         url = url.replace("://pre-docs.aliwork.com", "://docs.aliwork.com")
+        # 探测确认的死链：去链接保留文字
+        if url.split("#")[0] in DEAD_LINKS:
+            warn(self.slug, "dead-link-unlinked", url)
+            return None, True
         p = urlparse(url)
         host = p.netloc.lower()
         if any(host.endswith(h) for h in INTRANET_HOSTS):
@@ -165,28 +265,74 @@ class LinkRewriter:
                 return FULL_MAP[m.group(1)], False
             if m and m.group(1).split("/")[-1] in LAST_MAP:
                 return LAST_MAP[m.group(1).split("/")[-1]], False
+            # 开发者手册书：对应页已迁移则转站内链接
+            md = re.match(r"^/docs/developer/(.+?)/?$", p.path)
+            if md:
+                return self._map_developer(md.group(1), url)
             if m:
                 warn(self.slug, "yida-support-miss", url)
             elif relative:
                 warn(self.slug, "relative-other-book", url)
-            return url, False  # 其他书籍保留外链
+            return url, False  # 其他书籍保留外链（国际版无对应站点，记入报告人工复核）
         if host == "www.yuque.com":
             m = re.match(r"^/yida/support/(.+?)/?$", p.path)
             if m and m.group(1) in LAST_MAP:
                 return LAST_MAP[m.group(1)], False
             if m:
-                # 语雀原链可能需登录，改写为公开站同 slug 地址
+                # 语雀原链可能需登录，改写为公开站同 slug 地址；改写产物命中死链则去链接
+                target = f"https://docs.aliwork.com/docs/yida_support/{m.group(1)}"
+                if target in DEAD_LINKS:
+                    warn(self.slug, "dead-link-unlinked", target)
+                    return None, True
                 warn(self.slug, "yuque-support-miss", url)
-                return f"https://docs.aliwork.com/docs/yida_support/{m.group(1)}", False
+                return target, False
             return url, False
         if host in ("oa.dingtalk.com",):
             return url.replace("oa.dingtalk.com", "oa.dingtalk.io"), False
-        if host in ("www.dingtalk.com", "dingtalk.com", "page.dingtalk.com", "tms.dingtalk.com", "h5.dingtalk.com"):
+        if host in ("www.dingtalk.com", "dingtalk.com", "tms.dingtalk.com", "h5.dingtalk.com"):
             return url.replace(".dingtalk.com", ".dingtalk.io"), False
+        if host == "page.dingtalk.com":
+            # page.dingtalk.io 不存在（已探测），保留原域名待人工复核
+            warn(self.slug, "dingtalk-keep", url)
+            return url, False
         if host.endswith("dingtalk.com"):
             warn(self.slug, "dingtalk-keep", url)  # open/alidocs 等保留待人工复核
             return url, False
+        # 开发者站旧域名（developers.aliwork.com / gitee 镜像）→ 站内开发者手册
+        if host in ("developers.aliwork.com", "yida-developer.gitee.io"):
+            md = re.match(r"^/docs/(.+?)/?$", p.path)
+            if md:
+                return self._map_developer(md.group(1), url)
+            return "/zh/open/yida/index", False
+        if host == "www.aliwork.com":
+            # 组件 demo 页：国际版无 demo 站，改指已迁移的组件文档
+            mdemo = re.match(r"^/developer/([\w-]+)/?$", p.path)
+            if mdemo and mdemo.group(1) in DEV_DEMO_MAP:
+                return f"/zh/open/yida/components/{DEV_DEMO_MAP[mdemo.group(1)]}", False
+            if p.path in ("/developer", "/developer/"):
+                return "/zh/open/yida/index", False
+            # /o/xxx 应用实例短链：国内环境部署的样例应用，国际版不存在，去链接
+            if p.path.startswith("/o/") or p.path.startswith("/APP_"):
+                warn(self.slug, "cn-app-instance-unlinked", url)
+                return None, True
+            # 平台功能页：国际版同构，直替域名
+            return url.replace("://www.aliwork.com", "://www.yidaapps.com"), False
+        if host.endswith(".aliwork.com") and host not in ("docs.aliwork.com", "qbi.data.aliwork.com"):
+            # xmtrf1/xppmcy/ding 等企业实例子域名：国内部署的样例应用/反馈表单，国际版不可达，去链接
+            if host == "pingtai.aliwork.com":
+                # 宜搭开放平台附件处理服务，国际版域名同构替换
+                return url.replace("://pingtai.aliwork.com", "://pingtai.yidaapps.com"), False
+            warn(self.slug, "cn-app-instance-unlinked", url)
+            return None, True
         return url, False
+
+    def _map_developer(self, doc_path, url):
+        """开发者手册文档路径 → /zh/open/yida 站内链接（验证目标 mdx 存在）。"""
+        path = re.sub(r"\.html?$", "", doc_path.rstrip("/"))
+        if (REPO / f"zh/open/yida/{path}.mdx").exists():
+            return f"/zh/open/yida/{path}", False
+        warn(self.slug, "developer-doc-miss", url)
+        return None, True
 
 
 # ---------- 内联渲染 ----------
@@ -772,6 +918,41 @@ def drop_excluded_blocks(blocks, slug):
     return out
 
 
+# 去链后残留的纯引导 CTA：行内变体（前接逗号）直接收句
+CTA_INLINE_RE = re.compile(r"[，,]\s*(?:\*\*)?点击(?:体验效果|立即体验)(?:\*\*)?\s*[。.]?")
+# 括号包裹的引导尾注（如「公式编辑 （ **点此查看** ）」）整个删除
+CTA_PAREN_RE = re.compile(r"\s*（\s*\*\*点此查看\*\*\s*）")
+# 整行删除：国内存量组织提示 / 无渠道的反馈・认证・咨询 CTA / 孤立体验引导
+CTA_DROP_LINE_RES = [
+    re.compile(r"^[ \t]*未升级到新版信息架构的组织，请\s*\*{0,2}点此查看\*{0,2}\s*使用手册\s*$"),
+    re.compile(r"^[ \t]*\*\*如有建议，您可点此反馈>+\*\*\s*$"),
+    re.compile(r"^[ \t]*\*\*>{2,}(?:立即认证|培训咨询)\\?<.*$"),
+    re.compile(r"^[ \t]*(?:\*\*)?点击(?:体验效果|立即体验)(?:\*\*)?\s*[。.]?\s*$"),
+]
+# 调研问卷邀请块：问卷链接已失效，整个 Warning 块删除（tempered 扫描不跨块）
+SURVEY_BLOCK_RE = re.compile(
+    r"[ \t]*<Warning>(?:(?!</?Warning>)[\s\S])*?调研问卷(?:(?!</?Warning>)[\s\S])*?</Warning>\n*"
+)
+
+
+def polish_unlinked_text(body, slug):
+    """死链去链后的文案修复：删失效 CTA、收拢句式，再套用 per-slug 精修。"""
+    body = SURVEY_BLOCK_RE.sub("", body)
+    body = CTA_INLINE_RE.sub("。", body)
+    body = CTA_PAREN_RE.sub("", body)
+    lines = body.split("\n")
+    lines = [l for l in lines if not any(r.match(l) for r in CTA_DROP_LINE_RES)]
+    body = "\n".join(lines)
+    for old, new in UNLINK_TEXT_FIXUPS.get(slug.split("/")[-1], []):
+        if old in body:
+            body = body.replace(old, new)
+        else:
+            warn(slug, "fixup-miss", old[:80])
+    # 删行/删块后收敛多余空行
+    body = re.sub(r"\n{3,}", "\n\n", body)
+    return body
+
+
 def oa_domain_fix(body):
     """纯文本 oa.dingtalk.com → oa.dingtalk.io，并按国际站规范转为可点击链接（跳过代码块）。"""
     parts = re.split(r"(```[\s\S]*?```)", body)
@@ -835,6 +1016,10 @@ def convert(entry):
         # 裸域名紧贴 [ 会被 autolink 误判为死链，插入空格
         body = re.sub(r"(\w\.(?:com|cn|io|net|org))\[", r"\1 [", body)
         body = oa_domain_fix(body)
+        body = polish_unlinked_text(body, slug)
+
+    for old, new in DESC_FIXUPS.get(slug.split("/")[-1], []):
+        description = description.replace(old, new).strip()
 
     fm = ["---", f"title: {yaml_quote(title)}"]
     if description:
