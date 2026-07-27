@@ -1023,6 +1023,35 @@ def polish_unlinked_text(body, slug):
     return body
 
 
+# ---- www.aliwork.com → www.yidaapps.com 文本层替换（链接层已在 LinkRewriter 处理）----
+# 不可替换的路径前缀（国际版无对应服务，替换即坏）：
+#   /o/*       国内环境部署的样例应用短链（实测 yidaapps 报「应用不存在」）
+#   /developer* 组件 demo/设计器服务（实测 yidaapps 渲染「系统开小差」）
+#   /bench*     工作台实例页
+#   /alibaba/*  国内环境专有路径（钉钉审批详情 URL 模板，无国际对应证据）
+# 其余（裸域名、/APP_* 地址模板、/fileHandle、/inst/preview、/price.html 等）
+# 已逐一实测国际版同构可用，替换（含代码块/表格/纯文本/无协议裸域名）。
+ALIWORK_KEEP_PREFIXES = ("/o", "/developer", "/bench", "/alibaba")
+_ALIWORK_URL_RE = re.compile(r"(https?://)www\.aliwork\.com(/[^\s)\"'`\\<>\]]*)?")
+_ALIWORK_BARE_RE = re.compile(r"(?<![/.\w])www\.aliwork\.com(?![\w.])")
+
+
+def aliwork_domain_fix(body):
+    """正文/代码块/表格中的 aliwork 域名换国际版（不可替换路径保留）。"""
+
+    def sub_url(m):
+        path = m.group(2) or ""
+        if any(path == p or path.startswith(p + "/") or path.startswith(p + "?")
+               or path.startswith(p + "-") for p in ALIWORK_KEEP_PREFIXES):
+            return m.group(0)
+        return m.group(1) + "www.yidaapps.com" + path
+
+    body = _ALIWORK_URL_RE.sub(sub_url, body)
+    # 无协议裸域名（如 CORS 配置说明句）
+    body = _ALIWORK_BARE_RE.sub("www.yidaapps.com", body)
+    return body
+
+
 def oa_domain_fix(body):
     """纯文本 oa.dingtalk.com → oa.dingtalk.io，并按国际站规范转为可点击链接（跳过代码块）。"""
     parts = re.split(r"(```[\s\S]*?```)", body)
@@ -1086,6 +1115,7 @@ def convert(entry):
         # 裸域名紧贴 [ 会被 autolink 误判为死链，插入空格
         body = re.sub(r"(\w\.(?:com|cn|io|net|org))\[", r"\1 [", body)
         body = oa_domain_fix(body)
+        body = aliwork_domain_fix(body)
         body = fix_bold_punct(body)
         body = polish_unlinked_text(body, slug)
 
@@ -1099,7 +1129,8 @@ def convert(entry):
 
     out = REPO / (entry["file"] + ".mdx")
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text("\n".join(fm) + "\n\n" + body + "\n")
+    # strip 去除首尾空行：块删除/空 callout 清理后 body 首行可能残留空行
+    out.write_text("\n".join(fm) + "\n\n" + body.strip() + "\n")
     return len(body)
 
 

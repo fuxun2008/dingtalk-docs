@@ -275,6 +275,31 @@ function fixBoldPunct(body) {
     .join('');
 }
 
+// ---- www.aliwork.com → www.yidaapps.com 域名国际化 ----
+// 不可替换路径（国际版无对应服务，实测会坏）：/o/* 样例应用、/developer* demo/设计器、
+// /bench* 工作台实例、/alibaba/* 国内专有路径；其余（裸域、/fileHandle、/APP_* 模板等）已实测同构，替换。
+const ALIWORK_KEEP = ['/o', '/developer', '/bench', '/alibaba'];
+const keepAliworkPath = (path) =>
+  ALIWORK_KEEP.some((p) => path === p || path.startsWith(p + '/') || path.startsWith(p + '?') || path.startsWith(p + '-'));
+
+function fixAliworkDomains(body) {
+  const stash = [];
+  // 1) href 指向不可替换路径的 md 链接整段保护（label 也不动，保持 label/href 一致）
+  body = body.replace(/\[([^\]]*)\]\((https?:\/\/www\.aliwork\.com(\/[^)]*)?)\)/g, (whole, label, href, path) => {
+    if (keepAliworkPath(path || '/')) {
+      stash.push(whole);
+      return `\x00KEEP${stash.length - 1}\x00`;
+    }
+    return whole;
+  });
+  // 2) 通用 URL 替换（iframe demo src 的 /developer* 命中 keep 规则自动保留）
+  body = body.replace(/(https?:\/\/)www\.aliwork\.com(\/[^\s)"'`\\<>\]]*)?/g, (whole, proto, path) =>
+    keepAliworkPath(path || '/') && path ? whole : proto + 'www.yidaapps.com' + (path || ''));
+  // 3) 无协议裸域名
+  body = body.replace(/(?<![/.\w])www\.aliwork\.com(?![\w.])/g, 'www.yidaapps.com');
+  return body.replace(/\x00KEEP(\d+)\x00/g, (_, i) => stash[+i]);
+}
+
 function frameImages(body) {
   // 独立成段的图片包 Frame（跳过代码块）
   const parts = body.split(/(```[\s\S]*?```)/);
@@ -312,6 +337,7 @@ function convertFile(id) {
   body = convertAttrTables(body, id);
   body = convertCallouts(body, id);
   body = rewriteLinks(body, id);
+  body = fixAliworkDomains(body);
   body = fixBoldPunct(body);
   body = frameImages(body);
   body = body.replace(/\n{3,}/g, '\n\n').trim();
