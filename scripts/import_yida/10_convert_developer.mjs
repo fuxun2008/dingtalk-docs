@@ -36,6 +36,13 @@ const FORM_PROPS = new Function('return ' + formPropsSrc.replace(/^export defaul
 const report = { converted: [], warnings: [] };
 const warn = (file, kind, detail) => report.warnings.push({ file, kind, detail: String(detail).slice(0, 160) });
 
+// 标题精简覆盖（文档 id → 新标题）：中文 ≤15 字规范；
+// 组件页「API 名 + 中文名」为标准命名专有名词，不精简
+const TITLE_OVERRIDES = {
+  'guide/FAQ/q2': '使用 Apache ECharts',
+  'guide/FAQ/q4': '宜搭与三方系统数据打通',
+};
+
 // ---------- 侧边栏结构（复刻 developer-doc/config/sidebars.js + getDocsFromDir） ----------
 
 function readFm(fp) {
@@ -306,6 +313,7 @@ function convertFile(id) {
     body = body.slice(h1m[0].length).trim();
   }
   if (!title) title = path.basename(id);
+  title = TITLE_OVERRIDES[id] || title;
   const desc = firstParagraph(body);
   const fmLines = ['---', `title: "${title.replace(/"/g, '\\"')}"`];
   if (desc) fmLines.push(`description: "${desc.replace(/"/g, '\\"')}"`);

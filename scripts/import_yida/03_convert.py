@@ -47,6 +47,23 @@ BLOCK_EXCLUDE = {
     "kab9piibinwhk1zn": ["旧版帮助手册"],
 }
 
+# 标题精简覆盖（末段 slug → 新标题）：侧边栏展示规范中文 ≤15 字，去冗余前后缀；
+# CASCADEDATEINTERVAL(V2) 为公式函数名专有名词，不精简
+TITLE_OVERRIDES = {
+    "ns6sahh7g6nr0exk": "QuickBI 与宜搭如何选择",
+    "uc0ixy": "图片裁剪上传（高阶）",
+    "eu0e6k": "图片裁剪上传（中阶）",
+    "wae8oddztfq167ly": "宜搭服务端 API 限流处理",
+    "aql605": "宜搭平台接口",
+    "hndctc": "HTML/Iframe 嵌入",
+    "asly1w503ereg286": "从AI表格/审批创建表单",
+    "tpgibh": "奥数竞赛报名案例",
+    "iwq1bg2obuoiocgt": "公开表单获取用户身份信息",
+    "iv3cl671fto98g4v": "数据查看权限引用权限矩阵",
+    "rrwdug": "宜搭 Open API",
+    "ocmxyv": "JS 动作面板",
+}
+
 warnings = []  # (slug, kind, detail)
 
 
@@ -791,6 +808,7 @@ def convert(entry):
     md = soup.select_one(".theme-doc-markdown")
     h1 = md.find("h1") if md else None
     title = (h1.get_text().replace(ZWSP, "").strip() if h1 else "") or entry["label"]
+    title = TITLE_OVERRIDES.get(last, title)
 
     desc_meta = md.select_one('meta[name="description"]') if md else None
     description = desc_meta.get("content", "").strip() if desc_meta else ""

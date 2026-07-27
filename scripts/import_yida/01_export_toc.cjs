@@ -46,6 +46,15 @@ const MAX_GROUP_DEPTH = 3; // Mintlify group 最大嵌套层（tab 下）
 // 注意：专属宜搭下的「空间 AI 助理」不在排除范围，按完整 label 精确匹配
 const EXCLUDE_GROUPS = new Set(['AI助理', '联系我们', '产品计费', '大屏设计', '插件中心']);
 
+// 分组名精简（侧边栏展示用，去冗余后缀/历史别名；匹配仍用语雀原 label）
+const GROUP_RENAME = {
+  '开发者功能（需有代码基础）': '开发者功能',
+  '上下级组织分发应用（原关联组织）': '上下级组织分发应用',
+  '宜搭 Open API 开放接口': '宜搭 Open API',
+  'JS 动作面板 - 前端代码开发': 'JS 动作面板',
+};
+const rename = (label) => GROUP_RENAME[label] || label;
+
 const raw = require(SIDEBARS);
 const sidebar = (raw.default || raw)['yida_support'];
 if (!sidebar) throw new Error('sidebars.js 中未找到 yida_support');
@@ -118,7 +127,7 @@ function buildNav(items, topGroup, groupPath, depth) {
         // 压平：深层分类不再生成 group，页面平铺到上层
         pages.push(...childPages);
       } else {
-        pages.push({ group: it.label, pages: childPages });
+        pages.push({ group: rename(it.label), pages: childPages });
       }
     }
   }
@@ -145,7 +154,7 @@ for (const cat of root.items) {
     if (f) pages.push(f);
   }
   pages.push(...buildNav(cat.items || [], cat.label, [cat.label], 1));
-  navTree.push({ group: cat.label, pages });
+  navTree.push({ group: rename(cat.label), pages });
   groupMap.push({ label: cat.label, slug: gslug, docCount: docs.length - before });
 }
 
