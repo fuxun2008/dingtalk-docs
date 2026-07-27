@@ -136,6 +136,10 @@ UNLINK_TEXT_FIXUPS = {
     "ez7e7hbgl1fytf78": [
         ("如需升级新存储，请申请；", "如需升级新存储，请联系宜搭团队申请；"),
     ],
+    # 二维码小节（原 4.1）删除后，小节编号重排保持连续
+    "eb291o": [
+        ("### 4.2 为什么学生组件不能选择学生名字搜索", "### 4.1 为什么学生组件不能选择学生名字搜索"),
+    ],
 }
 
 # frontmatter description 的同类修复（摘要取自正文首段，可能带入国内版提示语）
@@ -1001,6 +1005,75 @@ def fix_bold_punct(body):
     )
 
 
+# ---- 二维码图片清理（国内渠道推广/加群码，国际版不适用）----
+# 清单经 OpenCV QRCodeDetector 实测（解码出微信公众号/钉钉群/淘宝等国内渠道）+
+# 人工逐张审过上下文；宜搭码/页面二维码等「功能教学截图」不在此列，保留。
+# key 为图床 URL 中的时间戳-uuid 前缀，命中即删整个 Frame 块/图片行。
+QR_IMAGE_KEYS = (
+    "1632807780139-91cbcd43",  # 关注公众号/钉群拼图（页尾推广，53 页）
+    "1631861711706-8b6b606d",  # 同上变体
+    "1650359196948-09be6f17",  # 页尾推广变体
+    "1652066359439-0d9cb8a0",  # 产品咨询/关注拼图
+    "1648710784917-0e4dac35",  # e签宝交流群
+    "1649991288441-bfe3935b",  # openAPI 交流群
+    "1644822345746-39ff569f",  # 宜搭码交流群
+    "1643248110066-eae37666",  # 流程分析交流群
+    "1639127958908-088509ee",  # 教育组件交流群
+    "1677641316451-f4546f9a",  # SaaS 共创群
+    "1647929582308-b540d3e6",  # e签宝开通码（随路径二段落删）
+)
+
+# 二维码配套引导文案/空壳小节（逐处人工审过上下文，删后保持连贯）
+QR_TEXT_FIXUPS = {
+    "poyf3h": [
+        "\n## 4. 意见反馈\n\n在使用【e签宝-电子签章中】遇到任何问题或建议反馈；或你有基于电子签署能力上架宜搭模板/解决方案的商机诉求，可以扫描下方二维码，加入交流群进行反馈。",
+        "\n路径二：手机钉钉 >> 消息页面右上角+号 >> 扫一扫 >> 扫描下方二维码 >> 选择所属团队 >> 免费开通\n\n<Frame>\n  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1647843161483-bae6fd0e-efd2-4351-a0c1-ad9ac5364891.png)\n</Frame>\n",
+        "\n路径二：手机钉钉 >> 消息左上角+号 >> 扫一扫 >> 扫码下方二维码",
+    ],
+    "athbne": [
+        "\n## 3. 意见反馈\n\n如果在使用“宜搭openAPI”中遇到问题或有建议反馈，可以扫描下方二维码，加入交流群进行意见反馈。",
+    ],
+    "xewsyc": [
+        "\n## 3. 常见问题\n\n### 3.1 如何进入宜搭码交流群\n\n在使用宜搭码功能中遇到任何问题或有意见反馈，可以扫码下方二维码，加入交流群进行反馈。",
+    ],
+    "knk7hr": [
+        "\n### Q：如何进入宜搭码交流群\n\n在使用宜搭码功能中遇到任何问题或有意见反馈，可以扫码下方二维码，加入交流群进行反馈。",
+    ],
+    "crwfii": [
+        "\n**Q：如何反馈流程分析的使用问题？**\n\n若在使用流程分析功能中遇到任何问题或建议反馈，可以扫码下方二维码申请加入群反馈。",
+    ],
+    "eb291o": [
+        "\n### 4.1 教育组件使用交流群\n\n教育组件使用交流和建议可扫码或搜索群号「32482084」加入社区交流群咨询。",
+    ],
+    "ch41p3rm3may1smg": [
+        "    <Step title=\"步骤 4\">\n      SaaS共创资讯可扫码加入群聊，了解最新动态和相关资料。\n    </Step>\n",
+    ],
+}
+
+# 页尾关注推广标题行（「----获取宜搭最新信息，欢迎关注我们----」及变体）
+QR_PROMO_LINE_RE = re.compile(r"^[ \t]*\*{0,2}-{2,}.*欢迎关注我们.*$", re.M)
+# 命中清单图的 Frame 块或独立图片行
+QR_FRAME_RE = re.compile(
+    r"[ \t]*<Frame>\s*!\[[^\]]*\]\([^)]*(?:%s)[^)]*\)\s*</Frame>[ \t]*\n?" % "|".join(QR_IMAGE_KEYS)
+)
+QR_IMG_LINE_RE = re.compile(
+    r"^[ \t]*!\[[^\]]*\]\([^)]*(?:%s)[^)]*\)[ \t]*$\n?" % "|".join(QR_IMAGE_KEYS), re.M
+)
+
+
+def qr_cleanup(body, slug):
+    """删除推广/加群二维码图、页尾关注块及配套引导文案。"""
+    for old in QR_TEXT_FIXUPS.get(slug.split("/")[-1], []):
+        if old in body:
+            body = body.replace(old, "")
+        else:
+            warn(slug, "qr-fixup-miss", old.strip()[:60])
+    body = QR_FRAME_RE.sub("", body)
+    body = QR_IMG_LINE_RE.sub("", body)
+    body = QR_PROMO_LINE_RE.sub("", body)
+    return body
+
+
 def polish_unlinked_text(body, slug):
     """死链去链后的文案修复：删失效 CTA、收拢句式，再套用 per-slug 精修。"""
     body = SURVEY_BLOCK_RE.sub("", body)
@@ -1116,6 +1189,7 @@ def convert(entry):
         body = re.sub(r"(\w\.(?:com|cn|io|net|org))\[", r"\1 [", body)
         body = oa_domain_fix(body)
         body = aliwork_domain_fix(body)
+        body = qr_cleanup(body, slug)
         body = fix_bold_punct(body)
         body = polish_unlinked_text(body, slug)
 
