@@ -1,0 +1,115 @@
+---
+title: "表单业务规则"
+description: "本页面介绍了表单业务关联规则的概念、使用场景以及如何通过高级函数如INSERT, UPDATE, UPSERT, DELETE来实现不同表单间的数据同步。还提供了具体的记账本案例说明，展示了如何在提交或删除账单明细时更新汇总表，并解答了一些常见问题。"
+---
+
+<Warning>
+未升级到新版信息架构的组织，请 [**点此查看**](https://docs.aliwork.com/docs/yida_support/eb8xyh)使用手册
+</Warning>
+
+## 1. 表单业务关联规则
+
+### 1.1 什么是业务规则
+
+主要是用于处理表单与表单之间的关系，这种一张表单数据发生变化要同步影响另一张表单数据(增加、更新或者删除)。
+
+**路径：**进入表单编辑页面 >> 点击表单空白处 >> 右侧会有个表单事件 >> 添加业务关联规则
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1639382691652-9f15632c-41d7-4dd0-ab6b-20a5c5bfe7d4.png)
+</Frame>
+
+添加业务关联规则
+
+### 1.2 使用场景
+
+比如需要计算物品的出库、入库和最终库存时，物品入库了，那么库存表相应的商品库存量就需要增加；当物品领用或者是入库表单被删除了，那么库存表里相应商品的库存量就应该减少。
+
+## 2. 业务关联规则功能描述
+
+### 2.1 表单事件
+
+- 在这三个事件（表单提交、表单删除、表单编辑）上都可以触发业务关联规则的执行；
+- 业务关联规则需要使用下面四个高级函数，来完成对应用内其他表单的增删改查操作；
+
+#### 2.1.1 [INSERT](/zh/yida/form/yhdw79)
+
+格式：INSERT(form, form.field1, value1, form.field2, value2,......) ；
+
+主要用于把当前录入表的数据插入到目标表中，为目标表单插入新实例。当前表单操作成功时，在目标表单(form)中插入新的实例，新实例中目标字段(field1,field2,......)依次为目标值(value1,value2,......)，其余字段默认为空。
+
+#### 2.2.2 [UPDATE](/zh/yida/form/svrgxm)
+
+格式：UPDATE(form, rule, rule2, form.field1, value1, form.field2, value2,......)
+
+主要用于更新目标表中符合条件的数据。当前表单操作成功时，若目标表单(form)存在满足过滤条件(rule,rule2)的实例，则依次更新实例的目标字段(field1,field2,......)为目标值(value1,value2,......)。
+
+#### 2.2.3 [UPSERT](/zh/yida/form/al3gkc)
+
+格式：UPSERT(form, rule, rule2, form.field1, value1, form.field2, value2,......)
+
+主要用于往目标表单中插入或者更新数据。当前表单操作成功时，若目标表单(form)存在满足过滤条件(rule,rule2)的实例，则更新实例同 UPDATE,若不存在，则插入新实例同 INSERT。
+
+#### 2.2.4 [DELETE](/zh/yida/form/fqtnhh)
+
+格式：DELETE(form, rule, rule2)
+
+主要用于删除目标表的数据。当前表单操作成功时，若目标表单(form)存在满足过滤条件(rule,rule2)的实例，则删除此实例。
+
+### 2.2 案例说明
+
+我们实现一个记帐本的功能。记帐本包含2个表单：帐单明细表和帐单按月汇总表。
+
+具体包含的功能：
+
+1. 提交帐单明细记录时，同时在该月汇总的费用金额上加上新的帐单金额；
+2. 删除账单明细记录时，同时在该月汇总的费用金额上减去新的帐单金额。
+
+- 操作步骤
+
+（1）表单右侧 >> 属性 >> 添加业务关联规则
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1639382857772-a892ec8d-4116-4403-90bf-e699b149be38.png)
+</Frame>
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1634798397292-14e3b68d-9cb1-4d33-992d-2b4e99990914.png)
+</Frame>
+
+业务关联规则
+
+（2）配置业务规则：提交账单明细记录时，同时在该月汇总的费用金额上加上新的账单金额；
+
+使用高级函数：[**UPDATE**](/zh/yida/form/svrgxm)
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1612020261848-01d61ca2-7d1f-4571-8a2a-a033d07066c6.png)
+</Frame>
+
+（3）配置业务规则：删除账单明细记录时，同时在该月汇总的费用金额上减去新的账单金额
+
+使用高级函数：[**UPDATE**](/zh/yida/form/svrgxm)
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1612020261880-d884365a-b879-463c-b05e-f4cd5c1f314f.png)
+</Frame>
+
+(4) 在**提交**和**删除**时，都关联上业务规则，这样提交表单会统计数据，删除表单也会统计数据
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1612020261866-aef16ba6-2ab6-436c-aa9e-3d9cb5115c48.png)
+</Frame>
+
+这时候别忘记保存表单，2个业务规则已经设置好了，来测试一下：
+
+（1）提交帐单明细记录时，同时在该月汇总的费用金额上加上新的帐单金额；
+
+（2）配置业务规则：删除帐务明细记录时，同时在该月汇总的费用金额上减去新的帐单金额。
+
+**注：**流程表单的相关配置不在表单设计器中，在流程设计中配置。详细配置可[点击查看](/zh/yida/process/emt041)
+
+## 3. 常见问题
+
+- 进销存使用场景搭建可 **点击查看**
+- 可查看业务关联公式常见问题及解法： [https://www.yuque.com/yida/support/hf3pm8](https://docs.aliwork.com/docs/yida_support/hf3pm8)

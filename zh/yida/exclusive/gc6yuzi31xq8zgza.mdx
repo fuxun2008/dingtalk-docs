@@ -1,0 +1,213 @@
+---
+title: "单点登录"
+description: "本文介绍了单点登录（SSO）的概念、优势及其在专属宜搭中的应用，包括支持的协议如OAuth 2.0、OIDC和CAS，以及如何配置IDAAS实现单点登录。"
+---
+
+单点登录（Single Sign-On，简称SSO）是一种身份认证和授权的解决方案，允许用户在多个相关系统中使用相同的登录凭据，实现一次登录即可访问多个系统，提供了方便快捷的用户体验。
+
+专属宜搭单点登录功能，可以将其集成到其他系统或产品中，成员只需登录一次系统或产品，就可以在直接使用宜搭的的各种功能，无需额外登录，提高工作效率。
+
+单点登录的主要优势包括：
+
+1. 便捷的用户体验：用户只需一次登录认证，就能够访问多个系统，无需频繁输入用户名和密码，提高了用户体验和工作效率。
+2. 提高安全性：SSO通过集中的身份认证服务来验证用户的身份，避免了在每个系统中都要存储用户密码的安全隐患，减少了密码泄露的风险。
+3. 简化管理：由于用户只需维护一个登录凭据，减少了用户管理的工作量，也降低了系统管理员的负担。
+
+## 支持的协议
+
+专属宜搭目前支持OAuth 2.0、OIDC和CAS 协议的单点登录，下面以OAuth 2.0为例，介绍如何打通IDAAS单点登录。
+
+**OAuth 2.0简介**
+
+是一个用于授权的开放标准协议，旨在允许用户授权第三方应用访问他们在另一个应用中存储的资源，而无需共享他们的凭据。它提供了一种安全、灵活和标准化的方式来进行授权，保护用户的隐私和数据安全。OAuth 2.0协议被广泛应用于各种场景，如社交媒体登录、API访问控制、单点登录等，为用户和开发者提供了更好的互联互通体验
+
+协议主要流程
+
+1. 专属宜搭具备单点登录功能，并在其中充当服务提供者（SP）的身份。
+2. 首先企业管理员开启单点登录功能，当一个未登录的员工需要登录宜搭时，系统会将页面请求定向到至管理员预先设置的身份提供者（IdP）地址。
+3. 如果该成员已经登录过IdP，那么IdP只需从会话中读取用户信息，并通过管理员配置的方式将信息返回给宜搭。
+4. 如果该成员尚未登录过IDP，那么需要输入相关信息进行IDP登录，登录完成后，将信息返回给宜搭。
+5. 宜搭在接收到用户信息后，调用钉钉通讯录接口，对用户身份进行识别，通过后对用户提供服务。
+
+<Note>
+- IdP 是 Identity Provider 的缩写，指认证中心，在认证过程中 IdP 持有用户信息，并与用户建立会话。
+- SP 是 Service Provider 的缩写，指服务提供者，当用户访问 SP 提供的服务时，如果 SP 无法识别用户，会请求 IdP 对用户进行认证。
+
+例如：IdP - IDAAS，SP - 专属宜搭
+</Note>
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1704437543986-1984d681-c08f-4aac-bcce-fba51ae65da3.png)
+</Frame>
+
+## 配置方式
+
+前置条件：要提供互联网能调通的公网接口、用户信息接口要返回钉钉uid或者userId(基于钉钉账号体系)
+
+这里以阿里云IDAAS和OAuth 2.0协议为例，演示如何实现通过配置了钉钉认证体系的IDAAS认证服务登录到宜搭
+
+### **在IDAAS中的配置**
+
+<Steps>
+  <Step title="进入 阿里云控制台 ，创建一个实例">
+    <Frame>
+      ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1734403352383-987dfeb9-83a0-4c1f-9af7-4aa1af1c2624.png)
+    </Frame>
+  </Step>
+  <Step title="新建OAuth 2.0协议应用 （OIDC、CAS协议类似）">
+    <Frame>
+      ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1734403765365-3cd86a08-bdc0-49fd-992d-d41eed652447.png)
+    </Frame>
+  </Step>
+  <Step title="配置应用信息">
+    <Frame>
+      ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1704437543956-49048a79-20c3-4efc-8d3d-64a4f46b6606.png)
+    </Frame>
+  </Step>
+  <Step title="应用授权配置 ：可按照IDAAS侧按照不同维度对应用进行授权，只有授权范围内的用户，才能通过应用进行身份验证">
+    <Frame>
+      ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1704437543769-9d330c75-d131-4ea0-b988-526c6a2c8709.png)
+    </Frame>
+  </Step>
+  <Step title="查看应用信息">
+    <Frame>
+      ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1704437544029-417160d3-992f-4379-a937-cfa24007dd44.png)
+    </Frame>
+
+    <Frame>
+      ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1716892013628-95da2e5c-2449-4146-9a3b-b8f967ccc310.png)
+    </Frame>
+  </Step>
+</Steps>
+
+### **在宜搭中侧的配置**
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1733882989628-189ad11b-c888-4293-b821-da8f1852d449.png)
+</Frame>
+
+完成IDAAS侧的应用创建及授权后，管理员进入宜搭侧开启单点登录、并完成相关配置。
+
+1. 开启SSO单点登录开关
+2. 配置单点登录信息(选择其中一种登录协议，下图以  OAuth2 为例)
+3. 配置保存成功后，退出登录并重新登录，即可验证前往单点登录服务进行登录， 面向全组织生效 。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1733882948145-1bfb599b-4e5b-41cb-9e41-d575447b7d23.png)
+</Frame>
+
+## 宜搭SSO协议格式示例
+
+返回的身份回调的数据需要满足如下格式
+
+##### OAuth2
+
+```json
+{
+  "success": true,
+  "code": 200, //状态码
+  "data": {
+    "sub": "钉钉uid或者钉钉userId"
+  }
+}
+```
+
+##### OIDC
+
+基于配置的公钥解析返回的用户信息，解析后格式如下，宜搭侧取sub
+
+```json
+{
+    "sub": "钉钉uid或者钉钉userId",
+    "iss": "http://xxxxxx/public/api/application/plugin_oidc/oidc",
+    "aud": "xxxxxxx6CPpztCvzN6tjB",
+    "uuid": "xxxxxxx2baed8e7a77zqtOGeqBXbm",
+    "username": "admin",
+    "email": "xxxxxx@qq.com"
+}
+```
+
+##### CAS
+
+```xml
+<cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
+    <cas:authenticationSuccess>
+        <cas:attributes>
+            <cas:externalId>钉钉uid或者钉钉userId</cas:externalId>
+        </cas:attributes>
+    </cas:authenticationSuccess>
+</cas:serviceResponse>
+```
+
+## 常见概念介绍
+
+| **概念** | **说明** |
+|---|---|
+| 身份提供商（IdP） | 一个包含有关外部身份提供商元数据的RAM实体，身份提供商可以提供身份管理服务。<br />• 企业本地IdP：Microsoft Active Directory Federation Service （AD FS）、Shibboleth等。<br />• Cloud IdP：[阿里云应用身份服务](https://help.aliyun.com/document_detail/112323.html#topic408)、Azure AD、Google Workspace、Okta、OneLogin等。 |
+| 服务提供商（SP） | 利用IdP的身份管理功能，为用户提供具体服务的应用，SP会使用IdP提供的用户信息。一些非SAML协议的身份系统（例如：OpenID Connect），也把服务提供商称作IdP的信赖方。 |
+| 安全断言标记语言（SAML 2.0） | 实现企业级用户身份认证的标准协议，它是SP和IdP之间实现沟通的技术实现方式之一。SAML 2.0已经是目前实现企业级SSO的一种事实标准。 |
+| SAML断言（SAML assertion） | SAML协议中用来描述认证请求和认证响应的核心元素。例如：用户的具体属性就包含在认证响应的断言里。 |
+| 信赖（Trust） | 建立在SP和IdP之间的互信机制，通常由公钥和私钥来实现。SP通过可信的方式获取IdP的SAML元数据，元数据中包含IdP签发SAML断言的签名验证公钥，SP则使用公钥来验证断言的完整性。 |
+| OIDC | [OIDC（OpenID Connect）](https://openid.net/connect)是建立在[OAuth 2.0](https://oauth.net/2)基础上的一个认证协议。OAuth是授权协议，而OIDC在OAuth协议上构建了一层身份层，除了OAuth提供的授权能力，它还允许客户端能够验证终端用户的身份，以及通过OIDC协议的API（HTTP RESTful形式）获取用户的基本信息。 |
+| OIDC令牌 | OIDC可以给应用签发代表登录用户的身份令牌，即OIDC令牌（OIDC Token）。OIDC令牌用于获取登录用户的基本信息。 |
+| 客户端ID | 您的应用在外部IdP注册的时候，会生成一个客户端ID（Client ID）。当您从外部IdP申请签发OIDC令牌时必须使用该客户端ID，签发出来的OIDC令牌也会通过**aud**字段携带该客户端ID。在创建OIDC身份提供商时配置该客户端ID，然后在使用OIDC令牌换取STS Token时，阿里云会校验OIDC令牌中**aud**字段所携带的客户端ID与OIDC身份提供商中配置的客户端ID是否一致。只有一致时，才允许扮演角色。 |
+| 验证指纹 | 为了防止颁发者URL被恶意劫持或篡改，您需要配置外部IdP的HTTPS CA证书生成的验证指纹。阿里云会辅助您自动计算该验证指纹，但是建议您在本地自己计算一次（例如：使用[OpenSSL](https://www.openssl.org/)计算指纹），与阿里云计算的指纹进行对比。如果对比发现不同，则说明该颁发者URL可能已经受到攻击，请您务必再次确认，并填写正确的指纹。 |
+| 颁发者URL | 颁发者URL由外部IdP提供，对应OIDC Token中的**iss**字段值。颁发者URL必须以**https**开头，符合标准URL格式，但不允许带有query参数（以**?**标识）、fragment片段（以**#**标识）和登录信息（以**@**标识）。 |
+| 临时身份凭证 | [STS（Security Token Service）](https://help.aliyun.com/zh/ram/product-overview/what-is-sts#concept-ong-5nv-xdb)是阿里云提供的一种临时访问权限管理服务，通过STS获取可以自定义时效和访问权限的临时身份凭证（STS Token）。 |
+
+## 常见问题
+
+### Q：宜搭单点登录能实现其他产品集成到宜搭中吗？
+
+A：宜搭单点登录实现的是将宜搭集成到其他系统或产品中，即在其他系统或产品中访问宜搭可实现免登。如果要在宜搭中免登其他产品非本技术方案范围，需要您自行进行系统设计。
+
+### Q：自建身份认证系统（非IDAAS）能接入宜搭单点登录吗？
+
+A：可以，宜搭建议使用IDAAS进行集成，可以更加轻量且配置化地实现单点登录，但如您有其他 IDP 支持 OAuth 2.0、OIDC、CAS 协议，在宜搭单点登录配置页上正确完成配置，并按照宜搭要求格式返回的身份回调的数据亦可接入，但可能存在一定的集成成本。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1734078649557-85dc51b2-81e9-4464-9b1a-40f368e535d2.png)
+</Frame>
+
+### Q：如何验证单点登录集成的效果？
+
+A：您可通过访问 **www.企业域名.aliwork.com/xxx**来进行验证，由于每个组织的企业域名是独一无二的，宜搭可通过您访问URL的**企业域名**来判断组织是否开启了单点登录，如开启可单点登录的组织登录将统一走单点登录而不再走统一登录。
+
+### Q：开启企业域名是使用单点登录的必要前提吗，哪里查看组织的企业域名？
+
+A：是的，由于组织是否开启单点登录是通过识别是通过唯一企业域名映射的，**访问公共 www.aliwork.com 无法映射到组织，故无法使用单点登录**。宜搭平台管理员可前往组织[平台管理](https://www.aliwork.com/platformManage/basicInfo) > 基本信息 > 企业域名查看。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1734078649563-6fe0137f-ed48-4d7c-86a1-0d790b18af2c.png)
+</Frame>
+
+### Q：如何完成客户的通讯录和钉钉的通讯录之间的映射？
+
+A：IDAAS接入方式由IDAAS产品提供服务，详情可咨询IDAAS产品侧技术支持。自建方式接入，需自行实现，建议调用[钉钉开放平台openAPI](https://open.dingtalk.com/document/orgapp/sso-overview)进行对接。
+
+### Q：为什么平台管理后台没有修改企业域名的入口？
+
+- 只有钉钉组织的主管理员，才具备自定义企业域名的权限
+- 企业域名是宜搭的新增功能「 更新日志 」，修改企业域名有一些成本及风险，考虑到部分历史宜搭组织已有较多业务上宜搭上，在2021年前的部分老客户可能没有修改按钮，可以联系人工开通。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1734078649572-8d6fa9f6-41ac-48eb-a2ee-32bb279f034a.png)
+</Frame>
+
+### Q：如果在钉钉端内打开，还需要走单点登录吗？
+
+A：需要
+
+### Q：为什么通过单点登录在移动端（非钉钉端内）访问宜搭部分功能不可用？
+
+A：宜搭目前PC端支持浏览器、钉钉端双端使用。移动端由于技术方案不同，目前大量功能（如成员组件、单行文本扫码、流程转交等）基于钉钉端内实现，故部分功能暂不支持在移动端端外使用。
+
+[宜搭移动端非端内打开，产品功能不支持](https://alidocs.dingtalk.com/i/nodes/Gl6Pm2Db8DMGQKRatzLr9n92WxLq0Ee4?cid=6788093%3A3361847202&utm_source=im&utm_scene=team_space&iframeQuery=utm_medium%3Dim_card%26utm_source%3Dim&utm_medium=im_card&corpId=dingd8e1123006514592)
+
+### Q：如果配置错误导致宜搭无法登录怎么办？
+
+A：使用 www.aliwork.com 域名访问或到钉钉端内访问，进行关闭单点登录操作或调整成正确配置。
+
+#### Q：单点登录场景下，是否支持上下游互联？
+
+暂不支持。

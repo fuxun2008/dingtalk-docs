@@ -1,0 +1,56 @@
+---
+title: "如何处理钉钉开放平台宜搭服务端API限流"
+description: "本文介绍了宜搭钉钉开放平台服务端API限流的触发条件和解决办法，包括单应用QPS限流、单组织QPS限流及接口全局QPS限流，并提供了遇到限流时的解决方案如错峰策略。此外，还解答了关于收费、调用次数限制等常见问题。"
+---
+
+本文介绍了宜搭钉钉开放平台服务端API限流的触发条件和解决办法
+
+## 触发条件
+
+为防止应用程序错误而引发宜搭服务器负载异常，默认情况下，每个宜搭服务端API接口根据复杂度不同，调用都有不同的频率限制（具体可发送API文档地址咨询技术支持），当超过任一维度限制时，都可能触发限流，常见响应错误码：`failure.operation.requestTooFast`、`failure.operation.tooManyVisitors`
+
+- 单应用QPS限流： 每个应用，调用每个接口，超过最高频率时，将会触发限流
+- 单组织QPS限流： 每个组织，调用每个接口，超过最高频率时，将会触发限流
+- 接口全局QPS限流 ：由于宜搭接口的安全保护策略，每秒被调用次数有限制，当 所有宜搭组织应用 同时调用某个接口的次数超出该接口每秒被调用次数的限制，会触发响应错误
+
+解决办法
+
+- 通用 ：因为qps限流限制时间是1秒，所以当遇到限流错误时，可以在程序中sleep 1秒，然后继续执行。
+- 错峰策略 ：一些定时调宜搭API的程序，可以避开整点高峰期，比如在整点+10分的时候定时执行。
+
+## FAQ：
+
+<AccordionGroup>
+<Accordion title="Q：钉钉开放平台调用OpenAPI要收费，涉及到宜搭的接口是否重复收费？">
+  A：不会重复收费。具体说明如下：
+
+  宜搭相关业务调用API分为2种使用场景：
+
+  1. 宜搭作为SaaS应用，通过产品化功能来调用钉钉功能的接口【即宜搭官方连接器，如获取钉钉考勤数据】调用，不受 政策 限制。
+  2. 客户侧在钉钉开放平台建立了企业自建应用，在自有外部系统内直接调用 【宜搭接口清单】 里的内容（如客户自建系统内通过调用宜搭openAPI接口，将宜搭上搭建的应用数据同步到自建系统），遵循钉钉开放平台统一的 政策 。
+
+  <Frame>
+    ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1710324746422-f1f7bc15-a4af-4b16-a2fd-14c16ab25758.png)
+  </Frame>
+</Accordion>
+<Accordion title="Q：宜搭接口调用的次数是否会占用到钉钉开放平台调用次数？">
+  A：不会占用到钉钉开放平台调用次数。因为宜搭相关业务调用API不受[政策](https://open.dingtalk.com/document/orgapp-server/descriptions-about-adjusting-limit-and-frequency-of-api-calls)限制。
+
+  1. 场景1：宜搭作为SaaS应用，通过产品化功能来调用钉钉功能的接口【即宜搭官方连接器，如获取钉钉考勤数据】调用，不受 政策 限制。
+</Accordion>
+<Accordion title="Q：钉钉开放平台公布的QPS限制是否也限制宜搭的接口？">
+  A：钉钉开放平台公布的 QPS 限制是区分企业内部应用和第三方企业应用的。宜搭作为一个第三方企业应用，也是会限制QPS 的，宜搭自身调用钉钉的每个接口，最高频率40次/秒，具体可查看[调用频率限制](https://open.dingtalk.com/document/isvapp-server/invocation-frequency-limit-1)
+
+  <Frame>
+    ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1710324746287-c473a129-e5c6-416d-b11e-bfa0674e5b1d.png)
+  </Frame>
+</Accordion>
+<Accordion title="Q：同时购买了钉钉专业版和宜搭，QPS限流以哪个标准来执行？">
+  A：由于宜搭相关业务调用API不受[政策](https://open.dingtalk.com/document/orgapp-server/descriptions-about-adjusting-limit-and-frequency-of-api-calls)限制。宜搭客户不管购买哪个钉钉版本的底座，QPS标准均为最高频率40次/秒
+
+  1. 场景1：宜搭作为SaaS应用，通过产品化功能来调用钉钉功能的接口【即宜搭官方连接器，如获取钉钉考勤数据】调用，不受 政策 限制。
+</Accordion>
+<Accordion title="Q：宜搭的QPS限流是否支持单独扩容？如何收费？">
+  A：除专属版外客户暂不支持单独扩容。
+</Accordion>
+</AccordionGroup>

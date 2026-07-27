@@ -1,0 +1,224 @@
+---
+title: "关联组织"
+description: "本页面介绍了如何使用钉钉互联平台的关联组织功能来实现跨组织通讯录、应用互联互通以及上下级组织无缝沟通和协同。通过详细的步骤指导，包括基础表单设计、创建并配置连接器及提交表单数据等环节，帮助中大型组织提高管理效率。"
+---
+
+## 1. 使用场景
+
+作为「钉钉互联平台」产品组成之一的「关联组织」功能给中大型组织提供强大的组织架构管理能力，旨在帮助用户**实现跨组织通讯录、应用的互联互通、上下级组织无缝沟通、协同**。
+
+- 跨组织沟通、业务审批、工作汇报。
+- 多组织分权管理，人员结构实时同步，提高管理效率。
+
+## 2. 实现步骤
+
+### 2.1 步骤一：基础表单设计
+
+#### 2.1.1 创建并配置查询表单
+
+**操作步骤：**
+
+1. 创建普通表单，命名为「获取组织信息」。
+2. 添加下拉单选组件，命名为「目标」，分别添加「查询主干组织」及「查询分支组织」两个选项。设为必填。（操作如图2.1-1 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638252561649-362ccc95-aa52-41b2-b442-156b7a3e1b80.png)
+</Frame>
+
+图2.1-1 添加并配置下拉单选组件
+
+3. 点击页面右上角「保存」按钮，即可。
+
+#### 2.1.2 创建并配置查询结果记录表
+
+**操作步骤：**
+
+1. 创建普通表单，命名为「主干组织查询结果记录」。
+2. 添加多行文本组件，命名为「连接器返回结果」，状态设置为「隐藏」。（操作如图2.1-2 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638252730812-aa6f20bc-9c58-494b-8db2-2ff64c940ec4.png)
+</Frame>
+
+图2.1-2 添加并配置多行文本组件
+
+3. 添加子表单组件，命名为「主干组织查询结果」，状态设置为「只读」。（操作如图2.1-3 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638252917182-5c5892ee-4418-445b-a2b9-ef39c341db1a.png)
+</Frame>
+
+图2.1-3 添加并配置子表单组件
+
+4. 在子表单内添加两个单行文本，分别命名为「主干组织名称」及「主干组织的CorpID」，状态设置为「只读」。（操作如图2.1-4 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638253191559-c50c4133-fbb4-4965-b8ec-c96eeada7f1a.png)
+</Frame>
+
+图2.1-4 添加并配置单行文本组件
+
+5. 页面左侧打开「JS动作面板」，将下列代码添加到 didMount 函数中。（操作如图2.1-5 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638253377080-91302f3e-a502-4537-b98c-a5b5e4fcebb9.png)
+</Frame>
+
+图2.1-5 配置JS面板内容
+
+```javascript
+//图2.1-5 所示代码部分
+//获取多行文本组件数据并赋值给res变量
+//「textareaField_kwlgqhti」需要替换为您所创建的多行文本的唯一标识
+const res = this.$("textareaField_kwlgqhti").getValue();
+//进行数据格式转换，将多行文本组件数据字符串格式转换为对象形式
+  let obj = JSON.parse(res);
+//创建一个名为arr的空数组，用于存放接下来处理好的数据。
+  let arr = [];
+//遍历对象，用于获取需要展示的字段
+  const list = obj.map(item => {
+    let object = {};
+//其中「textField_kwlgqhtk」与「textField_kwlgqhtl」为子表单内两个单行文本组件的唯一标识
+//需要替换为您所创建的单行文本的唯一标识
+    object.textField_kwlgqhtk = item.union_org_name;
+    object.textField_kwlgqhtl = item.union_corpid;
+    arr.push(object);
+  })
+//将处理好的数据arr回填到子表单组件
+//其中「tableField_kwlgqhtj」为子表单组件的唯一标识
+//需要将其替换为您创建的子表单组件的唯一标识
+  this.$("tableField_kwlgqhtj").setValue(arr);
+```
+
+6. 点击页面右上角「保存」按钮，即可。
+7. 重复步骤1-6，创建「分支组织查询结果记录」。（操作效果如图2.1-6 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638254157726-5e8acaea-a13b-45dd-8d8e-44d21f39e06f.png)
+</Frame>
+
+图2.1-6 创建「分支组织查询结果记录」表单
+
+### 2.2 步骤二：创建并配置连接器
+
+<Note>
+宜搭连接器功能相关介绍，请移步：[集成&自动化-连接器](https://docs.aliwork.com/docs/yida_support/zevvr1)
+</Note>
+
+为「获取组织信息」表单创建连接器，用于获取关联组织的相关信息。
+
+**操作步骤：**
+
+1. 后台管理页面>>「获取组织信息」>>「集成&自动化」>>「新建集成&自动化」。（操作如图2.2-1 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638254350368-77092975-4f63-48ae-ab86-ab6092d0ee1a.png)
+</Frame>
+
+图2.2-1 连接器入口
+
+2. 将连接器命名为「查询关联组织信息」，选择「表单事件触发」触发类型，点击「确定」。
+
+（操作如图 2.1-2 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638254582076-ae3d243f-0ceb-4268-be53-5ec3a1278ea5.png)
+</Frame>
+
+图2.2-2 创建连接器
+
+3. 将连接器命名为「查询关联组织信息」>> 选择「表单事件触发」中的「创建成功」>> 选择「数据过滤」中的「全部数据」>> 点击「确定 」。（操作如图2.2-3 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638254875098-d8f7ad53-30b6-45f5-a990-8f2e89aec5e4.png)
+</Frame>
+
+图2.2-3 配置连接器表单事件触发
+
+4. 添加「条件分支」分支节点：当条件规则目标等于查询主干组织时，添加「获取主干组织」的连接器，并添加「新增数据」数据节点；其他情况下，添加「获取分支组织」的连接器，并添加「新增组织」数据节点。（操作如图2.2-4 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638255122399-e6a5d698-4b9b-4fd0-9214-023f47b74edf.png)
+</Frame>
+
+图2.2-4 添加并配置分支条件
+
+5. 配置「分支1」下连接器
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638255275247-d395f08c-0473-444b-b541-6e4e7c71945a.png)
+</Frame>
+
+图2.2-5 选择「分支1」下连接器应用
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638255402797-9e8a6293-74b5-42f6-9008-b8d274c64452.png)
+</Frame>
+
+图2.2-6 选择「分支1」的连接器执行动作
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638255520172-0bb6155f-469a-49dc-acd0-1988fa448c29.png)
+</Frame>
+
+图2.2-7 配置「分支1」下连接器执行动作
+
+6. 配置「分支1」的「新增数据」节点。（操作如图2.2-8 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638255745971-73a3bd68-1028-4c4d-9730-51368c10213b.png)
+</Frame>
+
+图2.2-8 添加并配置「分支1」下「新增数据」节点
+
+7. 配置「分支2」下连接器
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638255923828-326a8eca-b012-470a-92d5-9ae0c4a160d2.png)
+</Frame>
+
+图2.2-9 选择「分支2」下连接器应用
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638256149993-c9ae6b1d-6327-438d-9b4c-de3e6b09fe5b.png)
+</Frame>
+
+图2.2-10 选择「分支2」下连接器的执行动作
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638256294392-d7c92026-0bce-4119-b228-908ecf3ebb56.png)
+</Frame>
+
+图2.2-11 配置「分支2」下连接器执行动作
+
+8. 配置「分支2」下「新增数据」节点。（操作如图2.2-12 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638256572303-cf5edaba-00c4-4500-bd87-3d4ef57d9d7f.png)
+</Frame>
+
+图2.2-12 配置「分支2」下「新增数据」节点
+
+9. 点击页面右上角「保存」按钮后，点击「发布」即可。
+
+### 2.3 步骤三：提交表单数据
+
+触发连接器，接收连接器返回数据并在处理后进行展示。
+
+**操作步骤：**
+
+填写表单数据，并提交。（操作如图2.3-1 所示）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638256737060-1f265c1c-f8a3-405e-a567-c23b26b98acc.png)
+</Frame>
+
+图2.3-1 提交表单数据
+
+## 3. 效果展示
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1638256843193-69a8c9bf-7648-4f64-b725-cff8910e45c1.png)
+</Frame>
+
+图3-1 连接器效果展示

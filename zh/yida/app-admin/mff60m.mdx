@@ -1,0 +1,138 @@
+---
+title: "普通表单"
+description: "普通表单用于收集业务进展中的数据，适用于调查统计、在线报名等场景。无审批流程，支持基础属性如PC端设置、表单校验及事件；高级属性包括提交按钮定制、表单提交前后处理逻辑以及数据源控制。"
+---
+
+普通表单可以收集业务进展中的所有数据，也可以发布给外部成员收集外部数据。你可以将收集到的数据用于
+
+普通表单无审批流程，可以在调查统计、在线报名、销售上报、会议预约、采购入库、订单录入、扫码签到等场景使用。
+
+## 基础属性设置
+
+- PC 端设置 ：列数指当前表单上的组件呈现 1 列或者 2 列。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1721703874731-9de4fd52-37df-4fab-9353-8c13f276c7ad.png)
+</Frame>
+
+- 表单校验 ：表单校验包含 公式校验 、 服务校验 和 自定义代码服务校验 三种，详情可参考 表单校验 。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1721704060920-2296e8ad-a4e7-4ce7-b8d8-a50ecae36845.png)
+</Frame>
+
+- 表单事件 ：详情可查看文档 表单业务规则 。
+
+## 高级属性设置
+
+### 提交按钮
+
+修改提交按钮的显示文字，支持国际化和变量绑定，效果如图：
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/gif/1721706280114-34ae144a-7766-43a0-a97f-dc36d191edb3.gif)
+</Frame>
+
+### 表单提交前
+
+默认情况下，表单数据在校验和设置完成后，会提交给宜搭的后端接口，将表单数据保存。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1721706326246-aaae09d2-a211-4c42-ac79-71aa14a55235.png)
+</Frame>
+
+表单提交前选项提供了阻止表单默认的提交行为的能力，通过在动作中判断并返回 false，可阻止并自定义后续的的行为。
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // 注意：目前不支持在这里修改提交数据
+
+  console.log('beforeSubmit', formDataMap);
+
+  // 需要时可返回 false 阻止提交，支持 Promise
+  // return false;
+}
+```
+
+也可以返回 `Promise` 做一些异步的判断逻辑：
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // 注意：目前不支持在这里修改提交数据
+  return new Promise((resolve) => {
+  	// 如请求数据源
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // 通过返回 false 阻止提交
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+提示：如果返回了 `Promise` ，按钮的加载中状态会等待 `Promise` 返回。
+
+<Note>
+目前不支持在这里修改提交数据
+</Note>
+
+### 表单提交后
+
+默认情况下，宜搭的表单会在提交后跳转，具体跳转地址可能为提示成功页（PC 端）、详情页（移动端），或用户设置的指定页面（[表单设置](https://docs.aliwork.com/docs/yida_support/yida_qalist/uop0b0ndpgc0gevb/ovg9ul)）
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1721706483752-05e3b51e-02d1-49f4-ae19-08af85d627f8.png)
+</Frame>
+
+表单提交后选项提供了阻止表单默认的跳转行为的能力，通过在动作中判断并返回 false，可阻止并自定义后续的的行为。
+
+```javascript
+export function afterSubmit({ submitResult }){
+  console.log('afterSubmit', submitResult);
+
+  // 需要时可返回 false 阻止后续操作，支持 Promise
+  // return false;
+}
+```
+
+也可以返回 `Promise` 做一些异步的判断逻辑：
+
+```javascript
+export function afterSubmit({ submitResult }){
+  return new Promise((resolve) => {
+  	// 如请求数据源
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // 通过返回 false 阻止后续操作
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+提示：如果返回了 `Promise` ，按钮的加载中状态会等待 `Promise` 返回。
+
+### 表单数据源
+
+表单数据源提供了一个整体控制表单值的方式，目前有两种用途：
+
+- 提供初始值，即表单内各个字段的默认值；
+- 修改表单数据源时，对应表单字段的值也会同步修改。
+
+如在表单数据源中指定某个字段的值（可直接复制使用）：
+
+```json
+{
+  "textField_km1nnpxu": "测试单行文本的值"
+}
+```
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1721706542299-5d4fda74-e0b8-4dfa-8655-eb75f85c21e4.png)
+</Frame>
