@@ -4,38 +4,31 @@
    - !important 用于覆盖 .prose :where() 默认 padding / border 等
    - light / dark 双套（用 html.dark 前缀，与 Tailwind dark: 同步）
    - 不影响 <ParamField> <ResponseField> 组件（它们不渲染 <table>）
-   - 溢出策略（GitHub 式）：display:block + width:max-content + max-width:100%
-     → 窄表贴内容宽；含长文列的表被钳制到容器宽内自动换行（与旧行为一致）；
-     列多且最小内容宽超出容器时不再挤压变形，改为容器内横向滚动
+   - 溢出策略：表格始终满宽（width:100%），长文本在单元格内自动换行；
+     通过 th/td 的 min-width 抬高表格最小内容宽——列多到换行也放不下时，
+     由 Mintlify 自带的滚动容器（table 外层 role=region overflow-x:scroll）接管横向滚动，
+     避免单元格被挤压至逐字竖排；禁止用 width:max-content（会让窄表不满宽、
+     长文表整体变宽转滚动而不换行）
    ========================================================================== */
 
 .prose table,
 main table {
   border-collapse: separate !important;
   border-spacing: 0;
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+  width: 100%;
   margin: 1.25rem 0;
   font-size: 14px;
   line-height: 1.6;
   border: 1px solid rgb(229, 231, 235);          /* gray-200 light */
   border-radius: 8px;
+  overflow: hidden;                               /* clip rounded corners */
 }
 
-/* 滚动情形下单元格不被挤压至逐字竖排：给内容列一个合理下限 */
+/* 列宽下限：防止多列表把单元格挤压至逐字竖排；
+   列多超出容器时表格最小宽变大，由外层 Mintlify 滚动容器横向滚动 */
 .prose table thead th,
 main table thead th {
-  min-width: 4.5em;
-}
-
-/* 单元格内 code（字段名/枚举值）不拆行，宽度不够时触发表格滚动而非竖排 */
-.prose table td code,
-main table td code {
-  white-space: nowrap;
+  min-width: 5em;
 }
 
 html.dark .prose table,
