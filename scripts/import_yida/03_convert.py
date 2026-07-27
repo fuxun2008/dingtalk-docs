@@ -342,51 +342,54 @@ class LinkRewriter:
 # ---------- 内联渲染 ----------
 
 def render_inline(node, rw, in_table=False):
-    out = []
-    for child in node.children:
-        if isinstance(child, NavigableString):
-            out.append(esc(str(child), in_table))
-            continue
-        if not isinstance(child, Tag):
-            continue
-        name = child.name
-        cls = child.get("class") or []
-        if name in ("meta", "style", "script", "button", "svg"):
-            continue
-        if name == "br":
-            out.append("<br />" if in_table else "\n")
-        elif name in ("strong", "b"):
-            inner = render_inline(child, rw, in_table).strip()
-            out.append(f"**{inner}**" if inner else "")
-        elif name in ("em", "i"):
-            inner = render_inline(child, rw, in_table).strip()
-            out.append(f"*{inner}*" if inner else "")
-        elif name in ("del", "s"):
-            inner = render_inline(child, rw, in_table).strip()
-            out.append(f"~~{inner}~~" if inner else "")
-        elif name == "code" or "ne-code" in cls:
-            raw = child.get_text().replace(ZWSP, "")
-            if raw:
-                fence = "``" if "`" in raw else "`"
-                out.append(f"{fence}{raw}{fence}")
-        elif name == "a":
-            label = render_inline(child, rw, in_table).strip()
-            href, unlink = rw.rewrite(child.get("href"))
-            if unlink or not href:
-                out.append(label)
-            elif label:
-                out.append(f"[{label}]({href})")
-        elif name == "img":
-            src = fix_url(child.get("src", ""))
-            alt = (child.get("alt") or "").replace("]", "").replace("[", "")
-            if src:
-                out.append(f"![{alt}]({src})")
-        elif name == "span" or name in ("u", "sub", "sup", "font", "mark"):
-            out.append(render_inline(child, rw, in_table))
-        else:
-            # 未知内联元素：递归取内容
-            out.append(render_inline(child, rw, in_table))
-    return "".join(out)
+    return "".join(render_inline_node(c, rw, in_table) for c in node.children)
+
+
+def render_inline_node(child, rw, in_table=False):
+    """渲染单个行内节点（供 render_inline 遍历与块级层行内聚合复用）。"""
+    if isinstance(child, NavigableString):
+        return esc(str(child), in_table)
+    if not isinstance(child, Tag):
+        return ""
+    name = child.name
+    cls = child.get("class") or []
+    if name in ("meta", "style", "script", "button", "svg"):
+        return ""
+    if name == "br":
+        return "<br />" if in_table else "\n"
+    if name in ("strong", "b"):
+        inner = render_inline(child, rw, in_table).strip()
+        return f"**{inner}**" if inner else ""
+    if name in ("em", "i"):
+        inner = render_inline(child, rw, in_table).strip()
+        return f"*{inner}*" if inner else ""
+    if name in ("del", "s"):
+        inner = render_inline(child, rw, in_table).strip()
+        return f"~~{inner}~~" if inner else ""
+    if name == "code" or "ne-code" in cls:
+        raw = child.get_text().replace(ZWSP, "")
+        if raw:
+            fence = "``" if "`" in raw else "`"
+            return f"{fence}{raw}{fence}"
+        return ""
+    if name == "a":
+        label = render_inline(child, rw, in_table).strip()
+        href, unlink = rw.rewrite(child.get("href"))
+        if unlink or not href:
+            return label
+        return f"[{label}]({href})" if label else ""
+    if name == "img":
+        src = fix_url(child.get("src", ""))
+        alt = (child.get("alt") or "").replace("]", "").replace("[", "")
+        if src and child.get("data-inline"):
+            # 行内小图标：输出带 class 的原生 img，配合 custom.css 行内渲染
+            w = child["data-inline"]
+            return f'<img className="inline-icon" src="{src}" width="{w}" alt="{attr_escape(alt)}" />'
+        if src:
+            return f"![{alt}]({src})"
+        return ""
+    # span/u/sub/sup/font/mark 及未知内联元素：递归取内容
+    return render_inline(child, rw, in_table)
 
 
 # ---------- 块级渲染 ----------
@@ -787,13 +790,21 @@ def render_bookmark(el, rw, slug):
 
 
 def render_blocks(container, rw, slug, depth=0):
-    """遍历块级子元素，返回 MDX 块列表。"""
+    """遍历块级子元素，返回 MDX 块列表；连续的行内节点聚合成同一段落，
+    避免句子被拆碎（如 li 内「文本 + 行内小图标 + 文本」结构）。"""
     blocks = []
+    inline_buf = []
+
+    def flush():
+        text = "".join(inline_buf).strip()
+        inline_buf.clear()
+        if text:
+            blocks.append(frame_if_image(text))
+
     for el in container.children:
         if isinstance(el, NavigableString):
-            t = esc(str(el)).strip()
-            if t:
-                blocks.append(t)
+            if str(el).strip():
+                inline_buf.append(esc(str(el)))
             continue
         if not isinstance(el, Tag):
             continue
@@ -802,6 +813,20 @@ def render_blocks(container, rw, slug, depth=0):
 
         if name in ("meta", "style", "script", "button", "svg"):
             continue
+        # 行内节点：暂存待合并（span 内含块级内容/非行内大图时仍按块级递归）
+        is_inline_span = name == "span" and not (
+            el.find(["table", "pre", "video", "ul", "ol", "blockquote"]) is not None
+            or el.find(class_=["ne-alert", "ne-codeblock", "ne-video", "ne-table"]) is not None
+            or el.find("img", attrs={"data-inline": False}) is not None
+        )
+        if name in ("a", "strong", "b", "em", "i", "code", "u", "sub", "sup", "font", "mark", "del", "s", "br") or is_inline_span or (
+            name == "img" and el.get("data-inline")
+        ):
+            inline_buf.append(render_inline_node(el, rw))
+            continue
+        # 块级节点：先落盘已缓存的行内段
+        flush()
+
         if name in ("h1", "h2", "h3", "h4", "h5", "h6"):
             for hl in el.select("a.hash-link"):
                 hl.decompose()
@@ -881,6 +906,7 @@ def render_blocks(container, rw, slug, depth=0):
             text = render_inline(el, rw).strip()
             if text:
                 blocks.append(text)
+    flush()
     return blocks
 
 
@@ -1153,6 +1179,29 @@ def yaml_quote(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
 
+# 行内图标判定阈值：语雀导出的 img 带精确 width 样式，≤100px 均为句内图标/小按钮
+#（已抽样核实：≤48px 为纯图标，49-100px 为字段类型/按钮小图；101-300px 为独立小截图）
+INLINE_IMG_MAX_W = 100
+_IMG_W_RE = re.compile(r"width:\s*(\d+)px")
+
+
+def inline_small_images(lake):
+    """预处理：小宽度 img 的 div.ant-image 块级容器 unwrap 成行内节点，
+    并给 img 打 data-inline 标，避免句子被拆碎、小图标被包 Frame 独立成行。"""
+    n = 0
+    for img in lake.find_all("img"):
+        m = _IMG_W_RE.search(img.get("style") or "")
+        if not m or int(m.group(1)) > INLINE_IMG_MAX_W:
+            continue
+        img["data-inline"] = m.group(1)
+        # 剥离 ant-image 块级容器（可能多层），让 img 回到文本流
+        node = img
+        while node.parent and node.parent.name == "div" and "ant-image" in (node.parent.get("class") or []):
+            node.parent.replace_with(node)
+        n += 1
+    return n
+
+
 def convert(entry):
     slug = entry["slug"]
     last = slug.split("/")[-1]
@@ -1171,6 +1220,7 @@ def convert(entry):
     if lake is None:
         warn(slug, "empty-page", "no lake-content")
     else:
+        inline_small_images(lake)
         headings = {}
         for h in lake.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
             hid = h.get("id")
