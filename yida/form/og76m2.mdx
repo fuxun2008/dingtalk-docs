@@ -1,0 +1,200 @@
+---
+title: "Data Source panel"
+description: "Learn how to create a Data Source across different editions, including variables, remote requests, and parameter Data Sources. This topic also covers Data format requirements for remote requests, auto-load options, load method selection, request conditions, and detailed usage of willFetch, fit, didFetch, onError, and other Functions."
+polished: true
+---
+
+| **Capability** | **Free plan** | **Basic edition** | **Professional edition** | **Dedicated edition** |
+|---|---|---|---|---|
+| External Data Source | Not supported | Not supported | Supported | Supported |
+
+## 1. Create a Data Source
+
+### 1.1 How to create a Data Source
+
+Click **Add** to start creating a new Data Source. Data Sources fall into three categories, and you can select one when creating. Once created, the Type cannot be changed.
+
+- Variable: a local variable.
+- Remote request: Data fetched from a Server-side API.
+- Parameter Data Source: The system passes this Data Source in by Default to retrieve the parameters in the current URL. For example, when the URL is `a.html?key1=value1&key2=value2`, the value of the parameter Data Source is:
+
+```javascript
+{
+  key1: 'value1',
+  key2: 'value2'
+}
+```
+
+### 1.2 Variable Data Source
+
+Variable Data Sources are typically used to store configuration items (such as the remote API prefix `apiUrlPrefix`), Page-level temporary variables, and similar Data. They support all JS Data types, including string, object, array, Number, and boolean.
+
+```javascript
+string: "string"
+Number: 123
+boolean: true / false
+object: {"name": "gaokai"}
+array: ["1", "2"]
+null: null
+```
+
+### 1.3 Remote request
+
+**API response Data format**
+
+Remote Data Sources have a few required constraints on the Data format:
+
+```javascript
+{
+    content: [], // The content Field carries the Data. The Data structure of content is not restricted.
+    success: true // success indicates whether the request succeeded.
+}
+```
+
+For detailed format constraints, see [**natty-fetch**](https://github.com/oner-team/oner-io/blob/natty-fetch/docs/rules.md).
+
+**Special note**:
+
+For Data returned in the format shown above 👆, the `content` and `success` layers are stripped in the request's response callback Functions (such as didFetch and the value ultimately stored in the Data pool).
+
+For Data returned by non-Standard APIs, add a fit layer so the Data Source can recognize the response. fit converts the raw response Content into a format that conforms to the Yida RPC response spec before didFetch (Data fetching) runs. For details, see the fit usage notes below 👇.
+
+If you use your own API service, watch out for cross-origin issues. You need to use JSONP or configure your API service to Allow [**cross-origin requests.**](https://www.baidu.com/s?wd=%E8%B7%A8%E5%9F%9F%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88&rsv_spt=1&rsv_iqid=0xb4bc961e002c4bf1&issp=1&f=3&rsv_bp=1&rsv_idx=2&ie=utf-8&rqlang=cn&tn=baiduhome_pg&rsv_enter=0&rsv_dl=ts_0&oq=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsv_btype=t&rsv_t=9447WFp%2FaXjCnHf21%2BpQbVggodBCHxIJ1kWR%2FKv8r%2FkP1SGPy8aAS62FCEEAtb9vrwrJ&rsv_pq=fbe7a51d001b0915&prefixsug=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsp=0) The API-service Configure approach is recommended. See [**Cross-Origin Resource Sharing**](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS). Note: All Yida Apps use HTTPS, so you must Configure the specified Domain: `Access-Control-Allow-Origin: https://www.yidaapps.com`.
+
+**HTTP method**
+
+Three HTTP methods are available for loading remote Data Sources:
+
+- GET
+- POST
+- JSONP. This method requires Server-side support.
+
+### 1.4 Auto-load
+
+Data Sources with auto-load enabled request remote APIs before the Page renders. The Page starts rendering only after all auto-loaded Data Sources finish loading. This is typically used for initial Page Data loading.
+
+**Note: Too many auto-load Data Sources prolong Page rendering time. Do not overuse this option.**
+
+### 1.5 Load method (turn On auto-load first)
+
+**Serial**: All serial Data Sources run from top to bottom. If dependencies exist, place the depended-on Data Source first.
+
+**Parallel**: All parallel Data Sources run simultaneously.
+
+If you do not want to enable auto-load (to avoid blocking Page rendering with requests) but still want serial loading, manually trigger Data Source loading in the "on Page load Complete" Function. Code example: trigger the first remote Data Source request, and after it returns, trigger the second remote Data Source request.
+
+### 1.6 Whether to request
+
+Accepts a boolean value that determines whether the request should be sent. This input Field also accepts variable expressions that decide whether to send the request.
+
+### 1.7 willFetch
+
+Pre-request handler Function. willFetch lets you modify various request parameters before Sending a request. Code example:
+
+```javascript
+function willFetch(vars, config) {
+    // vars.data lets you change the query parameter
+    // config.header lets you change the header
+    // config.url lets you change the url
+    vars.data.a = 1; // Change 'a' in the request parameter to 1
+    config.url = 'https://www.taobao.com'; // Change the request url to Taobao
+    config.header['Content-Type'] = 'application/json'; // Change the Content-Type
+    console.log(vars, config); // See what other parameters can be modified.
+}
+```
+
+### 1.8 fit
+
+Data adapter for the request response. fit lets you modify the raw response to match the required Data request format. Code example:
+
+```javascript
+function fit(response) {
+  const content = (response.content !== undefined) ? response.content : response;
+  const error = {
+    message: response.errorMsg ||
+      (response.errors && response.errors[0] && response.errors[0].msg) ||
+      response.content || 'Remote Data Source request failed, success is false',
+  };
+  let success = true;
+  if (response.success !== undefined) {
+    success = response.success;
+  } else if (response.hasError !== undefined) {
+    success = !response.hasError;
+  }
+  return {
+    content,
+    success,
+    error,
+  };
+}
+```
+
+### 1.9 didFetch
+
+Request completion callback Function. didFetch lets you modify the received Data. Unlike fit, it runs only when `success` returned by the API is `true`. Code example:
+
+```javascript
+function didFetch(content) {
+    content.b = 1; // Change the 'b' Field in the returned Data structure to 1
+    return content; // Important: content must be returned
+}
+```
+
+### 1.10 onError
+
+Request error handling Function. onError catches API errors from the remote Data Source. It runs when `success` returned by the API is `false`. Code example:
+
+```javascript
+function onError(error) {
+  console.log(error);
+}
+```
+
+### 1.11 Default Data
+
+Default Data is typically used for first-screen rendering. It provides an initial Default value before the remote Data Source request returns. Note: The Data format of Default Data matches the Data format returned at the didFetch layer, and can be bound and used directly.
+
+### 1.12 Connector Data Source (NEW)
+
+In a Connector Data Source, a Connector serves as the Data Source. This is designed to break through cross-origin and Authentication restrictions between systems and web Pages. For details, see [Use a Custom Connector to resolve cross-origin issues](https://www.yuque.com/yida/subject/vddims).
+
+## 2. Use a Data Source
+
+### 2.1 Bind within a Component
+
+In the Attribute Settings panel of Yida Components, you can bind a variable to an Attribute to create dynamic behavior. Follow these steps:
+
+- All Attributes that support variables display the icon shown below. Click the icon to Open the **Variable Binding panel**.
+
+- The **Variable Binding panel** supports binding the following types of variables. Click a variable to use it directly:
+
+For example: `state.urlParams.type === 'test' ? '1' : '2'`
+
+### 2.2 Developer Center hands-on Trial
+
+- **Click this Link to try it out.**
+
+## 3. FAQ
+
+### 3.1 No Data returned after the Data Source request
+
+Check the following:
+
+- Your API path and HTTP method are correct.
+- Default request is enabled, or manual invocation has taken effect.
+- The server hosting the API service does not enforce an access Allowlist restriction.
+- The input parameter format is correct.
+- Your API supports cross-origin access from `www.yidaapps.com`.
+- Your API uses HTTPS and the certificate is valid ("Secure").
+
+### 3.2 Troubleshooting approach
+
+1. Determine whether the Data Source loads manually or automatically. For manual loading, set a breakpoint at the Data Source loading code for Debug.
+2. Preview or access the Page.
+3. Open the browser console.
+4. Trigger Data Source loading.
+5. Check the corresponding request information in the console to troubleshoot.
+
+### 3.3 Error 307 when calling Yida platform APIs
+
+Check whether your Organization has enabled a second-level Domain. If so, change the API access address from `www.yidaapps.com/...` to the relative address `/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json` to avoid this Error.

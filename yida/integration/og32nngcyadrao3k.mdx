@@ -1,0 +1,154 @@
+---
+title: "Smart Form"
+description: "Learn how to build a template query feature in DingTalk Smart Form, including creating the query form, configuring the connector, and processing the returned data."
+polished: true
+---
+
+<Warning>
+Note:
+
+- Only templates created by the user can be retrieved.
+- The queried employee must exist in Smart Form.
+</Warning>
+
+## 1. Use case
+
+Smart Form is a basic app provided by DingTalk. It fits scenarios such as surveys and registration tracking, and supports data statistics and download. This example shows how submitting a form in Yida triggers a connector that queries the Smart Form templates created by a specific employee.
+
+## 2. Steps
+
+### 2.1 Step 1: Create the "Smart Form template query" form
+
+This form triggers the connector that runs the query.
+
+**Steps:**
+
+1. Create a form named "Smart Form template query".
+2. Add a member component, name it "Template creator", and set it as required. (See Figure 2.1-1.)
+
+Figure 2.1-1 Add and configure the member component
+
+3. Add a dropdown select component. Add two custom options: display value "General form" with option value "0", and display value "Education form" with option value "1". Set it as required. (See Figure 2.1-2.)
+
+Figure 2.1-2 Add and configure the dropdown select component
+
+4. Click Save in the upper-right corner.
+
+### 2.2 Step 2: Create the "Query result record table" form
+
+This form receives the results returned by the connector and displays them after processing.
+
+**Steps:**
+
+1. Create a form named "Query result record table".
+2. Add a multi-line text component, name it "Returned result", and set its status to Hidden. (See Figure 2.2-1.)
+
+Figure 2.2-1 Add and configure the multi-line text component
+
+3. Add a subform, name it "Query result record", and add 10 single-line text components inside the subform, named "Form code", "Form name", "Form tips", "Form type", "Form cycle", "Form deadline", "Created time", "Form category", "Form terminated", and "Form creator". Set the status of each text component to Read-only. (See Figure 2.2-2.)
+
+Figure 2.2-2 Add and configure the subform component
+
+4. Click Save in the upper-right corner.
+
+### 2.3 Step 3: Create and configure the connector
+
+<Note>
+For an overview of connector capabilities, see [Integration & Automation - Connector](https://docs.aliwork.com/docs/yida_support/zevvr1).
+</Note>
+
+**Steps:**
+
+1. On the admin console, select the "Smart Form template query" form, click Integration & Automation, and then click Create Integration & Automation. (See Figure 2.3-1.)
+
+Figure 2.3-1 Connector configuration entry
+
+2. Name the connector "Get Smart Form templates created by an employee", select Form event trigger, and click Confirm.
+
+(See Figure 2.3-2.)
+
+Figure 2.3-2 Create the connector
+
+3. Configure the form event trigger: set the trigger event to Created successfully, set the data filter to All data, and click Save.
+
+(See Figure 2.3-3.)
+
+Figure 2.3-3 Configure the form trigger event
+
+4. Select the connector app: choose the Smart Form app, and click Next. (See Figure 2.3-4.)
+
+Figure 2.3-4 Select the connector app
+
+5. Select the connector action: choose Get user form templates, and click Next. (See Figure 2.3-5.)
+
+Figure 2.3-5 Select the connector action
+
+6. Configure the connector action and click Save. (See Figure 2.3-6.)
+
+Figure 2.3-6 Configure the connector action
+
+7. Add a Create data node below the connector node. (See Figure 2.3-7.)
+
+Figure 2.3-7 Add the Create data node
+
+8. Configure the Create data node and click Save. (See Figure 2.3-8.)
+
+Figure 2.3-8 Configure the Create data node
+
+9. Click Save in the upper-right corner, and then click Publish.
+
+### 2.4 Step 4: Configure the "Query result record table"
+
+The previous steps set up the connector call and allow its returned data to be received. Next, process the returned data and display the processed values in the components inside the "Query result record" subform.
+
+**Steps:**
+
+On the form editing page, copy the following code into the `didMount` function in the JS Action Panel on the left side of the page.
+
+(See Figure 2.4-1.)
+
+Figure 2.4-1 JS Action Panel entry and the didMount function
+
+<Note>
+You can paste the code below directly into the JS panel. Note: you must replace the component unique identifiers.
+</Note>
+
+```javascript
+// Get the data passed by the connector into the multi-line text component.
+// textareaField_kwcv17cj is the unique code of the "Returned result" multi-line text component on the page.
+let obj = this.$('textareaField_kwcv17cj').getValue();
+// The value of obj is a string. JSON.parse() converts obj into an object.
+  let res = JSON.parse(obj);
+// Create an empty array "arr" to store the processed data.
+  let arr = []
+// Iterate over the res variable.
+  const data = res.map(item=>{
+    let object = {};
+// Replace the code between "object." and "=" in lines 12–21 with the unique identifier of each component inside the subform.
+    object.textField_kwcvykby = item.name;
+    object.textField_kwcvykbz = item.memo;
+    object.textField_kwcvykbx = item.form_code;
+    object.textField_kwcvykc0 = item.setting.form_type === 0 ? "One-time form" : "Recurring form";
+    object.textField_kwcvykc3 = item.setting.form_type === 0 ? "Non-recurring form" : item.setting.loop_days;
+    object.textField_kwcvykc5 = item.setting.end_time ? item.setting.end_time : "No deadline set";
+    object.textField_kwcvykcb = item.setting.create_time;
+    object.textField_kwcvykcc = item.setting.biz_type === 0 ? "General form" : "Education form";
+    object.textField_kwcvykcd = item.setting.stop === false ? "Not terminated" : "Terminated";
+    object.textField_kwcvykce = item.creator;
+// Add the processed object to the arr array. Each object represents one subform record.
+    arr.push(object);
+  })
+// Assign the arr array data to the subform component.
+// Replace tableField_kwd6plxz with the unique identifier of the subform in your form.
+  this.$("tableField_kwd6plxz").setValue(arr);
+```
+
+### 2.5 Step 5: Submit the form data
+
+Fill in and submit the "Smart Form template query" form to trigger the connector. Then open the data management page of the "Query result record table" form to view the data returned by the connector. (See Figure 2.5-1.)
+
+Figure 2.5-1 Submit the form data
+
+## 3. Result
+
+Figure 3.1 Query result

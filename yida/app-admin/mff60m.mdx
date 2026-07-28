@@ -1,0 +1,115 @@
+---
+title: "Regular form"
+description: "Regular forms collect data during business operations and suit scenarios such as surveys and online registration. They have no approval process. Basic attributes include PC display settings, form validation, and events. Premium attributes cover Submit button customization, pre- and post-submit logic, and Data Source control."
+polished: true
+---
+
+Regular forms collect all data generated during business operations, and can also be published to external users to gather external data. Use the collected data as needed.
+
+Regular forms have no approval process. Use them for scenarios such as surveys, online registration, sales reporting, meeting booking, procurement inbound records, order entry, and QR code check-in.
+
+## Basic attribute settings
+
+- PC display settings: The column count controls whether components on the form display in 1 or 2 columns.
+
+- Form validation: Includes Formula validation, Service validation, and Custom code service validation. For details, see Form validation.
+
+- Form events: For details, see Form business rules.
+
+## Premium attribute settings
+
+### Submit button
+
+Modify the display text of the Submit button. Internationalization and variable binding are supported.
+
+### Before form submit
+
+By default, once form data passes validation and the Settings are complete, the data is submitted to the Yida backend API and saved.
+
+The Before form submit option lets you block the default submit behavior. Return `false` inside the action to stop submission and customize subsequent behavior.
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // Note: Modifying submitted data here is not supported.
+
+  console.log('beforeSubmit', formDataMap);
+
+  // Return false to block submission when needed. Promise is supported.
+  // return false;
+}
+```
+
+You can also return a `Promise` to run asynchronous checks:
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // Note: Modifying submitted data here is not supported.
+  return new Promise((resolve) => {
+  	// For example, request a data source
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // Block submission by returning false
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+Tips: If a `Promise` is returned, the button remains in the loading state until the `Promise` resolves.
+
+<Note>
+Modifying submitted data here is not supported.
+</Note>
+
+### After form submit
+
+By default, a Yida form redirects after submission. The redirect target may be the success prompt page (PC), the details page (mobile), or a page specified by the user ([Form settings](https://docs.aliwork.com/docs/yida_support/yida_qalist/uop0b0ndpgc0gevb/ovg9ul)).
+
+The After form submit option lets you block the default redirect behavior. Return `false` inside the action to stop the redirect and customize subsequent behavior.
+
+```javascript
+export function afterSubmit({ submitResult }){
+  console.log('afterSubmit', submitResult);
+
+  // Return false to block subsequent actions when needed. Promise is supported.
+  // return false;
+}
+```
+
+You can also return a `Promise` to run asynchronous checks:
+
+```javascript
+export function afterSubmit({ submitResult }){
+  return new Promise((resolve) => {
+  	// For example, request a data source
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // Block subsequent actions by returning false
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+Tips: If a `Promise` is returned, the button remains in the loading state until the `Promise` resolves.
+
+### Form Data Source
+
+The Form Data Source provides a unified way to control form values. It currently serves two purposes:
+
+- Provide initial values, that is, the default value of each field on the form.
+- When the Form Data Source changes, the corresponding form field values update accordingly.
+
+For example, specify a field value in the Form Data Source (copy and use directly):
+
+```json
+{
+  "textField_km1nnpxu": "Sample single-line text value"
+}
+```

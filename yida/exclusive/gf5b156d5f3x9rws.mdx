@@ -1,0 +1,224 @@
+---
+title: "Local OpenAPI access in cluster mode"
+description: "Learn how to call Yida OpenAPI in a dedicated cluster environment, including how to obtain the domain and AK/SK, use access_token for API calls, understand the main differences between the DingTalk Open Platform and cluster-edition OpenAPI, and configure the SDK."
+polished: true
+---
+
+App data in a dedicated cluster environment is stored in a private environment and cannot access the public network. As a result, the Yida OpenAPI on the DingTalk Open Platform cannot retrieve this data. You must call the OpenAPI from within the cluster environment. The cluster-environment OpenAPI is essentially the same as on the DingTalk Open Platform, differing only in the host and the required AK/SK.
+
+This article explains how to call the Yida OpenAPI in a dedicated cluster environment.
+
+<Note>
+Note:
+
+Yida Dedicated currently exposes its high-frequency data service APIs. Based on the Yida API capabilities available on the DingTalk Open Platform as of December 31, 2023, a total of 52 OpenAPIs are available.
+</Note>
+
+## Call flow
+
+Calling Yida APIs in a cluster environment is similar to calling them on the DingTalk Open Platform. All related OpenAPIs on the DingTalk Open Platform are called via api.dingtalk.com. For cluster-edition OpenAPI, simply replace api.dingtalk.com with your organization's cluster-edition Yida domain.
+
+1. Obtain the domain of your organization's Yida dedicated cluster, for example, ddyd.corp.com.
+2. Obtain the AK and SK for your organization's cluster edition.
+
+<Note>
+Contact your organization's DingTalk admin. Sign in to the [DingTalk Open Platform](https://open-dev.dingtalk.com/), search for "Yida Dedicated Cluster" under internal apps, and get the relevant information from the app named **Yida Dedicated Cluster Authentication App**.
+</Note>
+
+<Steps>
+  <Step title="Step 1">
+    Use the AK/SK obtained in the previous step to call the /v1.0/oauth2/accessToken endpoint and obtain the app's access_token. For request parameters, refer to Obtain the access_token for an internal app.
+
+    <Warning>
+    On the Open Platform, the call is https://api.dingtalk.com/v1.0/oauth2/accessToken.
+
+    Assuming your organization's Yida domain is https://your-org-private-yida-domain.com, the cluster-edition call is:
+
+    https://your-org-private-yida-domain.com/v1.0/oauth2/accessToken
+
+    The access_token is valid for 2 hours by default.
+    </Warning>
+  </Step>
+  <Step title="Call Yida APIs with the access_token">
+  </Step>
+</Steps>
+
+The DingTalk Open Platform provides SDKs in Java, PHP, Python, and .NET for developers. Cluster-edition OpenAPI supports similar calls.
+
+<Note>
+Internal apps and third-party enterprise apps share the same Server-side SDK. Click either of the links below to download it.
+
+- Internal app: Download the Server-side SDK.
+- Third-party enterprise app: Download the Server-side SDK.
+</Note>
+
+5. If you use the DingTalk Open Platform SDK, apply the following changes:
+
+Change 1: If the domain uses http, set config.protocol = "http".
+
+Change 2: Explicitly set client._endpoint to your organization's actual Yida domain.
+
+```java
+private static com.aliyun.dingtalkyida_2_0.Client createOpenApiClient() {
+        Config config = new Config();
+        config.regionId = "central";
+        config.protocol = "http";
+        config.connectTimeout = 60 * 1000;
+        config.readTimeout = 60 * 1000;
+        try {
+            com.aliyun.dingtalkyida_2_0.Client client = new com.aliyun.dingtalkyida_2_0.Client(config);
+          client._endpoint =  "your-org-private-yida-domain.com";
+            return client;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+```
+
+## Cluster API list
+
+Yida provides a rich set of open API capabilities, enabling developers to integrate Yida with enterprise business systems. Currently, APIs are primarily open for forms, workflows, and apps.
+
+<table>
+  <tr>
+    <td>Module</td>
+    <td>Standard Server API</td>
+    <td>Description</td>
+  </tr>
+  <tr>
+    <td rowSpan={7}>Workflow</td>
+    <td>[Start a Yida approval process](https://open.dingtalk.com/document/orgapp/initiate-the-approval-process#)</td>
+    <td>Start a Yida approval process on the DingTalk Open Platform.</td>
+  </tr>
+  <tr>
+    <td>[Delete a workflow instance](https://open.dingtalk.com/document/orgapp/delete-process-instance#)</td>
+    <td>Delete a workflow instance.</td>
+  </tr>
+  <tr>
+    <td>[Terminate a workflow instance](https://open.dingtalk.com/document/orgapp/terminate-a-process-instance#)</td>
+    <td>Terminate a workflow instance.</td>
+  </tr>
+  <tr>
+    <td>[Get a list of instance IDs](https://open.dingtalk.com/document/orgapp/obtains-a-list-of-instance-ids#)</td>
+    <td>Get a list of instance IDs.</td>
+  </tr>
+  <tr>
+    <td>[Get multiple workflow instances in bulk](https://open.dingtalk.com/document/orgapp/queries-multiple-process-instances#)</td>
+    <td>Get details of multiple workflow instances by their IDs in bulk.</td>
+  </tr>
+  <tr>
+    <td>[Get a workflow instance](https://open.dingtalk.com/document/orgapp/obtain-process-instance#)</td>
+    <td>Get workflow instance information from Yida.</td>
+  </tr>
+  <tr>
+    <td>[Get a workflow instance by ID](https://open.dingtalk.com/document/orgapp/queries-a-process-instance-based-on-its-id#)</td>
+    <td>Get the details of a workflow instance by its ID.</td>
+  </tr>
+  <tr>
+    <td rowSpan={20}>Form</td>
+    <td>[Get the form list of a specified app](https://open.dingtalk.com/document/orgapp/depending-on-the-application-id-to-get-the-form-list#)</td>
+    <td>Get the form list of an app with pagination.</td>
+  </tr>
+  <tr>
+    <td>[Get component information in a form](https://open.dingtalk.com/document/orgapp/get-form-field-information-based-on-form-uuid#)</td>
+    <td>Get component information in a form or workflow form by form ID.</td>
+  </tr>
+  <tr>
+    <td>[Query form instance data](https://open.dingtalk.com/document/orgapp/querying-form-instance-data#)</td>
+    <td>Query form instance data.</td>
+  </tr>
+  <tr>
+    <td>[Save form data](https://open.dingtalk.com/document/orgapp/save-form-data#)</td>
+    <td>Create a Yida form instance without an approval process.</td>
+  </tr>
+  <tr>
+    <td>[Update form data](https://open.dingtalk.com/document/orgapp/update-form-data#)</td>
+    <td>Update form data.</td>
+  </tr>
+  <tr>
+    <td>[Query form data](https://open.dingtalk.com/document/orgapp/query-form-data#)</td>
+    <td>Query form data by form instance ID.</td>
+  </tr>
+  <tr>
+    <td>[Get the value of an employee component](https://open.dingtalk.com/document/orgapp/gets-the-value-of-the-employee-component#)</td>
+    <td>Get the value of an employee component.</td>
+  </tr>
+  <tr>
+    <td>[Get the list of form component definitions](https://open.dingtalk.com/document/orgapp/get-a-list-of-form-component-definitions#)</td>
+    <td>Get the list of form component definitions.</td>
+  </tr>
+  <tr>
+    <td>[Get subform component data](https://open.dingtalk.com/document/orgapp/obtain-child-table-component-data#)</td>
+    <td>Get subform component data by form instance ID and subform component ID.</td>
+  </tr>
+  <tr>
+    <td>[Delete form data](https://open.dingtalk.com/document/orgapp/delete-form-data#)</td>
+    <td>Delete form data.</td>
+  </tr>
+  <tr>
+    <td>[Get multiple form instance IDs](https://open.dingtalk.com/document/orgapp/obtain-the-ids-of-multiple-form-instances#)</td>
+    <td>Get multiple form instance IDs.</td>
+  </tr>
+  <tr>
+    <td>[Get multiple form instances in bulk](https://open.dingtalk.com/document/orgapp/obtain-multiple-form-instance-data#)</td>
+    <td>Get details of multiple form instances in bulk.</td>
+  </tr>
+  <tr>
+    <td>[Delete multiple form instances in bulk](https://open.dingtalk.com/document/orgapp/delete-multiple-form-instances#)</td>
+    <td>Delete multiple form instance records in bulk.</td>
+  </tr>
+  <tr>
+    <td>[Create multiple form instances in bulk](https://open.dingtalk.com/document/orgapp/create-multiple-form-instances#)</td>
+    <td>Create multiple form instance records in bulk.</td>
+  </tr>
+  <tr>
+    <td>[Update component values in form instances in bulk](https://open.dingtalk.com/document/orgapp/batch-update-of-component-values-in-form-instances#)</td>
+    <td>Update component values in Yida form instances in bulk by form instance ID.</td>
+  </tr>
+  <tr>
+    <td>[Create or update a form instance](https://open.dingtalk.com/document/orgapp/add-or-update-form-instances#)</td>
+    <td>Create or update a form instance using filters.</td>
+  </tr>
+  <tr>
+    <td>[Query form instance data with advanced query conditions (including subform component data)](https://open.dingtalk.com/document/orgapp/query-form-instances-using-advanced-search-conditions#)</td>
+    <td>Get form instance details using filters.</td>
+  </tr>
+  <tr>
+    <td>[Query form instance data with advanced query conditions (excluding subform component data)](https://open.dingtalk.com/document/orgapp/obtain-form-instance-data-using-advanced-query-conditions-excluding-subform#)</td>
+    <td>Get form instance details using filters, excluding subform component data.</td>
+  </tr>
+  <tr>
+    <td>[Update form instances in bulk with form instance data](https://open.dingtalk.com/document/orgapp/update-multiple-form-instances-with-the-form-instance-data#)</td>
+    <td>Update form instance information in bulk using Yida form component data.</td>
+  </tr>
+  <tr>
+    <td>[Query form change records](https://open.dingtalk.com/document/orgapp/change-records-of-query-forms#)</td>
+    <td>Query form change records.</td>
+  </tr>
+  <tr>
+    <td rowSpan={5}>Approval task</td>
+    <td>[Get approval records](https://open.dingtalk.com/document/orgapp/queries-an-approval-record#)</td>
+    <td>Get approval records.</td>
+  </tr>
+  <tr>
+    <td>[Accept or decline a Yida approval task](https://open.dingtalk.com/document/orgapp/execute-approval-tasks#)</td>
+    <td>Accept or decline a Yida approval task.</td>
+  </tr>
+  <tr>
+    <td>[Transfer a task](https://open.dingtalk.com/document/orgapp/transfer-tasks#)</td>
+    <td>Transfer a task.</td>
+  </tr>
+  <tr>
+    <td>[Submit a comment](https://open.dingtalk.com/document/orgapp/submit-comment#)</td>
+    <td>Submit a comment on a form or workflow instance.</td>
+  </tr>
+  <tr>
+    <td>[Query comments on Yida form instances in bulk](https://open.dingtalk.com/document/orgapp/batch-query-of-comments-appropriate-for-form-instances#)</td>
+    <td>Query all comments on Yida forms in bulk.</td>
+  </tr>
+  <tr>
+    <td>App</td>
+    <td>[Query the Yida app list](https://open.dingtalk.com/document/orgapp/query-the-application-list#)</td>
+    <td>Query the list of Yida apps in your organization.</td>
+  </tr>
+</table>

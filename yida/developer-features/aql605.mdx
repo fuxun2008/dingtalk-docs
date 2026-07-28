@@ -1,0 +1,1335 @@
+---
+title: "Yida Platform APIs"
+description: "Learn how to use the Yida platform to start workflow instances, including usage notes, HTTP URL concatenation rules, and detailed parameter configuration steps."
+polished: true
+---
+
+| **Capability** | **Free plan** | **Basic edition** | **Professional edition** | **Dedicated edition** |
+|---|---|---|---|---|
+| Yida page Data Source | Not supported | Not supported | Supported | Supported |
+
+## 1. Usage notes
+
+### 1.1 HTTP URL concatenation rules
+
+App-level APIs are currently supported. Within an App (cross-App calls are also supported), you can access the corresponding API using the following format:
+
+```text
+${Yida Domain}/dingtalk/web/${App code} + API path.
+```
+
+For example, to call the "workflow instance – Start workflow" service API from the browser for the App with code APP_X1X2X3X4, the request URL used in the data panel is (**a relative path is sufficient**):
+
+```text
+/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json
+```
+
+For a detailed hands-on demo, see [II. workflow instance] → [1. Start workflow].
+
+**Note: In the current version, the searchFieldJson and dynamicOrder fields require a string value. For example:**
+
+```javascript
+const someJson = {
+	"textField_kkm9o5cd":"123"
+}
+
+// Passing someJson directly to searchFieldJson has no effect. Use JSON.stringify to convert the object to a string.
+const fieldJson = JSON.stringify(someJson); // '{"textField_kkm9o5cd":"123"}'
+```
+
+## 2. workflow instance
+
+### 2.1 Start workflow
+
+- API: /v1/process/startInstance.json
+- HTTP method: POST
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processCode | workflow code | Yes | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 | Available in the standalone start page URL |
+| formUuid | Form ID | Yes | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | Available in the standalone start page URL |
+| formDataJson | Form data | Yes | <br /> | Type: String<br />Reference: Appendix 1 – Save/Update Form data format |
+| deptId | Department ID of the submitter | No | 18295 | If omitted, defaults to the submitter's primary department |
+
+- Return value:
+
+- Return value
+
+```json
+{
+  "result": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+  "success": true
+}
+```
+
+**Scenario walkthrough:**
+
+①. Build a simple workflow Page, click a Component whose value you want to fill in with a Custom value, and copy its unique identifier. In this example, the unique identifier of the Single-line text Text Box is `textField_kkm9o5cd`.
+
+②. Create a Premium display Page, drag a Button onto the Page, and Add a Data Source.
+
+Enter an easy-to-understand Name that is unique on this Page, and enter the request URL based on your business needs. In this example, we want clicking the Button to start a workflow, so the request URL is: /alibaba/web/APP_D45S78OXJSL51QTQVHT8/v1/process/startInstance.json, where APP_D45S78OXJSL51QTQVHT8 is the unique App identifier — replace it with the unique identifier of your own App. Make sure to select POST as the HTTP method.
+
+③. Add an onClick event to the Button and click the \<> icon to bind the remote Data Source to the Button:
+
+Reference: [https://developers.aliwork.com/docs/api/about](/zh/open/yida/api/about)
+
+Write the binding code below. Note that we are entering a fixed value `123` for the Single-line text Form control (unique identifier: `textField_kkm9o5cd`).
+
+You can find the formUuid and processCode parameters under [App Settings] – [App Data] – [XX workflow] as the Form ID and workflow Code.
+
+```javascript
+export function onClick(){
+  const params = {
+    "processCode":"TPROC--CFYJ5HYUN89NJ1JW3IXBI7A95RXM3652O9MKK3",
+    "formUuid": "FORM-CFYJ5HYUN89NJ1JW3IXBI7A95RXM3552O9MKK2",
+    "formDataJson": '{"textField_kkm9o5cd":"123"}'
+  }
+
+  this.dataSourceMap.myDatasource.load(params).then((response) => {
+    this.utils.dialog({
+      method: 'alert', // or confirm
+      title: 'Request succeeded',
+      type: 'success', // On PC, info/success/error are supported
+      content: `Response: ${response}`,
+    })
+  })
+  console.log('onClick');
+}
+```
+
+④. After you finish the code, click the Save Button in the top-right corner of the Page.
+
+⑤. Go to the runtime Page to test starting the workflow. Click the Button, and in the browser's built-in Debug tool under Network you will see that the startInstance request succeeded. The response `da5ed25c-977b-40e0-acff-4a1c07aa6f41` is the workflow instance ID, which uniquely identifies this workflow instance.
+
+⑥. Next, open the data management page of the corresponding workflow. You will find the workflow you just started, and the Content of the Single-line text is exactly the fixed value `123` that we entered in the code. Testing and verification are now Complete.
+
+- Video walkthrough
+
+### 2.2 Search workflow instance IDs by conditions
+
+- API: /v1/process/getInstanceIds.json
+- HTTP method: GET
+- Permissions: the workflow must have instance View Permission configured (Admins are exempt)
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Query by in-Form Component values | No | <br /> | Type: String<br />See Appendix 2: Condition Search by Component value – Component value format |
+| taskId | Task ID | No | 2199132092 | Rarely needed. |
+| instanceStatus | Instance status | No | RUNNING | Enum values: RUNNING, TERMINATED, COMPLETED, ERROR.<br />Meaning: Running, Terminated, Completed, error, respectively. |
+| approvedResult | workflow Approval result | No | agree | Enum values: agree, disagree.<br />Meaning: Accept, Decline, respectively. |
+| currentPage | Current page | No | 1 | Must be greater than 0<br />Default: 1 |
+| pageSize | Records per page | No | 10 | Must be greater than 0<br />Default: 10<br />Cannot exceed 100 |
+| originatorId | Query by the Employee ID of the workflow submitter | No | <br /> | <br /> |
+| createFrom | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format<br />yyyy-MM-DD |
+| createTo | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format.<br />Combined with createFrom, this queries<br />Data created between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st). |
+| modifiedFrom | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format |
+| modifiedTo | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format. Combined with modifiedFrom, this queries Data modified between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st). |
+
+- Return value
+
+```json
+{
+  "result": {
+    "data": [
+      "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "bc0950a3-fe1b-459c-b6ba-282be38523ab",
+      "f540cbd7-43eb-40de-b915-6716578a2802"
+    ],
+    "totalCount": 3,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### 2.3 Get instance details List by search conditions
+
+- API: /v1/process/getInstances.json
+- HTTP method: GET
+- Permissions: the workflow must have instance View Permission configured (Admins are exempt)
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Query by in-Form Component values | No | <br /> | Type: String<br />See Appendix 2: Condition Search by Component value – Component value format |
+| taskId | Task ID | No | 2199132092 | Rarely needed. |
+| instanceStatus | Instance status | No | RUNNING | Enum values: RUNNING, TERMINATED, COMPLETED, ERROR.<br />Meaning: Running, Terminated, Completed, error, respectively. |
+| approvedResult | workflow Approval result | No | agree | Enum values: agree, disagree.<br />Meaning: Accept, Decline, respectively. |
+| currentPage | Current page | No | 1 | Must be greater than 0<br />Default: 1 |
+| pageSize | Records per page | No | 10 | Must be greater than 0<br />Default: 10<br />Cannot exceed 100 |
+| originatorId | Query by the Employee ID of the workflow submitter | No | <br /> | <br /> |
+| createFrom | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format |
+| createTo | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format.<br />Combined with createFrom, this queries<br />Data created between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st).<br />Data is fetched by appending 00:00:00 to the yyyy-MM-DD value |
+| modifiedFrom | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format |
+| modifiedTo | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format. Combined with modifiedFrom, this queries Data modified between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st). |
+
+- Return value
+
+### 2.4 Get workflow instance details by instance ID
+
+- API: /v1/process/getInstanceById.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processInstanceId | workflow instance ID | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Return value
+
+### 2.5 Delete workflow instance
+
+- API: /v1/process/deleteInstance.json
+- HTTP method: POST
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processInstanceId | workflow instance ID | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Return value
+
+### 2.6 Terminate workflow instance
+
+- API: /v1/process/terminateInstance.json
+- HTTP method: POST
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processInstanceId | workflow instance ID | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Return value
+
+#### 2.7 Batch get workflow instance details by instance IDs [not yet Open]
+
+- API: /v1/process/getInstancesByIds.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processInstanceIds | List of workflow instance IDs, comma-separated | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530,d230233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Return value
+
+### 2.7 Execute single task API
+
+- API: /v1/task/executeTask.json
+- HTTP method: POST
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| taskId | Task ID | Yes | 12002575 | <br /> |
+| procInstId | Instance ID | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+| outResult | Approval result | Yes | AGREE | AGREE (Accept), DISAGREE (Decline) |
+| remark | Approval comment | Yes | Confirmed and accepted | <br /> |
+| formDataJson | Updated Form values | No | <br /> | Reference: Appendix 1 – Save/Update Form data format.<br />Components present in the parameters are updated; those not present remain unchanged.<br />Detail values can only be updated as a whole; you cannot update a single Component's value within a subform |
+| noExecuteExpressions | Whether to skip validation and Association actions | No | y | When this task node has validation rules or Association actions bound,<br />y -> do not execute validation rules and Association actions<br />n -> execute validation rules and Association actions<br />Defaults to n if omitted; that is, validation rules and Association actions will be executed |
+
+- Return value
+
+### 2.8 Get Approval records
+
+- API: /v1/process/getOperationRecords.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processInstanceId | workflow instance ID | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Return value
+
+- Return format
+
+```json
+{
+  "success": true,
+  "content": [
+    {
+      "operateTime": "2018-06-22 14:35:40",
+      "remark": "",
+      "taskHoldTime": 0,
+      "type": "HISTORY",
+      "operatorName": "Yida user",
+      "operator": "yida",
+      "activityId": "sid-restartevent",
+      "action": "Submit application",
+      "actionExt": "submit",
+      "id": 2846866118,
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "Submit application",
+      "operateType": "NEW_PROCESS",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Yida user",
+      "taskId": "null"
+    },
+    {
+      "taskHoldTime": 531398377,
+      "type": "TODO",
+      "operatorName": "Yida user",
+      "operator": "yida",
+      "activityId": "sidJIOB2P2J1JW3RPMDOS28",
+      "taskType": "COMMON_ALL_AT_ONCE",
+      "actionExt": "doing",
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "Assignee",
+      "activeTime": "2018-06-22 14:35:41",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Yida user",
+      "taskId": "2846866145"
+    }
+  ]
+}
+```
+
+### 2.9 Update workflow instance
+
+- API: /v1/process/updateInstance.json
+- HTTP method: POST
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processInstanceId | Instance ID | Yes | <br /> | <br /> |
+| updateFormDataJson | Updated Form data | Yes | <br /> | Reference: Appendix 1 – Save/Update Form data format |
+
+- Return value:
+
+- Return value demo
+
+```json
+{
+  "success":true
+}
+```
+
+#### 2.8 Get the Button List for a workflow design node [not yet Open]
+
+- API: /v1/process/getActivityButtonVOs.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| processCode | workflow code | Yes | TPROC--X1G\*\*\*42ZMGA31OYELIWJ1 | <br /> |
+| activityId | Node ID | Yes | <br /> | <br /> |
+
+- Return value:
+
+- Return value demo:
+
+```json
+{
+  "result": [
+    {
+      "aliasEn": "Forward",
+      "alias": "Forward",
+    },
+    {
+      "aliasEn": "Append",
+      "alias": "sign request",
+    },
+    {
+      "aliasEn": "Return",
+      "alias": "Return",
+    }
+  ],
+  "success": true,
+  "errorCode": null,
+  "content": null,
+  "errorMsg": null
+}
+```
+
+## 3. form instance
+
+### 3.1 Create form instance
+
+- API: /v1/form/saveFormData.json
+- HTTP method: POST
+- Parameters:
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB | <br /> |
+| appType | App ID | Yes | APP_DR4OK27ZKL5N22B907E8 | <br /> |
+| formDataJson | Form data | Yes | \{"textField_jcpm6agt": "single-line","employeeField_jcos0sar": ["workno"]} | Type: String<br />Reference: [Appendix 1 – Save/Update Form data format](/yida/developer-features/aql605) |
+
+- Return value:
+
+- Return value demo:
+
+```json
+{
+  "result":"FINST-EF6Y93URN2UZ1SBPLIP9NAV6HR2GEO1Z4ZCHSCJ0",
+  "success":true
+}
+```
+
+### 3.2 Update specified Component values in a Form
+
+- API: /v1/form/updateFormData.json
+- HTTP method: POST
+- Parameters:
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formInstId | Form data ID to Update | Yes | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+| updateFormDataJson | Form Component values to Update; Required | Yes | \{"employeeField_jcpm5gy2":<br />["xxxxx","yyyyy"]}<br />(shown here with a member component) | Type: String<br />Reference: [Appendix 1 – Save/Update Form data format.](/yida/developer-features/aql605) Components present in the parameters are updated; those not present remain unchanged. Detail values can only be updated as a whole; you cannot update a single Component's value within a subform |
+| useLatestVersion | Use the latest Form Version for the Update | No | y | **Important**<br />Default is n; y is recommended. |
+
+- Return value:
+
+- Return value demo
+
+```json
+{
+  "success":true
+}
+```
+
+### 3.3 Delete form instance
+
+- API: /v1/form/deleteFormData.json
+- HTTP method: POST
+- Parameters:
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formInstId | Form data ID to Delete | Yes | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+
+- Return value:
+
+- Return value demo
+
+```json
+{
+  "success":true
+}
+```
+
+---
+
+### 3.4 Query form instance details by form instance ID
+
+- API: /v1/form/getFormDataById.json
+- HTTP method: GET
+- Parameters:
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formInstId | Instance ID of the instance to query | Yes | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+
+- Return value
+
+---
+
+### 3.5 Search form instance ID list by conditions
+
+- API: /v1/form/searchFormDataIds.json
+- HTTP method: GET
+- Permissions: this API is subject to Page-level Permissions (Admins are exempt).
+- Parameters:
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Query by in-Form Component values | No | <br /> | Type: String<br />See Appendix 2: Condition Search by Component value – Component value format |
+| currentPage | Current page | No | 1 | Must be greater than 0<br />Default: 1 |
+| pageSize | Records per page | No | 10 | Must be greater than 0<br />Default: 10<br />Cannot exceed 100 |
+| originatorId | Query by the Employee ID of the data Submitter | No | <br /> | <br /> |
+| createFrom | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format |
+| createTo | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format.<br />Combined with createFrom, this queries<br />Data created between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st).<br />Data is fetched by appending 00:00:00 to the yyyy-MM-DD value |
+| modifiedFrom | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format |
+| modifiedTo | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format. Combined with modifiedFrom, this queries Data modified between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st). |
+| dynamicOrder | Sort | No | column: '+' | Ascending +, descending - |
+
+- Return value
+
+- Return value demo:
+
+```json
+{
+  "result":{
+    "data":[
+      "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0"
+    ],
+	  "totalCount":1,
+    "currentPage":1
+  },
+  "success":true
+}
+```
+
+### 3.6 Search form instance details List by conditions
+
+- API: /v1/form/searchFormDatas.json
+- HTTP method: GET
+- Permissions: this API is subject to Page-level Permissions (Admins are exempt).
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Query by in-Form Component values | No | <br /> | Type: String<br />See Appendix 2: Condition Search by Component value – Component value format |
+| currentPage | Current page | No | 1 | Must be greater than 0; default 1 |
+| pageSize | Records per page | No | 10 | Must be greater than 0<br />Default: 10<br />Cannot exceed 100 |
+| originatorId | Query by the Employee ID of the data Submitter | No | <br /> | <br /> |
+| createFrom | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format<br />(or precise to the second<br />yyyy-MM-DD HH:mm:ss) |
+| createTo | createFrom and createTo together form a time range. Query the Data List created within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format (or precise to the second<br />yyyy-MM-DD HH:mm:ss)<br />Combined with createFrom, this queries<br />Data created between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st). |
+| modifiedFrom | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-01-01 | string, in yyyy-MM-DD format (or precise to the second<br />yyyy-MM-DD HH:mm:ss) |
+| modifiedTo | modifiedFrom and modifiedTo together form a time range. Query the Data List modified within this range. | No | 2018-02-01 | string, in yyyy-MM-DD format (or precise to the second<br />yyyy-MM-DD HH:mm:ss). Combined with modifiedFrom, this queries Data modified between 2018-01-01 and 2018-01-31 (inclusive of the 1st and 31st). |
+| dynamicOrder | Specify the Sort Field | No | \{"numberField_1ac":"+"} | Sort by the Field numberField_1ac in ascending order |
+
+- Return value
+
+### 3.7 Get Form definition
+
+- API: /v1/form/getFormComponentDefinationList.json
+- HTTP method: GET
+- Parameters:
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB | <br /> |
+| version | Form Version | No | 1 | Accepts the `version` field from formData.<br />If empty, returns the latest Version definition |
+
+- Return value:
+
+- Return format
+
+```json
+{
+    "success":true,
+    "content":[
+        {
+            "label":"{"en_US":"CheckBox Field","zh_CN":"Multiselect","type":"i18n"}",
+            "key":"checkboxField_jiwvhkdi"
+        },
+        {
+            "label":"{"en_US":"Textarea Field","zh_CN":"Multi-line Text Box","type":"i18n"}",
+            "key":"textareaField_jiwvhkdh"
+        },
+        {
+            "label":"{"en_US":"Select Field","zh_CN":"Dropdown Single Select","type":"i18n"}",
+            "key":"selectField_jiwvhkdg"
+        }
+    ]
+}
+```
+
+### 3.8 Get subform Data
+
+- API: /v1/form/listTableDataByFormInstIdAndTableId.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| formUuid | Form ID | Yes | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| formInstanceId | Instance ID of the instance to query | Yes | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+| tableFieldId | Unique identifier of the subform Component to query | Yes | tableField_ksyaujq1 | <br /> |
+| currentPage | Current page | Yes | 10 | Must be greater than 0; default 1 |
+| pageSize | Records per page | Yes | 50 | Greater than 0 and less than 50; default 10 |
+
+- Return value
+
+- Return format
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "textField_kstqokaa": ""
+      },
+      {
+        "textField_kstqokaa": "1"
+      },
+      {
+        "textField_kstqokaa": "2"
+      }
+    ],
+    "totalCount": 120,
+    "currentPage": 1,
+  },
+  "success": true,
+}
+```
+
+## 4. Task Center
+
+### 4.1 Submitted tasks
+
+- API: /v1/process/getMySubmitInApp.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| pageSize | Records per page | Yes | 10 | Must be greater than 0; default 10; maximum: 100 |
+| currentPage | Current page | Yes | 1 | Must be greater than 0; default 1 |
+| keyword | Keyword | No | <br /> | <br /> |
+
+- Return value:
+
+- Return format
+
+Success:
+
+```javascript
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "Ticket",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "Name",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "jack"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Failure:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "No Permissions"
+}
+```
+
+**Tips: instValue returns a string; its Content is in JSON array format.**
+
+Sample request code:
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getMySubmmitInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.2 To-Do tasks
+
+- API: /v1/task/getTodoTasksInApp.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| pageSize | Records per page | Yes | 10 | Must be greater than 0; default 10; maximum: 100 |
+| currentPage | Current page | Yes | 1 | Must be greater than 0; default 1 |
+| keyword | Keyword | No | <br /> | <br /> |
+
+- Return value:
+
+- Return format
+
+Success:
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "XXXXXX",
+        "originatorName": "XXX",
+        "title": "workflow started by XXX",
+        "originatorPhoto": "http://static.dingtalk.com/media/lADPdfafafsAXXXXXX.jpg",
+        "titleEn": "workflow started by XXX",
+        "createTime": "2018-04-13 13:35:58",
+        "appType": "APP_R8MdfadfXXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "NEW"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Failure:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "No Permissions"
+}
+```
+
+Sample request code:
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getTodoTasksInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.3 Completed tasks
+
+- API: /v1/task/getDoneTasksInApp.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| pageSize | Records per page | Yes | 10 | Must be greater than 0; default 10; maximum: 100 |
+| currentPage | Current page | Yes | 1 | Must be greater than 0; default 1 |
+| keyword | Keyword | No | <br /> | <br /> |
+
+- Return value:
+
+- Return format
+
+Success:
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "abc434rfds23XXXXXX",
+        "finishTime": "2018-03-28 17:46:14",
+        "originatorName": "",
+        "title": "workflow Page started by XXX",
+        "originatorPhoto": "//img.alicdn.com/tfs/TB1msdfsXXXXXX.jpg",
+        "titleEn": "workflow Page started by XXX",
+        "createTime": "2018-03-28 17:45:43",
+        "appType": "XXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "COMPLETED"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Failure:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "No Permissions"
+}
+```
+
+Sample request code:
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getDoneTasksInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.4 Tasks CC'd to me (App-level)
+
+- API: /v1/task/getNotifyMeTasksInApp.json
+- HTTP method: GET
+- Parameters
+
+| Parameter | Description | Required | Example | Alias |
+|---|---|---|---|---|
+| pageSize | Records per page | Yes | 10 | Must be greater than 0; default 10; maximum: 100 |
+| currentPage | Current page | Yes | 1 | Must be greater than 0; default 1 |
+| keyword | Keyword | No | <br /> | <br /> |
+| processCodes | List of workflow codes | No | ["xx","xxx"] | <br /> |
+| instanceStatus | Instance status | No | <br /> | Enum values |
+
+- Return value:
+
+- Return format
+
+Success:
+
+```javascript
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "Ticket",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "Name",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "jack"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Failure:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "No Permissions"
+}
+```
+
+- Tips: instValue returns a string; its Content is in JSON array format.
+
+## 5. Appendix
+
+### 5.1 Save/Update Form data format
+
+- Every Component in a Form has a unique ID (viewable in the Premium panel on the right side of the Component in the page designer), and each Component's value has its own fixed format. The form components currently supported are: Single-line, multi-line, Number, Select, Dropdown Single Select, Multiselect, Dropdown Multiselect, Date, Date range, User search box, Region Select, Department Select, Cascading Select, and subform Components.
+- When saving or updating Form data, the data in the Form is passed as a JsonString in the Map\<String, Object> format. The key is the Component ID and Object is the Component's value. The format of each Component's value is as follows:
+
+| Component Type | Data format | demo | Alias |
+|---|---|---|---|
+| Single-line Text Box | string | "danhang" | <br /> |
+| Multi-line Text Box | string | "duohang" | <br /> |
+| Number Text Box | Number | 1 | <br /> |
+| Select | string | "Option 1" | <br /> |
+| Dropdown Single Select | string | "Option 1" | <br /> |
+| Multiselect | string array | ["Option 1","Option 2"] | <br /> |
+| Dropdown Multiselect | string array | ["Option 1","Option 2"] | <br /> |
+| Date Component | timestamp | 1516204800000 | <br /> |
+| Cascading Date | string array | ["1514736000000","1517328000000"].<br />If only the end time exists, ["","1517328000000"] | The first is the timestamp string of the start time, and the second is the timestamp string of the end time |
+| User search box | string array | ["231344123","231344156"] | The contents of ["xxx"] are userIds |
+| City Select | string array | ["110000","110100","110101"] | The first must be the province ID, the second the city ID, and the third the district ID. |
+| Department Select | string array | ["1123456"] | The contents of ["xxx"] are department IDs |
+| Cascading Select | string array | ["part","part_b"] | Must be placed in the array in the order of the cascade |
+| Attachment Component | string array | [<br />\{<br />"downloadUrl": "File Download URL",<br />"name": "File Name",<br />"previewUrl": "File preview URL",<br />"url": "File Download URL",<br />"ext": "docx"<br />}<br />] | <br /> |
+| Image Component | string array | [<br />\{<br />"downloadUrl": "File Download URL",<br />"name": "File Name",<br />"previewUrl": "File preview URL",<br />"url": "File Download URL",<br />}<br />] |  |
+| Hyperlink Component | string array | [<br />\{<br />"link":"http://www.yidaapps.com",<br />"text":"Yida"<br />}<br />] | <br /> |
+| subform | JSONARRAY | [\{"textField_jcr0069m": "danhang1"},\{"textField_jcr0069m": "danhang2"}]<br />(textField_jcr0069m is the Component ID of the Single-line under the subform) | Because a subform has multiple Records, JSONARRAY is used. Because each Record consists of values from many Components, a JSONObject is used to store each Component's value. |
+| Signature | string | "Image URL" | <br /> |
+
+- The complete Form data format is as follows:
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": 1,
+  "radioField_jcr0069p": "Option 1",
+  "selectField_jcr0069q": "Option 1",
+  "checkboxField_jcr0069r": [
+    "Option 2",
+    "Option 3"
+  ],
+  "multiSelectField_jcr0069s": [
+    "Option 2",
+    "Option 3"
+  ],
+  "dateField_jcr0069t": 1516636800000,
+  "cascadeDate_jcr0069u": [
+    "1514736000000",
+    "1517328000000"
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": 1123456,
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  {
+  "attachmentField_jna1lvyb": [
+    {
+      "downloadUrl": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "name": "test.txt",
+      "previewUrl": "https://www.yidaapps.com/inst/preview?appType=default_tianshu_app&fileName=test.txt&fileSize=4&downloadUrl=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt",
+      "url": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "ext": "txt"
+    }
+  ]
+},
+  "tableField_jcr006a1": [
+    {
+      "cascadeDate_jcr006aa": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006ae": [
+        "product",
+        "product_a"
+      ],
+      "checkboxField_jcr006a7": [
+        "Option 1",
+        "Option 2",
+        "Option 3"
+      ],
+      "citySelectField_jcr006ac": [
+        "120000",
+        "120100",
+        "120102"
+      ],
+      "dateField_jcr006a9": 1517328000000,
+      "departmentField_jcr006ad": ["1123456"],
+      "employeeField_jcr006ab": [
+        "yyyyy",
+        "xxxxx"
+      ],
+      "multiSelectField_jcr006a8": [
+        "Option 1",
+        "Option 2",
+        "Option 3"
+      ],
+      "numberField_jcr006a4": 2,
+      "radioField_jcr006a5": "Option 2",
+      "selectField_jcr006a6": "Option 3",
+      "textField_jcr006a2": "Single-line under subform",
+      "textareaField_jcr006a3": "Multi-line under subform"
+    }
+  ],
+	"digitalSignatureField_kt3nh972": "https://tianshu-vpc.oss-cn-shanghai.aliyuncs.com/5e03f863-dd39-4f62-ba9b-497af2c9ad9f.png"
+}
+```
+
+### 5.2 Condition Search by Component value – Component value format
+
+- Every Component in a Form has a unique ID (viewable in the Premium panel on the right side of the Component in the page designer), and each Component's Search format differs. The Form Components currently supported for Search are: Single-line, multi-line, Number, Select, Dropdown Single Select, Multiselect, Dropdown Multiselect, Date, Date range, User search box, Region Select, Department Select, Cascading Select, and subform Components.
+- When searching, each Component's Search conditions are represented as a Map\<String, Object>. The key is the Component ID and Object is the Component's Search value. The Search type and value format for each Component are as follows:
+
+| Component Type | Data format | demo | Alias |
+|---|---|---|---|
+| Single-line Text Box | string | "danhang" | Fuzzy Search |
+| Multi-line Text Box | string | "duohang" | Fuzzy Search |
+| Number Text Box | string array | ["1","10"] | Range Search. The first is the minimum value, the second the maximum value. |
+| Select | string | "Option 2" | Exact Search |
+| Dropdown Single Select | string | "Option 2" | Exact Search |
+| Multiselect | string array | ["Option 2"] | Array Search.<br />The Search value must be a subset of the Multiselect value. |
+| Dropdown Multiselect | string array | ["Option 2"] | Array Search. The Search value must be a subset of the Multiselect value. |
+| Date Component | string array | ["1514736000000","1517414399000"] | Range Search. The first is the timestamp of the start Date, the second the timestamp of the end Date. |
+| Date range | array | [["1514736000000","1517414399000"],["1514736000000","1517414399000"]] | Range Search. The first array is the Search range for the start of the Date range. The second array is the Search range for the end of the Date range. |
+| User search box | string array | ["xxxxx","yyyyyy"] | Exact match. The value must match completely, including the order of Employee IDs. |
+| City Select | string array | [500000, 500100, 500104, 500104003] | Array Search.<br />The Search value must be a subset of the city value.<br />Also, if there is a city ID, there must be a province ID. If there is a district ID, there must be both a province ID and a city ID. |
+| Department Select | Number | 1123456 | Exact match |
+| Cascading Select | string array | ["part","part_b"] | Array Search. Same restrictions as City Select. |
+| subform Component | string | danhang | Fuzzy Search.<br />The value under a subform is a single large text; Search uses Fuzzy Search. |
+
+- Full example
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": [
+    "1",
+    "10"
+  ],
+  "radioField_jcr0069p": "Option 1",
+  "selectField_jcr0069q": "Option 1",
+  "checkboxField_jcr0069r": [
+    "Option 2"
+  ],
+  "multiSelectField_jcr0069s": [
+    "Option 2",
+    "Option 3"
+  ],
+  "dateField_jcr0069t": [
+    1514736000000,
+    1517414399000
+  ],
+  "cascadeDate_jcr0069u": [
+    [
+      1514736000000,
+      1517414399000
+    ],
+    [
+      1514736000000,
+      1517414399000
+    ]
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": ["1123456"],
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  "tableField_jcr006a1": "subform data"
+}
+```
+
+### 5.3 workflow instance details object format
+
+| Field | Description | Example | Alias |
+|---|---|---|---|
+| actioners | Current task assignees of the workflow instance | [<br />\{<br />"name": \{<br />"en_US": "user_en_name",<br />"zh_CN": "user_zh_name",<br />"type": "i18n"<br />},<br />"userId": "workno"<br />}<br />]<br /><br /> | This Field is empty if the workflow is already Completed and there is no assignee |
+| processInstanceId | Instance ID | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | Unique |
+| formUuid | workflow form ID | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| processCode | workflow Code | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 | <br /> |
+| title | Instance title | workflow started by xxxx | Returns the title corresponding to your Language environment |
+| instanceStatus | Instance status | RUNNING | <br /> |
+| approvedResult | Approval verdict when the workflow ended | agree | agree -> passed<br />disagree -> declined |
+| originator | Submitter info | [ \{ "name": \{ "en_US": "user_en_name", "zh_CN": "user_zh_name", "type": "i18n" }, "userId": "workno" } ] | <br /> |
+| data | Form data | <br /> | See Appendix 4 – Form data format as a return value |
+
+- Complete data format demo
+
+```json
+{
+  "result": {
+    "data": {
+      "actioners": [
+        {
+          "name": {
+            "pureEn_US": "xxx",
+            "en_US": "xxx",
+            "zh_CN": "xxx",
+            "type": "i18n"
+          },
+          "userId": "xxx"
+        }
+      ],
+      "processInstanceId": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "formUuid": "FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3",
+      "data": {
+        "numberField_jcr0069o": 1,
+        "multiSelectField_jcr0069s": [
+          "Option 3",
+          "Option 2"
+        ],
+        "textareaField_jcr0069n": "duohang",
+        "employeeField_jcr0069x": [
+          "xxxx"
+        ],
+        "departmentField_jcr0069z": "Information xxx Platform",
+        "cascadeDate_jcr0069u": [
+          "1514736000000",
+          "1517328000000"
+        ],
+        "cascadeSelectField_jcr006a0": [
+          "part",
+          "part_b"
+        ],
+        "tableField_jcr006a1": [
+          {
+            "departmentField_jcr006ad": "Information xxx",
+            "cascadeDate_jcr006aa": [
+              "1514736000000",
+              "1517328000000"
+            ],
+            "selectField_jcr006a6": "Option 3",
+            "citySelectField_jcr006ac": [
+              "Tianjin",
+              "Tianjin",
+              "Hedong District"
+            ],
+            "radioField_jcr006a5": "Option 2",
+            "employeeField_jcr006ab": [
+              "yyyyy",
+              "xxxxxx"
+            ],
+            "dateField_jcr006a9": 1517328000000,
+            "textField_jcr006a2": "Single-line under subform",
+            "textareaField_jcr006a3": "Multi-line under subform",
+            "cascadeSelectField_jcr006ae": [
+              "product",
+              "product_a"
+            ],
+            "numberField_jcr006a4": 2,
+            "checkboxField_jcr006a7": [
+              "Option 1",
+              "Option 3",
+              "Option 2"
+            ],
+            "multiSelectField_jcr006a8": [
+              "Option 1",
+              "Option 3",
+              "Option 2"
+            ]
+          }
+        ],
+        "selectField_jcr0069q": "Option 1",
+        "citySelectField_jcr0069y": [
+          "Beijing",
+          "Beijing",
+          "Dongcheng District"
+        ],
+        "checkboxField_jcr0069r": [
+          "Option 3",
+          "Option 2"
+        ],
+        "textField_jcr0069m": "danhang",
+        "radioField_jcr0069p": "Option 1",
+        "dateField_jcr0069t": 1516636800000
+      },
+      "processCode": "TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4",
+      "originator": {
+        "name": {
+          "pureEn_US": "xxx",
+          "en_US": "xxxx",
+          "zh_CN": "xxx",
+          "type": "i18n"
+        },
+        "userId": "xxxx"
+      },
+      "title": "workflow started by xxx",
+      "instanceStatus": "RUNNING"
+    },
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### 5.4 Form data format as a return value
+
+The format of Form data as a return value is essentially the same as in "Appendix 1 – Save/Update Form data format". The differences are:
+
+- On submission, the Region Component value is ["Province ID", "City ID", "District ID"]. As a return value, it is ["Province Name","City Name","District Name"].
+- Select, Dropdown Single Select, Multiselect, and Dropdown Multiselect are internationalized. As return values, they return the data value corresponding to the `language` parameter you passed.
+
+### 5.5 form instance details object format
+
+| Field | Description | Example | Alias |
+|---|---|---|---|
+| gmtModified | Last Modified time | 2018-01-24 11:22:01 | <br /> |
+| formUuid | Form ID | FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1 | <br /> |
+| formInstId | Instance ID | FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0 | <br /> |
+| originator | Submitter details | [\{"name": \{"en_US": "user_en_name","zh_CN": "user_zh_name","type": "i18n"},"userId": "workno"}] | <br /> |
+| formData | Form data details | <br /> | See Appendix 4 – Form data format as a return value |
+
+A complete demo is as follows:
+
+```json
+{
+  "result": {
+    "gmtModified": "2018-01-24 11:22:01",
+    "formUuid": "FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1",
+    "formInstId": "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0",
+    "formData": {
+      "numberField_jcr0069o": 1,
+      "multiSelectField_jcr0069s": [
+        "Option 3",
+        "Option 2"
+      ],
+      "textareaField_jcr0069n": "duohang",
+      "employeeField_jcr0069x": [
+        "xxxx"
+      ],
+      "departmentField_jcr0069z": "xxxx",
+      "cascadeDate_jcr0069u": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006a0": [
+        "part",
+        "part_b"
+      ],
+      "tableField_jcr006a1": [
+        {
+          "departmentField_jcr006ad": "xxxx",
+          "cascadeDate_jcr006aa": [
+            "1514736000000",
+            "1517328000000"
+          ],
+          "selectField_jcr006a6": "Option 3",
+          "citySelectField_jcr006ac": [
+            "Tianjin",
+            "Tianjin",
+            "Hedong District"
+          ],
+          "radioField_jcr006a5": "Option 2",
+          "employeeField_jcr006ab": [
+            "xxxxxx",
+            "yyyyyy"
+          ],
+          "dateField_jcr006a9": 1517328000000,
+          "textField_jcr006a2": "Single-line under subform",
+          "textareaField_jcr006a3": "Multi-line under subform",
+          "cascadeSelectField_jcr006ae": [
+            "product",
+            "product_a"
+          ],
+          "numberField_jcr006a4": 2,
+          "checkboxField_jcr006a7": [
+            "Option 1",
+            "Option 3",
+            "Option 2"
+          ],
+          "multiSelectField_jcr006a8": [
+            "Option 1",
+            "Option 3",
+            "Option 2"
+          ]
+        }
+      ],
+      "selectField_jcr0069q": "Option 1",
+      "citySelectField_jcr0069y": [
+        "Beijing",
+        "Beijing",
+        "Dongcheng District"
+      ],
+      "checkboxField_jcr0069r": [
+        "Option 3",
+        "Option 2"
+      ],
+      "textField_jcr0069m": "danhang",
+      "radioField_jcr0069p": "Option 1",
+      "dateField_jcr0069t": 1516636800000
+    },
+    "originator": {
+      "name": {
+        "pureEn_US": "userEnglishName",
+        "en_US": "userEnglishName",
+        "zh_CN": "userName",
+        "type": "i18n"
+      },
+      "userId": "xxxx"
+    }
+  },
+  "success": true
+}
+```

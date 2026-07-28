@@ -1,0 +1,127 @@
+---
+title: "Bulk submission"
+description: "Learn how to use the bulk submission feature for Yida workflow forms, including supported capabilities, procedures, use cases, and FAQs."
+polished: true
+---
+
+| **Feature** | **Free plan** | **Basic edition** | **Professional edition** | **Dedicated edition** |
+|---|---|---|---|---|
+| Bulk workflow submission | Not supported | Supported | Supported | Supported |
+
+## 1. What is bulk submission
+
+Yida workflow forms let app admins submit workflows in bulk by uploading an Excel file from the app backend.
+
+Bulk submission currently supports the following capabilities:
+
+(1) Submit workflows on behalf of others. If a column in the Excel file contains initiator information, you can designate that column as the workflow initiator.
+
+(2) Submit workflows using the Yida platform public account. For example, when tracking the resolution of external user complaints, the initiator should be a public account rather than an individual.
+
+(3) Dynamically assign workflow handlers based on a specific column in the Excel file. For example, in an Excel file that tracks external customer follow-ups, one column may contain the follow-up owner. You can designate that column as the workflow handler at submission time.
+
+(4) Delete bulk-submitted data by batch. If a bulk submission fails or does not meet expectations, you can delete the data directly by batch.
+
+(5) Format specifications for Excel column data.
+
+## 2. Bulk submission use case
+
+**Scenario:**
+
+A department wants to reward outstanding employees from the past quarter. Each outstanding employee's manager writes a "nomination statement". Once the manager submits the nomination, the employee receives a message notification to claim the gift.
+
+### 2.1 Procedure
+
+#### 2.1.1 Configure the fields to fill in on the workflow form
+
+Workflow form editing page
+
+#### 2.1.2 Configure the workflow so that after submission, the recipient's manager becomes the first approver and writes the nomination statement
+
+Set the approver
+
+#### 2.1.3 Configure message notifications after the workflow ends to notify the recipient
+
+#### 2.1.4 Select Excel bulk submission
+
+The Excel file content is shown below:
+
+Excel bulk submission
+
+Bulk submission from Data Management
+
+**Note: The workflow bulk initiator can be customized**
+
+Choose one of the following three types as the data initiator:
+
+① Yida platform
+
+② The user currently importing the Excel file
+
+③ The user selected in the form's user search box (if multiple users are selected, the first user is used by default) (**If you choose the user search box value as the initiator but the member component value in the form is empty, submission will fail.**)
+
+The image shows the "Applicant" set as the user search box component on the form
+
+#### 2.1.5 View bulk submission results
+
+For records with errors, click to view the failed records directly (successfully imported records are not shown)
+
+#### 2.1.6 For failed records, you can delete the entire batch
+
+Delete this batch of data
+
+The example above demonstrates a failed import to illustrate the bulk import feature. The failure was caused by an incorrect user ID format. Below is an example of a successful import:
+
+Once the format is corrected, the import succeeds:
+
+**Note**: Member component format: If importing by employee ID, use the format `**Name1(EmployeeID1), Name2(EmployeeID2)**`. The parentheses must be half-width English characters.
+
+If importing by employee userId, use the format `**Name1[EmployeeUserID1], Name2[EmployeeUserID2]**`. The brackets must be half-width English characters.
+
+## 3. FAQs
+
+<AccordionGroup>
+<Accordion title="3.1 Why did the bulk submission fail?">
+  When bulk submission fails, check the following:
+
+  (1) Whether the app is published. Bulk submission works only after the app is published.
+
+  (2) Whether the initiator is customized as the member component on the form. If so, verify that the user search box has a value and that the format is correct.
+
+  (3) A maximum of 1,000 records can be imported at a time, and the file size must not exceed 20 MB.
+
+  (4) Only `*.xls` and `*.xlsx` files are supported.
+
+  (5) Make sure the header row of the sheet you want to import contains no empty cells. Otherwise, the data on that sheet will not be imported.
+
+  (6) Bulk-imported data does not support filtering conditions based on "built-in variables".
+
+  (7) Imported files do not support Excel formula calculations such as `SUM` or `=H2*J2`.
+
+  (8) Imported images and attachments are re-uploaded to storage and consume attachment capacity.
+</Accordion>
+<Accordion title="3.2 How do I approve when the initiator is set to [Yida platform] during bulk import?">
+  When the workflow approver is set to the initiator themselves and the imported data uses [Yida platform] as the initiator, the workflow approval node displays [Yida platform] as the approver, and the approval cannot be performed manually.
+
+  In this case, use the following open API to perform the approval. For more details, see [**this reference**](https://www.yuque.com/yida-old/help/ihxi9r#evqcsm).
+
+  - Endpoint: /yida_vpc/process/executePlatformTask.json
+  - Parameters
+
+  | **Parameter** | **Description** | **Required** | **Example** | **Notes** |
+  |---|---|---|---|---|
+  | appType | App ID | Yes | APP_PBKT0MFBEBTDO8T7SLVP | <br /> |
+  | systemToken | App secret | Yes | hexxyyddd | Obtain from [App Data](https://www.yuque.com/yida/help/wre21z#qOo9q). |
+  | userId | DingTalk userId | Yes | yida_pub_account | Hardcode as yida_pub_account |
+  | language | Language | No | zh_CN | Available values: zh_CN / en_US<br />Default: zh_CN |
+  | procInstId | Workflow instance ID | Yes | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+  | outResult | Approval result | Yes | • agree<br />• disagree | <br /> |
+  | formDataJson | Updated form data | No | <br /> | Reference: Appendix 1 — format for saving or updating form data.<br />Components included in the parameter are updated; components not included remain unchanged.<br />Table detail values can only be updated as a whole; you cannot update the value of a single component within a detail. |
+  | remark | Approval comment | Yes | Confirmed and approved | <br /> |
+  | noExecuteExpressions | Whether to skip validation and association actions | No | y | When the task node has validation rules or association actions bound:<br />y -> Skip validation rules and association actions<br />n -> Execute validation rules and association actions<br />If omitted, defaults to n, meaning validation rules and association actions will be executed. |
+</Accordion>
+</AccordionGroup>
+
+## 4. Data import format for Excel components
+
+As shown in the figure:

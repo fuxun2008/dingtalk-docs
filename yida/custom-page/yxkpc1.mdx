@@ -1,0 +1,119 @@
+---
+title: "Pagination component"
+description: "Learn which editions support the Pagination component and how to use it on a custom page to display paginated data. This article covers creating a form, adding the Pagination component to a custom page, configuring a remote Data Source, setting loop data, and binding variables."
+polished: true
+---
+
+| **Feature** | **Free plan** | **Basic edition** | **Professional edition** | **Dedicated edition** |
+|---|---|---|---|---|
+| Pagination component | Not supported | Not supported | Supported | Supported |
+
+## 1. Use cases
+
+Use the Pagination component when a custom page contains data that you want to display across multiple pages.
+
+<Note>
+For component attributes, usage, and examples, see the [Pagination component reference](/zh/open/yida/components/advanced/pagination).
+</Note>
+
+## 2. Video demonstration
+
+## 3. Steps
+
+### 3.1 Create a regular form
+
+Drag a Single-line text component into the form and click Save. Return to the app home page and add some sample data to the form.
+
+### 3.2 Create a custom page
+
+Drag a container component onto the custom page, then add a text component and a Pagination component inside the container. Use the outline tree to review how the components are nested.
+
+Custom page
+
+### 3.3 Create a remote Data Source
+
+On the custom page, click Data Source on the left, select Add, and create a remote API. Rename it as needed.
+
+Custom page Data Source
+
+Click the request URL and change it to the required API endpoint:
+
+'/$\{window.pageConfig.appType || window.g_config.appKey}/v1/form/searchFormDatas.json'
+
+For details, see the API documentation: [Yida platform APIs (callable directly from page Data Sources)](/yida/developer-features/aql605)
+
+Modify the request parameters, or click Add to add a new one. As shown in the documentation, the parameter name is formUuid.
+
+Parameter value: App home >> App settings >> Deployment and operations >> select the corresponding form ID
+
+App settings
+
+Click the plus sign next to Data Handling to create a request completion callback function, then click Save.
+
+Add Data Source
+
+### 3.4 Set loop data for the container component
+
+Open the outline tree and select the container component. Locate Loop Data on the right and click variable binding. Append .data to the searchFormDatas remote API, then click Confirm to save.
+
+### 3.5 Bind variables
+
+Click the text component on the custom page and locate the variable binding for Content on the right. Enter this.item.formData. followed by the unique identifier of the Single-line text component in the regular form.
+
+To find formData: on the edit page, click Preview, right-click and select Inspect, open the console, and locate formData.
+
+### 3.6 Create a variable Data Source
+
+Click Data Source on the left and create a variable (pageSizeA in this example). Only the name needs to be changed.
+
+### 3.7 Create actions
+
+Click the Pagination component and locate Action Settings in the lower right. Click Create Action and create two actions (in this example, page number change and page size change). Once the actions are created, the JS panel opens automatically on the left. Write code there to reload the Data Source.
+
+```javascript
+export function didMount() {
+  console.log(`Page JS: current page URL ${location.href}`);
+  // console.log(`Page JS: current page id parameter is ${this.state.urlParams.id}`);
+  // For more this-related APIs, see: https://developers.aliwork.com/
+  // document.title = window.loginUser.userName + ' | Yida';
+
+ }
+/**
+* Pagination onChange
+* @param currentPagination Current page number
+*/
+export function onChange(currentPagination) {
+  let params = {
+    currentPage: currentPagination
+  };
+  this.dataSourceMap.dp4.load(params);
+  console.log('onChange', currentPagination);
+}
+
+/**
+* Pagination onPageSizeChange
+* @param pageSize Number of records per page after the change
+*/
+export function onPageSizeChange(pageSize) {
+  this.setState({
+    pageSizeA: pageSize
+  });
+  let params = {
+    pageSize: pageSize,
+  };
+  this.dataSourceMap.dp4.load(params);
+  console.log('onPageSizeChange', pageSize);
+}
+```
+
+### 3.8 Bind variables (total record count and current page number)
+
+(1) Click the variable binding for the total record count on the right of the Pagination component and enter state.searchFormDatas.totalCount (totalCount is the total number of records). Click Confirm.
+
+(2) Click the variable binding for the current page number and enter state.searchFormDatas.currentPage (currentPage is the current page). Click Confirm.
+
+### 3.9 Bind the pageSize variable
+
+Click the variable binding for pageSize and use a ternary expression in the JS code: state.pageSizeA?state.pageSize:5 to determine how many records the current page can display.
+
+Click Confirm, save your changes, and return to the home page.

@@ -1,0 +1,201 @@
+---
+title: "Builder functions"
+description: "This page describes the structure of the standard User model and Department model, and explains how to use functions such as UserBuilder, DirectorBuilder, DeptBuilder, GetObjectField, and GetArrayItem. These functions generate or process User and Department data."
+polished: true
+---
+
+## Model overview
+
+- Standard User model object
+
+```text
+{
+"corpId":"organization ID",
+"label":"Name (Employee ID)",
+"avatar":"Profile Photo URL",
+"key":"userid",
+"businessWorkNo":"Work account"
+}
+```
+
+- Standard Department model object
+
+```text
+{
+	"label":"Current department name",
+	"key":"Department ID"
+}
+```
+
+## UserBuilder
+
+### Expression
+
+```text
+UserBuilder(["userid","userid"]  |  ${memberComponent[{},{}]} )
+```
+
+<Warning>
+Formula description: User builder function. Generates the User model collection that corresponds to a given userid list or member component.
+</Warning>
+
+### Input parameters
+
+```text
+(["userid","userid"]  or  ${memberComponent[{},{}]} )
+```
+
+### Return value
+
+```text
+[{User object},{User object}]
+```
+
+### Example
+
+```text
+UserBuilder(["some_userid_123"])
+
+// Returns
+[{user1}]
+```
+
+## DirectorBuilder
+
+### Expression
+
+```text
+DirectorBuilder( "" | "userid", level )
+```
+
+<Warning>
+Formula description: Manager builder function. Returns the level-th manager of the current signed-in user or of a specified user. The level parameter must be >= 1. Returns the User model collection of the matching manager(s); multiple managers are returned when the user belongs to multiple departments.
+</Warning>
+
+### Input parameters
+
+- Parameter 1: The userid that identifies the target User. Pass "" to use the current signed-in user.
+- Parameter 2: level. Returns the level-th manager. Only valid when level >= 1.
+
+### Return value
+
+- Standard User model object of the manager: [\{User object},\{User object}]
+
+### Example
+
+```text
+DirectorBuilder("",2)
+
+// Returns
+[{user1},{user2}]
+```
+
+## DeptBuilder
+
+### Expression
+
+```text
+DeptBuilder(no parameter | userid | single-select member component)
+```
+
+<Warning>
+Formula description: Department builder function. Retrieves the specified Department object model based on the input conditions. This formula does not support subforms.
+</Warning>
+
+### Input parameters
+
+Parameter 1 (three modes):
+
+- No parameter: the direct Department of the current signed-in user.
+- userid: the direct Department of the specified User ID.
+- Single-select member component: the direct Department of the User referenced by that member component.
+
+### Return value
+
+- Standard Department model object: [Department object, Department object]. A User can belong to multiple Departments at the same time.
+
+### Example
+
+```text
+DeptBuilder("")
+// Returns
+[{dept},{user2}]
+```
+
+## GetObjectField
+
+### Expression
+
+```text
+GetObjectField(standard JSON object model, "fieldKey")
+```
+
+<Warning>
+Formula description: GetObjectField **is a utility function. JsonObject is a general-purpose standard object storage format that organizes data internally using a key:value structure. GetObjectField returns the value of the specified key from a given standard JSON object.**
+
+**Note: Not supported inside subforms.**
+</Warning>
+
+### Input parameters
+
+- Parameter 1: The standard JsonObject to read from.
+- Parameter 2: fieldKey. The first-level attribute key of the object in parameter 1.
+
+### Return value
+
+- The value that corresponds to the object's attribute key. Defaults to Text type.
+
+### Example
+
+```text
+GetObjectField( GetArrayItem(UserBuilder(memberComponent), 1) ,"label")
+
+// Example member component data:
+[{"label":"John (Employee ID 11)","key":"userid123"},{"label":"Mary (Employee ID 22)","key":"userid124"}]
+
+// Returns
+
+"John (Employee ID 11)"
+```
+
+## GetArrayItem
+
+### Expression
+
+```text
+GetArrayItem(standard JsonArray type, n)
+```
+
+<Warning>
+Formula description: GetArrayItem **is a utility function. JsonArray is a general-purpose standard array collection storage format in which each unit is a standard JsonObject or JsonArray. GetArrayItem returns the n-th data unit (either a JsonObject or JsonArray) from a given standard JsonArray.** n >= 1, where n = 1 refers to the first data unit.
+</Warning>
+
+### Input parameters
+
+- Parameter 1: Standard JsonArray type.
+- Parameter 2: n. Returns the n-th data unit object in the array.
+
+### Return value
+
+- The n-th data unit in parameter 1. The type may be JsonObject or JsonArray.
+
+### Example
+
+```text
+GetArrayItem(memberComponent, 1)
+```
+
+<Note>
+Example member component data:
+
+[\{"label":"John (Employee ID 11)","key":"userid123"},\{"label":"Mary (Employee ID 22)","key":"userid124"}]
+</Note>
+
+### Returns
+
+```text
+""
+{"label":"John (Employee ID 11)","key":"userid123"}
+```
+
+Example:

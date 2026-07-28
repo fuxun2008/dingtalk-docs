@@ -1,0 +1,53 @@
+---
+title: "Yida Server API rate limit handling"
+description: "Learn how Yida DingTalk Open Platform Server API rate limits are triggered and how to resolve them, including single-app QPS, single-organization QPS, and global per-endpoint QPS limits. Includes off-peak strategies for handling rate limits, plus FAQs on charges and call count limits."
+polished: true
+---
+
+This document explains the triggering conditions and solutions for Yida DingTalk Open Platform Server API rate limits.
+
+## Triggering conditions
+
+To prevent abnormal Yida server load caused by application errors, each Yida Server API endpoint has a different default rate limit based on its complexity (for details, send the API document link to technical support). Exceeding the limit on any dimension may trigger a rate limit. Common response error codes: `failure.operation.requestTooFast` and `failure.operation.tooManyVisitors`.
+
+- Single-app QPS rate limit: For each App, calls to a given endpoint that exceed the maximum frequency trigger a rate limit.
+- Single-organization QPS rate limit: For each Organization, calls to a given endpoint that exceed the maximum frequency trigger a rate limit.
+- Global QPS rate limit per endpoint: Because of Yida endpoint Security protection policies, the call count per second is capped. When all Yida Organization Apps together call an endpoint more times per second than its per-second limit, a response Error is triggered.
+
+Solutions
+
+- General: Since the QPS rate limit window is 1 second, when you hit a rate limit Error, sleep for 1 second in your program, then Continue execution.
+- Off-peak strategy: For programs that call Yida APIs on a schedule, avoid peak times on the hour. For example, schedule execution at 10 minutes past the hour.
+
+## FAQ
+
+<AccordionGroup>
+<Accordion title="Q: DingTalk Open Platform charges for OpenAPI calls. Are Yida-related endpoints charged again (double-charged)?">
+  A: No, they are not double-charged. Details are as follows:
+
+  Yida-related business API calls fall into 2 usage scenarios:
+
+  1. Yida acts as a SaaS App and calls DingTalk endpoints through productized features (that is, Yida official Connectors, such as fetching DingTalk attendance Data). These calls are not subject to the policy limits.
+  2. The customer builds an Internal app on the DingTalk Open Platform and directly calls the Content in the [Yida endpoint list] from their own external system (for example, the customer's own system calls the Yida openAPI endpoints to sync App Data built in Yida to the customer's own system). These calls follow the unified policy of the DingTalk Open Platform.
+
+  
+</Accordion>
+<Accordion title="Q: Do Yida endpoint call counts consume the DingTalk Open Platform call count?">
+  A: No, they do not consume the DingTalk Open Platform call count, because Yida-related business API calls are not subject to the [policy](https://open.dingtalk.com/document/orgapp-server/descriptions-about-adjusting-limit-and-frequency-of-api-calls) limits.
+
+  1. Scenario 1: Yida acts as a SaaS App and calls DingTalk endpoints through productized features (that is, Yida official Connectors, such as fetching DingTalk attendance Data). These calls are not subject to the policy limits.
+</Accordion>
+<Accordion title="Q: Does the QPS limit published by the DingTalk Open Platform also apply to Yida endpoints?">
+  A: The QPS limits published by the DingTalk Open Platform distinguish between Internal apps and Third-party enterprise apps. Yida, as a Third-party enterprise app, is also subject to QPS limits. For each DingTalk endpoint that Yida itself calls, the maximum frequency is 40 calls/second. For details, see [rate limit](https://open.dingtalk.com/document/isvapp-server/invocation-frequency-limit-1).
+
+  
+</Accordion>
+<Accordion title="Q: If I have purchased both DingTalk Professional edition and Yida, which QPS rate limit standard applies?">
+  A: Since Yida-related business API calls are not subject to the [policy](https://open.dingtalk.com/document/orgapp-server/descriptions-about-adjusting-limit-and-frequency-of-api-calls) limits, regardless of which DingTalk edition a Yida customer purchases, the QPS standard is a maximum frequency of 40 calls/second.
+
+  1. Scenario 1: Yida acts as a SaaS App and calls DingTalk endpoints through productized features (that is, Yida official Connectors, such as fetching DingTalk attendance Data). These calls are not subject to the policy limits.
+</Accordion>
+<Accordion title="Q: Does Yida's QPS rate limit support individual capacity expansion? How is it charged?">
+  A: Except for the Dedicated edition, customers cannot currently expand capacity individually.
+</Accordion>
+</AccordionGroup>

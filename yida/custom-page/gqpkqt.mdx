@@ -1,0 +1,148 @@
+---
+title: "Tree component"
+description: "Learn how to use the tree component to display categories and subcategories, including creating a regular form, configuring a custom page, setting up a remote API, and binding variables. Use this component whenever you need to display hierarchical data."
+polished: true
+---
+
+| **Feature** | **Free plan** | **Basic edition** | **Professional edition** | **Dedicated edition** |
+|---|---|---|---|---|
+| Tree component | Not supported | Not supported | Supported | Supported |
+
+## 1. Use case
+
+To view subcategories under a category, add a tree component to a custom page.
+
+<Note>
+For component attributes, usage, and examples, see [**Tree component reference**](/zh/open/yida/components/advanced/tree).
+</Note>
+
+## 2. Video demo
+
+## 3. Procedure
+
+### 3.1 Create a regular form
+
+Create a regular form and add several Single-line text components. Edit each title in the Attribute panel on the right, then click Save.
+
+### 3.2 Create a custom page
+
+On the template selection page, click Skip to open the custom page editor. Drag a tree component and a button component onto the canvas.
+
+### 3.3 Create a remote API
+
+On the custom page, click Data Source on the left and create a new remote API. Configure its name, request URL, request parameters, and data processing.
+
+Request URL: [Yida platform API (callable directly from a page data source)](/yida/developer-features/aql605)
+
+Example: [https://www.yidaapps.com/dingtalk/web/](https://www.yidaapps.com/dingtalk/web/)APP-XXXXXX/v1/form/searchFormDatas.json
+
+The `formUuid` request parameter is available in the app settings in the upper-right corner of the Home page. Each form has a unique ID — copy it and paste it into the request parameters.
+
+In the data processing section, locate the code under the request completion callback function and update the identifier after `dataMap`. The identifier comes from the Single-line text component on the form. Paste it in, then click Save.
+
+```javascript
+function didFetch(content) {
+  const data = content.data.map(item => {
+    let dataMap = item.formData;
+    return {
+      label: dataMap['textField_kplzoi0z'],
+      key: dataMap['textField_kplzoi0z'],
+      children: [{
+        label: dataMap['textField_kplzoi10'],
+        key: dataMap['textField_kplzoi10'],
+        children: [{
+          label: dataMap['textField_kplzoi11'],
+          key: dataMap['textField_kplzoi11']
+        }]
+      }]
+
+    }
+  })
+  content = data;
+  console.log("item=====>", data)
+
+  function findItem(item, arr) {
+    console.log("item........", item)
+    console.log("arr........", arr)
+    return arr.findIndex(value => value.key === item.key);
+  }
+
+  function recursion(arr) {
+    console.log("Deduplicating entries", arr)
+    const newArr = [];
+    arr.forEach((item) => {
+      let index = findItem(item, newArr);
+      if (index !== -1) {
+
+      } else {
+        newArr.push(item);
+      }
+    })
+    return newArr;
+  }
+
+  let newArr = recursion(content);
+  console.log("newArr========>", newArr)
+  content = newArr;
+
+  console.log("content========>", content)
+  // return item;
+
+  // console.log('data:', data)
+  // this.setState({
+  //   tree: data
+  // })
+  return content; // Important: content must be returned
+}
+```
+
+Click JS action panel on the left and paste the following code.
+
+```javascript
+export function onEditFinish(key, label, node) {
+  console.log('key: ', key, ' label: ', label, ' node: ', node);
+}
+/**
+* Tree onSelect
+* @param selectedKeys array of selected node keys
+* @param extra additional parameters
+*/
+export function onSelect(selectedKeys, extra) {
+
+  console.log('Array of selected node keys: ', selectedKeys, ' Extra parameters: ', extra);
+}
+
+/**
+ * menu onItemClick
+ * For parameter configuration, see: https://fusion.design/pc/component/menu
+ */
+export function onItemClick(key, item, event) {
+  console.log(key, item, event);
+}
+
+/**
+* button onClick
+*/
+export function onClic() {
+  console.log(this.$('tree_kne7wdg0').get('dataSource'));
+}
+
+/**
+* button onClick
+*/
+export function onClick(){
+  console.log('onClick');
+}
+```
+
+### 3.4 Bind variables
+
+Click Node Data on the right, select the variable from the remote API you just created, and click Confirm.
+
+In the Create action panel in the lower-right corner, configure the action. Here, select the action to run when node editing is complete.
+
+### 3.5 Add a new button component
+
+Select the button component. In the Create action panel in the lower-right corner, select the built-in Open URL action. Set the URL to the page for the Single-line text form you configured earlier (it must be the page for viewing or adding data).
+
+Click Save and return to the Home page. You can now test the configuration — the tree component is ready to use.
