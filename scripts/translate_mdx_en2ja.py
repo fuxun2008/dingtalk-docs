@@ -101,6 +101,28 @@ I. API 専有語の前後に半角スペース（access token を取得する）
 J. 敬体 + 簡潔。「〜します」「〜してください」「〜を呼び出します」。"""
 
 
+# 宜搭 (Yida) 専属ルール — root=yida のみ注入
+YIDA_RULES = """宜搭 (Yida) 専属ルール — 1 つでも違反すれば訳文無効：
+
+【ブランド / 製品名】
+A. **Yida** はブランド名として原様保持（訳さない・カタカナ化しない）。Yida Dedicated / Yida platform / Yida app も同様。
+B. Cool App → クールアプリ；low-code → ローコード；DingTalk は原様。
+
+【API 契約 — 原様保持】（developer-features / integration 篇に多出）
+C. JSON フィールド名 / パラメータ名は不訳：formUuid / formInstId / appType / processCode / formDataJson / searchFieldJson / systemToken 等。
+D. インスタンス ID / コンポーネント識別子は保持：FORM-xxx / FINST-xxx / APP_xxx / textField_kkm9o5cd 等。
+E. エンドポイントパス（/v1/form/saveFormData.json 等）は保持。
+
+【URL 保護】
+F. www.yidaapps.com / yida-support.oss-*.aliyuncs.com / docs.aliwork.com / img.alicdn.com の URL は完全不動。
+G. 内部相対リンク [text](/yida/...) 等の URL は原様保持（後処理で前置詞変換）、アンカーテキストのみ翻訳。
+
+【表ヘッダ / 用語】
+H. Parameter→パラメータ / Description→説明 / Required→必須 / Example→例 / Notes→備考；
+   Feature→機能 / Supported→対応 / Not supported→非対応。
+I. エディション：Free→無料版 / Basic→ベーシック版 / Professional→プロフェッショナル版 / Dedicated→専用版。"""
+
+
 # ---------------------------------------------------------------------------
 # 占位検出・命中用語・コードフェンス
 # ---------------------------------------------------------------------------
@@ -193,6 +215,8 @@ def build_system_prompt(root: str = "") -> str:
     sections = [SYSTEM_RULES, SEO_DESCRIPTION_RULE, STYLE_JA]
     if root == "open":
         sections.append(OPEN_PLATFORM_RULES)
+    if root == "yida":
+        sections.append(YIDA_RULES)
     sections.append("本タスクは英語 mdx を日本語（敬体 です・ます）に翻訳します。訳文 mdx をそのまま出力し、説明の前後置きは付けないこと。")
     return "\n\n".join(sections)
 

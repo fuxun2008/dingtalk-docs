@@ -54,11 +54,12 @@ from translate_mdx_en2id import (  # noqa: E402
     extract_hit_terms,
     strip_code_fence_wrapper,
 )
+from translate_mdx_en2ja import load_en2ja_glossary  # noqa: E402
 
 OUTPUT_DIR = REPO_ROOT / "scripts" / "output" / "eval_docs"
 
 # 帮助中心产品线（每个是一个抽样层）；"open" = 开放平台;"overview" = 仓库根 index.mdx
-HELP_ROOTS = ["aitable", "docs", "meetings", "drive", "mail", "calendar", "im", "contacts", "ai-minutes"]
+HELP_ROOTS = ["aitable", "docs", "meetings", "drive", "mail", "calendar", "im", "contacts", "ai-minutes", "yida"]
 
 
 # ---------------------------------------------------------------------------
@@ -105,16 +106,51 @@ en(英文原文片段,≤120 字)、id(现译片段,≤120 字)、suggestion(建
 overall = 4 维加权平均(accuracy 0.35 / localization 0.30 / fluency 0.20 / terminology 0.15),保留 1 位小数。"""
 
 
-def build_judge_user_message(en_src: str, id_src: str, hits: dict[str, str]) -> str:
+# 日文评审 rubric — 与 id 版同构,判据换为日文本地化标准
+JUDGE_SYSTEM_JA = """你是资深的日本语技术文档本地化质量评审专家,母语级日文 + 精通英文技术文档。
+你的任务:拿到「英文母版」和「日文译文」,严格评审译文质量,给出 4 个维度的 0-5 分打分,并逐条定位具体问题。
+
+评审对象是钉钉国际版帮助中心的官方文档,面向日本企業ユーザーと IT 担当者,要求母语级流畅 + 商务敬体（です・ます調）。
+
+【4 个评分维度(每个 0-5 分,可给 0.5)】
+1. accuracy 准确性:译文是否忠实传达英文原意。扣分项:漏译、错译、增译、语义偏移、否定/条件/数量译反、指代错误。
+2. localization 本地化程度:是否地道日文而非「英文直译腔」。判据:
+   - 敬体です・ます調得当;外来语片假名规范;通用 IT 术语用日本主流译法(設定/機能/権限/ファイル/ダウンロード/アップロード/ログイン);
+   - 技术缩写保持英文(API/SDK/URL/JSON/SSO/OAuth);品牌词不译(DingTalk/Yida/AI Table…);
+   - 全角标点 。、「」（）;数字半角;日期 2026年6月2日;API 专有词前后半角空格(access token を取得);
+   - 见出し体言止め或动词原形;避免「〜することができます」滥用。
+3. fluency 流畅度:日文母语可读性——语序自然、搭配地道、无语法错误、无中文式 kanji 顺序。
+4. terminology 术语一致性:命中项目词库的术语是否按规定译法(见 user message 里的「命中术语 en→ja 对照表」);同一术语全文是否统一。
+
+【issues 逐条定位(最多 12 条,按 severity 降序)】
+每条:severity(high/medium/low)、dimension(accuracy/localization/fluency/terminology)、
+en(英文原文片段,≤120 字)、id(现译片段,≤120 字,此处放日文译文)、suggestion(建议改法,给出具体日文)、note(一句话说明为何是问题)。
+- 只报真实问题;译文若确实高质量,issues 可为空数组,不要硬凑。
+- 代码块内的 API 契约(字段名/方法/URL/状态码)本就应保持英文,**不要**报成问题。
+
+【输出格式(严格 JSON,第一个字符必须是 `{`,不要 markdown 代码围栏,不要任何前后缀说明)】
+{
+  "scores": {"accuracy": 4, "localization": 3, "fluency": 4, "terminology": 5},
+  "overall": 4.0,
+  "summary": "一句话总评(中文)",
+  "issues": [
+    {"severity": "high", "dimension": "accuracy", "en": "...", "id": "...", "suggestion": "...", "note": "..."}
+  ]
+}
+overall = 4 维加权平均(accuracy 0.35 / localization 0.30 / fluency 0.20 / terminology 0.15),保留 1 位小数。"""
+
+
+def build_judge_user_message(en_src: str, id_src: str, hits: dict[str, str], lang: str = "id") -> str:
+    tgt_label = {"id": "印尼语译文", "ja": "日文译文"}.get(lang, f"{lang} 译文")
     parts: list[str] = []
     if hits:
         terms_json = json.dumps(hits, ensure_ascii=False, indent=2)
         parts.append(
-            "本篇命中的项目术语 en→id 对照表(评 terminology 维度的强参照 —— 译文应严格按此译法):\n"
+            f"本篇命中的项目术语 en→{lang} 对照表(评 terminology 维度的强参照 —— 译文应严格按此译法):\n"
             f"```json\n{terms_json}\n```"
         )
     parts.append("=== 英文母版 (source) ===\n" + en_src)
-    parts.append("=== 印尼语译文 (translation to evaluate) ===\n" + id_src)
+    parts.append(f"=== {tgt_label} (translation to evaluate) ===\n" + id_src)
     parts.append("请严格按 system 里的 rubric 评审,只输出 JSON。")
     return "\n\n".join(parts)
 
@@ -223,6 +259,8 @@ async def eval_one(
     timeout_s: int,
     dry_run: bool,
     sem: asyncio.Semaphore,
+    lang: str = "id",
+    judge_system: str = JUDGE_SYSTEM,
 ) -> EvalResult:
     en_src = task.en_source.read_text(encoding="utf-8")
     id_src = task.id_target.read_text(encoding="utf-8")
@@ -231,13 +269,13 @@ async def eval_one(
     if dry_run:
         return EvalResult(rel=task.rel, product=task.product, status="dry-run", hit_terms_count=len(hits))
 
-    user_msg = build_judge_user_message(en_src, id_src, hits)
+    user_msg = build_judge_user_message(en_src, id_src, hits, lang)
     last_err = ""
     async with sem:
         for attempt in range(3):
             t0 = time.time()
             try:
-                result_text, usage = await call_claude_cli(JUDGE_SYSTEM, user_msg, model, timeout_s)
+                result_text, usage = await call_claude_cli(judge_system, user_msg, model, timeout_s)
                 data = parse_judge_json(result_text)
                 scores = data.get("scores", {})
                 return EvalResult(
@@ -369,7 +407,12 @@ def write_report(results: list[EvalResult], out_dir: Path, model: str, started: 
 
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-8")
-    glossary = load_en2id_glossary()
+    if args.lang == "ja":
+        glossary = load_en2ja_glossary()
+        judge_system = JUDGE_SYSTEM_JA
+    else:
+        glossary = load_en2id_glossary()
+        judge_system = JUDGE_SYSTEM
 
     docs = gather_all_docs(args.lang)
     if args.only:
@@ -377,7 +420,9 @@ async def main_async(args: argparse.Namespace) -> int:
         if not docs:
             sys.exit(f"ERROR: --only {args.only} 未匹配任何 {args.lang} 译文")
 
-    if args.full or args.only:
+    if args.sample:
+        selected = stratified_sample(docs, args.target, args.min_per, args.seed)
+    elif args.full or args.only:
         selected = sorted(docs, key=lambda d: d.rel)
     else:
         selected = stratified_sample(docs, args.target, args.min_per, args.seed)
@@ -398,7 +443,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
     sem = asyncio.Semaphore(args.concurrency)
     started = time.time()
-    coros = [eval_one(d, glossary, model, args.timeout, args.dry_run, sem) for d in selected]
+    coros = [eval_one(d, glossary, model, args.timeout, args.dry_run, sem, args.lang, judge_system) for d in selected]
     results: list[EvalResult] = []
     done = 0
     for coro in asyncio.as_completed(coros):
@@ -440,6 +485,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-per", type=int, default=2, dest="min_per", help="每个产品线最少抽样篇数(默认 2)")
     p.add_argument("--seed", type=int, default=42, help="抽样随机种子(可复现)")
     p.add_argument("--full", action="store_true", help="全量评审(忽略抽样)")
+    p.add_argument("--sample", action="store_true", help="即使指定 --only 也按 --target 分层随机抽样")
     p.add_argument("--only", default=None, help="只评某路径前缀,如 im / aitable / open/development")
     p.add_argument("--limit", type=int, default=0, help="只跑前 N 篇(抽样/全量之后再截断)")
     p.add_argument("--concurrency", type=int, default=3)

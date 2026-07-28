@@ -151,6 +151,38 @@ M. 英文：Name / Type / Required / Example / Description（不写 "Required or
 N. 日文：名前 / タイプ / 必須 / 例 / 説明"""
 
 
+# 宜搭 (Yida) 专属铁律 — 仅 root=yida 注入
+# 低代码平台文档：品牌词 + 开放接口契约 + 域名保护
+YIDA_RULES = """宜搭 (Yida) 专属铁律 — 违反任意一条则译文无效：
+
+【品牌与产品名 — 覆盖词库以外的自由发挥】
+A. 「宜搭」一律译为 **Yida**（与 www.yidaapps.com 域名一致）；严禁 Easy Build / YiDa / yiDa / 意搭 等任何变体。
+   复合词：专属宜搭 → Yida Dedicated；宜搭平台 → Yida platform；宜搭应用 → Yida app。
+B. 「钉钉」→ DingTalk；「酷应用」→ Cool App（日文 クールアプリ）；「低代码」→ low-code（日文 ローコード）。
+
+【API 契约 — 严格保持原样不译】（developer-features / integration 等篇目大量出现）
+C. JSON 字段名 / 参数名不译：formUuid / formInstId / appType / processCode / formDataJson /
+   updateFormDataJson / searchFieldJson / currentPage / pageSize / useLatestVersion / systemToken 等。
+D. 实例 ID / 占位符原样保留：FORM-xxx / FINST-xxx / APP_xxx / TPROC--xxx；组件唯一标识如
+   textField_kkm9o5cd / employeeField_jcos0sar 原样保留。
+E. 接口路径不译：/v1/form/saveFormData.json 等；HTTP 动词 / 状态码 / Header 名不译。
+F. 代码块按铁律 3 的 4 类处理：注释必译；示例 JSON 中 user-facing 中文字符串值（"单行"/"张三"等示例值）必须译为目标语言等价 placeholder；字段名 / 组件标识保持。
+
+【域名与链接保护】
+G. 以下 URL 完全不动（含路径与参数）：www.yidaapps.com / *.yidaapps.com /
+   yida-support.oss-cn-shanghai.aliyuncs.com / docs.aliwork.com / img.alicdn.com。
+H. 内部相对链接 [text](/zh/yida/...) 与 [text](/zh/open/...) 的 URL 保持原样（后处理统一改前缀），锚文本可译。
+
+【表格列头惯用】
+I. 英文：参数名→Parameter / 描述→Description / 是否必填→Required / 示例→Example / 备注→Notes；
+   能力对比表：能力→Feature / 支持→Supported / 不支持→Not supported。
+J. 日文：パラメータ / 説明 / 必須 / 例 / 備考；印尼文：Parameter / Deskripsi / Wajib / Contoh / Catatan。
+
+【套餐版本】
+K. 免费版→Free edition / 轻享版→Basic edition / 专业版→Professional edition / 专属版→Dedicated edition
+   （日文：無料版 / ベーシック版 / プロフェッショナル版 / 専用版；印尼文：Edisi Gratis / Basic / Professional / Dedicated）。"""
+
+
 # ---------------------------------------------------------------------------
 # 工具：占位检测、命中术语、sanitize
 # ---------------------------------------------------------------------------
@@ -248,6 +280,8 @@ def build_system_prompt(lang: str, root: str = "") -> str:
     sections = [SYSTEM_RULES, style]
     if root == "open":
         sections.append(OPEN_PLATFORM_RULES)
+    if root == "yida":
+        sections.append(YIDA_RULES)
     sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
     return "\n\n".join(sections)
 

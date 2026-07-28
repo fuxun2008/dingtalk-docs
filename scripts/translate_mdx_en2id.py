@@ -101,6 +101,28 @@ H. 代码示例按铁律 3 的 4 类处理。注释翻译，方法名 / 变量�
 I. 英文 Heading 用 Sentence case + 专有名词大写；动作导向祈使句（Klik / Panggil / Konfigurasikan）。"""
 
 
+# 宜搭 (Yida) 专属规则 — 仅 root=yida 注入
+YIDA_RULES = """宜搭 (Yida) 专属规则 — 违反任意一条则译文无效：
+
+【品牌 / 产品名】
+A. **Yida** 是品牌名，原样保留不译；Yida Dedicated / Yida platform / Yida app 同理。
+B. Cool App / low-code / DingTalk 保持英文原样。
+
+【API 契约 — 保持原样】（developer-features / integration 篇目多见）
+C. JSON 字段名 / 参数名不译：formUuid / formInstId / appType / processCode / formDataJson / searchFieldJson / systemToken 等。
+D. 实例 ID / 组件标识保持：FORM-xxx / FINST-xxx / APP_xxx / textField_kkm9o5cd 等。
+E. 接口路径（/v1/form/saveFormData.json 等）保持。
+
+【URL 保护】
+F. www.yidaapps.com / yida-support.oss-*.aliyuncs.com / docs.aliwork.com / img.alicdn.com 的 URL 完全不动。
+G. 内部相对链接 [text](/yida/...) 的 URL 原样保持（后处理统一改前缀），仅锚文本翻译。
+
+【表格列头 / 用词】
+H. Parameter→Parameter / Description→Deskripsi / Required→Wajib / Example→Contoh / Notes→Catatan；
+   Feature→Fitur / Supported→Didukung / Not supported→Tidak didukung。
+I. 套餐：Free→Edisi Gratis / Basic→Edisi Basic / Professional→Edisi Professional / Dedicated→Edisi Dedicated。"""
+
+
 # ---------------------------------------------------------------------------
 # 占位検出・命中用語・コードフェンス
 # ---------------------------------------------------------------------------
@@ -193,6 +215,8 @@ def build_system_prompt(root: str = "") -> str:
     sections = [SYSTEM_RULES, SEO_DESCRIPTION_RULE, STYLE_ID]
     if root == "open":
         sections.append(OPEN_PLATFORM_RULES)
+    if root == "yida":
+        sections.append(YIDA_RULES)
     sections.append("本次任务把英文 mdx 译为印尼文（Bahasa Indonesia，商务书面语 bahasa baku）。直接输出译文 mdx，不加任何前后缀说明。")
     return "\n\n".join(sections)
 
