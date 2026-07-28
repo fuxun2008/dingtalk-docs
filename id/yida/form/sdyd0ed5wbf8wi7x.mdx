@@ -1,0 +1,201 @@
+---
+title: "Fungsi builder"
+description: "Pelajari model standar User dan Department di YiDA, serta cara menggunakan fungsi UserBuilder, DirectorBuilder, DeptBuilder, GetObjectField, dan GetArrayItem untuk menghasilkan dan memproses data pengguna dan departemen."
+polished: true
+---
+
+## Ikhtisar model
+
+- Object model User standar
+
+```text
+{
+"corpId":"ID organisasi",
+"label":"Nama (ID Karyawan)",
+"avatar":"URL Foto Profil",
+"key":"userid",
+"businessWorkNo":"Akun kerja"
+}
+```
+
+- Object model Department standar
+
+```text
+{
+	"label":"Nama departemen saat ini",
+	"key":"ID Departemen"
+}
+```
+
+## UserBuilder
+
+### Ekspresi
+
+```text
+UserBuilder(["userid","userid"]  |  ${memberComponent[{},{}]} )
+```
+
+<Warning>
+Deskripsi formula: Fungsi builder User. Menghasilkan koleksi model User yang sesuai dengan daftar userid tertentu atau komponen anggota tertentu.
+</Warning>
+
+### Parameter input
+
+```text
+(["userid","userid"]  or  ${memberComponent[{},{}]} )
+```
+
+### Nilai kembalian
+
+```text
+[{User object},{User object}]
+```
+
+### Contoh
+
+```text
+UserBuilder(["some_userid_123"])
+
+// Mengembalikan
+[{user1}]
+```
+
+## DirectorBuilder
+
+### Ekspresi
+
+```text
+DirectorBuilder( "" | "userid", level )
+```
+
+<Warning>
+Deskripsi formula: Fungsi builder atasan. Mengembalikan atasan pada tingkat ke-level dari pengguna yang sedang masuk atau pengguna tertentu. Parameter level harus >= 1. Mengembalikan koleksi model User dari atasan terkait; beberapa atasan dikembalikan bila pengguna berada di beberapa departemen.
+</Warning>
+
+### Parameter input
+
+- Parameter 1: userid yang ditentukan, digunakan untuk mengidentifikasi User terkait. Berikan "" untuk merujuk pada pengguna yang sedang masuk.
+- Parameter 2: level. Mengembalikan atasan pada tingkat ke-level. Hanya valid jika level >= 1.
+
+### Nilai kembalian
+
+- Object model User standar dari atasan: [\{User object},\{User object}]
+
+### Contoh
+
+```text
+DirectorBuilder("",2)
+
+// Mengembalikan
+[{user1},{user2}]
+```
+
+## DeptBuilder
+
+### Ekspresi
+
+```text
+DeptBuilder(no parameter | userid | single-select member component)
+```
+
+<Warning>
+Deskripsi formula: Fungsi builder Department. Mengambil object model Department yang ditentukan berdasarkan kondisi. Formula ini tidak mendukung subformulir.
+</Warning>
+
+### Parameter input
+
+Parameter 1 (tiga mode):
+
+- Tanpa parameter: Departemen langsung dari pengguna yang sedang masuk.
+- Atau userid: Departemen langsung dari User ID yang ditentukan.
+- Atau komponen anggota pilihan tunggal: Departemen langsung dari User yang sesuai dengan komponen anggota tersebut.
+
+### Nilai kembalian
+
+- Object model Department standar: [Department object, Department object]. Satu User dapat berada di beberapa Departemen sekaligus.
+
+### Contoh
+
+```text
+DeptBuilder("")
+// Mengembalikan
+[{dept},{user2}]
+```
+
+## GetObjectField
+
+### Ekspresi
+
+```text
+GetObjectField(standard JSON object model, "fieldKey")
+```
+
+<Warning>
+Deskripsi formula: GetObjectField **adalah fungsi utilitas. JsonObject adalah format penyimpanan object standar serbaguna yang menyusun data secara internal dengan struktur key:value. GetObjectField mengambil nilai key yang ditentukan dari object JSON standar tertentu.**
+
+**Catatan: Tidak didukung di dalam subformulir.**
+</Warning>
+
+### Parameter input
+
+- Parameter 1: JsonObject standar yang ditentukan.
+- Parameter 2: fieldKey. Key atribut tingkat pertama dari object pada parameter 1.
+
+### Nilai kembalian
+
+- Nilai yang sesuai dengan key atribut object. Secara default bertipe Teks.
+
+### Contoh
+
+```text
+GetObjectField( GetArrayItem(UserBuilder(memberComponent), 1) ,"label")
+
+// Contoh data komponen anggota:
+[{"label":"Budi (ID Karyawan 11)","key":"userid123"},{"label":"Siti (ID Karyawan 22)","key":"userid124"}]
+
+// Mengembalikan
+
+"Budi (ID Karyawan 11)"
+```
+
+## GetArrayItem
+
+### Ekspresi
+
+```text
+GetArrayItem(standard JsonArray type, n)
+```
+
+<Warning>
+Deskripsi formula: GetArrayItem **adalah fungsi utilitas. JsonArray adalah format penyimpanan koleksi array standar serbaguna yang setiap unitnya berupa JsonObject atau JsonArray standar. GetArrayItem mengambil unit data ke-n (baik JsonObject maupun JsonArray) dari JsonArray standar tertentu.** n >= 1, dan n = 1 merujuk pada unit data pertama.
+</Warning>
+
+### Parameter input
+
+- Parameter 1: Tipe JsonArray standar.
+- Parameter 2: n. Mengambil object unit data ke-n dalam array.
+
+### Nilai kembalian
+
+- Unit data ke-n pada parameter 1. Tipenya dapat berupa JsonObject atau JsonArray.
+
+### Contoh
+
+```text
+GetArrayItem(memberComponent, 1)
+```
+
+<Note>
+Contoh data komponen anggota:
+
+[\{"label":"Budi (ID Karyawan 11)","key":"userid123"},\{"label":"Siti (ID Karyawan 22)","key":"userid124"}]
+</Note>
+
+### Mengembalikan
+
+```text
+""
+{"label":"Budi (ID Karyawan 11)","key":"userid123"}
+```
+
+Contoh:

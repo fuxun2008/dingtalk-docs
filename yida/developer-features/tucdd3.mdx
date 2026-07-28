@@ -1,0 +1,55 @@
+---
+title: "About This Binding"
+description: "This article explains how the this keyword works in JavaScript, including how its reference changes based on different invocation patterns and the impact of the ES5 bind method and ES2015 arrow functions on this. It also covers considerations for using this in the YiDA action panel, particularly the role of the export keyword and its effect on the value of this. Several examples show how to correctly use this in the YiDA environment to access the rendering engine context."
+polished: true
+---
+
+## 1. Background
+
+- To understand this binding, you first need to understand how this works in JavaScript.
+- In most cases, the value of this is determined by how a function is called (runtime binding). It cannot be assigned during execution, and it may differ each time the function is called. ES5 introduced the bind method to set the value of a function's this regardless of how the function is called. ES2015 introduced arrow functions, which do not provide their own this binding (this retains the value of the enclosing lexical context).
+
+<Card title="this - JavaScript | MDN https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this" icon="bookmark" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this" horizontal />
+
+## 2. This in the YiDA Action Panel
+
+- Once you understand how this works in JavaScript, you only need to check whether the export keyword is used when calling functions in the YiDA action panel.
+- Recommendation: For pure utility functions that do not involve any page context—for example, generating a random string with function uid() \{ return new Date().getTime().toString(32); }—do not use the export keyword. Otherwise, all methods must use the export keyword and be invoked with this.
+
+Example 1
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); // Correct. Method a can access the YiDA rendering engine context this.
+  a(); // Incorrect. Method a cannot access the YiDA rendering engine context this.
+}
+```
+
+Example 2
+
+```jsx
+function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); // Incorrect and throws an error. Method a is not imported via the export keyword, so it cannot be called using the YiDA rendering engine context this.
+  a(); // Incorrect. Method a cannot access the YiDA rendering engine context this.
+}
+```
+
+Example 3
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+function b() {
+  a(); // Incorrect. Method b does not use the export keyword and is not called via this.a(), so method a cannot access the YiDA rendering engine context this.
+}
+```

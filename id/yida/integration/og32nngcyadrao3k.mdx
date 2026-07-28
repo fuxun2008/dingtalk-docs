@@ -1,0 +1,154 @@
+---
+title: "Smart Form"
+description: "Dokumen ini menjelaskan cara membangun fitur kueri templat di DingTalk Smart Form, termasuk membuat formulir kueri, mengonfigurasi konektor, dan memproses data yang dikembalikan."
+polished: true
+---
+
+<Warning>
+Catatan:
+
+- Hanya templat yang dibuat oleh pengguna yang dapat diambil.
+- Karyawan yang dikueri harus terdaftar di Smart Form.
+</Warning>
+
+## 1. Kasus penggunaan
+
+Smart Form adalah aplikasi dasar yang disediakan oleh DingTalk. Aplikasi ini cocok untuk skenario seperti survei dan pelacakan pendaftaran, serta mendukung statistik data dan unduhan. Contoh ini menunjukkan cara memicu konektor melalui pengiriman formulir di YiDA untuk mengueri informasi templat Smart Form yang dibuat oleh karyawan tertentu.
+
+## 2. Langkah
+
+### 2.1 Langkah 1: Buat Formulir "Kueri templat Smart Form"
+
+Formulir ini digunakan untuk memicu konektor kueri.
+
+**Langkah:**
+
+1. Buat formulir bernama "Kueri templat Smart Form".
+2. Tambah komponen anggota, beri nama "Pembuat templat", lalu setel sebagai wajib. (Lihat Gambar 2.1-1.)
+
+Gambar 2.1-1 Tambah dan konfigurasikan komponen anggota
+
+3. Tambah komponen dropdown pilih. Tambahkan dua opsi kustom: nilai tampilan "Formulir umum" dengan nilai opsi "0", dan nilai tampilan "Formulir pendidikan" dengan nilai opsi "1". Setel sebagai wajib. (Lihat Gambar 2.1-2.)
+
+Gambar 2.1-2 Tambah dan konfigurasikan komponen dropdown pilih
+
+4. Klik Simpan di sudut kanan atas.
+
+### 2.2 Langkah 2: Buat formulir "Tabel rekam hasil kueri"
+
+Formulir ini digunakan untuk menerima hasil yang dikembalikan oleh konektor dan menampilkannya setelah diproses.
+
+**Langkah:**
+
+1. Buat formulir bernama "Tabel rekam hasil kueri".
+2. Tambah komponen teks multi-baris, beri nama "Hasil yang dikembalikan", lalu setel statusnya menjadi Tersembunyi. (Lihat Gambar 2.2-1.)
+
+Gambar 2.2-1 Tambah dan konfigurasikan komponen teks multi-baris
+
+3. Tambah subformulir, beri nama "Rekam hasil kueri", lalu tambahkan 10 komponen teks satu baris di dalam subformulir dengan nama "Kode formulir", "Nama formulir", "Tips formulir", "Tipe formulir", "Siklus formulir", "Tenggat formulir", "Waktu pembuatan", "Kategori formulir", "Formulir dihentikan", dan "Pembuat formulir". Setel status setiap komponen teks menjadi Hanya Baca. (Lihat Gambar 2.2-2.)
+
+Gambar 2.2-2 Tambah dan konfigurasikan komponen subformulir
+
+4. Klik Simpan di sudut kanan atas.
+
+### 2.3 Langkah 3: Buat dan konfigurasikan konektor
+
+<Note>
+Untuk gambaran umum kemampuan konektor, lihat [Integrasi & Otomatisasi - Konektor](https://docs.aliwork.com/docs/yida_support/zevvr1).
+</Note>
+
+**Langkah:**
+
+1. Pada konsol admin, pilih formulir "Kueri templat Smart Form", klik Integrasi & Otomatisasi, lalu klik Buat Integrasi & Otomatisasi. (Lihat Gambar 2.3-1.)
+
+Gambar 2.3-1 Entri konfigurasi konektor
+
+2. Beri nama konektor "Dapatkan templat Smart Form yang dibuat oleh karyawan", pilih Pemicu acara formulir, lalu klik Konfirmasi.
+
+(Lihat Gambar 2.3-2.)
+
+Gambar 2.3-2 Buat konektor
+
+3. Konfigurasikan pemicu acara formulir: setel acara pemicu ke Berhasil dibuat, setel filter data ke Semua data, lalu klik Simpan.
+
+(Lihat Gambar 2.3-3.)
+
+Gambar 2.3-3 Konfigurasikan acara pemicu formulir
+
+4. Pilih aplikasi konektor: pilih aplikasi Smart Form, lalu klik Berikutnya. (Lihat Gambar 2.3-4.)
+
+Gambar 2.3-4 Pilih aplikasi konektor
+
+5. Pilih tindakan konektor: pilih Dapatkan templat formulir pengguna, lalu klik Berikutnya. (Lihat Gambar 2.3-5.)
+
+Gambar 2.3-5 Pilih tindakan konektor
+
+6. Konfigurasikan tindakan konektor, lalu klik Simpan. (Lihat Gambar 2.3-6.)
+
+Gambar 2.3-6 Konfigurasikan tindakan konektor
+
+7. Tambahkan node Buat data di bawah node konektor. (Lihat Gambar 2.3-7.)
+
+Gambar 2.3-7 Tambah node Buat data
+
+8. Konfigurasikan node Buat data, lalu klik Simpan. (Lihat Gambar 2.3-8.)
+
+Gambar 2.3-8 Konfigurasikan node Buat data
+
+9. Klik Simpan di sudut kanan atas, lalu klik Terbitkan.
+
+### 2.4 Langkah 4: Konfigurasikan "Tabel rekam hasil kueri"
+
+Langkah-langkah sebelumnya menyiapkan pemanggilan konektor dan memungkinkan data yang dikembalikan konektor untuk diterima. Selanjutnya, proses data yang dikembalikan lalu tampilkan nilai yang telah diproses pada komponen di dalam subformulir "Rekam hasil kueri".
+
+**Langkah:**
+
+Pada halaman pengeditan formulir, salin kode berikut ke dalam fungsi `didMount` di panel aksi JS di sisi kiri halaman.
+
+(Lihat Gambar 2.4-1.)
+
+Gambar 2.4-1 Entri panel aksi JS dan fungsi didMount
+
+<Note>
+Kode di bawah ini dapat ditempel langsung ke panel JS. Catatan: Ganti pengenal unik setiap komponen dengan pengenal di formulir Anda.
+</Note>
+
+```javascript
+// Dapatkan data yang diteruskan oleh konektor ke komponen teks multi-baris
+// textareaField_kwcv17cj adalah kode unik komponen teks multi-baris "Hasil yang dikembalikan" pada halaman.
+let obj = this.$('textareaField_kwcv17cj').getValue();
+// Nilai obj adalah string. JSON.parse() mengonversi obj menjadi object.
+  let res = JSON.parse(obj);
+// Buat array kosong "arr" untuk menyimpan data yang telah diproses.
+  let arr = []
+// Iterasi variabel res
+  const data = res.map(item=>{
+    let object = {};
+// Ganti kode antara "object." dan "=" pada baris 12–21 dengan pengenal unik setiap komponen di dalam subformulir.
+    object.textField_kwcvykby = item.name;
+    object.textField_kwcvykbz = item.memo;
+    object.textField_kwcvykbx = item.form_code;
+    object.textField_kwcvykc0 = item.setting.form_type === 0 ? "Formulir sekali pakai" : "Formulir berulang";
+    object.textField_kwcvykc3 = item.setting.form_type === 0 ? "Formulir non-berulang" : item.setting.loop_days;
+    object.textField_kwcvykc5 = item.setting.end_time ? item.setting.end_time : "Tidak ada tenggat yang ditetapkan";
+    object.textField_kwcvykcb = item.setting.create_time;
+    object.textField_kwcvykcc = item.setting.biz_type === 0 ? "Formulir umum" : "Formulir pendidikan";
+    object.textField_kwcvykcd = item.setting.stop === false ? "Tidak dihentikan" : "Dihentikan";
+    object.textField_kwcvykce = item.creator;
+// Tambahkan object yang telah diproses ke array arr. Setiap object mewakili satu rekam subformulir.
+    arr.push(object);
+  })
+// Tetapkan data array arr ke komponen subformulir
+// Ganti tableField_kwd6plxz dengan pengenal unik subformulir di formulir Anda.
+  this.$("tableField_kwd6plxz").setValue(arr);
+```
+
+### 2.5 Langkah 5: Kirim data formulir
+
+Isi dan kirim formulir "Kueri templat Smart Form" untuk memicu konektor. Kemudian buka halaman manajemen data dari formulir "Tabel rekam hasil kueri" untuk melihat data yang dikembalikan oleh konektor. (Lihat Gambar 2.5-1.)
+
+Gambar 2.5-1 Kirim data formulir
+
+## 3. Hasil
+
+Gambar 3.1 Hasil kueri

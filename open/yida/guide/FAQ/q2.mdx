@@ -1,0 +1,118 @@
+---
+title: "Use Apache ECharts"
+description: "Tutorial: Import external JS libraries such as ECharts.js into YiDA custom pages to visualize form data and extend beyond the built-in components."
+polished: true
+---
+
+## Use Case
+
+In some scenarios, you may need components in YiDA custom pages that are not available in the YiDA component library, such as ECharts chart components. Developers can import ECharts.js into custom pages to visualize YiDA data. This tutorial shows how to import external JS libraries into custom pages to meet complex scenario requirements.
+
+## Video Tutorial
+
+## Steps
+
+### Step 1: Configure JSX Component Attributes
+
+Create a custom page and drag a `JSX` component from the component library onto the center canvas. Then set its id attribute and styles.
+Steps:
+
+1. Select the JSX component on the page. In the right-side attribute panel, click the Edit JSX Code button.
+2. Add the `id="main"` field after div.
+3. Click the Style tab on the right, click Source Editing, and enter `#main { height: 400px }`.
+
+See the illustration below:
+
+### Step 2: Bind the didmount Lifecycle to Load Remote JS Resources
+
+Load JS resources from a CDN in the page's didMount lifecycle (for more information about custom page lifecycles, see the [documentation](/open/yida/guide/concept/lifecycle)). Copy the following code directly into the didMount section of the custom page action panel, as shown below:
+
+The loadScript method code is as follows:
+
+```js
+// loadScript method: creates a script tag and imports external JS, executes upon success with rapid development code
+export function loadScript() {
+  // Create script tag and import echarts.js
+  // Call resolve(...) when async code succeeds, call reject(...) when async code fails
+  new Promise((resolve, reject) => {
+    const src = 'https://g.alicdn.com/code/lib/echarts/5.3.0/echarts.min.js';
+    const script = document.createElement('script');
+    script.setAttribute('type', 'text/javascript');
+    script.src = src;
+    document.body.appendChild(script);
+    // The script tag's onload event is triggered only after the external js file is loaded and executed
+    script.onload = () => {
+      resolve('Success');
+    };
+    script.onerror = reject;
+  }).then(() => {
+    // Load radar chart js after successful import
+    radar();
+  });
+}
+```
+
+### Step 3: Render a Radar Chart with ECharts
+
+Based on the JS implementation above, after the remote JS resource is loaded, a `radar` function runs to render the Radar. Add a radar function in the action panel to render the Radar into the JSX component created in Step 1. For details on Radar usage, refer to the [ECharts documentation](https://echarts.apache.org/zh/index.html).
+
+The radar method code is as follows:
+
+```js
+// Radar chart js method
+export function radar() {
+  // Radar chart js
+
+  var chartDom = document.getElementById('main');
+  chartDom.style.height = '400px';
+  // Prepare a DOM with size (width and height) for ECharts, set width and height in JSX component styles
+  // Initialize echarts instance based on the prepared DOM
+  var myChart = echarts.init(chartDom);
+  // Specify chart configuration and data
+  var option;
+  option = {
+    // data uses variable data source, or can be written directly
+    title: {
+      text: 'Employee Comprehensive Ability',
+    },
+    legend: {
+      data: state.nameArr,
+      // data: ["YiDA-ly"]
+    },
+    radar: {
+      // shape: 'circle',
+      indicator: [
+        { name: 'Performance', max: 100 },
+        { name: 'Comprehensive Ability', max: 100 },
+        { name: 'Reaction Ability', max: 100 },
+        { name: 'Professional Ability', max: 100 },
+        { name: 'Judgment Ability', max: 100 },
+        { name: 'Service Ability', max: 100 },
+      ],
+    },
+    series: [
+      {
+        name: 'Employee Comprehensive Ability',
+        type: 'radar',
+        data: state.dataArr,
+        // data: [
+        //   {
+        //     value: [80, 85, 90, 90, 88, 92],
+        //     name: 'YiDA-ly'
+        //   }
+        // ]
+      },
+    ],
+  };
+  // Display the chart using the specified configuration and data
+  option && myChart.setOption(option);
+}
+```
+
+### Step 3: Bind Data Variables
+
+The radar method above reads two variables from state: `nameArr` and `dataArr`. Therefore, you need to set the data variables for the Radar, as shown below:
+
+## Display Effect
+
+Visit the official [ECharts Import Example](https://docs.aliwork.com/docs/yida_subject/_1/cv1rpl1oi5eqlea9) to view the effect and implementation details. The final display is shown below:

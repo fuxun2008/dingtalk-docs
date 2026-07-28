@@ -1,0 +1,215 @@
+---
+title: "数据源面板"
+description: "本文档介绍了如何在不同版本中新建数据源，包括变量、远程请求和参数数据源的创建方法。同时详细解释了远程请求的数据格式要求、自动加载选项、加载方式选择、请求条件设置以及willFetch, fit, didFetch, onError等函数的具体用法。"
+---
+
+| **能力** | **免费版** | **轻享版** | **专业版** | **专属版** |
+|---|---|---|---|---|
+| 外部数据源 | 不支持 | 不支持 | 支持 | 支持 |
+
+## 1. 新建数据源
+
+### 1.1 如何新建数据源
+
+点击 「添加」按钮，即可开始创建一个新的数据源，可以新建的数据源分为三个种类，用户在新建时可以选择其中一个种类，新建完成后该类型不允许切换。
+
+- 变量 ：本地变量
+- 远程请求 ：从一个服务端接口中获取的数据
+- 参数数据源： 系统默认传入该数据源，用于获取当前 url 中的参数。 例如 url 是 a.html?key1=value1&key2=value2 时，参数数据源的值为：
+
+```javascript
+{
+  key1: 'value1',
+  key2: 'value2'
+}
+```
+
+### 1.2 变量数据源
+
+变量数据源一般用于保存配置项（如远程接口前缀 apiUrlPrefix）、页面临时变量等，支持字符串、对象、数组、数字、bool 等所有 JS 数据类型。
+
+```javascript
+字符串: "string"
+数字: 123
+布尔值: true / false
+对象: {"name": "gaokai"}
+数组: ["1", "2"]
+空值: null
+```
+
+### 1.3 远程请求
+
+**接口返回数据格式**
+
+远程数据源对数据的格式有少量的必要的限制：
+
+```javascript
+{
+    content: [], // content 字段用于承载数据，content 对应的数据结构不做限制。
+    success: true // success 用于标明这次请求是否成功
+}
+```
+
+具体的格式约束请参考 [**natty-fetch**](https://github.com/oner-team/oner-io/blob/natty-fetch/docs/rules.md) 对数据的约束。
+
+**特别说明**：
+
+按照 👆的格式返回的数据，在请求的响应回调函数中，如（didFetch 以及最终存入数据池中的值），将不再包含 content 以及 success 这一层。
+
+对于非标准的接口返回的数据，为了让数据源识别，就需要做一层 fit 处理。fit 本质上是在数据请求 didFetch（取回数据） 之前将原始的响应内容转化为符合宜搭 RPC 响应规范的格式。具体用法参考👇的 fit 用法的讲解。
+
+如果使用了自己的接口服务注意跨域问题，需要使用 JSONP 或自己的接口服务配置允许[**跨域。**](https://www.baidu.com/s?wd=%E8%B7%A8%E5%9F%9F%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88&rsv_spt=1&rsv_iqid=0xb4bc961e002c4bf1&issp=1&f=3&rsv_bp=1&rsv_idx=2&ie=utf-8&rqlang=cn&tn=baiduhome_pg&rsv_enter=0&rsv_dl=ts_0&oq=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsv_btype=t&rsv_t=9447WFp%2FaXjCnHf21%2BpQbVggodBCHxIJ1kWR%2FKv8r%2FkP1SGPy8aAS62FCEEAtb9vrwrJ&rsv_pq=fbe7a51d001b0915&prefixsug=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsp=0)推荐使用接口服务配置的方式，可以参考 [**跨源资源共享**](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS) (注意宜搭所有应用均是 https, 所以需要配置指定域名： Access-Control-Allow-Origin: https://www.yidaapps.com)
+
+**请求方法**
+
+远程数据源加载的方式共有下面三种：
+
+- GET
+- POST
+- JSONP 该方式需要服务端支持
+
+### 1.4 自动加载
+
+开启了「自动加载」的数据源会在页面渲染之前请求远程接口，所有自动加载的数据源加载完成之后才开始渲染页面。一般用于页面初始数据的加载
+
+**注意：过多的「自动加载」的数据源将导致页面渲染时间延长，请勿滥用。**
+
+### 1.5 加载方式（需先打开自动加载选项）
+
+**串行**：所有串行数据源会从上到下执行，如果有相互依赖的，被依赖的数据源需要在前面
+
+**并行**：所有并行数据源同时执行
+
+如果不想选择自动加载，避免请求阻塞页面渲染，但是又想达到串行加载的效果，目前的方式是，在「页面加载完成时」的函数中，手动触发数据源加载。调用示例如下：触发第一个远程数据源请求，请求返回之后再触发第二个远程数据源请求。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1612072981152-bd94b719-798e-4eb5-b376-9bd6cace3b22.png)
+</Frame>
+
+### 1.6 是否请求
+
+支持传入一个布尔值，通过这个变量去判断这个请求是否应该发出。这个输入域也可以输入变量表达式以决定是否需要发送请求。
+
+### 1.7 willFetch
+
+请求发送前处理函数；willFetch 允许用户在发送请求前修改请求的各种参数。示例：
+
+```javascript
+function willFetch(vars, config) {
+    // 通过 vars.data 可以更改查询参数
+    // 通过 config.header 可以更改 header
+    // 通过 config.url 可以更改  url
+    vars.data.a = 1; // 修改发送请求参数中的 a 为1
+    config.url = 'https://www.taobao.com'; // 修改请求的 url 为淘宝
+    config.header['Content-Type'] = 'application/json'; // 修改 Content-Type
+    console.log(vars, config); // 可以查看还有哪些参数可以修改。
+}
+```
+
+### 1.8 fit
+
+请求返回时的数据适配；fit 可以修改请求的原始 Response 以适配对应的数据请求格式。示例：
+
+```javascript
+function fit(response) {
+  const content = (response.content !== undefined) ? response.content : response;
+  const error = {
+    message: response.errorMsg ||
+      (response.errors && response.errors[0] && response.errors[0].msg) ||
+      response.content || '远程数据源请求出错，success is false',
+  };
+  let success = true;
+  if (response.success !== undefined) {
+    success = response.success;
+  } else if (response.hasError !== undefined) {
+    success = !response.hasError;
+  }
+  return {
+    content,
+    success,
+    error,
+  };
+}
+```
+
+### 1.9 didFetch
+
+请求完成回调函数；didFetch 允许用户对接收到的数据进行修改, 和 fit 不同的是, 接口返回的 success 为 true 才会执行。示例：
+
+```javascript
+function didFetch(content) {
+    content.b = 1; // 修改返回数据结构中的 b 字段为1
+    return content; // 重要，需返回 content
+}
+```
+
+### 1.10 onError
+
+请求错误处理函数；onError 用于捕获远程数据源的接口异常，接口返回的 success 为 false 时会执行, 示例：
+
+```javascript
+function onError(error) {
+  console.log(error);
+}
+```
+
+### 1.11 默认数据
+
+默认数据一般用于首屏渲染的场景，可以在远程数据源请求未返回时，给一个初始化的默认值。注意：默认数据的数据格式是 DidFetch 那层返回的数据格式，可以直接绑定使用。
+
+### 1.12 连接器数据源 NEW
+
+连接器数据源中可以将连接器作为数据源，旨在打破系统/网页间的跨域、鉴权限制，详细介绍请参考文档[使用自定义连接器解决跨域问题](https://www.yuque.com/yida/subject/vddims)。
+
+## 2. 使用数据源
+
+### 2.1 组件内绑定
+
+在宜搭组件的属性设置面板中，我们可以给一个属性绑定一个变量，以达到动态的效果。方法如下：
+
+- 所有支持变量的属性都有如下图标，点击图标可打开「变量绑定面板」
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1612072981158-2f348b0e-920d-4413-ba9f-ad4cfd58fe9d.png)
+</Frame>
+
+- 「变量绑定面板」支持绑定如下类型的变量， 可通过点选直接使用：
+
+如：state.urlParams.type === 'test' ? '1' : '2'
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1612072981152-f7e8a57b-25d5-4098-a2b6-7215e2718ac5.png)
+</Frame>
+
+### 2.2 开发者中心体验试玩
+
+- **点此链接体验试玩**
+
+## 3. 常见问题
+
+### 3.1 数据源请求后，无数据。
+
+请确认：
+
+- 您的接口的路径和请求方式等等是正确的。
+- 默认请求已开启或者手动调用已生效。
+- 请求的接口服务所在服务器存在访问白名单限制。
+- 入参格式不正确。
+- 您的接口支持 www.yidaapps.com 的跨域访问。
+- 您的接口是 https，并且证书是「安全」的。
+
+### 3.2 排查思路
+
+1. 判断数据源的加载方式是 手动加载 还是 自动加载 ，如为 手动加载 ，请在数据源加载代码处 打断点 便于调试。
+2. 预览/访问页面。
+3. 打开浏览器控制台。
+4. 触发数据源加载。
+5. 查看控制台内对应请求信息进行排错。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1646290600967-8e642d2d-3dea-4fb1-9fb8-f60b50e545da.png)
+</Frame>
+
+### 3.3 调用宜搭平台接口时，报错307？
+
+请检查你的组织是否开启了二级域名，若开启二级域名应该将接口访问地址由`www.yidaapps.com/...`更换为相对地址`/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json`即可避免该错误的出现。

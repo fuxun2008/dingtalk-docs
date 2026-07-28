@@ -1,0 +1,171 @@
+---
+title: "Single Sign-On"
+description: "Learn the concept and benefits of single sign-on (SSO) in YiDA Dedicated, including supported protocols such as OAuth 2.0, OIDC, and CAS, and how to configure IDaaS to enable SSO."
+polished: true
+---
+
+Single sign-on (SSO) is an identity authentication and authorization solution that lets users sign in once with the same credentials to access multiple related systems, delivering a convenient and efficient experience.
+
+The YiDA Dedicated SSO feature can be integrated into other systems or products. Users only need to sign in once to that system or product to use YiDA's features directly without signing in again, which improves work efficiency.
+
+The main benefits of SSO include:
+
+1. Convenient user experience: Users authenticate only once to access multiple systems, eliminating the need to repeatedly enter usernames and passwords. This improves both experience and productivity.
+2. Improved security: SSO verifies user identity through a centralized authentication service, which avoids storing passwords in every system and reduces the risk of password leaks.
+3. Simplified management: Users only need to maintain a single set of credentials, which reduces user administration overhead and eases the burden on system administrators.
+
+## Supported Protocols
+
+YiDA Dedicated currently supports SSO based on OAuth 2.0, OIDC, and CAS. The following section uses OAuth 2.0 as an example to demonstrate how to integrate with IDaaS SSO.
+
+**Overview of OAuth 2.0**
+
+OAuth 2.0 is an open standard for authorization that lets users grant third-party apps access to resources stored in another app without sharing their credentials. It provides a secure, flexible, and standardized way to handle authorization while protecting user privacy and data security. OAuth 2.0 is widely used in scenarios such as social media sign-in, API access control, and SSO, delivering a better connected experience for users and developers.
+
+Main protocol flow:
+
+1. YiDA Dedicated provides SSO and acts as the Service Provider (SP).
+2. The Organization Admin enables SSO. When an unauthenticated employee tries to access YiDA, the system redirects the page request to the Identity Provider (IdP) address configured by the Admin.
+3. If the user is already signed in to the IdP, the IdP reads the user information from the session and returns it to YiDA using the method configured by the Admin.
+4. If the user is not yet signed in to the IdP, they must provide the required information to sign in. Once signed in, their information is returned to YiDA.
+5. After receiving the user information, YiDA calls the DingTalk Contacts API to verify the user's identity and then serves the user.
+
+<Note>
+- IdP stands for Identity Provider, the authentication center that holds user information and maintains sessions with users during authentication.
+- SP stands for Service Provider. When a user accesses a service provided by the SP and the SP cannot identify the user, it asks the IdP to authenticate the user.
+
+For example: IdP - IDaaS, SP - YiDA Dedicated.
+</Note>
+
+## Configuration
+
+Prerequisites: You must provide a public endpoint reachable over the internet, and the user information endpoint must return the DingTalk uid or userId (based on the DingTalk account system).
+
+The following example uses Alibaba Cloud IDaaS and the OAuth 2.0 protocol to demonstrate how to sign in to YiDA through an IDaaS authentication service configured with the DingTalk authentication system.
+
+### **Configuration in IDaaS**
+
+<Steps>
+  <Step title="Go to the Alibaba Cloud console and create an instance.">
+  </Step>
+  <Step title="Create an OAuth 2.0 protocol app (OIDC and CAS protocols are similar).">
+  </Step>
+  <Step title="Configure app information.">
+  </Step>
+  <Step title="Configure app authorization: On the IDaaS side, you can authorize the app across different dimensions. Only users within the authorized scope can be authenticated through the app.">
+  </Step>
+  <Step title="View app information.">
+  </Step>
+</Steps>
+
+### **Configuration in YiDA**
+
+After creating and authorizing the app in IDaaS, the Admin goes to YiDA to enable SSO and complete the related settings.
+
+1. Turn on the SSO switch.
+2. Configure the SSO information (choose one sign-in protocol; the following screenshot uses OAuth 2.0 as an example).
+3. After saving the configuration, sign out and sign in again to verify that you are redirected to the SSO service. The setting takes effect for the entire organization.
+
+## YiDA SSO Protocol Format Examples
+
+The returned identity callback data must follow the format below.
+
+##### OAuth2
+
+```json
+{
+  "success": true,
+  "code": 200, // Status code
+  "data": {
+    "sub": "DingTalk uid or DingTalk userId"
+  }
+}
+```
+
+##### OIDC
+
+Parse the returned user information based on the configured public key. The parsed format is shown below. YiDA reads the sub field.
+
+```json
+{
+    "sub": "DingTalk uid or DingTalk userId",
+    "iss": "http://xxxxxx/public/api/application/plugin_oidc/oidc",
+    "aud": "xxxxxxx6CPpztCvzN6tjB",
+    "uuid": "xxxxxxx2baed8e7a77zqtOGeqBXbm",
+    "username": "admin",
+    "email": "xxxxxx@qq.com"
+}
+```
+
+##### CAS
+
+```xml
+<cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
+    <cas:authenticationSuccess>
+        <cas:attributes>
+            <cas:externalId>DingTalk uid or DingTalk userId</cas:externalId>
+        </cas:attributes>
+    </cas:authenticationSuccess>
+</cas:serviceResponse>
+```
+
+## Key Concepts
+
+| **Concept** | **Description** |
+|---|---|
+| Identity Provider (IdP) | A RAM entity that contains metadata about an external identity provider. Identity providers offer identity management services.<br />• On-premises enterprise IdPs: Microsoft Active Directory Federation Service (AD FS), Shibboleth, and others.<br />• Cloud IdPs: [Alibaba Cloud IDaaS](https://help.aliyun.com/document_detail/112323.html#topic408), Azure AD, Google Workspace, Okta, OneLogin, and others. |
+| Service Provider (SP) | An app that uses the IdP's identity management to deliver specific services to users. The SP consumes the user information provided by the IdP. In some non-SAML identity systems (for example, OpenID Connect), the service provider is also called the relying party of the IdP. |
+| Security Assertion Markup Language (SAML 2.0) | A standard protocol for enterprise-grade user authentication and one of the technical implementations for communication between the SP and the IdP. SAML 2.0 has become a de facto standard for enterprise SSO. |
+| SAML assertion | The core element in the SAML protocol used to describe authentication requests and responses. For example, specific user attributes are carried in the assertion within the authentication response. |
+| Trust | A mutual trust mechanism established between the SP and the IdP, typically implemented with public and private keys. The SP obtains the IdP's SAML metadata through a trusted channel. The metadata contains the public key used to verify signatures on SAML assertions issued by the IdP, and the SP uses this public key to verify the integrity of each assertion. |
+| OIDC | [OIDC (OpenID Connect)](https://openid.net/connect) is an authentication protocol built on top of [OAuth 2.0](https://oauth.net/2). OAuth is an authorization protocol, and OIDC adds an identity layer on top of OAuth. In addition to the authorization capabilities that OAuth provides, OIDC lets the client verify the identity of the end user and obtain basic user information through the OIDC protocol API (in HTTP RESTful form). |
+| OIDC token | OIDC can issue identity tokens (OIDC tokens) to apps that represent the signed-in user. OIDC tokens are used to obtain basic information about the signed-in user. |
+| Client ID | A Client ID is generated when your app is registered with an external IdP. You must use this Client ID when you request an OIDC token from the external IdP. The issued OIDC token also carries this Client ID in the **aud** field. Configure this Client ID when you create an OIDC identity provider. When the OIDC token is exchanged for an STS Token, Alibaba Cloud verifies that the Client ID in the **aud** field of the OIDC token matches the Client ID configured for the OIDC identity provider. Only when they match is the role assumption allowed. |
+| Verification fingerprint | To prevent the issuer URL from being maliciously hijacked or tampered with, you must configure a verification fingerprint generated from the external IdP's HTTPS CA certificate. Alibaba Cloud can compute this fingerprint automatically, but we recommend that you also compute it locally (for example, using [OpenSSL](https://www.openssl.org/)) and compare it with the fingerprint computed by Alibaba Cloud. If they differ, the issuer URL may have been attacked. Confirm the fingerprint again and provide the correct one. |
+| Issuer URL | The issuer URL is provided by the external IdP and corresponds to the value of the **iss** field in the OIDC Token. The issuer URL must start with **https** and conform to the standard URL format, but it must not contain query parameters (marked with `?`), fragments (marked with `#`), or sign-in information (marked with `@`). |
+| Temporary identity credential | [STS (Security Token Service)](https://help.aliyun.com/zh/ram/product-overview/what-is-sts#concept-ong-5nv-xdb) is a temporary access management service provided by Alibaba Cloud. STS lets you obtain temporary identity credentials (STS Tokens) with a customizable validity period and access permissions. |
+
+## FAQ
+
+### Q: Can YiDA SSO Integrate Other Products into YiDA?
+
+A: YiDA SSO integrates YiDA into other systems or products, enabling silent login to YiDA from those systems or products. Silent login from YiDA into other products is outside the scope of this technical solution and requires you to design your own system.
+
+### Q: Can a Self-Built Authentication System (Not IDaaS) Integrate with YiDA SSO?
+
+A: Yes. YiDA recommends using IDaaS for a lighter, configuration-driven SSO integration. If you have other IdPs that support OAuth 2.0, OIDC, or CAS, you can also integrate them by correctly completing the settings on the YiDA SSO configuration page and returning the identity callback data in the format required by YiDA. However, some integration cost may apply.
+
+### Q: How Can I Verify That SSO Integration Works?
+
+A: Verify by visiting **www.your-organization-domain.aliwork.com/xxx**. Since each organization's domain is unique, YiDA uses the **organization domain** in the URL you visit to determine whether the organization has enabled SSO. If SSO is enabled, sign-in for that organization uses SSO instead of the standard unified sign-in.
+
+### Q: Is Enabling an Organization Domain a Prerequisite for Using SSO? Where Can I Check the Organization Domain?
+
+A: Yes. Because whether an organization has enabled SSO is determined through its unique organization domain mapping, **visiting the public www.yidaapps.com cannot be mapped to a specific organization and therefore cannot use SSO**. YiDA platform admins can go to Organization [platform management](https://www.yidaapps.com/platformManage/basicInfo) > Basic information > Organization domain to view it.
+
+### Q: How Do I Map Customer Contacts to DingTalk Contacts?
+
+A: For IDaaS integration, the service is provided by the IDaaS product. For details, contact IDaaS product technical support. For self-built integration, you need to implement the mapping yourself. We recommend calling the [DingTalk Open Platform OpenAPI](https://open.dingtalk.com/document/orgapp/sso-overview) to integrate.
+
+### Q: Why Is There No Entry to Modify the Organization Domain in the Platform Management Console?
+
+- Only the Super Admin of the DingTalk organization has permission to customize the organization domain.
+- The organization domain is a newer YiDA feature (see "Release notes"). Changing it involves cost and risk. Because some older YiDA organizations already run many workloads on YiDA, some legacy customers from before 2021 may not see the change button. Contact support to enable it.
+
+### Q: If I Open YiDA Within DingTalk, Do I Still Need to Go Through SSO?
+
+A: Yes.
+
+### Q: Why Are Some YiDA Features Unavailable When Accessed via SSO on Mobile (Outside of DingTalk)?
+
+A: YiDA currently supports both browsers and DingTalk on PC. Because the mobile technical solution is different, many features (such as member components, single-line text QR code scanning, and workflow transfer) are implemented based on DingTalk on mobile, so some features are not yet supported outside of DingTalk on mobile.
+
+[YiDA on mobile outside DingTalk: unsupported product features](https://alidocs.dingtalk.com/i/nodes/Gl6Pm2Db8DMGQKRatzLr9n92WxLq0Ee4?cid=6788093%3A3361847202&utm_source=im&utm_scene=team_space&iframeQuery=utm_medium%3Dim_card%26utm_source%3Dim&utm_medium=im_card&corpId=dingd8e1123006514592)
+
+### Q: What If a Misconfiguration Prevents Me from Signing in to YiDA?
+
+A: Access YiDA using the www.yidaapps.com domain or from within DingTalk to turn off SSO or correct the configuration.
+
+#### Q: Does SSO Support Upstream/Downstream Interoperability?
+
+Not yet supported.

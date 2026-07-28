@@ -1,0 +1,201 @@
+---
+title: "リモート API"
+description: "YiDA のリモート API 機能について、リクエスト URL・パラメータ・データ処理関数・手動呼び出しなどの設定項目と処理フローを解説し、サーバーとの非同期データ連携を実現する方法を紹介します。"
+polished: true
+---
+
+システム開発では、サーバーからのデータ取得や非同期処理の実行に、HTTP リクエストの発行が欠かせません。YiDA では、非同期インターフェース呼び出し用のリモート API 機能を提供しています。
+
+## リモートデータソースの作成
+
+データソースパネルからリモート API を追加・設定します。
+
+リモートデータソースには、以下の設定項目があります。
+
+* **名前** - リモート API の一意な識別子です。JavaScript の変数命名規則に従います。
+* **説明** - リモート API の説明を記述します。この説明は変数バインディング時に表示されます。
+* **自動読み込み** - **自動読み込み** を有効にしたデータソースは、ページのレンダリング前にリモートインターフェースへリクエストを送信し、返却されたデータを当該リモート API と同名のグローバル変数に直接代入します。すべての自動読み込みデータソースの処理が完了した後、ページのレンダリングが開始されます。
+* **読み込みモード** - YiDA では、以下 2 つの読み込みモードを提供しています（デフォルトは並列読み込み）。
+  * 直列 - すべての直列データソースは上から下へ順に実行されます。依存関係がある場合は、依存されるデータソースを上に配置してください。
+  * 並列 - すべての並列データソースは同時に実行されます。
+* **リクエスト URL** - リモート API のアクセス URL です。YiDA が提供する OpenAPI の場合は相対パスを使用します。サードパーティサービスが提供するインターフェースの場合は、クロスオリジンアクセスに対応している必要があります。
+* **HTTP メソッド** - YiDA は、以下の一般的な非同期リクエストメソッドに対応しています：JSONP、GET、POST、PUT、DELETE。
+* **リクエストパラメータ** - 非同期リクエストのパラメータを設定します。静的な設定と変数バインディングの両方に対応しています。
+* **リクエスト送信** - リクエストを送信するかどうかを判定する真偽値を受け取ります。変数式を入力して送信可否を判定することもできます。
+* **データ処理** - YiDA では、異なる段階に対応する 4 種類のデータ処理関数を提供しています。
+  * **willFetch** - リクエスト前ハンドラです。willFetch を使用すると、リクエスト送信前に各種リクエストパラメータを変更できます。例：
+  ```js
+  function willFetch(vars, config) {
+    // vars.data でクエリパラメータを変更
+    // config.header でヘッダーを変更
+    // config.url で URL を変更
+    vars.data.a = 1; // リクエストのパラメータ "a" を 1 に設定
+    config.url = 'https://www.taobao.com'; // リクエスト URL を Taobao に変更
+    config.header['Content-Type'] = 'application/json'; // Content-Type を変更
+    console.log(vars, config); // 変更可能な他のパラメータを確認
+  }
+  ```
+
+  * **fit** - 返却データを適合させます。fit を使用すると、元のレスポンスを期待するデータ形式に変換できます。例：
+  ```js
+  // デフォルトでは、YiDA は以下の形式のレスポンスのみを処理します。非同期インターフェースが異なる構造を返す場合は、fit で変換してください。
+  //{
+  //    content: [], // "content" フィールドがデータを保持します。データ構造に制限はありません。
+  //    success: true, // "success" はリクエストが成功したかどうかを示します。
+  //}
+  function fit(response) {
+    const content = (response.content !== undefined) ? response.content : response;
+    const error = {
+      message: response.errorMsg ||
+        (response.errors && response.errors[0] && response.errors[0].msg) ||
+        response.content || 'リモートデータソースのリクエストに失敗しました。success が false です',
+    };
+    let success = true;
+    if (response.success !== undefined) {
+      success = response.success;
+    } else if (response.hasError !== undefined) {
+      success = !response.hasError;
+    }
+    return {
+      content,
+      success,
+      error,
+    };
+  }
+  ```
+
+  * **didFetch** - リクエスト後のコールバックです。didFetch では受信データを変更できます。fit とは異なり、返却された success が true の場合にのみ実行されます。例：
+  ```js
+  function didFetch(content) {
+      content.b = 1; // 返却データのフィールド "b" を 1 に設定
+      return content; // 重要：content を必ず返却してください
+  }
+  ```
+
+  * **onError** - エラーハンドラです。onError はリモートデータソースのエラーを捕捉し、返却された success が false の場合に実行されます。例：
+  ```js
+  function onError(error) {
+    console.log(error);
+  }
+  ```
+
+* **デフォルトデータ** - インターフェースのデフォルトデータを指定します。インターフェースが何も返さない場合やリクエストが失敗した場合には、デフォルトデータが返却されます。
+
+## API
+
+YiDA リモート API では、以下 2 つの API を提供しています。
+
+### this.dataSourceMap.xxx.load()
+
+指定したリモート API を手動で呼び出します。xxx はデータソースパネルで設定したデータソース名です。リクエストパラメータの受け渡しにも対応しています。この API に渡したパラメータは、データソース側で設定されたパラメータとマージされ、リクエストとともに送信されます。load メソッドは Promise を返します。
+
+例：
+
+```js
+export function fetchData() {
+  // データソースで設定した getDataList リモート API を呼び出し、pageSize と page を渡します。
+  // 成功時は結果をコンソールに出力し、失敗時はトースト通知を表示します。
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10,
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error',
+      title: 'リクエストに失敗しました！'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+
+自動読み込み設定が true になっているすべてのリモート API を再リクエストします。
+
+例：
+
+```js
+export function reload() {
+  // すべての初期データソースリクエストを再リクエスト
+  this.reloadDataSource();
+}
+
+```
+
+## ユースケース
+
+リモートデータソースはシステム開発で広く利用され、フロントエンドのページとバックエンドサービスをつなぐ架け橋となります。YiDA プラットフォームでは、以下 2 つが最も一般的なユースケースです。
+
+### 自動読み込みデータソース
+
+「マイタスク」シナリオのように、ユーザーがページに入った際にデータを自動的に読み込み、ページ上に表示する必要があるケースがあります。
+
+* タスクを読み込む自動読み込みデータソースを設定します。（自動読み込みデータソースは、返却された結果をデータソース名と同名のグローバル変数に自動的にマウントします。）以下のように設定します。
+
+さらに didFetch データ処理関数を設定し、返却データをより意味のある構造に変換します。
+
+```js
+function didFetch(content) {
+  return (content.data || []).map(item => {
+    return {
+      id: item.formInstId,
+      content: item.formData.textField_kymq5pdi,
+      done: item.formData.radioField_kymq5pdj
+    }
+  });
+}
+```
+
+* 次に、スプレッドシートコンポーネントを使用して、自動読み込みしたタスクデータを表示します。以下のように設定します。
+  * スプレッドシートのデータソース変数を state.todoList にバインドします。
+
+  * スプレッドシートのフィールドマッピングと対応するタイプを設定します。
+
+* 最後に、デザイナーの **プレビュー** ボタンをクリックすると、スプレッドシートにタスクが表示されます。
+
+### 手動読み込みデータソース
+
+ユーザーのインタラクションに応じて、イベント処理からデータソースを手動で呼び出す必要があるケースもあります。たとえば、ユーザーが削除ボタンをクリックしたときに、リモート API を呼び出してタスクを削除する場合です。
+
+* まず、タスク削除用のリモート API を以下のように設定します。
+
+このインターフェースにも didFetch データ処理関数を設定します。リクエスト成功時にはメッセージ通知を表示してユーザーに削除成功を知らせ、reloadDataSource API を呼び出して自動読み込みリクエストを再トリガーし、タスクリストを更新します。
+
+```js
+function didFetch(content) {
+  // ユーザーに削除成功を通知
+  this.utils.toast({
+    title: '削除に成功しました！',
+  });
+  // 自動読み込みリクエストを再トリガーしてタスクリストを更新
+  this.reloadDataSource();
+  return content; // 重要：content を必ず返却してください
+}
+```
+
+* 次に、スプレッドシートに削除操作項目を追加します。ユーザーが削除項目をクリックすると、リモート API が手動で呼び出され削除が実行されます。以下のように設定します。
+  * スプレッドシートの操作列属性を設定します。
+
+  * 操作項目を追加します。
+
+  * 操作項目のタイトルを設定し、コールバック関数で操作をバインドします。
+
+  * onDelete 関数を実装し、データソースを手動で読み込んで削除を実行します。
+
+```js
+export function onDelete(rowData) {
+  this.dataSourceMap.del.load({
+    formInstId: rowData.id
+  });
+}
+```
+
+* 最後に、デザイナーの **プレビュー** ボタンをクリックします。スプレッドシートの操作列に削除操作項目が表示され、削除ボタンをクリックすると削除が実行されリストが更新されます。
+
+<Tip>
+上記の例では、YiDA プラットフォームが提供するデータの照会と削除に関するいくつかのオープンインターフェースを使用しています。他の YiDA オープンインターフェースについては、[OpenAPI ドキュメント](/ja/open/yida/api/openAPI)を参照してください。
+
+</Tip>

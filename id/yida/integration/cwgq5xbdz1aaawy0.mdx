@@ -1,0 +1,142 @@
+---
+title: "Check-in"
+description: "Pelajari cara mengkueri data check-in karyawan di YiDA dengan menggabungkan formulir dan konektor — panduan lengkap bagi admin untuk membuat formulir kueri, mengonfigurasi integrasi & otomatisasi, hingga menampilkan hasil."
+polished: true
+---
+
+Dengan menggabungkan YiDA dan konektor, Anda dapat mengirimkan formulir untuk mengkueri informasi check-in karyawan, termasuk status, waktu, dan lokasi check-in. Artikel ini menjelaskan cara mengkueri informasi check-in karyawan melalui formulir.
+
+## Prasyarat
+
+Sebelum memulai, buat aplikasi terlebih dahulu. Untuk langkah rinci, lihat [Buat aplikasi](/id/yida/app-admin/oncnoy).
+
+## Ringkasan proses
+
+Dalam artikel ini, Anda akan membuat dua formulir biasa: satu untuk mencatat hasil kueri, dan satu untuk memicu konektor. Langkahnya sebagai berikut:
+
+- Langkah 1: Buat formulir hasil kueri
+- Langkah 2: Buat formulir kueri check-in
+- Langkah 3: Konfigurasikan integrasi & otomatisasi
+- Langkah 4: Terima data pada formulir hasil kueri
+- Langkah 5: Uji dan verifikasi
+
+### Hasil yang diharapkan
+
+Hasil akhir yang dicapai dalam artikel ini ditunjukkan di bawah ini.
+
+## Langkah 1: Buat formulir hasil kueri
+
+1. Masuk ke workbench YiDA, pilih aplikasi target, lalu klik untuk masuk ke halaman pengeditan aplikasi.
+2. Klik **+** > **Buat formulir biasa**, pilih **Buat halaman kosong**, lalu ubah nama formulir menjadi **Hasil Kueri**.
+3. Seret komponen **Teks satu baris**, komponen **Subformulir**, dan komponen **Pengguna** ke area kanvas di tengah.
+4. Ubah nama komponen **Pengguna** menjadi **Pengguna Check-in**.
+5. Ubah nama komponen **Teks satu baris** menjadi **Buffer Data Konektor**, lalu atur visibilitasnya menjadi Tersembunyi.
+
+6. Ubah nama komponen **Subformulir** menjadi **Data Check-in**.
+7. Seret tiga komponen **Teks satu baris** ke dalam komponen **Subformulir**.
+8. Ubah nama ketiga komponen **Teks satu baris** menjadi **Waktu Check-in**, **Lokasi Check-in**, dan **Alias Check-in**.
+9. Klik **Simpan** di pojok kanan atas untuk menyelesaikan konfigurasi.
+
+## Langkah 2: Buat **formulir kueri check-in**
+
+1. Pada halaman pengeditan aplikasi, klik **+** > **Buat formulir alur kerja**, pilih **Buat halaman kosong**, lalu ubah nama formulir menjadi **Kueri Check-in**.
+2. Seret dua komponen **Tanggal** dan satu komponen anggota ke area kanvas di tengah.
+3. Ubah nama kedua komponen **Tanggal** menjadi **Waktu Mulai** dan **Waktu Akhir**, atur aturan validasi menjadi **Wajib**, lalu atur format menjadi **YYYY-MM-DD HH:mm:ss**.
+
+4. Ubah nama komponen **Pengguna** menjadi **Pengguna Check-in**, lalu atur aturan validasi menjadi **Wajib**.
+5. Klik **Simpan** di pojok kanan atas untuk menyelesaikan konfigurasi dasar formulir.
+
+## Langkah 3: Konfigurasikan integrasi & otomatisasi
+
+1. Kembali ke halaman pengeditan aplikasi, lalu klik **Integrasi & Otomatisasi** di bagian atas.
+2. Klik **Buat Integrasi & Otomatisasi**, lalu pilih **Buat dari kosong**.
+3. Pada kotak dialog, tetapkan nama integrasi & otomatisasi, pilih **Pemicu peristiwa formulir** sebagai jenis pemicu, lalu pilih formulir kueri check-in yang dibuat pada Langkah 2 sebagai formulirnya.
+
+<Steps>
+  <Step title="Klik Pemicu peristiwa formulir, pilih Berhasil dibuat sebagai peristiwa pemicu, lalu klik Simpan">
+  </Step>
+  <Step title="Klik ikon + di bawah peristiwa pemicu formulir, lalu pilih Konektor">
+    <Note>
+    Arahkan kursor ke bawah peristiwa pemicu untuk menampilkan ikon `+`.
+    </Note>
+  </Step>
+  <Step title="Ikuti langkah-langkah berikut untuk mengonfigurasi node Konektor">
+  </Step>
+</Steps>
+
+**Waktu Mulai** sesuai dengan **Waktu Mulai** yang dikirim pada formulir, **Waktu Akhir** sesuai dengan **Waktu Akhir** yang dikirim pada formulir, dan **Daftar Pengguna Kueri** sesuai dengan **Pengguna Check-in** yang dikirim pada formulir.
+
+7. Klik ikon **+** di bawah node **Konektor**, lalu tambahkan node **Skrip**.
+8. Ikuti langkah-langkah berikut untuk mengonfigurasi node skrip.
+
+```javascript
+var checkinRecordJson = checkinRecord?JSON.parse(checkinRecord):[];
+var tableData = checkinRecordJson.map(function(item) {
+return {
+    // Ubah textField_lw5sacjg menjadi ID komponen Waktu Check-in pada formulir hasil kueri
+    textField_lw5sacjg: item.checkin_time,
+    // Ubah textField_lw5sacji menjadi ID komponen Lokasi Check-in pada formulir hasil kueri
+    textField_lw5sacji: item.detail_place,
+    // Ubah textField_lw5sacjk menjadi ID komponen Alias Check-in pada formulir hasil kueri
+    textField_lw5sacjk: item.remark
+  };
+});
+outputs.add("签到","tableData",JSON.stringify(tableData))
+```
+
+```json
+[
+    {
+        "checkin_time": 1715582068000,
+        "detail_place": "959 Gaojiao Road, Yuhang District, Hangzhou, Zhejiang Province",
+        "remark": "Quick check-in",
+        "place": "Sanwei Weilai Park",
+        "userid": "123456789",
+        "image_list": []
+    }
+]
+```
+
+<Steps>
+  <Step title="Klik ikon + di bawah node Skrip, tambahkan node Buat data, lalu ikuti langkah-langkah berikut untuk mengonfigurasinya">
+  </Step>
+  <Step title="Klik tombol Publikasikan di pojok kanan atas untuk menyelesaikan konfigurasi">
+  </Step>
+</Steps>
+
+## Langkah 4: Terima data pada formulir hasil kueri
+
+1. Masuk ke halaman pengeditan formulir hasil kueri.
+2. Buka **Panel Aksi JS**, tambahkan kode berikut, lalu sesuaikan isinya mengikuti komentar.
+
+```javascript
+export function didMount() {
+  // Ubah textField_lw4ffhbf menjadi ID komponen Buffer Data Konektor.
+  const str = this.$("textField_lw4ffhbf").getValue();
+
+  const value = JSON.parse(str);
+  // Ubah tableField_lw5sacjc menjadi ID komponen subformulir.
+  this.$('tableField_lw5sacjc').setValue(value);
+
+}
+```
+
+3. Klik **Simpan** di pojok kanan atas untuk menyelesaikan konfigurasi.
+
+## Langkah 5: Uji dan verifikasi
+
+1. Masuk ke halaman pengeditan aplikasi, klik formulir **Hasil Kueri**, lalu klik **Buat halaman manajemen data** di sebelah kanan.
+2. Tetapkan **Nama Halaman** dan **Grup** untuk halaman manajemen data.
+3. Klik **Akses** di pojok kanan atas untuk membuka aplikasi.
+4. Klik **Kueri Check-in**, masukkan informasi pengguna check-in dan rentang waktu yang ingin dikueri, lalu klik **Kirim**.
+5. Masuk ke halaman manajemen data pada formulir hasil untuk melihat hasilnya.
+
+Seperti ditunjukkan pada gambar di bawah, data check-in pengguna berhasil dikueri.
+
+## Dokumentasi terkait
+
+- Integrasi & Otomatisasi
+- Buat formulir
+- Komponen formulir
+- Dapatkan data check-in pengguna
+- Node skrip

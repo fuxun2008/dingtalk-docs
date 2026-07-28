@@ -1,0 +1,54 @@
+---
+title: "关于 this 指向"
+description: "本文介绍了JavaScript中this关键字的工作原理，包括其在不同调用方式下的指向变化，以及ES5的bind方法和ES2015箭头函数对this的影响。同时，文章还探讨了在宜搭动作面板中使用this时需要注意的事项，特别是关于export关键字的作用及其对this值的影响，通过几个案例详细说明了如何正确地在宜搭环境中使用this来访问渲染引擎上下文。"
+---
+
+## 1. 前景提要
+
+- 了解 this 的指向需要先了解 JavaScript 中 this 的指向
+- 在绝大多数情况下，函数的调用方式决定了 this 的值（运行时绑定）。this 不能在执行期间被赋值，并且在每次函数被调用时 this 的值也可能会不同。ES5 引入了 bind 方法来设置函数的 this 值，而不用考虑函数如何被调用的。ES2015 引入了 箭头函数 ，箭头函数不提供自身的 this 绑定（this 的值将保持为闭合词法上下文的值）。
+
+<Card title="this - JavaScript | MDNhttps://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/this" icon="bookmark" href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/this" horizontal />
+
+## 2. 宜搭动作面板中的 this
+
+- 在了解了 JavaScript this 之后，在宜搭动作面板中调用函数只需要注意是否有 export 关键字即可。
+- 建议，纯工具函数不涉及任何页面上下文，比如随机生成一个字符串 function uid() \{ return new Date().getTime().toString(32); } , 不需要使用 export 关键字，否则所有方法都要使用 export 关键字，并且使用 this 来调用。
+
+案例一
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); //正确, a 方法中可以正确的获取宜搭渲染引擎上下文 this
+  a(); // 错误, a 方法中无法获取宜搭渲染引擎上下文 this
+}
+```
+
+案例二
+
+```jsx
+function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); //错误且会报错，a 方法没有通过 export 关键字导入的方法无法使用宜搭渲染引擎上下文 this 去调用
+  a(); // 错误, a 方法中无法获取宜搭渲染引擎上下文 this
+}
+```
+
+案例三
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+function b() {
+  a(); // 错误, b 方法没有使用 export 关键字且没有使用 this.a() 来调用，所以 a 方法中无法获取宜搭渲染引擎上下文 this
+}
+```

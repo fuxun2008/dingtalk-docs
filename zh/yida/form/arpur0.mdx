@@ -1,0 +1,124 @@
+---
+title: "数据联动"
+description: "本文档介绍了如何在表单中配置数据联动功能，包括其应用场景、配置步骤以及支持的数据类型。还提供了关于下拉单选组件兼容特殊字符的优化信息和常见问题解答。"
+---
+
+## 1. 简介
+
+### 1.1 功能简介
+
+当表单中某个字段的数据改变时，该表单中另一个字段的数据也会随之改变，一般用于设置组件的默认值。
+
+### 1.2 场景案例
+
+我们来实现一个年级和班级的数据联动
+
+**班级表**
+
+| 年级 | 班级 |
+|---|---|
+| 一年级 | 一班 |
+| 一年级 | 二班 |
+| 一年级 | 三班 |
+| 二年级 | 一班 |
+| 二年级 | 二班 |
+
+那么我们要在录入学生的时候，分配到相关的班级。我们要怎么做呢？
+
+<video controls preload="metadata" poster="https://img.alicdn.com/imgextra/i4/6000000003388/O1CN018E2yXX1atkZbmRoON_!!6000000003388-0-tbvideo.jpg" src="https://yida-support.oss-cn-shanghai.aliyuncs.com/static/mp4/323805374868.mp4"></video>
+
+## 2. 数据联动的配置项
+
+**数据关联表**：选择所要关联的表
+
+- 当前应用：与当前表单同属一个应用的其他表单，不能本表单数据联动本表单；
+- 跨应用：可选取创建的跨应用数据集表单，详情可参考文档 [跨应用获取表单数据](/zh/yida/form/gv4bgx)
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1651719792185-bb3f9748-7982-4050-83c2-d5587e794bb2.png)
+</Frame>
+
+**关联字段设置**：当前表单字段 「产品名称」的值等于被关联表的字段 「产品名称」的值时，当前表单字段「数量」的值显示为被关联表字段 「库存数量」的值。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1651720343636-d63e3d8f-0bff-4f49-88ab-75db3def7c52.png)
+</Frame>
+
+配置数据联动
+
+## 3. 支持数据联动的组件类型
+
+**注：地址、关联表单仅支持作为条件规则，关联表单引用设置的主要信息字段。**
+
+| **关联组件类型** | **被关联组件类型** |
+|---|---|
+| 单选 | 单选、下拉单选、单行文本、数值 |
+| 下拉单选 | 单选、下拉单选、单行文本、数值 |
+| 多选 | 多选、下拉多选 |
+| 下拉多选 | 多选、下拉多选 |
+| 单行文本 | 单选、下拉单选、单行文本、数值 |
+| 多行文本 | 单选、下拉单选、单行文本、多行文本、数值 |
+| 数值 | 数值 |
+| 日期 | 日期 |
+| 成员 | 成员 |
+| 地址 | 地址 |
+| 部门 | 部门 |
+| 图片上传 | 图片上传 |
+| 关联表单 | 关联表单 |
+
+## 4. 下拉单选组件的数据联动条件中，对特殊字符的兼容优化
+
+- 之前：若目标数据字段中有特殊字符，则无法关联成功，导致业务无法联动
+- 现在：目标数据中有  和 / 等特殊字符，也可以正常匹配出来
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1639380232053-0b697624-e108-49b8-976c-02ff31170e0c.png)
+</Frame>
+
+下拉单选配置态
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1625735564525-bf82ea4b-07bb-4456-b34a-13c709464ac4.png)
+</Frame>
+
+被关联的目标数据
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1625735711352-f2ae4640-c757-4bf1-964a-2e6d0a884c87.png)
+</Frame>
+
+## 5. 常见问题
+
+### 5.1 底表有数据，但数据联动未显示出来。
+
+数据联动返回的数据有数量限制，当前不支持返回结果搜索。如果底表有很多同时满足条件的数据，尤其是有很多重复值的数据时，会导致联动出来的结果可能没自己想要的。
+
+可以通过勾选去重，减少重复数据返回，能更多的展示联动的数据。
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1651720619745-20007cf0-c66e-4563-a85d-4f4e4c461a6e.png)
+</Frame>
+
+最后效果
+
+### 5.2 如何自动触发数据联动
+
+<Warning>
+**注意：该方法仅适用于主表组件变化单独触发主表或单独触发子表的数据联动。**
+</Warning>
+
+```javascript
+/*更新时间与联动绑定*/
+export function didMount() {
+  const instanceData = this.utils.getFormInstanceData();
+  const { flowData = {} } = instanceData;
+  const { editMode, viewMode } = flowData;
+  if (viewMode === false && editMode === true) {
+    this.$('textField_vq5mqtb').getProps().onChange();
+    this.utils.toast({
+      title: '已更新',
+      type: 'success'
+    })
+  }
+}
+```

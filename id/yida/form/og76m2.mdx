@@ -1,0 +1,200 @@
+---
+title: "Panel Sumber Data"
+description: "Pelajari cara membuat Sumber Data di berbagai edisi YiDA — mencakup variabel, permintaan remote, format data, opsi auto-load, willFetch, fit, didFetch, onError, dan Penanganan error."
+polished: true
+---
+
+| **Kapabilitas** | **Paket Gratis** | **Edisi Basic** | **Edisi Professional** | **Edisi Dedicated** |
+|---|---|---|---|---|
+| Sumber Data eksternal | Tidak didukung | Tidak didukung | Didukung | Didukung |
+
+## 1. Membuat Sumber Data
+
+### 1.1 Cara membuat Sumber Data
+
+Klik tombol "Tambah" untuk mulai membuat Sumber Data baru. Sumber Data yang dapat dibuat terbagi menjadi tiga kategori. Pilih salah satu saat pembuatan. Setelah dibuat, Tipe tidak dapat diubah.
+
+- Variabel: variabel lokal.
+- Permintaan remote: Data yang diperoleh dari API Sisi server.
+- Sumber Data parameter: Sistem meneruskan Sumber Data ini secara Default, digunakan untuk mengambil parameter pada URL saat ini. Misalnya, ketika URL adalah a.html?key1=value1&key2=value2, nilai Sumber Data parameter adalah:
+
+```javascript
+{
+  key1: 'value1',
+  key2: 'value2'
+}
+```
+
+### 1.2 Sumber Data variabel
+
+Sumber Data variabel umumnya digunakan untuk menyimpan item konfigurasi (seperti prefiks API remote apiUrlPrefix), variabel sementara Halaman, dan lain-lain. Semua tipe Data JS didukung, termasuk string, object, array, Angka, boolean, dan lain-lain.
+
+```javascript
+string: "string"
+Number: 123
+boolean: true / false
+object: {"name": "gaokai"}
+array: ["1", "2"]
+null: null
+```
+
+### 1.3 Permintaan remote
+
+**Format Data Respons API**
+
+Sumber Data remote memiliki beberapa batasan wajib pada format Data:
+
+```javascript
+{
+    content: [], // Bidang content digunakan untuk membawa Data. Struktur Data content tidak dibatasi.
+    success: true // success menunjukkan apakah Permintaan berhasil
+}
+```
+
+Untuk batasan format yang lebih spesifik, lihat [**natty-fetch**](https://github.com/oner-team/oner-io/blob/natty-fetch/docs/rules.md).
+
+**Catatan khusus**:
+
+Untuk Data yang dikembalikan dalam format di atas 👆, dalam Fungsi callback Respons dari Permintaan (seperti didFetch dan nilai yang akhirnya disimpan di kumpulan Data), lapisan content dan success tidak akan disertakan lagi.
+
+Untuk Data yang dikembalikan oleh API non-Standar, diperlukan lapisan pemrosesan fit agar Sumber Data dapat mengenalinya. Pada dasarnya, fit mengonversi Konten Respons mentah ke format yang sesuai dengan spesifikasi Respons RPC YiDA sebelum didFetch (pengambilan Data) dalam Permintaan Data. Untuk penggunaan lebih rinci, lihat penjelasan fit di bawah 👇.
+
+Jika Anda menggunakan layanan API sendiri, perhatikan masalah lintas-origin. Gunakan JSONP atau konfigurasikan layanan API Anda sendiri untuk mengizinkan [**lintas-origin.**](https://www.baidu.com/s?wd=%E8%B7%A8%E5%9F%9F%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88&rsv_spt=1&rsv_iqid=0xb4bc961e002c4bf1&issp=1&f=3&rsv_bp=1&rsv_idx=2&ie=utf-8&rqlang=cn&tn=baiduhome_pg&rsv_enter=0&rsv_dl=ts_0&oq=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsv_btype=t&rsv_t=9447WFp%2FaXjCnHf21%2BpQbVggodBCHxIJ1kWR%2FKv8r%2FkP1SGPy8aAS62FCEEAtb9vrwrJ&rsv_pq=fbe7a51d001b0915&prefixsug=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsp=0) Pendekatan konfigurasi layanan API direkomendasikan. Lihat [**Cross-Origin Resource Sharing**](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS) (Catatan: semua Aplikasi YiDA menggunakan https, jadi Anda perlu mengonfigurasi Domain yang ditentukan: Access-Control-Allow-Origin: https://www.yidaapps.com).
+
+**Metode HTTP**
+
+Tersedia tiga Metode HTTP untuk memuat Sumber Data remote:
+
+- GET
+- POST
+- JSONP — metode ini memerlukan dukungan Sisi server.
+
+### 1.4 Auto-load
+
+Sumber Data dengan "auto-load" yang Aktif akan meminta API remote sebelum rendering Halaman. Halaman mulai dirender hanya setelah semua Sumber Data auto-load selesai dimuat. Ini umumnya digunakan untuk pemuatan Data awal Halaman.
+
+**Catatan: Terlalu banyak Sumber Data "auto-load" akan memperpanjang waktu rendering Halaman. Jangan menyalahgunakannya.**
+
+### 1.5 Metode pemuatan (opsi auto-load harus Aktif terlebih dahulu)
+
+**Serial**: Semua Sumber Data serial dieksekusi dari atas ke bawah. Jika ada dependensi di antaranya, Sumber Data yang menjadi dependensi harus ditempatkan lebih dulu.
+
+**Paralel**: Semua Sumber Data paralel dieksekusi secara bersamaan.
+
+Jika Anda tidak ingin memilih auto-load agar Permintaan tidak memblokir rendering Halaman, tetapi tetap ingin mencapai pemuatan serial, pendekatan saat ini adalah memicu pemuatan Sumber Data secara manual di Fungsi "saat Halaman selesai dimuat". Contoh kode: picu Permintaan Sumber Data remote pertama, dan setelah Permintaan kembali, picu Permintaan Sumber Data remote kedua.
+
+### 1.6 Apakah akan meminta
+
+Mendukung penerusan nilai boolean untuk menentukan apakah Permintaan ini harus dikirim. Bidang input ini juga menerima ekspresi variabel untuk memutuskan apakah Permintaan perlu dikirim.
+
+### 1.7 willFetch
+
+Fungsi handler pra-Permintaan. willFetch memungkinkan pengguna memodifikasi berbagai parameter Permintaan sebelum mengirim Permintaan. Contoh kode:
+
+```javascript
+function willFetch(vars, config) {
+    // vars.data memungkinkan Anda mengubah Parameter kueri
+    // config.header memungkinkan Anda mengubah header
+    // config.url memungkinkan Anda mengubah url
+    vars.data.a = 1; // Ubah 'a' pada Parameter permintaan menjadi 1
+    config.url = 'https://www.taobao.com'; // Ubah url Permintaan menjadi Taobao
+    config.header['Content-Type'] = 'application/json'; // Ubah Content-Type
+    console.log(vars, config); // Lihat parameter lain apa yang dapat dimodifikasi.
+}
+```
+
+### 1.8 fit
+
+Adapter Data pada pengembalian Permintaan. fit dapat memodifikasi Respons mentah dari Permintaan agar sesuai dengan format Permintaan Data yang bersangkutan. Contoh kode:
+
+```javascript
+function fit(response) {
+  const content = (response.content !== undefined) ? response.content : response;
+  const error = {
+    message: response.errorMsg ||
+      (response.errors && response.errors[0] && response.errors[0].msg) ||
+      response.content || 'Permintaan Sumber Data remote gagal, success bernilai false',
+  };
+  let success = true;
+  if (response.success !== undefined) {
+    success = response.success;
+  } else if (response.hasError !== undefined) {
+    success = !response.hasError;
+  }
+  return {
+    content,
+    success,
+    error,
+  };
+}
+```
+
+### 1.9 didFetch
+
+Fungsi callback penyelesaian Permintaan. didFetch memungkinkan pengguna memodifikasi Data yang diterima. Berbeda dengan fit, didFetch hanya dieksekusi ketika success yang dikembalikan API bernilai true. Contoh kode:
+
+```javascript
+function didFetch(content) {
+    content.b = 1; // Ubah Bidang 'b' pada struktur Data yang dikembalikan menjadi 1
+    return content; // Penting: content harus dikembalikan
+}
+```
+
+### 1.10 onError
+
+Fungsi Penanganan error Permintaan. onError digunakan untuk menangkap Error API dari Sumber Data remote. Fungsi ini dieksekusi ketika success yang dikembalikan API bernilai false. Contoh kode:
+
+```javascript
+function onError(error) {
+  console.log(error);
+}
+```
+
+### 1.11 Data Default
+
+Data Default umumnya digunakan untuk skenario rendering layar pertama. Data ini memberikan nilai Default awal ketika Permintaan Sumber Data remote belum kembali. Catatan: Format Data Default sama dengan format Data yang dikembalikan pada lapisan didFetch, sehingga dapat langsung diikat dan digunakan.
+
+### 1.12 Sumber Data Konektor BARU
+
+Dalam Sumber Data Konektor, sebuah Konektor dapat digunakan sebagai Sumber Data untuk mengatasi keterbatasan lintas-origin dan Autentikasi antar sistem atau halaman web. Untuk detailnya, lihat Dokumen [Menggunakan Konektor kustom untuk mengatasi masalah lintas-origin](https://www.yuque.com/yida/subject/vddims).
+
+## 2. Menggunakan Sumber Data
+
+### 2.1 Pengikatan di dalam Komponen
+
+Di panel Pengaturan Atribut Komponen YiDA, Anda dapat mengikat variabel ke Atribut untuk mencapai efek dinamis. Metodenya adalah sebagai berikut:
+
+- Semua Atribut yang mendukung variabel memiliki ikon seperti yang ditunjukkan di bawah ini. Klik ikon untuk membuka "panel Pengikatan Variabel".
+
+- "Panel Pengikatan Variabel" mendukung pengikatan jenis-jenis variabel berikut, dan dapat langsung digunakan dengan mengklik:
+
+Misalnya: state.urlParams.type === 'test' ? '1' : '2'
+
+### 2.2 Uji Coba langsung di Developer Center
+
+- **Klik Tautan ini untuk mencobanya**
+
+## 3. FAQ
+
+### 3.1 Tidak ada Data setelah Permintaan Sumber Data
+
+Harap konfirmasi:
+
+- Jalur API dan Metode HTTP Anda sudah benar.
+- Permintaan Default diaktifkan atau pemanggilan manual sudah berlaku.
+- Server yang menghosting layanan API yang diminta memiliki batasan Daftar izin akses.
+- Format parameter input salah.
+- API Anda mendukung akses lintas-origin dari www.yidaapps.com.
+- API Anda menggunakan https, dan sertifikatnya "Aman".
+
+### 3.2 Pendekatan penyelesaian masalah
+
+1. Tentukan apakah metode pemuatan Sumber Data adalah pemuatan manual atau auto-load. Jika pemuatan manual, tetapkan breakpoint di kode pemuatan Sumber Data untuk Debug.
+2. Pratinjau atau akses Halaman.
+3. Buka konsol browser.
+4. Picu pemuatan Sumber Data.
+5. Periksa informasi Permintaan yang bersangkutan di konsol untuk penyelesaian masalah.
+
+### 3.3 Error 307 saat memanggil API platform YiDA
+
+Periksa apakah Organisasi Anda telah mengaktifkan Domain tingkat kedua. Jika Domain tingkat kedua diaktifkan, ubah alamat akses API dari `www.yidaapps.com/...` menjadi alamat relatif `/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json` untuk menghindari Kesalahan ini.

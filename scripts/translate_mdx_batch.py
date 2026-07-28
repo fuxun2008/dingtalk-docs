@@ -70,7 +70,7 @@ STYLE_EN = """风格指南（英文）：
 - 目标读者：钉钉国际版企业用户与 IT 管理员
 - 语气：清晰、专业、动作导向（imperative voice：Click X，不写 You can click X）
 - 句式：短句优先；避免被动语态；避免长定语；一句话讲一件事
-- Heading：Sentence case（仅首字母大写 + 专有名词大写）；避免 Title Case
+- Heading：Title Case（实词首字母大写；a/an/the/and/or/of/on/in/to/with/at/by/from/as 等短虚词小写，首末词一律大写）；与 Drive/Mail 产品线一致
 - 用词：避免 Chinglish；避免口语俚语；优先朴素商务英文
 - 数字 / 日期：1,000；24-hour；日期 Month DD, YYYY
 - 标点：全英文 + 直引号 ""
@@ -132,10 +132,10 @@ H. 代码示例 ```code``` 块按铁律 3 的 4 类区分处理；开放平台�
    - 表格 example 列出现中文时按 3b 翻译，不要因为「在表格里」就保留原值
 
 【Heading 大小写 — 体现专业性】
-I. 英文 Heading（# / ## / ### 等）一律 **Sentence case + 专有名词大写**：
-   ✅ "Get the access token of an internal app"
-   ❌ "Get The Access Token Of An Internal App"  （Title Case 错）
-   ❌ "get the access token of an internal app"  （首字母必须大写）
+I. 英文 Heading（# / ## / ### 等）与 frontmatter title 一律 **Title Case**（实词首字母大写，a/an/the/and/or/of/on/in/to/with/at/by/from/as 等短虚词小写，首末词一律大写）：
+   ✅ "Get the Access Token of an Internal App"
+   ❌ "Get the access token of an internal app"  （Sentence case 错）
+   ❌ "Get The Access Token Of An Internal App"  （虚词不该大写）
    专有名词强制大写：DingTalk / API / SDK / URL / HTTP / OAuth / JSON / Webhook / JSAPI / H5 / SaaS / SSO / QR
    品牌词强制大小写：DingTalk / DingTalk Bot / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind
 J. 日文标题：体言止め或动词原形结句；API 类专有词前后留半角空格（access token を取得する）
@@ -149,6 +149,38 @@ L. 日文：敬体 + 简洁 — 「〜します」「〜してください」「
 【表格列头惯用】
 M. 英文：Name / Type / Required / Example / Description（不写 "Required or not"）
 N. 日文：名前 / タイプ / 必須 / 例 / 説明"""
+
+
+# 宜搭 (YiDA) 专属铁律 — 仅 root=yida 注入
+# 低代码平台文档：品牌词 + 开放接口契约 + 域名保护
+YIDA_RULES = """宜搭 (YiDA) 专属铁律 — 违反任意一条则译文无效：
+
+【品牌与产品名 — 覆盖词库以外的自由发挥】
+A. 「宜搭」一律译为 **YiDA**（官方英文名，全大写 DA；域名 www.yidaapps.com 保持小写不动）；严禁 Yida / YiDa / yiDa / Easy Build / 意搭 等任何变体。
+   复合词：专属宜搭 → YiDA Dedicated；宜搭平台 → YiDA platform；宜搭应用 → YiDA app。
+B. 「钉钉」→ DingTalk；「酷应用」→ Cool App（日文 クールアプリ）；「低代码」→ low-code（日文 ローコード）。
+
+【API 契约 — 严格保持原样不译】（developer-features / integration 等篇目大量出现）
+C. JSON 字段名 / 参数名不译：formUuid / formInstId / appType / processCode / formDataJson /
+   updateFormDataJson / searchFieldJson / currentPage / pageSize / useLatestVersion / systemToken 等。
+D. 实例 ID / 占位符原样保留：FORM-xxx / FINST-xxx / APP_xxx / TPROC--xxx；组件唯一标识如
+   textField_kkm9o5cd / employeeField_jcos0sar 原样保留。
+E. 接口路径不译：/v1/form/saveFormData.json 等；HTTP 动词 / 状态码 / Header 名不译。
+F. 代码块按铁律 3 的 4 类处理：注释必译；示例 JSON 中 user-facing 中文字符串值（"单行"/"张三"等示例值）必须译为目标语言等价 placeholder；字段名 / 组件标识保持。
+
+【域名与链接保护】
+G. 以下 URL 完全不动（含路径与参数）：www.yidaapps.com / *.yidaapps.com /
+   yida-support.oss-cn-shanghai.aliyuncs.com / docs.aliwork.com / img.alicdn.com。
+H. 内部相对链接 [text](/zh/yida/...) 与 [text](/zh/open/...) 的 URL 保持原样（后处理统一改前缀），锚文本可译。
+
+【表格列头惯用】
+I. 英文：参数名→Parameter / 描述→Description / 是否必填→Required / 示例→Example / 备注→Notes；
+   能力对比表：能力→Feature / 支持→Supported / 不支持→Not supported。
+J. 日文：パラメータ / 説明 / 必須 / 例 / 備考；印尼文：Parameter / Deskripsi / Wajib / Contoh / Catatan。
+
+【套餐版本】
+K. 免费版→Free edition / 轻享版→Basic edition / 专业版→Professional edition / 专属版→Dedicated edition
+   （日文：無料版 / ベーシック版 / プロフェッショナル版 / 専用版；印尼文：Edisi Gratis / Basic / Professional / Dedicated）。"""
 
 
 # ---------------------------------------------------------------------------
@@ -246,8 +278,10 @@ def build_system_prompt(lang: str, root: str = "") -> str:
         "id": "印尼文（Bahasa Indonesia，正式商务书面语 bahasa baku）",
     }[lang]
     sections = [SYSTEM_RULES, style]
-    if root == "open":
+    if root == "open" or root.startswith("open/"):
         sections.append(OPEN_PLATFORM_RULES)
+    if "yida" in root.split("/"):
+        sections.append(YIDA_RULES)
     sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
     return "\n\n".join(sections)
 

@@ -1,0 +1,150 @@
+---
+title: "Cool Workflow Design"
+description: "Learn how to use integration & automation to build a team-building feedback collection scenario, covering form event triggers, manual card triggers, Send card node configuration, and Update card node configuration."
+polished: true
+---
+
+## About Cool Card Workflows
+
+Cards are sent and updated through **Integration & Automation**. The following sections walk through the "team-building feedback collection" scenario to show how to implement it with integration & automation.
+
+## Business Scenario
+
+1. A "Team-building feedback collection" form is available. After an employee submits the form, the submitted content is sent to a group chat as a card.
+2. Other employees can see the card in the group, like it, or submit their own team-building feedback.
+
+**Form example:**
+
+**Card example in the group:**
+
+#### 1. Integration & Automation
+
+**Integration & Automation**: a **business orchestration/workflow** triggered by an **event**.
+
+Submitting the "Team-building feedback" form and sending a card to the group — in this scenario, form submission is the "event", and sending the card to the group is the "workflow".
+
+For more information about integration & automation, see [Integration & Automation](https://docs.aliwork.com/docs/yida_support/zevvr1). This article focuses on how to send and update cards through integration & automation.
+
+**Integration & Automation entry point**
+
+**Example workflow for "Send team-building card"**
+
+#### 2. Form Event Trigger
+
+**Feature**: triggers a workflow when a form is submitted, updated, or deleted.
+
+Example scenario: A "Team-building feedback collection" form is available. After an employee submits the form, the submitted content is sent to a group chat as a card.
+
+1) Create an integration & automation with a "Form event trigger": click Create > enter a name > select the "Team-building feedback submission" form.
+
+2) Enter the workflow designer and select the form event trigger.
+
+3) Add a "Send card" node.
+
+4) Configure the "Send card" node, including "Select card" -> "Configure card content" -> "Attribute configuration". For details on each configuration item, see section 4, "[Send card node configuration](#4-send-card-node-configuration)".
+
+#### 3. Manual Card Trigger
+
+**Feature**: triggers a workflow when a button on a card is clicked.
+
+Example scenario: an employee sees the team-building feedback card in the group and clicks the "Like" button to add a like.
+
+1) Create an integration & automation with a "Manual card trigger": click Create > enter a name > select the "Team-building feedback submission" form.
+
+Rule for selecting the form: since the card is sent by a **form event trigger** workflow, the form selected for the **manual card trigger** must be **the same as the form selected for the form event trigger**, so that the card context stays consistent.
+
+2) Enter the workflow designer and add a "Get single record" node to filter out the team-building feedback record whose like count is about to be updated.
+
+3) Add an "Update data" node to update the like count of the team-building feedback filtered in the previous "Get single record" node.
+
+4) Add an "Update card" node to update the like count on the corresponding card in the group to the latest value.
+
+#### 4. Send Card Node Configuration
+
+This section focuses on card node configuration. Note that this covers card configuration, not card design. For card design, see the [Cool card design](/yida/cool-app/pqnynb) document.
+
+A card has three elements: **style**, **data**, and **buttons/links**. Card design mainly handles **style**, while card configuration focuses on the other two elements (**data**, and **buttons/links**).
+
+Configuration steps: 1) select the card to send/update; 2) bind data to the card; 3) configure the actions of card buttons/links; 4) define the send scope and rules.
+
+**1) Select the card to send/update**
+
+Choose an official card template or a custom card template. After selecting, click "Open card preview" to preview the card style.
+
+**2) Bind data to the card**
+
+Bind the data obtained from each node in the workflow to the corresponding data variables on the card. (Card three elements: style, data variables, buttons/links.)
+
+**3) Configure the actions of card buttons/links**
+
+A card button can be bound to a "[Manual card trigger](#3-manual-card-trigger)" workflow, or to a link.
+
+Whether a button is bound to a link or to a workflow is decided during card design.
+
+When designing the card, a button click can be mapped to different event types. Typically, choose **Custom action** or **Link redirect**.
+
+**Custom action**: bind a "Manual card trigger" workflow. Clicking the button runs the corresponding workflow.
+
+**Link redirect**: clicking the button opens the corresponding link. The link value can be a fixed value (entered during card design) or a variable (configured in the card node of the integration & automation).
+
+**4) Define the send scope and rules**
+
+Card send scope: send to individual users or to groups.
+
+A group can be set to "Current group".
+
+"Current group": after the Cool App is installed in a group, when form data is submitted through the form link in that group, setting the target to "Current group" sends the card to the group where the form was submitted.
+
+Card send rules:
+
+Scenario 1: send one card per submitted form record — select the "Form instance ID" field.
+
+Scenario 2: send only one card per day for all form records submitted that day — select a field that represents the current date.
+
+#### 5. Update Card Node Configuration
+
+Cards have one distinctive feature: their content can be updated. This is what sets them apart from ordinary chats and prevents the group from being flooded.
+
+Update card configuration steps: 1) select the card to update; 2) define the card update rule; 3) configure the data to update.
+
+Two key points:
+
+1) A card must be sent before it can be updated.
+
+2) The field configured in the **card update rule** must match the field configured in the **card send rule** of the **Send card node**, so that the correct card is updated.
+
+## Other Best Practices (Order-Meal Activity Configuration as Example)
+
+In the "Order-meal Cool App", both "Start a healthy meal booking activity" and "Join a healthy meal booking activity" need a unique identifier (serial number) to link and mark the activity. Here is how to configure this serial number.
+
+**1. Start a healthy meal booking activity**
+
+First, enable the serial number feature on the "Start a healthy meal booking activity" form and set the serial number rule. Go to Page settings -> Basic settings -> Premium settings -> Automatically generate serial number after user submits form/workflow, then save.
+
+Next, add a "Single-line Text Box" component to the "Start a healthy meal booking activity" form as the "Activity serial number", set it to "Hidden", and set data submission to "Always submit".
+
+Finally, add a global form event that uses the function `SETSERIALNO(Activity serial number)` to automatically generate a serial number. After a new form instance is submitted, the system automatically generates a serial number and fills its value into the text box. All subsequent settings match and associate records based on this serial number.
+
+**2. Join a healthy meal booking activity**
+
+First, in the "Join a healthy meal booking activity" form, similarly add a "Single-line Text Box" component as the "Activity serial number", set it to "Hidden", and set data submission to "Always submit".
+
+Then, in the `didMount` function, get the `serialNumber` parameter from the `url` and assign its value to the "Activity serial number" component. Here, `textField_l3wp3mge` is the `fieldId` of the "Activity serial number" component.
+
+```javascript
+export function didMount() {
+  if (this.$('textField_l3wp3mge')) {
+    this.$('textField_l3wp3mge').setValue((this.state.urlParams || {}).serialNumber);
+  }
+}
+```
+
+**3. Integration & Automation settings**
+
+First, in the "Start activity" integration & automation configuration, add the "System serial number" parameter (the serial number generated above) to the buttons on the card, so that the serial number is passed to the form.
+
+Then, in the "User submits order" integration & automation configuration, filter the "Currently started order-meal activity" by "Activity serial number".
+
+In the "Get order-meal user list" node, match the corresponding order-meal user list based on the "Activity serial number" submitted from the current form.
+
+On the "Order data summary Kanban card", also add the serial number parameter to the "View orders" and "In-depth analysis" buttons, so that the form can retrieve it for data filtering and analysis.

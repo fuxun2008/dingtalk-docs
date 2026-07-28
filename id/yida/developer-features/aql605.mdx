@@ -1,0 +1,1335 @@
+---
+title: "API Platform YiDA"
+description: "Panduan lengkap penggunaan API platform YiDA untuk memulai instans alur kerja di DingTalk — mencakup catatan penggunaan, aturan URL HTTP, dan langkah konfigurasi parameter yang rinci untuk developer."
+polished: true
+---
+
+| **Kemampuan** | **Edisi Gratis** | **Edisi Basic** | **Edisi Professional** | **Edisi Dedicated** |
+|---|---|---|---|---|
+| Sumber Data halaman YiDA | Tidak didukung | Tidak didukung | Didukung | Didukung |
+
+## 1. Catatan penggunaan
+
+### 1.1 Aturan penggabungan URL HTTP
+
+Saat ini API tingkat App sudah didukung. Di dalam sebuah App (lintas-App juga didukung), akses API terkait menggunakan format berikut:
+
+```text
+${Domain YiDA}/dingtalk/web/${Kode App} + jalur API.
+```
+
+Contohnya, untuk memanggil API "instans alur kerja – Mulai alur kerja" pada App dengan kode APP_X1X2X3X4 melalui browser, URL permintaan yang digunakan di panel data adalah (**jalur relatif sudah cukup**):
+
+```text
+/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json
+```
+
+Lihat [II. instans alur kerja] → [1. Mulai alur kerja] untuk contoh praktik terperinci.
+
+**Catatan: pada versi saat ini, field searchFieldJson dan dynamicOrder memerlukan nilai bertipe string. Contoh:**
+
+```javascript
+const someJson = {
+	"textField_kkm9o5cd":"123"
+}
+
+// Meneruskan someJson langsung ke searchFieldJson tidak akan berfungsi. Gunakan JSON.stringify untuk mengubah object menjadi string.
+const fieldJson = JSON.stringify(someJson); // '{"textField_kkm9o5cd":"123"}'
+```
+
+## 2. instans alur kerja
+
+### 2.1 Mulai alur kerja
+
+- API: /v1/process/startInstance.json
+- Metode HTTP: POST
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processCode | Kode alur kerja | Ya | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 | Tersedia di URL halaman mulai standalone |
+| formUuid | ID Formulir | Ya | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | Tersedia di URL halaman mulai standalone |
+| formDataJson | Data formulir | Ya | <br /> | Tipe: String<br />Referensi: Lampiran 1 – Format data Simpan/Perbarui formulir |
+| deptId | ID departemen pengirim | Tidak | 18295 | Jika dihilangkan, default-nya adalah departemen utama pengirim |
+
+- Nilai kembalian:
+
+- Nilai kembalian
+
+```json
+{
+  "result": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+  "success": true
+}
+```
+
+**Panduan skenario:**
+
+①. Bangun Halaman alur kerja sederhana, klik Komponen yang nilainya ingin diisi dengan nilai Kustom, lalu ambil pengidentifikasi uniknya. Dalam contoh ini, pengidentifikasi unik Kotak Teks Teks satu baris adalah `textField_kkm9o5cd`.
+
+②. Buat Halaman tampilan Premium, seret sebuah Button ke Halaman, lalu Buat Sumber Data.
+
+Isi Nama yang mudah dipahami dan unik di Halaman ini, lalu isi URL permintaan sesuai kebutuhan bisnis Anda. Dalam contoh ini, klik Button akan memulai sebuah alur kerja, jadi URL permintaannya adalah: /alibaba/web/APP_D45S78OXJSL51QTQVHT8/v1/process/startInstance.json, di mana APP_D45S78OXJSL51QTQVHT8 adalah pengidentifikasi unik App — ganti dengan pengidentifikasi unik App Anda. Pastikan memilih POST sebagai Metode HTTP.
+
+③. Tambah event onClick ke Button, lalu klik ikon \<> untuk menghubungkan Sumber Data jarak jauh ke Button:
+
+Referensi: [https://developers.aliwork.com/docs/api/about](/id/open/yida/api/about)
+
+Tuliskan kode pengikatan berikut. Perhatikan bahwa kita mengisi nilai tetap `123` untuk kontrol Formulir Teks satu baris (pengidentifikasi unik: `textField_kkm9o5cd`).
+
+Parameter formUuid dan processCode tersedia di [Pengaturan App] – [Data App] – [alur kerja XX] sebagai ID Formulir dan Kode alur kerja.
+
+```javascript
+export function onClick(){
+  const params = {
+    "processCode":"TPROC--CFYJ5HYUN89NJ1JW3IXBI7A95RXM3652O9MKK3",
+    "formUuid": "FORM-CFYJ5HYUN89NJ1JW3IXBI7A95RXM3552O9MKK2",
+    "formDataJson": '{"textField_kkm9o5cd":"123"}'
+  }
+
+  this.dataSourceMap.myDatasource.load(params).then((response) => {
+    this.utils.dialog({
+      method: 'alert', // atau confirm
+      title: 'Permintaan berhasil',
+      type: 'success', // Di PC, info/success/error didukung
+      content: `Respons: ${response}`,
+    })
+  })
+  console.log('onClick');
+}
+```
+
+④. Setelah menulis kode, klik Button Simpan di sudut kanan atas Halaman.
+
+⑤. Buka Halaman runtime untuk menguji peluncuran alur kerja. Klik Button, dan di alat Debug bawaan browser pada bagian Network Anda akan melihat bahwa permintaan startInstance Berhasil. Respons `da5ed25c-977b-40e0-acff-4a1c07aa6f41` adalah ID instans alur kerja yang mengidentifikasi instans alur kerja ini secara unik.
+
+⑥. Selanjutnya, buka halaman manajemen data alur kerja terkait. Anda akan menemukan alur kerja yang baru saja dimulai, dan Konten Teks satu baris tepat sesuai nilai tetap `123` yang kita isi di kode. Semua pengujian dan verifikasi Selesai.
+
+- Panduan video
+
+### 2.2 Cari ID instans alur kerja berdasarkan kondisi
+
+- API: /v1/process/getInstanceIds.json
+- Metode HTTP: GET
+- Izin: alur kerja harus memiliki Izin Lihat instans yang terkonfigurasi (Admin dikecualikan)
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Kueri berdasarkan nilai Komponen dalam Formulir | Tidak | <br /> | Tipe: String<br />Lihat Lampiran 2: Pencarian Kondisi berdasarkan nilai Komponen – Format nilai Komponen |
+| taskId | ID Tugas | Tidak | 2199132092 | Jarang diperlukan. |
+| instanceStatus | Status instans | Tidak | RUNNING | Nilai enum: RUNNING, TERMINATED, COMPLETED, ERROR.<br />Arti: Sedang berjalan, Dihentikan, Selesai, error. |
+| approvedResult | Hasil Persetujuan alur kerja | Tidak | agree | Nilai enum: agree, disagree.<br />Arti: Terima, Tolak. |
+| currentPage | Halaman saat ini | Tidak | 1 | Harus lebih besar dari 0<br />Default: 1 |
+| pageSize | Rekaman per halaman | Tidak | 10 | Harus lebih besar dari 0<br />Default: 10<br />Tidak boleh melebihi 100 |
+| originatorId | Kueri berdasarkan ID Karyawan pengirim alur kerja | Tidak | <br /> | <br /> |
+| createFrom | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD<br />yyyy-MM-DD |
+| createTo | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD.<br />Digabungkan dengan createFrom, kueri mengembalikan<br />Data yang dibuat antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31). |
+| modifiedFrom | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD |
+| modifiedTo | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD. Digabungkan dengan modifiedFrom, kueri mengembalikan Data yang dimodifikasi antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31). |
+
+- Nilai kembalian
+
+```json
+{
+  "result": {
+    "data": [
+      "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "bc0950a3-fe1b-459c-b6ba-282be38523ab",
+      "f540cbd7-43eb-40de-b915-6716578a2802"
+    ],
+    "totalCount": 3,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### 2.3 Dapatkan List detail instans berdasarkan kondisi pencarian
+
+- API: /v1/process/getInstances.json
+- Metode HTTP: GET
+- Izin: alur kerja harus memiliki Izin Lihat instans yang terkonfigurasi (Admin dikecualikan)
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Kueri berdasarkan nilai Komponen dalam Formulir | Tidak | <br /> | Tipe: String<br />Lihat Lampiran 2: Pencarian Kondisi berdasarkan nilai Komponen – Format nilai Komponen |
+| taskId | ID Tugas | Tidak | 2199132092 | Jarang diperlukan. |
+| instanceStatus | Status instans | Tidak | RUNNING | Nilai enum: RUNNING, TERMINATED, COMPLETED, ERROR.<br />Arti: Sedang berjalan, Dihentikan, Selesai, error. |
+| approvedResult | Hasil Persetujuan alur kerja | Tidak | agree | Nilai enum: agree, disagree.<br />Arti: Terima, Tolak. |
+| currentPage | Halaman saat ini | Tidak | 1 | Harus lebih besar dari 0<br />Default: 1 |
+| pageSize | Rekaman per halaman | Tidak | 10 | Harus lebih besar dari 0<br />Default: 10<br />Tidak boleh melebihi 100 |
+| originatorId | Kueri berdasarkan ID Karyawan pengirim alur kerja | Tidak | <br /> | <br /> |
+| createFrom | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD |
+| createTo | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD.<br />Digabungkan dengan createFrom, kueri mengembalikan<br />Data yang dibuat antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31).<br />Data diambil dengan menambahkan 00:00:00 ke nilai yyyy-MM-DD |
+| modifiedFrom | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD |
+| modifiedTo | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD. Digabungkan dengan modifiedFrom, kueri mengembalikan Data yang dimodifikasi antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31). |
+
+- Nilai kembalian
+
+### 2.4 Dapatkan detail instans alur kerja berdasarkan ID instans
+
+- API: /v1/process/getInstanceById.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processInstanceId | ID instans alur kerja | Ya | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Nilai kembalian
+
+### 2.5 Hapus instans alur kerja
+
+- API: /v1/process/deleteInstance.json
+- Metode HTTP: POST
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processInstanceId | ID instans alur kerja | Ya | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Nilai kembalian
+
+### 2.6 Hentikan instans alur kerja
+
+- API: /v1/process/terminateInstance.json
+- Metode HTTP: POST
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processInstanceId | ID instans alur kerja | Ya | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Nilai kembalian
+
+#### 2.7 Dapatkan detail instans alur kerja secara batch berdasarkan ID instans [belum Terbuka]
+
+- API: /v1/process/getInstancesByIds.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processInstanceIds | Daftar ID instans alur kerja, dipisahkan koma | Ya | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530,d230233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Nilai kembalian
+
+### 2.7 Eksekusi API tugas tunggal
+
+- API: /v1/task/executeTask.json
+- Metode HTTP: POST
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| taskId | ID Tugas | Ya | 12002575 | <br /> |
+| procInstId | ID Instans | Ya | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+| outResult | Hasil Persetujuan | Ya | AGREE | AGREE (Terima), DISAGREE (Tolak) |
+| remark | Komentar Persetujuan | Ya | Dikonfirmasi dan diterima | <br /> |
+| formDataJson | Nilai Formulir yang diperbarui | Tidak | <br /> | Referensi: Lampiran 1 – Format data Simpan/Perbarui formulir.<br />Komponen yang ada dalam parameter akan diperbarui; yang tidak ada tetap tidak berubah.<br />Nilai detail hanya dapat diperbarui secara keseluruhan; Anda tidak dapat memperbarui nilai satu Komponen di dalam subformulir |
+| noExecuteExpressions | Apakah melewati validasi & aksi Asosiasi | Tidak | y | Ketika node tugas ini memiliki aturan validasi atau aksi Asosiasi yang terikat,<br />y -> jangan jalankan aturan validasi & aksi Asosiasi<br />n -> jalankan aturan validasi & aksi Asosiasi<br />Default n jika dihilangkan, yaitu aturan validasi & aksi Asosiasi akan dijalankan |
+
+- Nilai kembalian
+
+### 2.8 Dapatkan rekaman Persetujuan
+
+- API: /v1/process/getOperationRecords.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processInstanceId | ID instans alur kerja | Ya | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- Nilai kembalian
+
+- Format kembalian
+
+```json
+{
+  "success": true,
+  "content": [
+    {
+      "operateTime": "2018-06-22 14:35:40",
+      "remark": "",
+      "taskHoldTime": 0,
+      "type": "HISTORY",
+      "operatorName": "Pengguna YiDA",
+      "operator": "yida",
+      "activityId": "sid-restartevent",
+      "action": "Kirim aplikasi",
+      "actionExt": "submit",
+      "id": 2846866118,
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "Kirim aplikasi",
+      "operateType": "NEW_PROCESS",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Pengguna YiDA",
+      "taskId": "null"
+    },
+    {
+      "taskHoldTime": 531398377,
+      "type": "TODO",
+      "operatorName": "Pengguna YiDA",
+      "operator": "yida",
+      "activityId": "sidJIOB2P2J1JW3RPMDOS28",
+      "taskType": "COMMON_ALL_AT_ONCE",
+      "actionExt": "doing",
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "Penerima Tugas",
+      "activeTime": "2018-06-22 14:35:41",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Pengguna YiDA",
+      "taskId": "2846866145"
+    }
+  ]
+}
+```
+
+### 2.9 Perbarui instans alur kerja
+
+- API: /v1/process/updateInstance.json
+- Metode HTTP: POST
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processInstanceId | ID Instans | Ya | <br /> | <br /> |
+| updateFormDataJson | Data formulir yang diperbarui | Ya | <br /> | Referensi: Lampiran 1 – Format data Simpan/Perbarui formulir |
+
+- Nilai kembalian:
+
+- Contoh nilai kembalian
+
+```json
+{
+  "success":true
+}
+```
+
+#### 2.8 Dapatkan List Button untuk node desain alur kerja [belum Terbuka]
+
+- API: /v1/process/getActivityButtonVOs.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| processCode | Kode alur kerja | Ya | TPROC--X1G\*\*\*42ZMGA31OYELIWJ1 | <br /> |
+| activityId | ID Node | Ya | <br /> | <br /> |
+
+- Nilai kembalian:
+
+- Contoh nilai kembalian:
+
+```json
+{
+  "result": [
+    {
+      "aliasEn": "Forward",
+      "alias": "Teruskan",
+    },
+    {
+      "aliasEn": "Append",
+      "alias": "Tanda tangani permintaan",
+    },
+    {
+      "aliasEn": "Return",
+      "alias": "Kembalikan",
+    }
+  ],
+  "success": true,
+  "errorCode": null,
+  "content": null,
+  "errorMsg": null
+}
+```
+
+## 3. instans formulir
+
+### 3.1 Buat instans formulir
+
+- API: /v1/form/saveFormData.json
+- Metode HTTP: POST
+- Parameter:
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB | <br /> |
+| appType | ID App | Ya | APP_DR4OK27ZKL5N22B907E8 | <br /> |
+| formDataJson | Data formulir | Ya | \{"textField_jcpm6agt": "satu baris","employeeField_jcos0sar": ["workno"]} | Tipe: String<br />Referensi: [Lampiran 1 – Format data Simpan/Perbarui formulir](/id/yida/developer-features/aql605) |
+
+- Nilai kembalian:
+
+- Contoh nilai kembalian:
+
+```json
+{
+  "result":"FINST-EF6Y93URN2UZ1SBPLIP9NAV6HR2GEO1Z4ZCHSCJ0",
+  "success":true
+}
+```
+
+### 3.2 Perbarui nilai Komponen tertentu dalam Formulir
+
+- API: /v1/form/updateFormData.json
+- Metode HTTP: POST
+- Parameter:
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formInstId | ID data Formulir yang akan Diperbarui | Ya | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+| updateFormDataJson | Nilai Komponen Formulir yang akan Diperbarui; Wajib | Ya | \{"employeeField_jcpm5gy2":<br />["xxxxx","yyyyy"]}<br />(ditampilkan di sini dengan komponen anggota) | Tipe: String<br />Referensi: [Lampiran 1 – Format data Simpan/Perbarui formulir.](/id/yida/developer-features/aql605) Komponen yang ada dalam parameter akan diperbarui; yang tidak ada tetap tidak berubah. Nilai detail hanya dapat diperbarui secara keseluruhan; Anda tidak dapat memperbarui nilai satu Komponen di dalam subformulir |
+| useLatestVersion | Gunakan Versi Formulir terbaru untuk Pembaruan | Tidak | y | **Penting**<br />Default adalah n; y direkomendasikan. |
+
+- Nilai kembalian:
+
+- Contoh nilai kembalian
+
+```json
+{
+  "success":true
+}
+```
+
+### 3.3 Hapus instans formulir
+
+- API: /v1/form/deleteFormData.json
+- Metode HTTP: POST
+- Parameter:
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formInstId | ID data Formulir yang akan Dihapus | Ya | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+
+- Nilai kembalian:
+
+- Contoh nilai kembalian
+
+```json
+{
+  "success":true
+}
+```
+
+---
+
+### 3.4 Kueri detail instans formulir berdasarkan ID instans formulir
+
+- API: /v1/form/getFormDataById.json
+- Metode HTTP: GET
+- Parameter:
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formInstId | ID Instans yang akan dikueri | Ya | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+
+- Nilai kembalian
+
+---
+
+### 3.5 Cari daftar ID instans formulir berdasarkan kondisi
+
+- API: /v1/form/searchFormDataIds.json
+- Metode HTTP: GET
+- Izin: API ini tunduk pada Izin tingkat Halaman (Admin dikecualikan).
+- Parameter:
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Kueri berdasarkan nilai Komponen dalam Formulir | Tidak | <br /> | Tipe: String<br />Lihat Lampiran 2: Pencarian Kondisi berdasarkan nilai Komponen – Format nilai Komponen |
+| currentPage | Halaman saat ini | Tidak | 1 | Harus lebih besar dari 0<br />Default: 1 |
+| pageSize | Rekaman per halaman | Tidak | 10 | Harus lebih besar dari 0<br />Default: 10<br />Tidak boleh melebihi 100 |
+| originatorId | Kueri berdasarkan ID Karyawan Pengirim data | Tidak | <br /> | <br /> |
+| createFrom | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD |
+| createTo | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD.<br />Digabungkan dengan createFrom, kueri mengembalikan<br />Data yang dibuat antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31).<br />Data diambil dengan menambahkan 00:00:00 ke nilai yyyy-MM-DD |
+| modifiedFrom | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD |
+| modifiedTo | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD. Digabungkan dengan modifiedFrom, kueri mengembalikan Data yang dimodifikasi antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31). |
+| dynamicOrder | Urutkan | Tidak | column: '+' | Menaik +, menurun - |
+
+- Nilai kembalian
+
+- Contoh nilai kembalian:
+
+```json
+{
+  "result":{
+    "data":[
+      "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0"
+    ],
+	  "totalCount":1,
+    "currentPage":1
+  },
+  "success":true
+}
+```
+
+### 3.6 Cari List detail instans formulir berdasarkan kondisi
+
+- API: /v1/form/searchFormDatas.json
+- Metode HTTP: GET
+- Izin: API ini tunduk pada Izin tingkat Halaman (Admin dikecualikan).
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | Kueri berdasarkan nilai Komponen dalam Formulir | Tidak | <br /> | Tipe: String<br />Lihat Lampiran 2: Pencarian Kondisi berdasarkan nilai Komponen – Format nilai Komponen |
+| currentPage | Halaman saat ini | Tidak | 1 | Harus lebih besar dari 0; default 1 |
+| pageSize | Rekaman per halaman | Tidak | 10 | Harus lebih besar dari 0<br />Default: 10<br />Tidak boleh melebihi 100 |
+| originatorId | Kueri berdasarkan ID Karyawan Pengirim data | Tidak | <br /> | <br /> |
+| createFrom | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD<br />(atau presisi hingga detik<br />yyyy-MM-DD HH:mm:ss) |
+| createTo | createFrom dan createTo bersama-sama membentuk rentang waktu. Kueri Data List yang dibuat dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD (atau presisi hingga detik<br />yyyy-MM-DD HH:mm:ss)<br />Digabungkan dengan createFrom, kueri mengembalikan<br />Data yang dibuat antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31). |
+| modifiedFrom | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-01-01 | string, dalam format yyyy-MM-DD (atau presisi hingga detik<br />yyyy-MM-DD HH:mm:ss) |
+| modifiedTo | modifiedFrom dan modifiedTo bersama-sama membentuk rentang waktu. Kueri Data List yang dimodifikasi dalam rentang ini. | Tidak | 2018-02-01 | string, dalam format yyyy-MM-DD. (atau presisi hingga detik<br />yyyy-MM-DD HH:mm:ss) Digabungkan dengan modifiedFrom, kueri mengembalikan Data yang dimodifikasi antara 2018-01-01 dan 2018-01-31 (termasuk tanggal 1 dan 31). |
+| dynamicOrder | Tentukan Field Pengurutan | Tidak | \{"numberField_1ac":"+"} | Urutkan menaik berdasarkan Field numberField_1ac |
+
+- Nilai kembalian
+
+### 3.7 Dapatkan definisi Formulir
+
+- API: /v1/form/getFormComponentDefinationList.json
+- Metode HTTP: GET
+- Parameter:
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB | <br /> |
+| version | Versi Formulir | Tidak | 1 | Menerima field `version` dari formData.<br />Jika kosong, mengembalikan definisi Versi terbaru |
+
+- Nilai kembalian:
+
+- Format kembalian
+
+```json
+{
+    "success":true,
+    "content":[
+        {
+            "label":"{"en_US":"CheckBox Field","zh_CN":"Pilih Banyak","type":"i18n"}",
+            "key":"checkboxField_jiwvhkdi"
+        },
+        {
+            "label":"{"en_US":"Textarea Field","zh_CN":"Kotak Teks Multi-baris","type":"i18n"}",
+            "key":"textareaField_jiwvhkdh"
+        },
+        {
+            "label":"{"en_US":"Select Field","zh_CN":"Pilih Tunggal Dropdown","type":"i18n"}",
+            "key":"selectField_jiwvhkdg"
+        }
+    ]
+}
+```
+
+### 3.8 Dapatkan Data subformulir
+
+- API: /v1/form/listTableDataByFormInstIdAndTableId.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| formUuid | ID Formulir | Ya | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| formInstanceId | ID Instans yang akan dikueri | Ya | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+| tableFieldId | Pengidentifikasi unik Komponen subformulir yang akan dikueri | Ya | tableField_ksyaujq1 | <br /> |
+| currentPage | Halaman saat ini | Ya | 10 | Harus lebih besar dari 0; default 1 |
+| pageSize | Rekaman per halaman | Ya | 50 | Lebih besar dari 0 dan kurang dari 50; default 10 |
+
+- Nilai kembalian
+
+- Format kembalian
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "textField_kstqokaa": ""
+      },
+      {
+        "textField_kstqokaa": "1"
+      },
+      {
+        "textField_kstqokaa": "2"
+      }
+    ],
+    "totalCount": 120,
+    "currentPage": 1,
+  },
+  "success": true,
+}
+```
+
+## 4. Pusat Tugas
+
+### 4.1 Tugas yang dikirim
+
+- API: /v1/process/getMySubmitInApp.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| pageSize | Rekaman per halaman | Ya | 10 | Harus lebih besar dari 0; default 10; maksimum: 100 |
+| currentPage | Halaman saat ini | Ya | 1 | Harus lebih besar dari 0; default 1 |
+| keyword | Kata kunci | Tidak | <br /> | <br /> |
+
+- Nilai kembalian:
+
+- Format kembalian
+
+Berhasil:
+
+```javascript
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "Tiket",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "Nama",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "budi"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Gagal:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Tidak ada Izin"
+}
+```
+
+**Tips: instValue mengembalikan sebuah string; Kontennya dalam format array JSON.**
+
+Contoh kode permintaan:
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getMySubmmitInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.2 Tugas yang harus dikerjakan
+
+- API: /v1/task/getTodoTasksInApp.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| pageSize | Rekaman per halaman | Ya | 10 | Harus lebih besar dari 0; default 10; maksimum: 100 |
+| currentPage | Halaman saat ini | Ya | 1 | Harus lebih besar dari 0; default 1 |
+| keyword | Kata kunci | Tidak | <br /> | <br /> |
+
+- Nilai kembalian:
+
+- Format kembalian
+
+Berhasil:
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "XXXXXX",
+        "originatorName": "XXX",
+        "title": "alur kerja dimulai oleh XXX",
+        "originatorPhoto": "http://static.dingtalk.com/media/lADPdfafafsAXXXXXX.jpg",
+        "titleEn": "alur kerja dimulai oleh XXX",
+        "createTime": "2018-04-13 13:35:58",
+        "appType": "APP_R8MdfadfXXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "NEW"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Gagal:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Tidak ada Izin"
+}
+```
+
+Contoh kode permintaan:
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getTodoTasksInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.3 Tugas yang Selesai
+
+- API: /v1/task/getDoneTasksInApp.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| pageSize | Rekaman per halaman | Ya | 10 | Harus lebih besar dari 0; default 10; maksimum: 100 |
+| currentPage | Halaman saat ini | Ya | 1 | Harus lebih besar dari 0; default 1 |
+| keyword | Kata kunci | Tidak | <br /> | <br /> |
+
+- Nilai kembalian:
+
+- Format kembalian
+
+Berhasil:
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "abc434rfds23XXXXXX",
+        "finishTime": "2018-03-28 17:46:14",
+        "originatorName": "",
+        "title": "Halaman alur kerja dimulai oleh XXX",
+        "originatorPhoto": "//img.alicdn.com/tfs/TB1msdfsXXXXXX.jpg",
+        "titleEn": "Halaman alur kerja dimulai oleh XXX",
+        "createTime": "2018-03-28 17:45:43",
+        "appType": "XXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "COMPLETED"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Gagal:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Tidak ada Izin"
+}
+```
+
+Contoh kode permintaan:
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getDoneTasksInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.4 Tugas yang di-CC ke saya (tingkat App)
+
+- API: /v1/task/getNotifyMeTasksInApp.json
+- Metode HTTP: GET
+- Parameter
+
+| Parameter | Deskripsi | Wajib | Contoh | Alias |
+|---|---|---|---|---|
+| pageSize | Rekaman per halaman | Ya | 10 | Harus lebih besar dari 0; default 10; maksimum: 100 |
+| currentPage | Halaman saat ini | Ya | 1 | Harus lebih besar dari 0; default 1 |
+| keyword | Kata kunci | Tidak | <br /> | <br /> |
+| processCodes | Daftar kode alur kerja | Tidak | ["xx","xxx"] | <br /> |
+| instanceStatus | Status instans | Tidak | <br /> | Nilai enum |
+
+- Nilai kembalian:
+
+- Format kembalian
+
+Berhasil:
+
+```javascript
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "Tiket",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "Nama",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "budi"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+Gagal:
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Tidak ada Izin"
+}
+```
+
+- Tips: instValue mengembalikan sebuah string; Kontennya dalam format array JSON.
+
+## 5. Lampiran
+
+### 5.1 Format data Simpan/Perbarui formulir
+
+- Setiap Komponen dalam sebuah Formulir memiliki ID unik (dapat dilihat di panel Premium di sisi kanan Komponen dalam desainer halaman), dan setiap nilai Komponen memiliki format tetap tersendiri. Komponen formulir yang saat ini didukung adalah: Satu baris, multi-baris, Angka, Pilih, Pilih Tunggal Dropdown, Pilih Banyak, Pilih Banyak Dropdown, Tanggal, Rentang tanggal, Kotak pencarian pengguna, Pilih Wilayah, Pilih Departemen, Pilih Bertingkat, dan Komponen subformulir.
+- Saat menyimpan/memperbarui data Formulir, data dalam Formulir diteruskan sebagai JsonString dalam format Map\<String, Object>. Key-nya adalah ID Komponen dan Object adalah nilai Komponen. Format masing-masing nilai Komponen adalah sebagai berikut:
+
+| Tipe Komponen | Format data | demo | Alias |
+|---|---|---|---|
+| Kotak Teks Satu baris | string | "danhang" | <br /> |
+| Kotak Teks Multi-baris | string | "duohang" | <br /> |
+| Kotak Teks Angka | Number | 1 | <br /> |
+| Pilih | string | "Opsi 1" | <br /> |
+| Pilih Tunggal Dropdown | string | "Opsi 1" | <br /> |
+| Pilih Banyak | array string | ["Opsi 1","Opsi 2"] | <br /> |
+| Pilih Banyak Dropdown | array string | ["Opsi 1","Opsi 2"] | <br /> |
+| Komponen Tanggal | Stempel waktu | 1516204800000 | <br /> |
+| Tanggal Bertingkat | array string | ["1514736000000","1517328000000"].<br />Jika hanya waktu akhir yang tersedia, ["","1517328000000"] | Elemen pertama adalah string Stempel waktu waktu mulai, elemen kedua adalah string Stempel waktu waktu selesai |
+| Kotak pencarian pengguna | array string | ["231344123","231344156"] | Isi dari ["xxx"] adalah userId |
+| Pilih Kota | array string | ["110000","110100","110101"] | Elemen pertama harus ID provinsi, kedua ID kota, dan ketiga ID distrik. |
+| Pilih Departemen | array string | ["1123456"] | Isi dari ["xxx"] adalah ID departemen |
+| Pilih Bertingkat | array string | ["part","part_b"] | Harus diletakkan di array sesuai urutan tingkatannya |
+| Komponen Lampiran | array string | [<br />\{<br />"downloadUrl": "URL Unduh File",<br />"name": "Nama File",<br />"previewUrl": "URL Pratinjau file",<br />"url": "URL Unduh File",<br />"ext": "docx"<br />}<br />] | <br /> |
+| Komponen Gambar | array string | [<br />\{<br />"downloadUrl": "URL Unduh File",<br />"name": "Nama File",<br />"previewUrl": "URL Pratinjau file",<br />"url": "URL Unduh File",<br />}<br />] |  |
+| Komponen Hyperlink | array string | [<br />\{<br />"link":"http://www.yidaapps.com",<br />"text":"YiDA"<br />}<br />] | <br /> |
+| subformulir | JSONARRAY | [\{"textField_jcr0069m": "danhang1"},\{"textField_jcr0069m": "danhang2"}]<br />(textField_jcr0069m adalah ID Komponen dari Satu baris di bawah subformulir) | Karena subformulir memiliki banyak Rekaman, digunakan JSONARRAY. Karena setiap Rekaman terdiri dari nilai banyak Komponen, digunakan JSONObject untuk menyimpan nilai setiap Komponen |
+| Tanda tangan | string | "URL Gambar" | <br /> |
+
+- Format data Formulir lengkap adalah sebagai berikut:
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": 1,
+  "radioField_jcr0069p": "Opsi 1",
+  "selectField_jcr0069q": "Opsi 1",
+  "checkboxField_jcr0069r": [
+    "Opsi 2",
+    "Opsi 3"
+  ],
+  "multiSelectField_jcr0069s": [
+    "Opsi 2",
+    "Opsi 3"
+  ],
+  "dateField_jcr0069t": 1516636800000,
+  "cascadeDate_jcr0069u": [
+    "1514736000000",
+    "1517328000000"
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": 1123456,
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  {
+  "attachmentField_jna1lvyb": [
+    {
+      "downloadUrl": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "name": "test.txt",
+      "previewUrl": "https://www.yidaapps.com/inst/preview?appType=default_tianshu_app&fileName=test.txt&fileSize=4&downloadUrl=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt",
+      "url": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "ext": "txt"
+    }
+  ]
+},
+  "tableField_jcr006a1": [
+    {
+      "cascadeDate_jcr006aa": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006ae": [
+        "product",
+        "product_a"
+      ],
+      "checkboxField_jcr006a7": [
+        "Opsi 1",
+        "Opsi 2",
+        "Opsi 3"
+      ],
+      "citySelectField_jcr006ac": [
+        "120000",
+        "120100",
+        "120102"
+      ],
+      "dateField_jcr006a9": 1517328000000,
+      "departmentField_jcr006ad": ["1123456"],
+      "employeeField_jcr006ab": [
+        "yyyyy",
+        "xxxxx"
+      ],
+      "multiSelectField_jcr006a8": [
+        "Opsi 1",
+        "Opsi 2",
+        "Opsi 3"
+      ],
+      "numberField_jcr006a4": 2,
+      "radioField_jcr006a5": "Opsi 2",
+      "selectField_jcr006a6": "Opsi 3",
+      "textField_jcr006a2": "Satu baris di bawah subformulir",
+      "textareaField_jcr006a3": "Multi-baris di bawah subformulir"
+    }
+  ],
+	"digitalSignatureField_kt3nh972": "https://tianshu-vpc.oss-cn-shanghai.aliyuncs.com/5e03f863-dd39-4f62-ba9b-497af2c9ad9f.png"
+}
+```
+
+### 5.2 Pencarian Kondisi berdasarkan nilai Komponen – Format nilai Komponen
+
+- Setiap Komponen dalam sebuah Formulir memiliki ID unik (dapat dilihat di panel Premium di sisi kanan Komponen dalam desainer halaman), dan format Pencarian setiap Komponen berbeda. Komponen Formulir yang saat ini didukung untuk Pencarian adalah: Satu baris, multi-baris, Angka, Pilih, Pilih Tunggal Dropdown, Pilih Banyak, Pilih Banyak Dropdown, Tanggal, Rentang tanggal, Kotak pencarian pengguna, Pilih Wilayah, Pilih Departemen, Pilih Bertingkat, dan Komponen subformulir.
+- Saat mencari, kondisi Pencarian setiap Komponen direpresentasikan sebagai Map\<String, Object>. Key-nya adalah ID Komponen dan Object adalah nilai Pencarian Komponen. Tipe Pencarian dan format nilai untuk setiap Komponen adalah sebagai berikut:
+
+| Tipe Komponen | Format data | demo | Alias |
+|---|---|---|---|
+| Kotak Teks Satu baris | string | "danhang" | Pencarian Fuzzy |
+| Kotak Teks Multi-baris | string | "duohang" | Pencarian Fuzzy |
+| Kotak Teks Angka | array string | ["1","10"] | Pencarian Rentang. Elemen pertama adalah nilai minimum, kedua nilai maksimum |
+| Pilih | string | "Opsi 2" | Pencarian Persis |
+| Pilih Tunggal Dropdown | string | "Opsi 2" | Pencarian Persis |
+| Pilih Banyak | array string | ["Opsi 2"] | Pencarian Array.<br />Nilai Pencarian harus berupa subset dari nilai Pilih Banyak |
+| Pilih Banyak Dropdown | array string | ["Opsi 2"] | Pencarian Array. Nilai Pencarian harus berupa subset dari nilai Pilih Banyak |
+| Komponen Tanggal | array string | ["1514736000000","1517414399000"] | Pencarian Rentang. Elemen pertama adalah Stempel waktu Tanggal mulai, kedua Stempel waktu Tanggal selesai. |
+| Rentang tanggal | array | [["1514736000000","1517414399000"],["1514736000000","1517414399000"]] | Pencarian Rentang. Array pertama adalah rentang Pencarian untuk awal Rentang tanggal. Array kedua adalah rentang Pencarian untuk akhir Rentang tanggal. |
+| Kotak pencarian pengguna | array string | ["xxxxx","yyyyyy"] | Kecocokan persis. Nilai harus cocok sepenuhnya, termasuk urutan ID Karyawan. |
+| Pilih Kota | array string | [500000, 500100, 500104, 500104003] | Pencarian Array.<br />Nilai Pencarian harus berupa subset dari nilai kota.<br />Selain itu, jika ada ID kota, ID provinsi harus disertakan. Jika ada ID distrik, ID provinsi dan ID kota harus disertakan. |
+| Pilih Departemen | Number | 1123456 | Kecocokan persis |
+| Pilih Bertingkat | array string | ["part","part_b"] | Pencarian Array. Batasan sama seperti Pilih Kota. |
+| Komponen subformulir | string | danhang | Pencarian Fuzzy.<br />Nilai di bawah subformulir adalah satu teks besar; Pencarian menggunakan Pencarian Fuzzy. |
+
+- Contoh lengkap
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": [
+    "1",
+    "10"
+  ],
+  "radioField_jcr0069p": "Opsi 1",
+  "selectField_jcr0069q": "Opsi 1",
+  "checkboxField_jcr0069r": [
+    "Opsi 2"
+  ],
+  "multiSelectField_jcr0069s": [
+    "Opsi 2",
+    "Opsi 3"
+  ],
+  "dateField_jcr0069t": [
+    1514736000000,
+    1517414399000
+  ],
+  "cascadeDate_jcr0069u": [
+    [
+      1514736000000,
+      1517414399000
+    ],
+    [
+      1514736000000,
+      1517414399000
+    ]
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": ["1123456"],
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  "tableField_jcr006a1": "data subformulir"
+}
+```
+
+### 5.3 Format object detail instans alur kerja
+
+| Field | Deskripsi | Contoh | Alias |
+|---|---|---|---|
+| actioners | Penerima tugas saat ini dari instans alur kerja | [<br />\{<br />"name": \{<br />"en_US": "user_en_name",<br />"zh_CN": "user_zh_name",<br />"type": "i18n"<br />},<br />"userId": "workno"<br />}<br />]<br /><br /> | Field ini kosong jika alur kerja sudah Selesai dan tidak ada penerima tugas |
+| processInstanceId | ID Instans | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | Unik |
+| formUuid | ID formulir alur kerja | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| processCode | Kode alur kerja | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 | <br /> |
+| title | Judul instans | alur kerja dimulai oleh xxxx | Mengembalikan judul yang sesuai dengan lingkungan Bahasa Anda |
+| instanceStatus | Status instans | RUNNING | <br /> |
+| approvedResult | Keputusan Persetujuan saat alur kerja berakhir | agree | agree -> lulus<br />disagree -> ditolak |
+| originator | Info pengirim | [ \{ "name": \{ "en_US": "user_en_name", "zh_CN": "user_zh_name", "type": "i18n" }, "userId": "workno" } ] | <br /> |
+| data | Data formulir | <br /> | Lihat Lampiran 4 – Format data Formulir sebagai nilai kembalian |
+
+- Contoh format data lengkap
+
+```json
+{
+  "result": {
+    "data": {
+      "actioners": [
+        {
+          "name": {
+            "pureEn_US": "xxx",
+            "en_US": "xxx",
+            "zh_CN": "xxx",
+            "type": "i18n"
+          },
+          "userId": "xxx"
+        }
+      ],
+      "processInstanceId": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "formUuid": "FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3",
+      "data": {
+        "numberField_jcr0069o": 1,
+        "multiSelectField_jcr0069s": [
+          "Opsi 3",
+          "Opsi 2"
+        ],
+        "textareaField_jcr0069n": "duohang",
+        "employeeField_jcr0069x": [
+          "xxxx"
+        ],
+        "departmentField_jcr0069z": "Platform xxx Informasi",
+        "cascadeDate_jcr0069u": [
+          "1514736000000",
+          "1517328000000"
+        ],
+        "cascadeSelectField_jcr006a0": [
+          "part",
+          "part_b"
+        ],
+        "tableField_jcr006a1": [
+          {
+            "departmentField_jcr006ad": "xxx Informasi",
+            "cascadeDate_jcr006aa": [
+              "1514736000000",
+              "1517328000000"
+            ],
+            "selectField_jcr006a6": "Opsi 3",
+            "citySelectField_jcr006ac": [
+              "Tianjin",
+              "Tianjin",
+              "Distrik Hedong"
+            ],
+            "radioField_jcr006a5": "Opsi 2",
+            "employeeField_jcr006ab": [
+              "yyyyy",
+              "xxxxxx"
+            ],
+            "dateField_jcr006a9": 1517328000000,
+            "textField_jcr006a2": "Satu baris di bawah subformulir",
+            "textareaField_jcr006a3": "Multi-baris di bawah subformulir",
+            "cascadeSelectField_jcr006ae": [
+              "product",
+              "product_a"
+            ],
+            "numberField_jcr006a4": 2,
+            "checkboxField_jcr006a7": [
+              "Opsi 1",
+              "Opsi 3",
+              "Opsi 2"
+            ],
+            "multiSelectField_jcr006a8": [
+              "Opsi 1",
+              "Opsi 3",
+              "Opsi 2"
+            ]
+          }
+        ],
+        "selectField_jcr0069q": "Opsi 1",
+        "citySelectField_jcr0069y": [
+          "Beijing",
+          "Beijing",
+          "Distrik Dongcheng"
+        ],
+        "checkboxField_jcr0069r": [
+          "Opsi 3",
+          "Opsi 2"
+        ],
+        "textField_jcr0069m": "danhang",
+        "radioField_jcr0069p": "Opsi 1",
+        "dateField_jcr0069t": 1516636800000
+      },
+      "processCode": "TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4",
+      "originator": {
+        "name": {
+          "pureEn_US": "xxx",
+          "en_US": "xxxx",
+          "zh_CN": "xxx",
+          "type": "i18n"
+        },
+        "userId": "xxxx"
+      },
+      "title": "alur kerja dimulai oleh xxx",
+      "instanceStatus": "RUNNING"
+    },
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### 5.4 Format data Formulir sebagai nilai kembalian
+
+Format data Formulir sebagai nilai kembalian pada dasarnya sama seperti pada "Lampiran 1 – Format data Simpan/Perbarui formulir". Perbedaannya:
+
+- Saat dikirim, nilai Komponen Wilayah adalah ["ID Provinsi", "ID Kota", "ID Distrik"]. Sebagai nilai kembalian, nilainya adalah ["Nama Provinsi","Nama Kota","Nama Distrik"].
+- Pilih, Pilih Tunggal Dropdown, Pilih Banyak, dan Pilih Banyak Dropdown diinternasionalisasi. Sebagai nilai kembalian, keempatnya mengembalikan nilai data yang sesuai dengan parameter `language` yang Anda teruskan.
+
+### 5.5 Format object detail instans formulir
+
+| Field | Deskripsi | Contoh | Alias |
+|---|---|---|---|
+| gmtModified | Waktu modifikasi terakhir | 2018-01-24 11:22:01 | <br /> |
+| formUuid | ID Formulir | FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1 | <br /> |
+| formInstId | ID Instans | FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0 | <br /> |
+| originator | Detail pengirim | [\{"name": \{"en_US": "user_en_name","zh_CN": "user_zh_name","type": "i18n"},"userId": "workno"}] | <br /> |
+| formData | Detail data Formulir | <br /> | Lihat Lampiran 4 – Format data Formulir sebagai nilai kembalian |
+
+Contoh lengkapnya adalah sebagai berikut:
+
+```json
+{
+  "result": {
+    "gmtModified": "2018-01-24 11:22:01",
+    "formUuid": "FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1",
+    "formInstId": "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0",
+    "formData": {
+      "numberField_jcr0069o": 1,
+      "multiSelectField_jcr0069s": [
+        "Opsi 3",
+        "Opsi 2"
+      ],
+      "textareaField_jcr0069n": "duohang",
+      "employeeField_jcr0069x": [
+        "xxxx"
+      ],
+      "departmentField_jcr0069z": "xxxx",
+      "cascadeDate_jcr0069u": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006a0": [
+        "part",
+        "part_b"
+      ],
+      "tableField_jcr006a1": [
+        {
+          "departmentField_jcr006ad": "xxxx",
+          "cascadeDate_jcr006aa": [
+            "1514736000000",
+            "1517328000000"
+          ],
+          "selectField_jcr006a6": "Opsi 3",
+          "citySelectField_jcr006ac": [
+            "Tianjin",
+            "Tianjin",
+            "Distrik Hedong"
+          ],
+          "radioField_jcr006a5": "Opsi 2",
+          "employeeField_jcr006ab": [
+            "xxxxxx",
+            "yyyyyy"
+          ],
+          "dateField_jcr006a9": 1517328000000,
+          "textField_jcr006a2": "Satu baris di bawah subformulir",
+          "textareaField_jcr006a3": "Multi-baris di bawah subformulir",
+          "cascadeSelectField_jcr006ae": [
+            "product",
+            "product_a"
+          ],
+          "numberField_jcr006a4": 2,
+          "checkboxField_jcr006a7": [
+            "Opsi 1",
+            "Opsi 3",
+            "Opsi 2"
+          ],
+          "multiSelectField_jcr006a8": [
+            "Opsi 1",
+            "Opsi 3",
+            "Opsi 2"
+          ]
+        }
+      ],
+      "selectField_jcr0069q": "Opsi 1",
+      "citySelectField_jcr0069y": [
+        "Beijing",
+        "Beijing",
+        "Distrik Dongcheng"
+      ],
+      "checkboxField_jcr0069r": [
+        "Opsi 3",
+        "Opsi 2"
+      ],
+      "textField_jcr0069m": "danhang",
+      "radioField_jcr0069p": "Opsi 1",
+      "dateField_jcr0069t": 1516636800000
+    },
+    "originator": {
+      "name": {
+        "pureEn_US": "userEnglishName",
+        "en_US": "userEnglishName",
+        "zh_CN": "userName",
+        "type": "i18n"
+      },
+      "userId": "xxxx"
+    }
+  },
+  "success": true
+}
+```

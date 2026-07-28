@@ -70,7 +70,7 @@ REVIEW_CHECKLIST = """Review checklist（按以下 10 维度逐条审视并改�
 5. 列表平行：同级 bullet 起首词性 / 时态 / 单复数对齐
 6. 时态：description / heading 多用现在时；release notes 行业表达规范化（New / Improved / Fixed / Deprecated 或 新機能 / 改善 / 修正 / 廃止）
 7. 标点：英文用半角 . , ? ! "" ()；日文用全角 。、「」（）；不混用全 / 半角
-8. 大小写：英文 heading 用 sentence case（仅首字母 + 专有名词大写），不用 Title Case
+8. 大小写：英文 title / heading 用 Title Case（实词首字母大写、短虚词小写）；日文 / 印尼文 heading 不套用
 9. 代码块标题：```bash title="..." 中 title 文本通顺、有意义，不直翻中文
 10. 截图 alt：![alt](url) 中 alt 是描述性短句，不是机翻碎片"""
 
@@ -79,7 +79,7 @@ STYLE_EN = """风格指南（英文）：
 - 目标读者：钉钉国际版企业用户与 IT 管理员
 - 语气：清晰、专业、动作导向（imperative voice）
 - 句式：短句优先；避免被动语态；避免长定语；一句话讲一件事
-- Heading：Sentence case；避免 Title Case
+- Heading：Title Case（实词首字母大写、短虚词小写）；与 Drive/Mail 产品线一致
 - 用词：避免 Chinglish；避免口语俚语；优先朴素商务英文
 - 数字 / 日期：1,000；24-hour；日期 Month DD, YYYY
 - 标点：全英文 + 直引号 ""
@@ -119,7 +119,7 @@ C. 技术缩写保持英文：API / SDK / URL / JSON / OAuth / JSAPI / Webhook /
 D. 代码块内部（含注释、变量名、方法名、SDK 调用）完全不动（已被铁律 5 覆盖，此处再次强调）。
 
 【风格】
-E. 英文/印尼文 Heading 用 Sentence case + 专有名词大写；动作导向祈使句（Klik / Panggil / Konfigurasikan）。
+E. 英文 Heading 用 Title Case（实词首字母大写、短虚词小写）；印尼文 Heading 用 Sentence case + 专有名词大写；动作导向祈使句（Klik / Panggil / Konfigurasikan）。
 F. 参数表列头统一：Name / Type / Required / Example / Description（印尼文 Nama / Tipe / Wajib / Contoh / Deskripsi）。"""
 
 
@@ -210,7 +210,7 @@ def build_system_prompt(lang: str, root: str = "") -> str:
         "ja": "日文（敬体 です・ます）",
         "id": "印尼文（Bahasa Indonesia，bahasa baku）",
     }[lang]
-    open_block = f"\n\n{OPEN_PLATFORM_POLISH_RULES}" if root == "open" else ""
+    open_block = f"\n\n{OPEN_PLATFORM_POLISH_RULES}" if (root == "open" or root.startswith("open/")) else ""
     return (
         f"{POLISH_RULES}\n\n{REVIEW_CHECKLIST}\n\n{style}{open_block}\n\n"
         f"本次任务：对已经是 {target} 的 mdx 做语言层润色，不改语义、不改链接、不改组件。"

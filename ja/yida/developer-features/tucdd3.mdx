@@ -1,0 +1,55 @@
+---
+title: "this バインディング"
+description: "JavaScript における this キーワードの動作原理、呼び出しパターンによる参照の変化、ES5 の bind メソッドと ES2015 のアロー関数が this に与える影響を解説します。YiDA アクションパネルで this を使用する際の注意点、特に export キーワードの役割と this の値への影響についても説明します。"
+polished: true
+---
+
+## 1. 背景
+
+- this バインディングを理解するには、まず JavaScript における this の仕組みを把握する必要があります。
+- ほとんどの場合、this の値は関数の呼び出し方（実行時バインディング）によって決まります。実行中に代入することはできず、関数を呼び出すたびに異なる値になる可能性があります。ES5 では、呼び出し方に関わらず関数の this の値を設定できる bind メソッドが導入されました。ES2015 ではアロー関数が導入されました。アロー関数は独自の this バインディングを持たず、this は外側のレキシカルコンテキストの値を保持します。
+
+<Card title="this - JavaScript | MDN https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this" icon="bookmark" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this" horizontal />
+
+## 2. YiDA アクションパネルにおける this
+
+- JavaScript の this の仕組みを理解したうえで、YiDA のアクションパネルで関数を呼び出す際は、export キーワードが使われているかどうかを確認するだけです。
+- 推奨事項：ページのコンテキストを一切扱わない純粋なユーティリティ関数（例：ランダムな文字列を生成する function uid() \{ return new Date().getTime().toString(32); }）については、export キーワードを使用しないでください。それ以外の場合は、すべてのメソッドで export キーワードを使用し、this を介して呼び出す必要があります。
+
+例 1
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); // 正しい例。メソッド a は YiDA レンダリングエンジンのコンテキスト this に正しくアクセスできます。
+  a(); // 誤った例。メソッド a は YiDA レンダリングエンジンのコンテキスト this にアクセスできません。
+}
+```
+
+例 2
+
+```jsx
+function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); // 誤った例でエラーがスローされます。メソッド a は export キーワードでインポートされていないため、YiDA レンダリングエンジンのコンテキスト this を使って呼び出すことはできません。
+  a(); // 誤った例。メソッド a は YiDA レンダリングエンジンのコンテキスト this にアクセスできません。
+}
+```
+
+例 3
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+function b() {
+  a(); // 誤った例。メソッド b は export キーワードを使用しておらず、this.a() を介して呼び出されていないため、メソッド a は YiDA レンダリングエンジンのコンテキスト this にアクセスできません。
+}
+```

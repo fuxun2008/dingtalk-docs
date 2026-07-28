@@ -1,0 +1,562 @@
+---
+title: "TodoMVC"
+description: "YiDA の高度な実践チュートリアル。TodoMVC を参考にタスクリストページをゼロから構築し、グローバル変数・ループレンダリング・イベント処理などのカスタムページのコア機能を組み合わせて習得できます。"
+polished: true
+---
+## 概要
+
+このチュートリアルは YiDA の高度な使用ガイドです。[TodoMVC](https://todomvc.com/) を参考に、シンプルな TodoMVC ページをゼロから構築します。最終的な結果は以下のとおりです（[サンプルページ](https://www.aliwork.com/o/demo/todoMVC-3) にアクセスして結果を確認したり、[アプリを有効化して試用](https://www.aliwork.com/o/coc?tplUuid=TPL_PMFQNW628OML366HTNJO&from=developers_subject) することもできます）。
+
+このチュートリアルを進めることで、以下の YiDA スキルを習得できます。
+
+- YiDA コンポーネントの基本的な使い方
+- ユーザーアクションのイベント処理
+- グローバル変数の使い方
+- 条件付きレンダリングとループレンダリング
+- カスタムスタイル
+- リモート API の使い方
+- YiDA OpenAPI の使い方
+
+本記事では、YiDA でカスタムページを作成・デプロイする詳細な手順は扱いません。作成手順に慣れていない場合は、[クイックスタート](/ja/open/yida/guide/start) のドキュメントを参照してください。それでは、順を追って効果を実装していきましょう。
+
+## 基本 UI — TodoMVC のスケルトンを構築する
+
+まず、公式 TodoMVC ページの構造を分解してみましょう。おおよそ次の要素が含まれています。
+
+TodoMVC の UI に基づいて、YiDA で利用可能な対応コンポーネントを見つけることができます（各コンポーネントの詳細な使い方については、[コンポーネントドキュメント](/ja/open/yida/components/layout/tabsLayout) を参照してください）。
+
+- **大きなロゴ** — 静的テキスト。`Text` コンポーネントを使用します。
+- **タスク入力ボックス** — 新規タスクの内容を入力するために使用します。`Input` コンポーネントを使用します。
+- **タスクステータスコントローラー** — タスクの完了ステータスを切り替えるために使用します。`Select` コンポーネントを使用します。
+- **タスク内容表示** — タスクの内容を表示するために使用します。`Text` コンポーネントを使用します。
+- **タスク操作** — タスクを削除するために使用します。`Button` コンポーネントを使用します（オリジナルではアイコンを使用していますが、セマンティクスをより明確にするためにボタンを選択します）。
+- **未完了タスク数表示** — 未完了タスクの総数を表示するために使用します。`Text` コンポーネントを使用します。
+- **タスクステータスフィルター** — タスクリストをステータスでフィルターするために使用します。`Select` コンポーネントを使用します。
+- **完了済みタスクをすべてクリア** — 完了済みタスクをすべてクリアするために使用します。`Button` コンポーネントを使用します。
+- **ツール説明** — Todos の基本情報を静的テキストとして紹介します。`Text` コンポーネントを使用します。
+
+各部分に必要なコンポーネントが決定したら、コンポーネントをドラッグ&ドロップして基本属性を設定し、シンプルなページを構築できます。結果は以下のとおりです。[デモページ](https://www.aliwork.com/o/demo/todoMVC-1) で表示効果を確認するか、[デザイナー](https://www.aliwork.com/developer/designer?formUuid=todoMVC-1) で詳細な設定を確認できます。
+
+## ロジック実装 — TodoMVC に命を吹き込む
+
+前のステップでは、TodoMVC の基本 UI、つまりスケルトンを完成させました。次に、これに命を吹き込みます。これが最も重要なステップです。始める前に、TodoMVC が備えるべき機能を分析しましょう。
+
+- **タスクの作成** — ユーザーが入力ボックスにタスク内容を入力して Enter キーを押すと、タスクリストにタスクが作成されます。
+- **ステータスの更新** — ユーザーがタスクコントローラーをクリックして、現在のタスクの完了ステータスを変更します（完了した場合、タスクテキストに取り消し線が引かれます）。
+- **タスク内容の編集** — ユーザーがタスクの `Edit` ボタンをクリックしてタスク内容入力ボックスを表示し、内容を編集して Enter キーを押して送信します（公式 TodoMVC ではダブルクリックで編集状態を切り替えますが、YiDA は現在ダブルクリックイベントをサポートしていないため、代わりにボタンを使用します）。
+- **タスクの削除** — ユーザーが `Delete` ボタンをクリックして、指定したタスクを削除します。
+- **未完了タスクのカウント** — ページの左下に現在の未完了タスク数を表示します。
+- **ステータスによるフィルタリング** — ユーザーがページ下部のフィルターを切り替えて、異なるタスクリストを表示します：
+  - All — すべてのタスクを表示します。
+  - Active — 未完了のタスクを表示します。
+  - Completed — 完了済みのタスクを表示します。
+- **完了済みタスクのクリア** — ユーザーがページ右下の `Clear completed` ボタンをクリックして、完了済みのすべてのタスクを一括削除します。
+
+基本機能を整理しました。それでは、TodoMVC のコア機能を段階的に実装していきましょう。最終的な結果は [デモページ](https://www.aliwork.com/o/demo/todoMVC-2) を、具体的な実装は [デザイナー](https://www.aliwork.com/developer/designer?formUuid=todoMVC-2) を参照してください。結果は以下のとおりです。
+
+### ステップ 1：ページレベルのグローバル変数を作成する
+
+YiDA の設計思想は React に似ており、MVVM パターンに従っています。したがって、機能を開発する前に、ページで使用するデータモデル、つまりグローバル状態を定義する必要があります（詳細は [ページ状態のドキュメント](/ja/open/yida/guide/concept/state) を参照）。以下のグローバル変数を定義します。
+
+- todoList（配列型） — リスト内のすべてのタスク情報を記録します。構造は次のとおりです。
+
+```js
+{
+  todoList: [
+    {
+      id: 1, // タスクの一意の ID
+      content: 'XXXX', // タスクの内容
+      done: false, // タスクの完了ステータス
+    },
+  ];
+}
+```
+
+- editRowId（数値型） — 現在編集状態にあるタスクの ID を示します（編集状態では、タスク内容エリアが入力ボックスに変わり、ユーザーが内容を修正できます）。デフォルトでは空にできます。
+- mode（文字列型） — タスクリストの現在のフィルター値。有効な値：All、Active、Completed。デフォルト：`"All"`。P.S.：引用符が必要です。
+- newId（数値型） — 新しい ID ジェネレーター。新しいタスクが作成されるたびに、`newId` がその ID として使用され、`newId` は自動的に 1 増加して、すべてのタスク ID の一意性を保証します。
+
+### ステップ 2：タスク作成機能を実装する
+
+これで最初の機能を実装できます。このステップでは、ユーザーが入力ボックスにタスク内容を入力して Enter キーを押すと、タスクが作成されるようにします（イベントバインドの詳細については [イベント処理のドキュメント](/ja/open/yida/guide/concept/event) を参照）。
+
+上の図に示すように、このステップは主に 3 つのアクションで構成されます。
+
+- 入力ボックスに一意の識別子（"input"）を割り当てて、入力された内容を簡単に取得できるようにします。
+- 入力ボックスに、ユーザーがキーを押したときに発生する onKeyDown イベント（"onRowAdd"）をバインドします。
+- `onRowAdd` メソッドを実装します：ユーザーが Enter キーを押した場合、todoList の先頭に新しいタスクを挿入します。
+
+具体的な実装は次のとおりです。
+
+```js
+export function onRowAdd(e) {
+  // Enter キーのみを処理し、Enter でなければそのまま return
+  if (e.keyCode !== 13) return;
+  const { todoList, newId } = this.state; // グローバル状態から現在のタスクリストデータと newId マーカーを取得
+  this.setState({
+    todoList: [
+      {
+        id: newId,
+        done: false,
+        content: this.$('input').getValue(), // ユーザーが入力ボックスに入力した内容を取得
+      },
+      ...todoList,
+    ], // todoList データを更新し、id が newId、ステータスが未完了、内容がユーザーの入力であるレコードを追加
+    newId: newId + 1, // 次のタスク作成のために newId を更新
+  });
+  this.$('input').setValue(''); // 入力ボックスのユーザー入力をクリア
+}
+```
+
+### ステップ 3：タスクリストをループレンダリングする
+
+前のステップで、ユーザーの入力がタスクに変換され、グローバル変数 todoList に追加されるようになりました。次に、入力ボックスの下にタスクリストを表示する必要があります。このステップでは [ループレンダリング](/ja/open/yida/guide/concept/loop) に関する知識を使用します。
+
+- まず、タスク情報をラップするコンテナコンポーネントを選択し、高度な属性で変数バインディングを使用して state.todoList をコンテナの **ループデータ** にバインドします。
+
+- 次に、各タスクの完了ステータスと内容をループデータの対応するフィールドにバインドする必要があります。ループレンダリングでは、開発者は `item` を使用して現在の行のデータにアクセスできます：
+
+  - Select コンポーネントのデフォルト値をタスクのステータスにバインドします。
+  - Text コンポーネントの content 属性をタスクの内容にバインドします。
+
+このステップを完了すると、プレビューは次のようになります。
+
+### ステップ 4：タスクの更新と削除を実装する
+
+前のステップでは、todoList の追加と表示機能を実装しました。次に、タスクの更新と削除を実装する必要があります。
+
+#### タスク内容の多態表示を実装する
+
+TodoMVC の機能を分析すると、タスクリスト内のタスク内容には 3 つの異なる表示状態があることがわかります。
+
+3 つのコンポーネント（2 つの Text コンポーネント + 1 つの Input コンポーネント）を使用して異なる表示効果を実装し、[条件付きレンダリング](/ja/open/yida/guide/concept/condition) を使用して render-or-not 属性をバインドして表示を切り替えます。
+
+以下は 3 つのコンポーネントの render-or-not 変数バインディング値です。
+
+- **編集状態** — グローバル変数 editRowId が現在の行の ID と等しい場合に表示：`state.editRowId === this.item.id`
+- **未完了状態** — 現在のタスクが編集状態ではなく、ステータスが未完了の場合に表示：`state.editRowId !== this.item.id && !this.item.done`
+- **完了状態** — 現在のタスクが編集状態ではなく、ステータスが完了済みの場合に表示：`state.editRowId !== this.item.id && this.item.done`
+
+#### タスク内容の編集を実装する
+
+このステップでは、次のことを実現します。ユーザーがタスク操作バーの `Edit` ボタンをクリックすると、タスクが編集状態に切り替わります。ユーザーは既存の内容をさらに編集し、Enter キーを押して送信すると、タスクは以前の表示状態に戻ります。
+この機能を実装するために、2 つのステップを踏みます。
+
+- Edit ボタンに onClick イベント（"onEdit"）をバインドします。ユーザーが `Edit` ボタンをクリックすると、現在のタスクの id をグローバル変数 RowEditId に設定し、再レンダリングをトリガーして、タスクが編集状態に切り替わるようにします。以下のとおりです。
+
+onEdit のコードは次のとおりです。
+
+```js
+export function onEdit() {
+  this.setState({
+    editRowId: this.item.id,
+  });
+}
+```
+
+- タスク編集状態の入力ボックスコンポーネントに一意の識別子（"rowInput"）を割り当て、タスク作成の実装を参考にして onKeyDown イベント（"onRowEdit"）をバインドし、todoList 内の現在のタスクの内容を更新します。以下のとおりです。
+
+onRowEdit のコードは次のとおりです。
+
+```js
+export function onRowEdit(e) {
+  // Enter キーのみを処理し、Enter でなければそのまま return
+  if (e.keyCode !== 13) return;
+  this.setState({
+    todoList: this.state.todoList.map((item) => {
+      if (item.id === this.item.id) {
+        // todoList 内で現在編集中のタスクを見つけて、その内容を更新
+        return {
+          ...item,
+          content: this.$('rowInput').getValue(),
+        };
+      }
+      return item;
+    }),
+    editRowId: 0, // editRowId をリセットして、現在のタスクを以前の表示状態に戻す
+  });
+}
+```
+
+注意：タスク内容の編集は既存の内容に基づいて行うため、変数バインディングを使用して入力ボックスのデフォルト値を `item.content` に設定する必要があります。
+
+#### タスクの完了ステータス切り替えを実装する
+
+ユーザーがタスクの前にあるラジオボタンをクリックすると、タスクの完了ステータスを切り替える必要があります。したがって、Select コンポーネントの `onChange` イベント（"onTodoCheck"）をリッスンします。ラジオの状態が変化したら、`todoList` 内のタスクステータスをリアルタイムで更新します。
+
+onTodoCheck のコードは次のとおりです。
+
+```js
+export function onTodoCheck({ value }) {
+  this.setState({
+    todoList: this.state.todoList.map((item) => {
+      if (item.id === this.item.id) {
+        // todoList 内で現在編集中のタスクを見つけて、そのステータスを更新
+        return {
+          ...item,
+          done: value === 'done',
+        };
+      }
+      return item;
+    }),
+    editRowId: 0,
+  });
+}
+```
+
+#### タスクの削除を実装する
+
+ユーザーがタスク操作エリアの `Delete` ボタンをクリックすると、タスクリストからタスクを削除する必要があります。このステップは比較的簡単です。Delete ボタンの onClick イベント（"onDelete"）をバインドして、このタスクを todoList から削除します。
+
+onDelete のコードは次のとおりです。
+
+```js
+export function onDelete() {
+  this.setState({
+    todoList: this.state.todoList.filter((item) => {
+      // 現在のタスクを todoList から削除
+      return item.id !== this.item.id;
+    }),
+  });
+}
+```
+
+### ステップ 5：未完了タスクの数を表示する
+
+TodoMVC ページでは、左下隅に現在のタスクリスト内の未完了タスク数をカウントする統計が表示されます。この機能は比較的簡単です。Text コンポーネントに変数をバインドし、レンダリングのたびに todoList 内で done ステータスが false のアイテム数を計算して表示します。以下のとおりです。
+
+getleftCount のコードは次のとおりです。
+
+```js
+export function getleftCount() {
+  const { todoList } = this.state;
+  return todoList.filter((item) => !item.done).length;
+}
+```
+
+### ステップ 6：ステータスでタスクをフィルタリングする
+
+このステップでは、タスクリストのフィルター機能を実装します。ユーザーが下部のステータスフィルターをクリックすると、タスクリストがステータスによってフィルタリングされます。この機能は 2 つのステップで実装します。
+
+- Select コンポーネントの onChange イベント（"onModeChange"）をリッスンします。ユーザーがフィルターを変更すると、グローバル変数 mode の値を更新します。
+
+onModeChange のコードは次のとおりです。
+
+```js
+export function onModeChange({ value }) {
+  this.setState({
+    mode: value,
+  });
+}
+```
+
+- ステップ 3 でタスクリストにバインドしたループデータを覚えていますか？このステップでは、タスクリストのループデータを再バインドし、以前の `state.todoList` を `getShowList()` に置き換えて、現在のフィルター値に一致するタスクリストを返すようにする必要があります。
+
+getShowList のコードは次のとおりです。
+
+```js
+export function getShowList() {
+  const { mode, todoList = [] } = this.state;
+  if (mode === 'Active') {
+    // フィルターが Active の場合、未完了のすべてのタスクを返す
+    return todoList.filter((item) => !item.done);
+  } else if (mode === 'Completed') {
+    // フィルターが Completed の場合、完了済みのすべてのタスクを返す
+    return todoList.filter((item) => item.done);
+  }
+  return todoList; // デフォルトでは、すべてのタスクを返す
+}
+```
+
+### ステップ 7：完了済みタスクをクリアする
+
+このステップは比較的簡単です。基本的にはステップ 4 の削除操作のバッチ版です。ユーザーが `Clear Completed` ボタンをクリックすると、完了済みのすべてのタスクがタスクリストから削除されます。Clear Completed ボタンの onClick イベント（"onClearCompleted"）をリッスンし、クリックされたときに todoList から完了済みのすべてのタスクをクリアするだけです。
+
+onClearCompleted のコードは次のとおりです。
+
+```js
+export function onClearCompleted() {
+  this.setState({
+    todoList: this.state.todoList.filter((item) => !item.done), // 完了済みのすべてのタスクをフィルターアウト
+  });
+}
+```
+
+### ステップ 8：ローカルストレージを実装する
+
+上記のステップを通じて、TodoMVC のコア機能を実装しました。しかし、現在のデータは state 内にあり、更新のたびにクリアされてしまいます。したがって、次回も表示できるように、ユーザーの todoList をどこかに保存する必要があります。ローカルストレージには localStorage を選択し、次の 2 つのメソッドを実装します。
+
+- saveTodoData — state 内の todoList と newId を localStorage に保存します。
+
+```js
+export function saveTodoData() {
+  const { todoList, newId } = this.state;
+  // localStorage がサポートされているかチェックし、サポートされていれば現在の state のデータを保存
+  if (window.localStorage) {
+    // localStorage を介してデータを保存
+    window.localStorage.setItem('todoMVC', JSON.stringify({ todoList, newId }));
+  }
+}
+```
+
+- getTodoData — localStorage からデータを読み取ります。
+
+```js
+export function getTodoData() {
+  if (window.localStorage) {
+    // localStorage から保存されたデータを取得
+    const data = window.localStorage.getItem('todoMVC');
+    // ローカルデータが存在するかチェック
+    if (data) {
+      return JSON.parse(data);
+    }
+  }
+  return {};
+}
+```
+
+これら 2 つの基本メソッドが揃ったので、あとは次の 2 つのことを行うだけです。
+
+- didMount ライフサイクルで getTodoData API を呼び出してローカルデータを読み取り、state を更新します。
+- 上記の todoList を変更する **すべての** `setState` ステートメントの下に `this.saveTodoData()` の呼び出しを追加します。
+
+結果は以下のとおりです。
+
+## スタイル調整 — TodoMVC を美しく見せる
+
+前のステップで、TodoMVC の基本機能を完成させました。しかし、第一印象は醜く見えるということです。見た目は製品にとって最も重要なものではありませんが、見た目のない製品が優れていると見なされることはまずありません。YiDA はカスタムスタイル機能を提供しています（[カスタムスタイルのドキュメント](/ja/open/yida/guide/concept/style) を参照）。スタイルをカスタマイズすることで、次の結果を実現できます（[サンプルページ](https://www.aliwork.com/o/demo/todoMVC-3) にアクセスして試したり、[デザイナー](https://www.aliwork.com/developer/designer?formUuid=todoMVC-1) で具体的な実装を確認したりすることもできます）。
+
+このセクションでは、すべてのカスタムスタイルの詳細を紹介するのではなく、代表的なカスタムスタイルの例をいくつか挙げます。
+
+- スタイルパネルを介してコンポーネントスタイルをカスタマイズする — たとえば、大きな TodoList ロゴでは、スタイルパネルでフォントスタイルを設定できます。以下のとおりです。
+
+- CSS を介してコンポーネントスタイルをカスタマイズする — スタイルパネルのカバレッジは限られています。YiDA では CSS を記述してコンポーネントスタイルをカスタマイズできます。たとえば、パネル下部の階層効果は `::before` 疑似要素を使用して実装されています。
+
+## データソース統合 — TodoMVC に強力なギアを装備する
+
+この時点で、公式 TodoMVC の基本機能は実装されました。しかし、注意深い開発者は、現在の製品状態が機能しているものの、別のブラウザに切り替えてアクセスすると、タスクデータが失われることに気付くでしょう。これは配布可能な TodoList 機能ではありません。基本 UI とフロントエンドロジックのカスタマイズを提供するだけでなく、YiDA は強力なデータ機能も提供しています。それでは、TodoMVC に強力なギアを装備してデータを永続化しましょう。最終的な結果は次のとおりです。
+
+<Warning>
+YiDA OpenAPI の呼び出しには認証が必要なため、このページを試用用のサイレントログインページとして設定することはできません。ただし、開発者は [デザイナー](https://www.aliwork.com/developer/designer?formUuid=todoMVC-4) にアクセスして、ページの具体的な実装を確認できます。
+
+</Warning>
+
+### ステップ 1：通常フォームを作成してタスクデータの保存構造を構築する
+
+まず、現在のアプリの下に通常フォームを作成して、タスク情報を保存します。通常フォームの作成の具体的な手順については、[YiDA ユーザードキュメント](/ja/yida/form/ybuoxl) を参照してください。ここでは詳しく展開しません。結果は以下のとおりです。
+
+フォームの作成後、上の赤いボックスに示すように、フォームの一意の識別子である FormUuid を取得します。
+
+### ステップ 2：リモート API を使用してタスクの CRUD を実装する
+
+タスクデータを保存する場所ができたので、タスクの CRUD を実装するために TodoMVC で非同期 API を作成する必要があります。YiDA デザイナーは、リモート HTTP インターフェースをリクエストするためのリモート API 設定を提供しています（[リモート API ドキュメント](/ja/open/yida/guide/concept/datasource) を参照）。また、YiDA は基本的なデータ操作を実装するための一般的な OpenAPI インターフェースも提供しています（[OpenAPI ドキュメント](/ja/open/yida/api/openAPI) を参照）。ページに以下のリモート API 設定を作成します。
+
+#### todoList
+
+タスクリストデータを取得します。具体的な設定は次のとおりです。
+
+- 自動ロードスイッチをオンにする — つまり、ページがロードされたときにこの API が自動的に呼び出され、YiDA が返された内容を自動的に `state.todoList` にマウントします。
+- OpenAPI ドキュメントの形式に従って、リクエスト URL と HTTP メソッドを設定します。
+- リクエストパラメータを設定します：
+  - **formUuid** — タスク情報を保存するために使用するフォームの一意の識別子、つまり前のステップで作成したフォームの formUuid です。
+  - **currentPage** — 現在のページ番号。YiDA の Open API はページネーションをサポートしています。これは単なるデモなので、ページネーションは行わず、このパラメータを 1 に固定して最初のページを取得します。
+  - **pageSize** — 1 ページあたりのアイテム数。YiDA Open API のデフォルトのページサイズは 10 です。デモの体験を向上させるために、このパラメータを 50 に固定して最新の 50 レコードを取得します。
+- didFetch ハンドラーを設定して、Open API のデータ構造を上記のセクションのロジックが認識できる構造に変換します。具体的な実装は次のとおりです。
+
+```js
+function didFetch(content) {
+  return (content.data || []).map((item) => {
+    return {
+      id: item.formInstId, // フォームインスタンス ID、つまり各レコードの一意の識別子
+      content: item.formData.textField_kymq5pdi, // タスク内容。textField_kymq5pdi はタスクフォーム内のタスク内容コントロールの一意の識別子
+      done: item.formData.radioField_kymq5pdj === '已完成', // タスクステータス。新しいタスクはデフォルトで未完了。radioField_kymq5pdj はタスクフォーム内のタスクステータスコントロールの一意の識別子
+    };
+  });
+}
+```
+
+#### add
+
+タスクを作成するために使用します。具体的な設定は次のとおりです。
+
+- OpenAPI ドキュメントの形式に従って、リクエスト URL と HTTP メソッドを設定します。
+- リクエストパラメータを設定します：
+  - **formUuid** — 上記と同じです。
+  - **appType** — 現在のアプリの App ID（APP\_ で始まり、現在のページの URL から取得できます）。
+- willFetch ハンドラーを設定します。OpenAPI のパラメータ形式に基づいて、タスク情報を YiDA が認識できる形式に変換する必要があります。具体的な実装は次のとおりです。
+
+```js
+function willFetch(vars, config) {
+  const { content } = vars.data; // 新しいタスクの内容情報を取得
+  vars.data.formDataJson = JSON.stringify({
+    // フォームインスタンスを作成するには、パラメータを文字列化して formDataJson フィールドに配置する必要がある
+    textField_kymq5pdi: content, // タスク内容。textField_kymq5pdi はタスクフォーム内のタスク内容コントロールの一意の識別子
+    radioField_kymq5pdj: '未完成', // タスクステータス。新しいタスクはデフォルトで未完了。radioField_kymq5pdj はタスクフォーム内のタスクステータスコントロールの一意の識別子
+  });
+}
+```
+
+- didFetch ハンドラーを設定して、作成成功時にトーストを表示し、タスクリストを更新します。具体的な実装は次のとおりです。
+
+```js
+function didFetch(content) {
+  this.utils.toast({
+    // 成功トーストを表示
+    title: 'Add Success!',
+  });
+  this.reloadDataSource(); // 初期リクエスト（つまり todoList API）を再実行してタスクリストを更新
+  return content; // 重要：content を返す
+}
+```
+
+#### del
+
+タスクを削除するために使用します。比較的シンプルです。具体的な設定は次のとおりです。
+
+ただし、次の 2 点に注意してください。
+
+- 削除するタスク ID は固定ではないため、`dataSourceMap.del.load` を呼び出すときに具体的なタスク ID を渡す必要があります。
+- 完了済みタスクのクリアを実装する際に、この非同期 API をバッチで呼び出す必要があるため、削除については didFetch は実装されていません。したがって、didFetch のロジックは手動非同期リクエストの `.then` コールバックで実装する必要があります。
+
+#### update
+
+タスクを更新するために使用します。具体的な設定は次のとおりです。
+
+- OpenAPI ドキュメントの形式に従って、リクエスト URL と HTTP メソッドを設定します。
+- willFetch ハンドラーを設定します。add と同様に、タスク内容を YiDA が認識できるデータ構造に変換する必要があります。具体的な実装は次のとおりです。
+
+```js
+function willFetch(vars, config) {
+  const { id, content, done } = vars.data;
+  vars.data.formInstId = id; // タスク ID、タスクの一意の識別子
+  const data = {};
+  if (content) {
+    // content の修正が必要な場合、このパラメータを含める
+    data.textField_kymq5pdi = content;
+  }
+  if (typeof done === 'boolean') {
+    // ステータスの修正が必要な場合、このパラメータを含める
+    data.radioField_kymq5pdj = done ? '已完成' : '未完成';
+  }
+  vars.data.updateFormDataJson = JSON.stringify(data);
+}
+```
+
+- didFetch ハンドラーを設定します。ロジックは add と似ています — 成功トーストを表示してリストを更新します。具体的な実装は次のとおりです。
+
+```js
+function didFetch(content) {
+  this.utils.toast({
+    title: 'Update Success!',
+  });
+  this.reloadDataSource();
+  return content; // 重要：content を返す
+}
+```
+
+<Warning>
+リモート API 設定を追加する際、以前設定したいくつかのグローバル変数も削除しました。
+
+- **todoList** — リストがリモート API 経由で取得されるようになったため、state に todoList 情報を保存する必要がなくなりました。
+- **newId** — タスクが作成されるたびに YiDA が自動的に一意の formInstId を生成するため、タスク ID を自分で生成する必要がなくなりました。
+
+</Warning>
+
+### ステップ 3：元のデータ管理ロジックをリモート API 呼び出しに置き換える
+
+上記のリモート API のセットアップを完了した後、前のセクションのロジックを修正し、グローバル変数への操作をリモート API 呼び出しに置き換えるだけです。具体的な変更は次のとおりです。
+
+- **onRowAdd** の実装を修正して、add リモート API を呼び出してタスクを作成します。具体的な実装は次のとおりです。
+
+```js
+export function onRowAdd(e) {
+  // Enter キーのみを処理
+  if (e.keyCode !== 13) return;
+  this.dataSourceMap.add.load({
+    // リモート API を呼び出す
+    content: this.$('input').getValue(),
+  });
+}
+```
+
+- **onDelete** の実装を修正して、del リモート API を呼び出してタスクを削除します。具体的な実装は次のとおりです。
+
+```js
+export function onDelete() {
+  this.dataSourceMap.del
+    .load({
+      // リモート API を呼び出す
+      formInstId: this.item.id, // 動的パラメータを渡す
+    })
+    .then((res) => {
+      // リモート API コールバック、設定内の didFetch と類似
+      this.utils.toast({
+        // 成功トースト
+        title: 'Delete Success!',
+      });
+      this.reloadDataSource(); // タスクリストを更新
+    });
+}
+```
+
+- **onRuleEdit** の実装を修正して、update リモート API を呼び出してタスク内容を更新します。具体的な実装は次のとおりです。
+
+```js
+export function onRowEdit(e) {
+  // Enter キーのみを処理
+  if (e.keyCode !== 13) return;
+
+  this.dataSourceMap.update.load({
+    id: this.item.id,
+    content: this.$('rowInput').getValue(),
+  });
+  this.setState({
+    editRowId: 0,
+  });
+}
+```
+
+- **onTodoCheck** の実装を修正して、update リモート API を呼び出してタスクステータスを更新します。具体的な実装は次のとおりです。
+
+```js
+export function onTodoCheck({ value }) {
+  this.dataSourceMap.update.load({
+    id: this.item.id,
+    done: value === 'done',
+  });
+  this.setState({
+    editRowId: 0,
+  });
+}
+```
+
+- **onClearCompleted** の実装を修正して、del リモート API をバッチ呼び出しして完了済みタスクをクリアします。具体的な実装は次のとおりです。
+
+```js
+export function onClearCompleted() {
+  const deleteItems = this.state.todoList.filter((item) => item.done); // 削除対象タスクのリストをフィルタリング
+  Promise.all(
+    deleteItems.map((item) =>
+      this.dataSourceMap.del.load({
+        // Promise.all を介して del リモート API をバッチ呼び出しし、タスクを削除
+        formInstId: item.id,
+      })
+    )
+  ).then((res) => {
+    // Promise.all コールバック
+    this.utils.toast({
+      // 成功トースト
+      title: 'Clear Success!',
+    });
+    this.reloadDataSource(); // タスクリストを更新
+  });
+}
+```
+
+## オンラインで試す
+
+[サンプル体験センター | TodoMVC](https://www.aliwork.com/o/coc?tplUuid=TPL_PMFQNW628OML366HTNJO&from=developers_subject)
+
+## まとめ
+
+このチュートリアルでは、開発者を段階的にガイドして、TodoMVC カスタムページをゼロから構築し、YiDA カスタムページに必要なほとんどすべての一般的な知識をカバーしました。この例が皆さんの YiDA スキルを次のレベルに引き上げ、より複雑なビジネスシナリオをサポートできるようになることを願っています。ご質問がありましたら、お気軽にフィードバックをお寄せください。

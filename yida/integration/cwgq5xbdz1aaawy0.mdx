@@ -1,0 +1,142 @@
+---
+title: "Check-In"
+description: "Learn how to query employee check-in records by combining YiDA with connectors, including creating a query result form, creating a check-in query form, and configuring integration & automation."
+polished: true
+---
+
+By combining YiDA with connectors, you can submit a form to query employee check-in information, such as whether the employee has checked in, the check-in time, the check-in location, and more. This article explains how to query employee check-in information through a form.
+
+## Prerequisites
+
+Before you begin, create an app. For detailed steps, see [Create an app](/yida/app-admin/oncnoy).
+
+## Process Overview
+
+In this article, you create two regular forms: one to record query results, and one to trigger the connector. The steps are as follows:
+
+- Step 1: Create the query result form
+- Step 2: Create the check-in query form
+- Step 3: Configure integration & automation
+- Step 4: Receive data in the query result form
+- Step 5: Test and verify
+
+### Expected Result
+
+The final result achieved in this article is shown below.
+
+## Step 1: Create the Query Result Form
+
+1. Sign in to the YiDA workbench, select the target app, and click to open the app editing page.
+2. Click **+** > **Create regular form**, select **Create blank page**, and rename the form to **Query Result**.
+3. Drag a **Single-line text** component, a **Subform** component, and a **User** component into the central canvas area.
+4. Rename the **User** component to **Check-in User**.
+5. Rename the **Single-line text** component to **Connector Data Buffer**, and set its visibility to Hidden.
+
+6. Rename the **Subform** component to **Check-in Records**.
+7. Drag three **Single-line text** components into the **Subform** component.
+8. Rename the three **Single-line text** components to **Check-in Time**, **Check-in Location**, and **Check-in Alias**.
+9. Click **Save** in the upper-right corner to finish the configuration.
+
+## Step 2: Create the **Check-In Query Form**
+
+1. On the app editing page, click **+** > **Create workflow form**, select **Create blank page**, and rename the form to **Check-in Query**.
+2. Drag two **Date** components and one member component into the central canvas area.
+3. Rename the two **Date** components to **Start Time** and **End Time**, set the validation rule to **Required**, and set the format to **YYYY-MM-DD HH:mm:ss**.
+
+4. Rename the **User** component to **Check-in User** and set the validation rule to **Required**.
+5. Click **Save** in the upper-right corner to finish the basic form configuration.
+
+## Step 3: Configure Integration & Automation
+
+1. Return to the app editing page and click **Integration & Automation** at the top.
+2. Click **Create Integration & Automation** and select **Create from blank**.
+3. In the dialog box, enter a name for the integration & automation, select **Form event trigger** as the trigger type, and select the check-in query form created in Step 2 as the form.
+
+<Steps>
+  <Step title="Click Form event trigger, select Create success as the trigger event, and click Save">
+  </Step>
+  <Step title="Click the + icon below the form trigger event and select Connector">
+    <Note>
+    Hover the cursor below the trigger event to reveal the `+` icon.
+    </Note>
+  </Step>
+  <Step title="Follow the steps below to configure the Connector node">
+  </Step>
+</Steps>
+
+**Start Time** corresponds to the **Start Time** submitted in the form, **End Time** corresponds to the **End Time** submitted in the form, and **Query User List** corresponds to the **Check-in User** submitted in the form.
+
+7. Click the **+** icon below the **Connector** node and add a **Script** node.
+8. Follow the steps below to configure the script node.
+
+```javascript
+var checkinRecordJson = checkinRecord?JSON.parse(checkinRecord):[];
+var tableData = checkinRecordJson.map(function(item) {
+return {
+    // Change textField_lw5sacjg to the component ID of Check-in Time in the query result form
+    textField_lw5sacjg: item.checkin_time,
+    // Change textField_lw5sacji to the component ID of Check-in Location in the query result form
+    textField_lw5sacji: item.detail_place,
+    // Change textField_lw5sacjk to the component ID of Check-in Alias in the query result form
+    textField_lw5sacjk: item.remark
+  };
+});
+outputs.add("签到","tableData",JSON.stringify(tableData))
+```
+
+```json
+[
+    {
+        "checkin_time": 1715582068000,
+        "detail_place": "959 Gaojiao Road, Yuhang District, Hangzhou, Zhejiang Province",
+        "remark": "Quick check-in",
+        "place": "Sanwei Weilai Park",
+        "userid": "123456789",
+        "image_list": []
+    }
+]
+```
+
+<Steps>
+  <Step title="Click the + icon below the Script node, add a Create data node, and then follow the steps below to configure it">
+  </Step>
+  <Step title="Click Publish in the upper-right corner to finish the configuration">
+  </Step>
+</Steps>
+
+## Step 4: Receive Data in the Query Result Form
+
+1. Open the editing page of the query result form.
+2. Open the **JS Action Panel**, add the following code, and modify it according to the comments.
+
+```javascript
+export function didMount() {
+  // Change textField_lw4ffhbf to the component ID of the Connector Data Buffer component.
+  const str = this.$("textField_lw4ffhbf").getValue();
+
+  const value = JSON.parse(str);
+  // Change tableField_lw5sacjc to the component ID of the subform.
+  this.$('tableField_lw5sacjc').setValue(value);
+
+}
+```
+
+3. Click **Save** in the upper-right corner to finish the configuration.
+
+## Step 5: Test and Verify
+
+1. Open the app editing page, click the **Query Result** form, and click **Generate data management page** on the right.
+2. Set the **Page Name** and **Group** for the data management page.
+3. Click **Access** in the upper-right corner to open the app.
+4. Click **Check-in Query**, enter the check-in user information and time range to query, and click **Submit**.
+5. Open the data management page of the result form to view the results.
+
+As shown in the figure below, the user's check-in records have been queried successfully.
+
+## Related Documentation
+
+- Integration & Automation
+- Create a form
+- Form components
+- Get user check-in records
+- Script node

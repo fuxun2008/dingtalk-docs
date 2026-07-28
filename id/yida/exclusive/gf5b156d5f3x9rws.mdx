@@ -1,0 +1,224 @@
+---
+title: "Akses OpenAPI lokal dalam mode klaster"
+description: "Pelajari cara memanggil YiDA OpenAPI di lingkungan klaster YiDA Dedicated — mulai dari memperoleh domain, AK/SK, dan access_token, hingga mengonfigurasi SDK untuk integrasi API."
+polished: true
+---
+
+Data aplikasi di lingkungan klaster khusus tersimpan di lingkungan privat dan tidak dapat mengakses jaringan publik. Akibatnya, YiDA OpenAPI di DingTalk Open Platform tidak dapat mengambil data tersebut. Anda harus memanggil OpenAPI dari dalam lingkungan klaster. Secara garis besar, OpenAPI di lingkungan klaster sama dengan yang ada di DingTalk Open Platform, hanya berbeda pada host dan AK/SK yang digunakan.
+
+Artikel ini menjelaskan cara memanggil YiDA OpenAPI di lingkungan klaster khusus.
+
+<Note>
+Catatan:
+
+YiDA Dedicated saat ini membuka API layanan data frekuensi tinggi miliknya. Berdasarkan kemampuan API YiDA yang tersedia di DingTalk Open Platform per 31 Desember 2023, total tersedia 52 OpenAPI.
+</Note>
+
+## Alur pemanggilan
+
+Pemanggilan YiDA API di lingkungan klaster serupa dengan di DingTalk Open Platform. Semua OpenAPI terkait di DingTalk Open Platform dipanggil melalui api.dingtalk.com. Untuk OpenAPI edisi klaster, cukup ganti api.dingtalk.com dengan domain YiDA edisi klaster milik organisasi Anda.
+
+1. Dapatkan domain klaster YiDA Dedicated organisasi Anda, misalnya ddyd.corp.com.
+2. Dapatkan AK dan SK edisi klaster organisasi Anda.
+
+<Note>
+Hubungi admin DingTalk organisasi Anda. Masuk ke [DingTalk Open Platform](https://open-dev.dingtalk.com/), cari "YiDA Dedicated Cluster" pada bagian aplikasi internal, lalu dapatkan informasi terkait dari aplikasi bernama **YiDA Dedicated Cluster Authentication App**.
+</Note>
+
+<Steps>
+  <Step title="Langkah 1">
+    Gunakan AK/SK yang diperoleh pada langkah sebelumnya untuk memanggil endpoint /v1.0/oauth2/accessToken dan mendapatkan access_token aplikasi. Untuk parameter permintaan, lihat Dapatkan access_token untuk aplikasi internal.
+
+    <Warning>
+    Di Open Platform, pemanggilannya adalah https://api.dingtalk.com/v1.0/oauth2/accessToken.
+
+    Dengan asumsi domain YiDA organisasi Anda adalah https://your-org-private-yida-domain.com, pemanggilan edisi klaster menjadi:
+
+    https://your-org-private-yida-domain.com/v1.0/oauth2/accessToken
+
+    access_token berlaku selama 2 jam secara default.
+    </Warning>
+  </Step>
+  <Step title="Panggil YiDA API dengan access_token">
+  </Step>
+</Steps>
+
+DingTalk Open Platform menyediakan SDK dalam Java, PHP, Python, dan .NET untuk developer. OpenAPI edisi klaster mendukung cara pemanggilan yang serupa.
+
+<Note>
+Aplikasi internal dan Aplikasi perusahaan pihak ketiga menggunakan Server-side SDK yang sama. Klik salah satu tautan berikut untuk mengunduhnya.
+
+- Aplikasi internal: Unduh Server-side SDK.
+- Aplikasi perusahaan pihak ketiga: Unduh Server-side SDK.
+</Note>
+
+5. Jika Anda menggunakan SDK dari DingTalk Open Platform, terapkan perubahan berikut:
+
+Perubahan 1: Jika domain menggunakan http, atur config.protocol = "http".
+
+Perubahan 2: Atur client._endpoint secara eksplisit ke domain YiDA sebenarnya milik organisasi Anda.
+
+```java
+private static com.aliyun.dingtalkyida_2_0.Client createOpenApiClient() {
+        Config config = new Config();
+        config.regionId = "central";
+        config.protocol = "http";
+        config.connectTimeout = 60 * 1000;
+        config.readTimeout = 60 * 1000;
+        try {
+            com.aliyun.dingtalkyida_2_0.Client client = new com.aliyun.dingtalkyida_2_0.Client(config);
+          client._endpoint =  "your-org-private-yida-domain.com";
+            return client;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+```
+
+## Daftar API klaster
+
+YiDA menyediakan serangkaian kemampuan API terbuka yang kaya, sehingga developer dapat mengintegrasikan YiDA dengan sistem bisnis perusahaan. Saat ini, API terutama terbuka untuk formulir, alur kerja, dan aplikasi.
+
+<table>
+  <tr>
+    <td>Modul</td>
+    <td>Standar Server API</td>
+    <td>Deskripsi</td>
+  </tr>
+  <tr>
+    <td rowSpan={7}>Alur kerja</td>
+    <td>[Mulai proses persetujuan YiDA](https://open.dingtalk.com/document/orgapp/initiate-the-approval-process#)</td>
+    <td>Mulai proses persetujuan YiDA di DingTalk Open Platform.</td>
+  </tr>
+  <tr>
+    <td>[Hapus instans alur kerja](https://open.dingtalk.com/document/orgapp/delete-process-instance#)</td>
+    <td>Hapus instans alur kerja.</td>
+  </tr>
+  <tr>
+    <td>[Hentikan instans alur kerja](https://open.dingtalk.com/document/orgapp/terminate-a-process-instance#)</td>
+    <td>Hentikan instans alur kerja.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan daftar ID instans](https://open.dingtalk.com/document/orgapp/obtains-a-list-of-instance-ids#)</td>
+    <td>Dapatkan daftar ID instans.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan beberapa instans alur kerja secara massal](https://open.dingtalk.com/document/orgapp/queries-multiple-process-instances#)</td>
+    <td>Dapatkan detail beberapa instans alur kerja berdasarkan ID-nya secara massal.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan instans alur kerja](https://open.dingtalk.com/document/orgapp/obtain-process-instance#)</td>
+    <td>Dapatkan informasi instans alur kerja dari YiDA.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan instans alur kerja berdasarkan ID](https://open.dingtalk.com/document/orgapp/queries-a-process-instance-based-on-its-id#)</td>
+    <td>Dapatkan detail instans alur kerja berdasarkan ID-nya.</td>
+  </tr>
+  <tr>
+    <td rowSpan={20}>Formulir</td>
+    <td>[Dapatkan daftar formulir dari aplikasi tertentu](https://open.dingtalk.com/document/orgapp/depending-on-the-application-id-to-get-the-form-list#)</td>
+    <td>Dapatkan daftar formulir dari sebuah aplikasi secara paginasi.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan informasi komponen dalam formulir](https://open.dingtalk.com/document/orgapp/get-form-field-information-based-on-form-uuid#)</td>
+    <td>Dapatkan informasi komponen dalam formulir atau formulir alur kerja berdasarkan ID formulir.</td>
+  </tr>
+  <tr>
+    <td>[Kueri data instans formulir](https://open.dingtalk.com/document/orgapp/querying-form-instance-data#)</td>
+    <td>Kueri data instans formulir.</td>
+  </tr>
+  <tr>
+    <td>[Simpan data formulir](https://open.dingtalk.com/document/orgapp/save-form-data#)</td>
+    <td>Buat instans formulir YiDA tanpa proses persetujuan.</td>
+  </tr>
+  <tr>
+    <td>[Perbarui data formulir](https://open.dingtalk.com/document/orgapp/update-form-data#)</td>
+    <td>Perbarui data formulir.</td>
+  </tr>
+  <tr>
+    <td>[Kueri data formulir](https://open.dingtalk.com/document/orgapp/query-form-data#)</td>
+    <td>Kueri data formulir berdasarkan ID instans formulir.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan nilai komponen karyawan](https://open.dingtalk.com/document/orgapp/gets-the-value-of-the-employee-component#)</td>
+    <td>Dapatkan nilai komponen karyawan.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan daftar definisi komponen formulir](https://open.dingtalk.com/document/orgapp/get-a-list-of-form-component-definitions#)</td>
+    <td>Dapatkan daftar definisi komponen formulir.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan data komponen subformulir](https://open.dingtalk.com/document/orgapp/obtain-child-table-component-data#)</td>
+    <td>Dapatkan data komponen subformulir berdasarkan ID instans formulir dan ID komponen subformulir.</td>
+  </tr>
+  <tr>
+    <td>[Hapus data formulir](https://open.dingtalk.com/document/orgapp/delete-form-data#)</td>
+    <td>Hapus data formulir.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan beberapa ID instans formulir](https://open.dingtalk.com/document/orgapp/obtain-the-ids-of-multiple-form-instances#)</td>
+    <td>Dapatkan beberapa ID instans formulir.</td>
+  </tr>
+  <tr>
+    <td>[Dapatkan beberapa instans formulir secara massal](https://open.dingtalk.com/document/orgapp/obtain-multiple-form-instance-data#)</td>
+    <td>Dapatkan detail beberapa instans formulir secara massal.</td>
+  </tr>
+  <tr>
+    <td>[Hapus beberapa instans formulir secara massal](https://open.dingtalk.com/document/orgapp/delete-multiple-form-instances#)</td>
+    <td>Hapus beberapa rekaman instans formulir secara massal.</td>
+  </tr>
+  <tr>
+    <td>[Buat beberapa instans formulir secara massal](https://open.dingtalk.com/document/orgapp/create-multiple-form-instances#)</td>
+    <td>Buat beberapa rekaman instans formulir secara massal.</td>
+  </tr>
+  <tr>
+    <td>[Perbarui nilai komponen dalam instans formulir secara massal](https://open.dingtalk.com/document/orgapp/batch-update-of-component-values-in-form-instances#)</td>
+    <td>Perbarui nilai komponen dalam instans formulir YiDA secara massal berdasarkan ID instans formulir.</td>
+  </tr>
+  <tr>
+    <td>[Buat atau perbarui instans formulir](https://open.dingtalk.com/document/orgapp/add-or-update-form-instances#)</td>
+    <td>Buat atau perbarui instans formulir menggunakan filter.</td>
+  </tr>
+  <tr>
+    <td>[Kueri data instans formulir dengan kondisi kueri lanjutan (termasuk data komponen subformulir)](https://open.dingtalk.com/document/orgapp/query-form-instances-using-advanced-search-conditions#)</td>
+    <td>Dapatkan detail instans formulir menggunakan filter.</td>
+  </tr>
+  <tr>
+    <td>[Kueri data instans formulir dengan kondisi kueri lanjutan (tidak termasuk data komponen subformulir)](https://open.dingtalk.com/document/orgapp/obtain-form-instance-data-using-advanced-query-conditions-excluding-subform#)</td>
+    <td>Dapatkan detail instans formulir menggunakan filter, tidak termasuk data komponen subformulir.</td>
+  </tr>
+  <tr>
+    <td>[Perbarui instans formulir secara massal dengan data instans formulir](https://open.dingtalk.com/document/orgapp/update-multiple-form-instances-with-the-form-instance-data#)</td>
+    <td>Perbarui informasi instans formulir secara massal menggunakan data komponen formulir YiDA.</td>
+  </tr>
+  <tr>
+    <td>[Kueri catatan perubahan formulir](https://open.dingtalk.com/document/orgapp/change-records-of-query-forms#)</td>
+    <td>Kueri catatan perubahan formulir.</td>
+  </tr>
+  <tr>
+    <td rowSpan={5}>Tugas persetujuan</td>
+    <td>[Dapatkan catatan persetujuan](https://open.dingtalk.com/document/orgapp/queries-an-approval-record#)</td>
+    <td>Dapatkan catatan persetujuan.</td>
+  </tr>
+  <tr>
+    <td>[Terima atau tolak tugas persetujuan YiDA](https://open.dingtalk.com/document/orgapp/execute-approval-tasks#)</td>
+    <td>Terima atau tolak tugas persetujuan YiDA.</td>
+  </tr>
+  <tr>
+    <td>[Alihkan tugas](https://open.dingtalk.com/document/orgapp/transfer-tasks#)</td>
+    <td>Alihkan tugas.</td>
+  </tr>
+  <tr>
+    <td>[Kirim komentar](https://open.dingtalk.com/document/orgapp/submit-comment#)</td>
+    <td>Kirim komentar pada instans formulir atau alur kerja.</td>
+  </tr>
+  <tr>
+    <td>[Kueri komentar pada instans formulir YiDA secara massal](https://open.dingtalk.com/document/orgapp/batch-query-of-comments-appropriate-for-form-instances#)</td>
+    <td>Kueri semua komentar pada formulir YiDA secara massal.</td>
+  </tr>
+  <tr>
+    <td>Aplikasi</td>
+    <td>[Kueri daftar aplikasi YiDA](https://open.dingtalk.com/document/orgapp/query-the-application-list#)</td>
+    <td>Kueri daftar aplikasi YiDA di organisasi Anda.</td>
+  </tr>
+</table>

@@ -1,0 +1,201 @@
+---
+title: "ビルダー関数"
+description: "YiDAの標準UserモデルおよびDepartmentモデルの構造を解説し、UserBuilder、DirectorBuilder、DeptBuilder、GetObjectField、GetArrayItemといった関数の使い方を紹介します。ユーザーおよび部門データの生成・処理に欠かせない関数リファレンスです。"
+polished: true
+---
+
+## モデル概要
+
+- 標準Userモデルオブジェクト
+
+```text
+{
+"corpId":"組織ID",
+"label":"名前 (社員番号)",
+"avatar":"プロフィール写真のURL",
+"key":"userid",
+"businessWorkNo":"業務アカウント"
+}
+```
+
+- 標準Departmentモデルオブジェクト
+
+```text
+{
+	"label":"現在の部門名",
+	"key":"部門ID"
+}
+```
+
+## UserBuilder
+
+### 式
+
+```text
+UserBuilder(["userid","userid"]  |  ${memberComponent[{},{}]} )
+```
+
+<Warning>
+数式の説明：ユーザービルダー関数。指定したuseridリスト、または指定したメンバーコンポーネントに対応するUserモデルのコレクションを生成します。
+</Warning>
+
+### 入力パラメータ
+
+```text
+(["userid","userid"]  or  ${memberComponent[{},{}]} )
+```
+
+### 戻り値
+
+```text
+[{Userオブジェクト},{Userオブジェクト}]
+```
+
+### 例
+
+```text
+UserBuilder(["some_userid_123"])
+
+// 戻り値
+[{user1}]
+```
+
+## DirectorBuilder
+
+### 式
+
+```text
+DirectorBuilder( "" | "userid", level )
+```
+
+<Warning>
+数式の説明：上長ビルダー関数。現在ログイン中のユーザー、または指定したユーザーの第level階層の上長を返します。levelパラメータは1以上を指定してください。対応する上長のUserモデルコレクションを返します。ユーザーが複数の部門に所属している場合は、複数の上長が返されます。
+</Warning>
+
+### 入力パラメータ
+
+- パラメータ1：対応するUserを識別するための指定useridです。""を渡した場合は、現在ログイン中のユーザーを表します。
+- パラメータ2：level。第level階層の上長を返します。level >= 1の場合にのみ有効です。
+
+### 戻り値
+
+- 上長の標準Userモデルオブジェクト：[\{Userオブジェクト},\{Userオブジェクト}]
+
+### 例
+
+```text
+DirectorBuilder("",2)
+
+// 戻り値
+[{user1},{user2}]
+```
+
+## DeptBuilder
+
+### 式
+
+```text
+DeptBuilder(パラメータなし | userid | 単一選択メンバーコンポーネント)
+```
+
+<Warning>
+数式の説明：部門ビルダー関数。条件に基づいて、指定したDepartmentオブジェクトモデルを取得します。この数式はサブフォームには対応していません。
+</Warning>
+
+### 入力パラメータ
+
+パラメータ1（3つのモード）：
+
+- パラメータなし：現在ログイン中のユーザーの直属Department。
+- userid：指定したユーザー IDの直属Department。
+- 単一選択メンバーコンポーネント：そのメンバーコンポーネントに対応するUserの直属Department。
+
+### 戻り値
+
+- 標準Departmentモデルオブジェクト：[Departmentオブジェクト, Departmentオブジェクト]。1人のUserは複数のDepartmentに同時に所属できます。
+
+### 例
+
+```text
+DeptBuilder("")
+// 戻り値
+[{dept},{user2}]
+```
+
+## GetObjectField
+
+### 式
+
+```text
+GetObjectField(標準JSONオブジェクトモデル, "fieldKey")
+```
+
+<Warning>
+数式の説明：GetObjectField **はユーティリティ関数です。JsonObjectは汎用的な標準オブジェクトの格納形式で、内部でkey:value構造を用いてデータを組織化します。GetObjectFieldは、指定した標準JSONオブジェクトから指定したキーの値を取得します。**
+
+**注意：サブフォームには対応していません。**
+</Warning>
+
+### 入力パラメータ
+
+- パラメータ1：指定する標準JsonObject。
+- パラメータ2：fieldKey。パラメータ1のオブジェクトの第1階層の属性キー。
+
+### 戻り値
+
+- オブジェクトの属性キーに対応する値。デフォルトはテキストタイプです。
+
+### 例
+
+```text
+GetObjectField( GetArrayItem(UserBuilder(memberComponent), 1) ,"label")
+
+// メンバーコンポーネントデータの例：
+[{"label":"山田太郎 (社員番号 11)","key":"userid123"},{"label":"佐藤花子 (社員番号 22)","key":"userid124"}]
+
+// 戻り値
+
+"山田太郎 (社員番号 11)"
+```
+
+## GetArrayItem
+
+### 式
+
+```text
+GetArrayItem(標準JsonArray型, n)
+```
+
+<Warning>
+数式の説明：GetArrayItem **はユーティリティ関数です。JsonArrayは汎用的な標準配列コレクションの格納形式で、各ユニットは標準のJsonObjectまたはJsonArrayです。GetArrayItemは、指定した標準JsonArrayからn番目のデータユニット（JsonObjectまたはJsonArray）を取得します。** n >= 1で、n = 1は最初のデータユニットを指します。
+</Warning>
+
+### 入力パラメータ
+
+- パラメータ1：標準JsonArray型。
+- パラメータ2：n。配列のn番目のデータユニットオブジェクトを取得します。
+
+### 戻り値
+
+- パラメータ1のn番目のデータユニット。タイプはJsonObjectまたはJsonArrayとなります。
+
+### 例
+
+```text
+GetArrayItem(memberComponent, 1)
+```
+
+<Note>
+メンバーコンポーネントデータの例：
+
+[\{"label":"山田太郎 (社員番号 11)","key":"userid123"},\{"label":"佐藤花子 (社員番号 22)","key":"userid124"}]
+</Note>
+
+### 戻り値
+
+```text
+""
+{"label":"山田太郎 (社員番号 11)","key":"userid123"}
+```
+
+例：

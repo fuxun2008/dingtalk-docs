@@ -1,0 +1,216 @@
+---
+title: "JS Action Panel"
+description: "This article explains how to use the action panel in YiDA to write JS code for business logic or conditional evaluation. It covers supported editions, code input methods, action binding, retrieving callback function parameters, the API User Guide, JS debugging methods, and subform API improvements."
+polished: true
+---
+
+| **Feature** | **Free plan** | **Basic edition** | **Professional edition** | **Dedicated edition** |
+|---|---|---|---|---|
+| Page JS code | Not supported | Not supported | Supported | Supported |
+
+## 1. Overview
+
+Use the action panel in YiDA to write JS code that implements your business logic or conditional checks.
+
+The action panel makes it easier to organize and reuse code, and to build complex interactions.
+
+<Warning>
+- Logic written in the JS panel generally does not apply to historical data.
+</Warning>
+
+## 2. Code Input in the Action Panel
+
+Functions declared with `export` are recognized by the action panel and can be selected and invoked from it.
+
+Refer to the following code:
+
+```javascript
+/**
+ * Custom utility function; does not use context (this)
+ */
+function something() {
+  alert('something')
+}
+
+/**
+ * @title Custom action A
+ * Can use context (this)
+ */
+export function custom_action_a() {
+  alert('custom action a')
+}
+
+/**
+ * @title Custom action B
+ */
+export function custom_action_b() {
+  something(); // Call the custom utility function
+  this.custom_action_a(); // Call the custom action function
+}
+```
+
+**Notes:**
+
+<Warning>
+Only declarations matching `export function xxx() {}` are recognized in the component action panel. Exported method names must be unique.
+</Warning>
+
+To manually retrieve or invoke an action in the panel, call `this.methodName();` directly.
+
+### 2.1 Action Binding in the Action Panel
+
+Most components in YiDA support action binding.
+
+Action binding links a component's action to a function defined in the action panel.
+
+### 2.2 Retrieve Callback Function Parameters
+
+Retrieve the parameters set in the callback function.
+
+#### (1) Set Parameters in the Action Settings
+
+Create an action.
+
+#### (2) Retrieve the Parameters as Shown Below:
+
+```javascript
+export function onClick(){
+  const { name, age } = this.params
+  console.log(name,age);
+}
+```
+
+## 3. API User Guide
+
+For details, see [https://developers.aliwork.com/docs/api/about](/open/yida/api/about).
+
+## 4. How to Debug JS Code
+
+Use Chrome [DevTools](https://developers.google.cn/web/tools/chrome-devtools/) to debug. If you debug frequently, we recommend accessing YiDA through a browser.
+
+The most commonly used panels are `Console`, `Network`, and `Elements`.
+
+YiDA display pages are built with React, so you can also install [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi?hl=en) to debug the YiDA UI.
+
+### 4.1 Use the `debugger` Keyword in Code
+
+In JS functions, use the `debugger` keyword to pause execution for debugging. The video below demonstrates the basic use of `debugger`.
+
+### 4.2 How to Reference Third-Party JS Resources
+
+**Verify the security of any JS resource you reference.** Refer to the following code:
+
+```javascript
+this.utils.loadScript("url", () => {})
+
+// Example:
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "https://www.yidaapps.com",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### 4.3 How to Learn JS
+
+- YiDA Developer Center
+- JavaScript Garden
+- JavaScript | MDN
+- Recommended book: *Professional JavaScript for Web Developers* (latest edition)
+- Communities: Juejin, Stack Overflow, GitHub, and more
+
+## 5. Subform API Improvements
+
+### 5.1 Retrieve Subform Data
+
+```javascript
+const subFormInst = this.$('subformUniqueId');
+console.log(subFormInst.getValue()); // Get the entire list of subform data
+// First, get the row identifiers
+const items = subFormInst.getItems(); //  ["tfitem_1", "tfitem_2"]
+items.forEach(item => {
+  const rowData = subFormInst.getItemValue(item); // Get the row data
+  console.log(rowData['subformInnerComponentUniqueId']); // Get the field data for the specified row
+});
+```
+
+### 5.2 Detect Subform Changes
+
+When subform data changes, in addition to cell-level edits, formula calculations, data linkage, and external assignments also trigger the subform's onChange event. To help you identify the source of the change, `changes.fieldId` indicates which cell's data changed.
+
+```javascript
+// Subform bound event
+export function onChange({value, extra}) {
+  const { formGroupId, from, changes = {} } = extra || {};
+
+  // Check whether the device field changed
+ 	if (changes.fieldId === 'subformDeviceFieldUniqueId') {
+  // Add the logic to execute after the subform change here
+  };
+}
+```
+
+### 5.3 Update Related Row Data When Data in the Table Changes
+
+Use the `updateItemValue` API to assign values to cells.
+
+For example, when a device changes, use the API to populate the remaining information in the current subform.
+
+```javascript
+// Subform bound event
+export function onChange({value, extra}) {
+  const { formGroupId, from, changes } = extra || {};
+  if (from === 'setItemValue') return; // Prevent an infinite loop when updateItemValue triggers onChange again
+
+  // Handle single-row data change
+  const tableField = this.$('subformUniqueId');
+
+  // Check whether the device field changed
+ 	if (changes.fieldId === 'subformDeviceFieldUniqueId') {
+  		getDeviceInfo() // Custom API for retrieving device information
+    			.then((data) => {
+      				tableField.updateItemValue(formGroupId, {
+                'numberField_l00o018a': data.price, // Update the device price
+                'textareaField_kysd3grq': data.description, // Update the device description
+              });
+      		})
+  };
+}
+```
+
+You no longer need to assign values one by one via `getComponent().setValue` as before. That approach cannot guarantee a complete form update in asynchronous scenarios.
+
+## 6. Common Errors
+
+### 6.1 Cannot Read Property '$' of Undefined.
+
+```diff
+export function didMount(){
+	console.log('Entering the test method');
+-  test1()  // Calling this way throws the error shown above.
++  this.test1() // Correct call. The principle is simple: context must be passed through this.
+}
+
+export function test1(){
+	console.log(this.$('abc').getValue());
+}
+```
+
+### 6.2 This Request Has Been Blocked; the Content Must Be Served Over HTTPS
+
+The YiDA domain is https://www.yidaapps.com. Due to browser security restrictions, only HTTPS endpoints can be requested; HTTP endpoints are not allowed. Local endpoints such as http://192.168.xxx are also blocked.
+
+**Important:**
+
+To provide an API service, your endpoint must meet the following requirements:
+
+1. Use the HTTPS protocol with a valid certificate.
+
+2. Allow [**cross-origin access**](http://www.ruanyifeng.com/blog/2016/04/cors.html) from www.yidaapps.com. Otherwise, a cross-site policy error occurs.

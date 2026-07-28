@@ -101,6 +101,28 @@ I. API 専有語の前後に半角スペース（access token を取得する）
 J. 敬体 + 簡潔。「〜します」「〜してください」「〜を呼び出します」。"""
 
 
+# 宜搭 (YiDA) 専属ルール — root=yida のみ注入
+YIDA_RULES = """宜搭 (YiDA) 専属ルール — 1 つでも違反すれば訳文無効：
+
+【ブランド / 製品名】
+A. **YiDA** はブランド名として原様保持（訳さない・カタカナ化しない）。YiDA Dedicated / YiDA platform / YiDA app も同様。
+B. Cool App → クールアプリ；low-code → ローコード；DingTalk は原様。
+
+【API 契約 — 原様保持】（developer-features / integration 篇に多出）
+C. JSON フィールド名 / パラメータ名は不訳：formUuid / formInstId / appType / processCode / formDataJson / searchFieldJson / systemToken 等。
+D. インスタンス ID / コンポーネント識別子は保持：FORM-xxx / FINST-xxx / APP_xxx / textField_kkm9o5cd 等。
+E. エンドポイントパス（/v1/form/saveFormData.json 等）は保持。
+
+【URL 保護】
+F. www.yidaapps.com / yida-support.oss-*.aliyuncs.com / docs.aliwork.com / img.alicdn.com の URL は完全不動。
+G. 内部相対リンク [text](/yida/...) 等の URL は原様保持（後処理で前置詞変換）、アンカーテキストのみ翻訳。
+
+【表ヘッダ / 用語】
+H. Parameter→パラメータ / Description→説明 / Required→必須 / Example→例 / Notes→備考；
+   Feature→機能 / Supported→対応 / Not supported→非対応。
+I. エディション：Free→無料版 / Basic→ベーシック版 / Professional→プロフェッショナル版 / Dedicated→専用版。"""
+
+
 # ---------------------------------------------------------------------------
 # 占位検出・命中用語・コードフェンス
 # ---------------------------------------------------------------------------
@@ -191,8 +213,10 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
 
 def build_system_prompt(root: str = "") -> str:
     sections = [SYSTEM_RULES, SEO_DESCRIPTION_RULE, STYLE_JA]
-    if root == "open":
+    if root == "open" or root.startswith("open/"):
         sections.append(OPEN_PLATFORM_RULES)
+    if "yida" in root.split("/"):
+        sections.append(YIDA_RULES)
     sections.append("本タスクは英語 mdx を日本語（敬体 です・ます）に翻訳します。訳文 mdx をそのまま出力し、説明の前後置きは付けないこと。")
     return "\n\n".join(sections)
 
@@ -223,6 +247,8 @@ class FileResult:
 
 
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
+    # user_msg 作为 positional prompt 传入（而非 stdin），规避 claude CLI 高负载下 3s stdin
+    # 握手竞争导致的 "no stdin data received" 死锁（与 en2id 一致）；prompt 体量远低于 ARG_MAX。
     proc = await asyncio.create_subprocess_exec(
         "claude", "-p", "--bare",
         "--model", model,
@@ -230,13 +256,14 @@ async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout
         "--tools", "",
         "--no-session-persistence",
         "--output-format", "json",
-        stdin=asyncio.subprocess.PIPE,
+        user_msg,
+        stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout, stderr = await asyncio.wait_for(
-            proc.communicate(input=user_msg.encode("utf-8")),
+            proc.communicate(),
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
@@ -416,7 +443,7 @@ async def main_async(args: argparse.Namespace) -> int:
             print(f"[{done}/{len(tasks)}] {icon} {r.rel}  {r.status}")
 
     ended = time.time()
-    suffix = f"_{args.root}"
+    suffix = "_" + args.root.replace("/", "-")
     if args.only:
         suffix += "_" + re.sub(r"[^a-zA-Z0-9]+", "-", args.only)
     write_report(results, OUTPUT_DIR / "ja", started, ended, suffix)

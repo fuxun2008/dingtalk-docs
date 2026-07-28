@@ -1,0 +1,216 @@
+---
+title: "Panel aksi JS"
+description: "Pelajari cara menggunakan panel aksi JS di YiDA untuk menulis logika bisnis dan evaluasi kondisi — mencakup binding aksi, parameter callback, debugging JS, serta peningkatan API subformulir bagi pengembang low-code."
+polished: true
+---
+
+| **Fitur** | **Paket Luang** | **Edisi Basic** | **Edisi Professional** | **Edisi Dedicated** |
+|---|---|---|---|---|
+| Kode JS halaman | Tidak didukung | Tidak didukung | Didukung | Didukung |
+
+## 1. Ikhtisar
+
+Gunakan panel aksi di YiDA untuk menulis kode JS yang menjalankan logika bisnis atau memeriksa kondisi.
+
+Panel aksi mempermudah pengorganisasian dan penggunaan ulang kode, sekaligus membangun interaksi yang kompleks.
+
+<Warning>
+- Logika yang ditulis di panel JS umumnya tidak berlaku untuk data historis.
+</Warning>
+
+## 2. Menulis kode di panel aksi
+
+Fungsi yang dideklarasikan dengan `export` akan dikenali panel aksi sehingga dapat dipilih dan dipanggil dari sana.
+
+Perhatikan kode berikut:
+
+```javascript
+/**
+ * Fungsi utilitas kustom; tidak menggunakan konteks (this)
+ */
+function something() {
+  alert('something')
+}
+
+/**
+ * @title Tindakan kustom A
+ * Dapat menggunakan konteks (this)
+ */
+export function custom_action_a() {
+  alert('custom action a')
+}
+
+/**
+ * @title Tindakan kustom B
+ */
+export function custom_action_b() {
+  something(); // Panggil fungsi utilitas kustom
+  this.custom_action_a(); // Panggil fungsi tindakan kustom
+}
+```
+
+**Catatan:**
+
+<Warning>
+Hanya deklarasi yang cocok dengan pola `export function xxx() {}` yang dikenali di panel aksi komponen. Nama metode yang diekspor harus unik.
+</Warning>
+
+Untuk memanggil aksi di panel secara manual, panggil `this.methodName();` secara langsung.
+
+### 2.1 Binding aksi di panel aksi
+
+Sebagian besar komponen di YiDA mendukung binding aksi.
+
+Binding aksi menghubungkan aksi sebuah komponen dengan fungsi yang didefinisikan di panel aksi.
+
+### 2.2 Ambil parameter fungsi Callback
+
+Ambil parameter yang telah dikonfigurasi di fungsi Callback.
+
+#### (1) Setel parameter di pengaturan aksi
+
+Buat sebuah aksi.
+
+#### (2) Ambil parameter seperti berikut:
+
+```javascript
+export function onClick(){
+  const { name, age } = this.params
+  console.log(name,age);
+}
+```
+
+## 3. Panduan Pengguna API
+
+Untuk detailnya, lihat [Panduan Pengguna API YiDA](/id/open/yida/api/about).
+
+## 4. Cara men-debug kode JS
+
+Gunakan Chrome [Devtools](https://developers.google.cn/web/tools/chrome-devtools/) untuk melakukan debug. Jika Anda sering melakukan debug, akses YiDA melalui browser.
+
+Panel yang paling sering digunakan adalah `Console`, `Network`, dan `Elements`.
+
+Halaman tampilan YiDA dibangun dengan React, sehingga Anda juga dapat memasang [React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi?hl=en) untuk melakukan debug pada UI YiDA.
+
+### 4.1 Gunakan kata kunci `debugger` di dalam kode
+
+Di dalam fungsi JS, gunakan kata kunci `debugger` untuk menjeda eksekusi guna keperluan debugging. Video berikut mendemonstrasikan penggunaan dasar `debugger`.
+
+### 4.2 Cara mereferensikan sumber daya JS pihak ketiga
+
+**Pastikan Anda memverifikasi Keamanan setiap sumber daya JS yang direferensikan.** Perhatikan kode berikut:
+
+```javascript
+this.utils.loadScript("url", () => {})
+
+// Contoh:
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "https://www.yidaapps.com",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### 4.3 Cara mempelajari JS
+
+- Pusat Pengembang YiDA
+- JavaScript Garden
+- JavaScript | MDN
+- Buku yang direkomendasikan: "Professional JavaScript for Web Developers" (edisi terbaru)
+- Komunitas: Juejin, Stack Overflow, GitHub, dan lain-lain
+
+## 5. Peningkatan API subformulir
+
+### 5.1 Ambil data subformulir
+
+```javascript
+const subFormInst = this.$('subformUniqueId');
+console.log(subFormInst.getValue()); // Ambil seluruh daftar data subformulir
+// Ambil identifier baris terlebih dahulu
+const items = subFormInst.getItems(); //  ["tfitem_1", "tfitem_2"]
+items.forEach(item => {
+  const rowData = subFormInst.getItemValue(item); // Ambil data baris
+  console.log(rowData['subformInnerComponentUniqueId']); // Ambil data Bidang untuk baris yang ditentukan
+});
+```
+
+### 5.2 Deteksi perubahan subformulir
+
+Saat data subformulir berubah, selain suntingan di tingkat Sel, perhitungan Formula, keterkaitan data, dan penetapan nilai eksternal juga memicu Peristiwa onChange pada subformulir. Untuk membantu Anda mengidentifikasi sumber perubahan, `changes.fieldId` diperkenalkan untuk menunjukkan Sel mana yang datanya berubah.
+
+```javascript
+// Peristiwa yang di-bind ke subformulir
+export function onChange({value, extra}) {
+  const { formGroupId, from, changes = {} } = extra || {};
+
+  // Periksa apakah Bidang perangkat berubah
+ 	if (changes.fieldId === 'subformDeviceFieldUniqueId') {
+  // Tambahkan logika yang akan dijalankan setelah perubahan subformulir di sini
+  };
+}
+```
+
+### 5.3 Perbarui data baris terkait saat data pada Tabel berubah
+
+Gunakan API `updateItemValue` untuk menetapkan nilai ke Sel.
+
+Sebagai contoh, saat sebuah perangkat berubah, gunakan API tersebut untuk mengisi informasi lainnya pada subformulir saat ini.
+
+```javascript
+// Peristiwa yang di-bind ke subformulir
+export function onChange({value, extra}) {
+  const { formGroupId, from, changes } = extra || {};
+  if (from === 'setItemValue') return; // Cegah infinite loop saat updateItemValue memicu onChange lagi
+
+  // Tangani perubahan data satu baris
+  const tableField = this.$('subformUniqueId');
+
+  // Periksa apakah Bidang perangkat berubah
+ 	if (changes.fieldId === 'subformDeviceFieldUniqueId') {
+  		getDeviceInfo() // API Kustom untuk mengambil informasi perangkat
+    			.then((data) => {
+      				tableField.updateItemValue(formGroupId, {
+                'numberField_l00o018a': data.price, // Perbarui harga perangkat
+                'textareaField_kysd3grq': data.description, // Perbarui deskripsi perangkat
+              });
+      		})
+  };
+}
+```
+
+Anda tidak perlu lagi menetapkan nilai satu per satu melalui `getComponent().setValue` seperti sebelumnya. Cara tersebut tidak dapat menjamin pembaruan Formulir secara utuh dalam skenario asinkron.
+
+## 6. Kesalahan umum
+
+### 6.1 Cannot read property '$' of undefined.
+
+```diff
+export function didMount(){
+	console.log('Memasuki metode uji');
+-  test1()  // Pemanggilan dengan cara ini menghasilkan Kesalahan seperti di atas.
++  this.test1() // Pemanggilan yang benar. Prinsipnya sederhana: konteks harus dilewatkan melalui this.
+}
+
+export function test1(){
+	console.log(this.$('abc').getValue());
+}
+```
+
+### 6.2 Permintaan ini telah diblokir; konten harus disajikan melalui HTTPS
+
+Domain YiDA adalah https://www.yidaapps.com. Karena batasan Keamanan browser, hanya endpoint HTTPS yang dapat dipanggil; endpoint HTTP tidak diizinkan. Endpoint lokal seperti http://192.168.xxx juga akan diblokir.
+
+**Penting:**
+
+Untuk menyediakan layanan API, endpoint Anda harus memenuhi persyaratan berikut:
+
+1. Menggunakan protokol HTTPS dengan sertifikat yang valid.
+
+2. Mengizinkan [**akses lintas asal (cross-origin)**](http://www.ruanyifeng.com/blog/2016/04/cors.html) dari www.yidaapps.com. Jika tidak, akan terjadi kesalahan kebijakan lintas situs.

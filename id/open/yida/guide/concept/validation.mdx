@@ -1,0 +1,97 @@
+---
+title: "Validasi formulir"
+description: "Panduan lengkap validasi formulir di YiDA — pelajari aturan validasi bawaan untuk setiap komponen formulir dan cara menulis fungsi validasi kustom untuk menjaga integritas data yang dikirimkan."
+polished: true
+---
+
+Formulir adalah skenario yang paling umum digunakan di YiDA. Saat bekerja dengan Formulir, Anda sering perlu memvalidasi bidang-bidangnya. Selain aturan validasi bawaan untuk berbagai komponen formulir, platform YiDA juga menyediakan kemampuan validasi bidang kustom, sehingga membantu Anda mengelola data formulir dan mencegah pengiriman data kotor.
+
+Ketika data yang dikirim gagal divalidasi, Pesan error akan ditampilkan di bawah bidang formulir dan pengiriman diblokir, seperti terlihat di bawah ini:
+
+## Pengaturan validasi
+
+Platform YiDA menyediakan dua pendekatan validasi formulir:
+
+### Aturan validasi bawaan
+
+YiDA menyediakan aturan validasi bawaan yang umum digunakan untuk setiap komponen formulir. Cukup konfigurasikan dan aktifkan aturan untuk menggunakannya. Sebagai contoh, pengaturan usia minimum yang ditunjukkan di atas dapat diimplementasikan dengan mudah melalui konfigurasi berikut:
+
+### Aturan validasi kustom
+
+Metode validasi bidang formulir bawaan mungkin tidak mencakup setiap skenario. Oleh karena itu, YiDA menyediakan pengaturan aturan kustom untuk setiap komponen formulir, sehingga Anda dapat mengontrol hasil validasi melalui sebuah Fungsi. Fungsi aturan validasi kustom didefinisikan sebagai berikut:
+
+```ts
+// value adalah nilai saat ini dari bidang formulir; mengembalikan boolean yang menunjukkan apakah validasi berhasil
+function validateRule(value: any): boolean;
+```
+
+Sebagai contoh, untuk memvalidasi apakah isi bidang input teks diawali dengan "Hangzhou", gunakan kode berikut:
+
+```js
+// Apakah nilai diawali dengan "Hangzhou"
+function validateRule(value) {
+  if (/^Hangzhou/.test(value)) {
+    return true;
+  }
+  return false;
+```
+
+## API
+Selain dipicu saat pengiriman formulir, validasi formulir juga dapat dipicu secara manual melalui [API frontend](/id/open/yida/api/yidaAPI#thisfieldidvalidate), seperti terlihat di bawah ini:
+
+```js
+export function validate() {
+  // Lakukan validasi pada komponen bidang input; cetak error dan nilai ke konsol jika validasi gagal
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+
+## Validasi kustom yang umum
+### Validasi nomor kartu bank
+#### Validasi panjang nomor kartu
+Nomor kartu harus terdiri dari 16 atau 19 digit.
+
+```js
+function validateRule(value) {
+  return value && /^([0-9]{16}|[0-9]{19})$/.test(value);
+}
+```
+
+#### Validasi nomor kartu
+Menggunakan [**algoritma Luhn**](https://baike.baidu.com/item/Luhn%E7%AE%97%E6%B3%95/22799984) untuk validasi.
+
+```js
+function validateRule(value) {
+  if (value && /^([0-9]{16}|[0-9]{19})$/.test(value)) {
+    let total = 0;
+    value.split('').reverse().forEach((item, idx) => {
+      const num = parseInt(item, 10);
+      total += idx % 2 ? 2 * num - (num > 4 ? 9 : 0) : num;
+    });
+    if (total === 0) {
+      return false;
+    }
+    return total % 10 === 0;
+  }
+  return false;
+}
+```
+
+### Validasi nomor kartu identitas
+
+```js
+function validateRule(value) {
+  if (value && value.length === 18) {
+    const coeff = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    const laststr = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+    let total = 0;
+    for(let i = 0; i < 17; ++ i) {
+      total+= parseInt(value[i], 10) * coeff[i];
+    }
+    return value[17] === laststr[total % 11];
+  }
+  return false;
+}
+```

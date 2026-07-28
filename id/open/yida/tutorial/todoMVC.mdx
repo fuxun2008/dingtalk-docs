@@ -1,0 +1,562 @@
+---
+title: "TodoMVC"
+description: "Tutorial praktik lanjutan YiDA: bangun Halaman Daftar Tugas dari nol dengan mengacu pada TodoMVC, menggabungkan kemampuan inti halaman kustom seperti variabel global, rendering berulang, dan penanganan event."
+polished: true
+---
+## Gambaran umum
+
+Tutorial ini merupakan panduan penggunaan YiDA tingkat lanjut. Kita akan mengacu pada [TodoMVC](https://todomvc.com/) dan membangun Halaman TodoMVC sederhana dari nol. Hasil akhirnya ditunjukkan di bawah (Anda juga dapat mengunjungi [halaman contoh](https://www.aliwork.com/o/demo/todoMVC-3) untuk melihat hasilnya atau [mengaktifkan aplikasi untuk uji coba](https://www.aliwork.com/o/coc?tplUuid=TPL_PMFQNW628OML366HTNJO&from=developers_subject)):
+
+Dengan mengerjakan tutorial ini, Anda akan menguasai keterampilan YiDA berikut:
+
+- Penggunaan Dasar komponen YiDA
+- Penanganan event tindakan Pengguna
+- Penggunaan variabel global
+- Rendering bersyarat dan rendering berulang
+- Gaya kustom
+- Penggunaan remote API
+- Penggunaan YiDA OpenAPI
+
+Artikel ini tidak membahas proses detail pembuatan dan penerapan halaman kustom di YiDA. Jika Anda belum familier dengan proses pembuatannya, lihat dokumen [Panduan cepat](/id/open/yida/guide/start). Sekarang, mari kita implementasikan efeknya langkah demi langkah.
+
+## UI Dasar — Membangun Kerangka TodoMVC
+
+Pertama, mari kita uraikan struktur Halaman TodoMVC resmi. Halaman ini kurang lebih terdiri dari elemen-elemen berikut:
+
+Berdasarkan UI TodoMVC, kita dapat menemukan komponen yang tersedia di YiDA (untuk penggunaan detail masing-masing komponen, lihat [dokumentasi komponen](/id/open/yida/components/layout/tabsLayout)):
+
+- **Logo besar** — Sebuah teks statis; gunakan komponen `Text`.
+- **Kotak input Tugas** — Digunakan untuk memasukkan Konten Tugas baru; gunakan komponen `Input`.
+- **Pengontrol status Tugas** — Digunakan untuk beralih status penyelesaian Tugas; gunakan komponen `Select`.
+- **Tampilan Konten Tugas** — Digunakan untuk menampilkan Konten Tugas; gunakan komponen `Text`.
+- **Tindakan Tugas** — Digunakan untuk Menghapus Tugas; gunakan komponen `Button` (versi aslinya menggunakan ikon; kita memilih tombol agar semantiknya lebih jelas).
+- **Tampilan jumlah Tugas yang belum Selesai** — Digunakan untuk menampilkan total Tugas yang belum Selesai; gunakan komponen `Text`.
+- **Filter status Tugas** — Digunakan untuk memfilter Daftar Tugas berdasarkan status; gunakan komponen `Select`.
+- **Hapus semua Tugas yang telah Selesai** — Digunakan untuk Menghapus semua Tugas yang telah Selesai; gunakan komponen `Button`.
+- **Deskripsi alat** — Memperkenalkan informasi Dasar tentang Todos sebagai teks statis; gunakan komponen `Text`.
+
+Setelah kita menentukan komponen yang dibutuhkan untuk setiap bagian, kita dapat membangun halaman sederhana dengan menyeret dan melepaskan komponen serta Mengonfigurasikan atribut Dasarnya. Hasilnya ditunjukkan di bawah. Anda dapat melihat efek tampilan di [halaman demo](https://www.aliwork.com/o/demo/todoMVC-1) atau memeriksa Konfigurasi detailnya di [desainer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-1):
+
+## Implementasi Logika — Menghidupkan TodoMVC
+
+Pada langkah sebelumnya, kita telah menyelesaikan UI Dasar TodoMVC — kerangkanya. Sekarang, mari kita hidupkan. Ini adalah langkah yang paling Penting. Sebelum menyelami lebih dalam, mari kita analisis fitur-fitur yang harus dimiliki TodoMVC:
+
+- **Buat Tugas to-do** — Pengguna memasukkan Konten Tugas di kotak input dan menekan Enter untuk Membuat Tugas to-do di Daftar Tugas.
+- **Perbarui status** — Pengguna mengeklik pengontrol Tugas untuk mengubah status penyelesaian Tugas saat ini (jika telah Selesai, teks Tugas dicoret).
+- **Edit Konten Tugas** — Pengguna mengeklik tombol `Edit` pada Tugas untuk memunculkan kotak input Konten Tugas, Mengedit Kontennya, lalu menekan Enter untuk mengirim (TodoMVC resmi menggunakan klik dua kali untuk beralih ke status pengeditan, tetapi karena YiDA saat ini tidak mendukung event klik dua kali, kita menggunakan tombol sebagai gantinya).
+- **Hapus Tugas to-do** — Pengguna mengeklik tombol `Delete` untuk Menghapus Tugas to-do yang ditentukan.
+- **Hitung Tugas yang belum Selesai** — Tampilkan jumlah Tugas yang belum Selesai saat ini di kiri bawah Halaman.
+- **Filter berdasarkan status** — Pengguna beralih Filter di bagian bawah Halaman untuk menampilkan Daftar Tugas yang berbeda:
+  - All — Tampilkan semua Tugas.
+  - Active — Tampilkan Tugas yang belum Selesai.
+  - Completed — Tampilkan Tugas yang telah Selesai.
+- **Hapus Tugas to-do yang telah Selesai** — Pengguna mengeklik tombol `Clear completed` di kanan bawah Halaman untuk Menghapus semua Tugas yang telah Selesai secara massal.
+
+Fitur Dasar telah diurutkan. Sekarang mari kita implementasikan fitur inti TodoMVC langkah demi langkah. Untuk hasil akhirnya, lihat [halaman demo](https://www.aliwork.com/o/demo/todoMVC-2), dan lihat implementasi spesifiknya di [desainer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-2). Hasilnya ditunjukkan di bawah:
+
+### Langkah 1: Buat variabel global Tingkat Halaman
+
+Filosofi desain YiDA mirip dengan React — mengikuti pola MVVM. Oleh karena itu, sebelum mengembangkan fitur, kita perlu mendefinisikan model data yang digunakan di halaman, yaitu status global (lihat [dokumentasi status halaman](/id/open/yida/guide/concept/state) untuk detailnya). Definisikan variabel global berikut:
+
+- todoList (tipe array) — Mencatat semua informasi Tugas to-do dalam Daftar. Strukturnya sebagai berikut:
+
+```js
+{
+  todoList: [
+    {
+      id: 1, // ID unik Tugas to-do
+      content: 'XXXX', // Konten Tugas to-do
+      done: false, // Status penyelesaian Tugas to-do
+    },
+  ];
+}
+```
+
+- editRowId (tipe number) — Menandai ID Tugas yang saat ini berada dalam status pengeditan (ketika dalam status pengeditan, area Konten Tugas menjadi kotak input agar Pengguna dapat memodifikasi Kontennya). Dapat dikosongkan secara Default.
+- mode (tipe string) — Nilai Filter saat ini untuk Daftar Tugas. Nilai yang valid: All, Active, dan Completed. Default: `"All"`. Catatan: Tanda kutip diperlukan.
+- newId (tipe number) — Generator ID baru. Setiap kali Tugas baru Dibuat, `newId` digunakan sebagai ID-nya, dan `newId` secara otomatis Ditambah 1 untuk memastikan keunikan setiap ID Tugas.
+
+### Langkah 2: Implementasikan Fitur Buat Tugas To-Do
+
+Sekarang kita dapat mengimplementasikan fitur pertama. Pada langkah ini, kita ingin Pengguna memasukkan Konten Tugas di kotak input dan menekan Enter untuk Membuat Tugas to-do (lihat [dokumentasi penanganan event](/id/open/yida/guide/concept/event) untuk detail tentang pengikatan event).
+
+Seperti yang ditunjukkan pada gambar di atas, langkah ini terdiri dari tiga tindakan utama:
+
+- Berikan identifier unik ("input") ke kotak input agar kita dapat dengan mudah mengambil Konten yang dimasukkan.
+- Ikat event onKeyDown ("onRowAdd") ke kotak input yang terpicu ketika Pengguna menekan tombol.
+- Implementasikan metode `onRowAdd`: jika Pengguna menekan Enter, sisipkan Tugas to-do baru di bagian atas todoList.
+
+Implementasi spesifiknya sebagai berikut:
+
+```js
+export function onRowAdd(e) {
+  // Hanya tangani tombol Enter; kembali langsung jika bukan Enter
+  if (e.keyCode !== 13) return;
+  const { todoList, newId } = this.state; // Dapatkan data Daftar Tugas saat ini dan penanda newId dari status global
+  this.setState({
+    todoList: [
+      {
+        id: newId,
+        done: false,
+        content: this.$('input').getValue(), // Dapatkan Konten yang dimasukkan Pengguna di kotak input
+      },
+      ...todoList,
+    ], // Perbarui data todoList, Tambahkan catatan dengan id newId, status belum Selesai, dan Konten sesuai input Pengguna
+    newId: newId + 1, // Perbarui newId untuk pembuatan Tugas berikutnya
+  });
+  this.$('input').setValue(''); // Kosongkan input Pengguna di kotak input
+}
+```
+
+### Langkah 3: Render Daftar Tugas Secara Berulang
+
+Pada langkah sebelumnya, input Pengguna sekarang dapat diubah menjadi Tugas to-do dan Ditambahkan ke variabel global todoList. Selanjutnya, kita perlu menampilkan Daftar to-do di bawah kotak input. Langkah ini menggunakan pengetahuan terkait [rendering berulang](/id/open/yida/guide/concept/loop).
+
+- Pertama, pilih komponen container yang membungkus informasi Tugas, dan pada atribut lanjutan, ikat state.todoList ke **data loop** container melalui pengikatan variabel.
+
+- Selanjutnya, kita perlu mengikat status penyelesaian dan Konten setiap Tugas ke bidang yang sesuai dalam data loop. Dalam rendering berulang, developer dapat menggunakan `item` untuk mengakses data baris saat ini:
+
+  - Atur nilai Default komponen Select untuk mengikat status Tugas.
+  - Atur atribut content komponen Text untuk mengikat Konten Tugas.
+
+Setelah menyelesaikan langkah ini, pratinjau akan terlihat seperti ini:
+
+### Langkah 4: Implementasikan Pembaruan dan Penghapusan Tugas
+
+Pada langkah sebelumnya, kita telah mengimplementasikan fungsi penambahan dan tampilan todoList. Selanjutnya, kita perlu mengimplementasikan Pembaruan dan Penghapusan Tugas.
+
+#### Implementasikan Tampilan Polimorfik Konten Tugas
+
+Dengan menganalisis fitur TodoMVC, kita menemukan bahwa Konten Tugas dalam Daftar Tugas memiliki tiga status tampilan yang berbeda:
+
+Kita memutuskan untuk menggunakan tiga komponen (dua komponen Text + satu komponen Input) untuk mengimplementasikan efek tampilan yang berbeda, dan menggunakan [rendering bersyarat](/id/open/yida/guide/concept/condition) untuk mengikat atribut render-atau-tidak untuk peralihan tampilan:
+
+Berikut adalah nilai pengikatan variabel render-atau-tidak untuk ketiga komponen tersebut:
+
+- **Status pengeditan** — Ditampilkan ketika variabel global editRowId sama dengan ID baris saat ini: `state.editRowId === this.item.id`
+- **Status belum Selesai** — Ditampilkan ketika Tugas saat ini tidak dalam status pengeditan dan statusnya belum Selesai: `state.editRowId !== this.item.id && !this.item.done`
+- **Status telah Selesai** — Ditampilkan ketika Tugas saat ini tidak dalam status pengeditan dan statusnya telah Selesai: `state.editRowId !== this.item.id && this.item.done`
+
+#### Implementasikan Pengeditan Konten Tugas
+
+Pada langkah ini, kita menginginkan hal berikut: ketika Pengguna mengeklik tombol `Edit` di bilah Tindakan Tugas, Tugas beralih ke status pengeditan; Pengguna dapat Mengedit lebih lanjut Konten yang ada dan menekan Enter untuk mengirim, dan Tugas kembali ke status tampilan sebelumnya.
+Untuk mengimplementasikan fitur ini, kita mengambil dua langkah:
+
+- Ikat event onClick ("onEdit") ke tombol Edit. Ketika Pengguna mengeklik tombol `Edit`, kita atur id Tugas saat ini ke variabel global RowEditId dan picu render ulang sehingga Tugas beralih ke status pengeditan, seperti yang ditunjukkan di bawah:
+
+Kode onEdit sebagai berikut:
+
+```js
+export function onEdit() {
+  this.setState({
+    editRowId: this.item.id,
+  });
+}
+```
+
+- Berikan identifier unik ("rowInput") ke komponen kotak input pada status pengeditan Tugas, dan merujuk pada implementasi Buat-Tugas untuk mengikat event onKeyDown ("onRowEdit"), Memperbarui Konten Tugas saat ini di todoList, seperti yang ditunjukkan di bawah:
+
+Kode onRowEdit sebagai berikut:
+
+```js
+export function onRowEdit(e) {
+  // Hanya tangani tombol Enter; kembali langsung jika bukan Enter
+  if (e.keyCode !== 13) return;
+  this.setState({
+    todoList: this.state.todoList.map((item) => {
+      if (item.id === this.item.id) {
+        // Temukan Tugas yang sedang Diedit di todoList dan Perbarui Kontennya
+        return {
+          ...item,
+          content: this.$('rowInput').getValue(),
+        };
+      }
+      return item;
+    }),
+    editRowId: 0, // Atur ulang editRowId sehingga Tugas saat ini kembali ke status tampilan sebelumnya
+  });
+}
+```
+
+Catatan: Karena pengeditan Konten Tugas didasarkan pada Konten yang ada, Anda perlu mengatur nilai Default kotak input ke `item.content` melalui pengikatan variabel.
+
+#### Implementasikan Peralihan Status Penyelesaian Tugas
+
+Ketika Pengguna mengeklik tombol radio di depan Tugas, status penyelesaian Tugas perlu diubah. Oleh karena itu, kita mendengarkan event `onChange` ("onTodoCheck") dari komponen Select. Ketika status radio berubah, Perbarui status Tugas di `todoList` secara real-time:
+
+Kode onTodoCheck sebagai berikut:
+
+```js
+export function onTodoCheck({ value }) {
+  this.setState({
+    todoList: this.state.todoList.map((item) => {
+      if (item.id === this.item.id) {
+        // Temukan Tugas yang sedang Diedit di todoList dan Perbarui statusnya
+        return {
+          ...item,
+          done: value === 'done',
+        };
+      }
+      return item;
+    }),
+    editRowId: 0,
+  });
+}
+```
+
+#### Implementasikan Penghapusan Tugas
+
+Ketika Pengguna mengeklik tombol `Delete` di area Tindakan Tugas, Tugas perlu Dihapus dari Daftar Tugas. Langkah ini relatif sederhana: ikat event onClicks ("onDelete") dari tombol Delete untuk Menghapus Tugas ini dari todoList:
+
+Kode onDelete sebagai berikut:
+
+```js
+export function onDelete() {
+  this.setState({
+    todoList: this.state.todoList.filter((item) => {
+      // Hapus Tugas saat ini dari todoList
+      return item.id !== this.item.id;
+    }),
+  });
+}
+```
+
+### Langkah 5: Tampilkan Jumlah Tugas To-Do
+
+Pada Halaman TodoMVC, pojok kiri bawah menampilkan statistik yang Menghitung jumlah Tugas yang belum Selesai dalam Daftar Tugas saat ini. Fitur ini relatif sederhana: ikat variabel ke komponen Text yang, pada setiap render, Menghitung dan menampilkan jumlah item di todoList yang status done-nya false, seperti yang ditunjukkan di bawah:
+
+Kode getleftCount sebagai berikut:
+
+```js
+export function getleftCount() {
+  const { todoList } = this.state;
+  return todoList.filter((item) => !item.done).length;
+}
+```
+
+### Langkah 6: Filter Tugas To-Do Berdasarkan Status
+
+Pada langkah ini, kita mengimplementasikan fitur Filter Daftar Tugas. Ketika Pengguna mengeklik Filter status di bagian bawah, Daftar Tugas Difilter berdasarkan status. Fitur ini diimplementasikan dalam dua langkah:
+
+- Dengarkan event onChange ("onModeChange") dari komponen Select. Ketika Pengguna mengubah Filter, Perbarui nilai variabel global mode:
+
+Kode onModeChange sebagai berikut:
+
+```js
+export function onModeChange({ value }) {
+  this.setState({
+    mode: value,
+  });
+}
+```
+
+- Ingat data loop yang kita ikat ke Daftar Tugas pada Langkah 3? Pada langkah ini kita perlu mengikat ulang data loop dari Daftar Tugas, Mengganti `state.todoList` sebelumnya dengan `getShowList()` untuk mengembalikan Daftar Tugas yang sesuai dengan nilai Filter saat ini:
+
+Kode getShowList sebagai berikut:
+
+```js
+export function getShowList() {
+  const { mode, todoList = [] } = this.state;
+  if (mode === 'Active') {
+    // Jika Filternya Active, kembalikan semua Tugas yang belum Selesai
+    return todoList.filter((item) => !item.done);
+  } else if (mode === 'Completed') {
+    // Jika Filternya Completed, kembalikan semua Tugas yang telah Selesai
+    return todoList.filter((item) => item.done);
+  }
+  return todoList; // Secara Default, kembalikan semua Tugas
+}
+```
+
+### Langkah 7: Hapus Tugas To-Do yang Telah Selesai
+
+Langkah ini relatif sederhana. Pada Dasarnya ini adalah versi massal dari operasi Hapus di Langkah 4. Ketika Pengguna mengeklik tombol `Clear Completed`, semua Tugas yang telah Selesai Dihapus dari Daftar Tugas. Kita hanya perlu mendengarkan event onClick ("onClearCompleted") dari tombol Clear Completed dan, saat diklik, Menghapus semua Tugas yang telah Selesai dari todoList:
+
+Kode onClearCompleted sebagai berikut:
+
+```js
+export function onClearCompleted() {
+  this.setState({
+    todoList: this.state.todoList.filter((item) => !item.done), // Filter semua Tugas yang telah Selesai
+  });
+}
+```
+
+### Langkah 8: Implementasikan Penyimpanan Lokal
+
+Melalui langkah-langkah di atas, kita telah mengimplementasikan fungsionalitas inti TodoMVC. Namun, data kita saat ini berada di state dan akan hilang setiap kali di-refresh. Oleh karena itu, kita perlu menyimpan todoList Pengguna di suatu tempat sehingga dapat ditampilkan lagi lain kali. Kita memilih localStorage untuk penyimpanan lokal, dan kita mengimplementasikan dua metode berikut:
+
+- saveTodoData — Simpan todoList dan newId di state ke localStorage.
+
+```js
+export function saveTodoData() {
+  const { todoList, newId } = this.state;
+  // Periksa apakah localStorage didukung; jika ya, Simpan data saat ini di state
+  if (window.localStorage) {
+    // Simpan data melalui localStorage
+    window.localStorage.setItem('todoMVC', JSON.stringify({ todoList, newId }));
+  }
+}
+```
+
+- getTodoData — Baca data dari localStorage.
+
+```js
+export function getTodoData() {
+  if (window.localStorage) {
+    // Dapatkan data yang tersimpan dari localStorage
+    const data = window.localStorage.getItem('todoMVC');
+    // Periksa apakah data lokal ada
+    if (data) {
+      return JSON.parse(data);
+    }
+  }
+  return {};
+}
+```
+
+Dengan kedua metode Dasar ini tersedia, sekarang kita hanya perlu melakukan dua hal:
+
+- Pada siklus hidup didMount, panggil API getTodoData untuk membaca data lokal dan Memperbarui state.
+- Tambah panggilan `this.saveTodoData()` di bawah **setiap** pernyataan `setState` di atas yang memodifikasi todoList.
+
+Hasilnya ditunjukkan di bawah:
+
+## Pemolesan Gaya — Memberi TodoMVC Tampilan yang Indah
+
+Pada langkah sebelumnya, kita telah menyelesaikan fungsionalitas Dasar TodoMVC. Namun, kesan pertamanya adalah tampilannya jelek. Tampilan yang bagus bukanlah hal yang paling Penting bagi sebuah produk, tetapi produk tanpa tampilan yang bagus tidak mungkin dianggap hebat. YiDA menyediakan kemampuan penyesuaian gaya (lihat [dokumentasi kustomisasi gaya](/id/open/yida/guide/concept/style)). Dengan menyesuaikan gaya, kita dapat mencapai hasil berikut (Anda juga dapat mengunjungi [halaman contoh](https://www.aliwork.com/o/demo/todoMVC-3) untuk mencobanya dan memeriksa implementasi spesifiknya di [desainer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-1)):
+
+Bagian ini tidak membahas setiap detail kustomisasi gaya, tetapi hanya mencantumkan beberapa kasus kustomisasi gaya yang representatif:
+
+- Sesuaikan gaya komponen melalui panel gaya — Misalnya, untuk logo besar TodoList, Anda dapat Mengonfigurasikan gaya font di panel gaya, seperti yang ditunjukkan di bawah:
+
+- Sesuaikan gaya komponen melalui CSS — Panel gaya memiliki cakupan yang terbatas. YiDA memungkinkan Anda menulis CSS untuk menyesuaikan gaya komponen. Misalnya, efek berlapis di bawah panel diimplementasikan menggunakan pseudo-element `::before`:
+
+## Integrasi Sumber Data — Melengkapi TodoMVC dengan Perangkat yang Andal
+
+Pada titik ini, kemampuan Dasar TodoMVC resmi telah diimplementasikan. Namun, developer yang cermat akan menyadari bahwa meskipun status produk saat ini fungsional, jika Anda beralih ke browser yang berbeda untuk mengaksesnya, data Tugas to-do akan hilang. Ini bukanlah fitur TodoList yang siap dikirim. Selain menyediakan UI Dasar dan kustomisasi logika front-end, YiDA juga menawarkan kemampuan data yang andal. Sekarang mari kita lengkapi TodoMVC dengan perangkat yang andal untuk mempertahankan data. Hasil akhirnya sebagai berikut:
+
+<Warning>
+Karena pemanggilan YiDA OpenAPI memerlukan autentikasi, halaman ini tidak dapat diatur sebagai halaman silent-login untuk uji coba. Namun, developer dapat mengunjungi [desainer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-4) untuk melihat implementasi spesifik halaman tersebut.
+
+</Warning>
+
+### Langkah 1: Buat formulir biasa untuk Membangun Struktur Penyimpanan Data Tugas
+
+Pertama, kita Membuat formulir biasa di bawah aplikasi saat ini untuk menyimpan informasi Tugas to-do. Untuk proses spesifik pembuatan formulir biasa, lihat [dokumentasi Pengguna YiDA](/id/yida/form/ybuoxl). Kita tidak akan mengelaborasinya di sini. Hasilnya ditunjukkan di bawah:
+
+Setelah Formulir Dibuat, kita mendapatkan FormUuid — identifier unik Formulir — seperti yang ditunjukkan di kotak merah di atas.
+
+### Langkah 2: Gunakan remote API untuk Mengimplementasikan CRUD Tugas
+
+Dengan tempat untuk menyimpan data Tugas, kita perlu Membuat API asinkron di TodoMVC untuk mengimplementasikan CRUD Tugas. Desainer YiDA menyediakan Konfigurasi remote API untuk meminta antarmuka HTTP jarak jauh (lihat [dokumentasi remote API](/id/open/yida/guide/concept/datasource)), dan YiDA juga menyediakan antarmuka OpenAPI umum untuk mengimplementasikan operasi data Dasar (lihat [dokumentasi OpenAPI](/id/open/yida/api/openAPI)). Kita Membuat Konfigurasi remote API berikut di halaman:
+
+#### todoList
+
+Mengambil data Daftar Tugas. Konfigurasi spesifiknya sebagai berikut:
+
+- Aktifkan sakelar muat otomatis — yaitu, antarmuka ini secara otomatis dipanggil ketika Halaman dimuat, dan YiDA secara otomatis me-mount Konten yang dikembalikan ke `state.todoList`.
+- Konfigurasikan URL permintaan dan metode HTTP sesuai format dalam dokumentasi OpenAPI.
+- Konfigurasikan parameter permintaan:
+  - **formUuid** — Identifier unik Formulir yang digunakan untuk menyimpan informasi Tugas, yaitu formUuid dari Formulir yang Dibuat pada langkah sebelumnya.
+  - **currentPage** — Nomor halaman saat ini. Open API YiDA mendukung paginasi. Karena ini hanya demo, kita tidak akan melakukan paginasi; kita tetapkan parameter ini ke 1 untuk mengambil halaman pertama.
+  - **pageSize** — Jumlah item per halaman. Ukuran halaman Default untuk YiDA Open API adalah 10. Untuk pengalaman demo yang lebih baik, kita tetapkan parameter ini ke 50 untuk mengambil 50 catatan terbaru.
+- Konfigurasikan handler didFetch untuk mengubah struktur data Open API menjadi struktur yang dikenali oleh logika di bagian-bagian di atas. Implementasi spesifiknya sebagai berikut:
+
+```js
+function didFetch(content) {
+  return (content.data || []).map((item) => {
+    return {
+      id: item.formInstId, // ID instans Formulir, yaitu identifier unik setiap catatan
+      content: item.formData.textField_kymq5pdi, // Konten Tugas; textField_kymq5pdi adalah identifier unik kontrol Konten Tugas dalam Formulir Tugas
+      done: item.formData.radioField_kymq5pdj === 'Selesai', // Selesai — Status Tugas; Tugas baru Default belum Selesai. radioField_kymq5pdj adalah identifier unik kontrol status Tugas dalam Formulir Tugas
+    };
+  });
+}
+```
+
+#### add
+
+Digunakan untuk Membuat Tugas to-do. Konfigurasi spesifiknya sebagai berikut:
+
+- Konfigurasikan URL permintaan dan metode HTTP sesuai format dalam dokumentasi OpenAPI.
+- Konfigurasikan parameter permintaan:
+  - **formUuid** — Sama seperti di atas.
+  - **appType** — App ID aplikasi saat ini (dimulai dengan APP\_; dapat diperoleh dari URL Halaman saat ini).
+- Konfigurasikan handler willFetch. Kita perlu mengubah informasi Tugas menjadi format yang dapat dikenali YiDA berdasarkan format parameter di OpenAPI. Implementasi spesifiknya sebagai berikut:
+
+```js
+function willFetch(vars, config) {
+  const { content } = vars.data; // Dapatkan informasi Konten Tugas baru
+  vars.data.formDataJson = JSON.stringify({
+    // Membuat instans Formulir memerlukan stringifikasi parameter dan menempatkannya di bidang formDataJson
+    textField_kymq5pdi: content, // Konten Tugas; textField_kymq5pdi adalah identifier unik kontrol Konten Tugas dalam Formulir Tugas
+    radioField_kymq5pdj: 'Belum Selesai', // Belum Selesai — Status Tugas; Tugas baru Default belum Selesai. radioField_kymq5pdj adalah identifier unik kontrol status Tugas dalam Formulir Tugas
+  });
+}
+```
+
+- Konfigurasikan handler didFetch untuk menampilkan toast setelah pembuatan berhasil dan memuat ulang Daftar Tugas. Implementasi spesifiknya sebagai berikut:
+
+```js
+function didFetch(content) {
+  this.utils.toast({
+    // Tampilkan toast berhasil
+    title: 'Add Success!',
+  });
+  this.reloadDataSource(); // Jalankan kembali permintaan awal (yaitu API todoList) untuk memuat ulang Daftar Tugas
+  return content; // Penting: kembalikan content
+}
+```
+
+#### del
+
+Digunakan untuk Menghapus Tugas to-do. Ini relatif sederhana. Konfigurasi spesifiknya sebagai berikut:
+
+Namun, perhatikan dua poin berikut:
+
+- ID Tugas yang akan Dihapus tidak tetap, jadi Anda perlu melewatkan ID Tugas spesifik ketika memanggil `dataSourceMap.del.load`.
+- didFetch tidak diimplementasikan untuk Hapus karena ketika mengimplementasikan Clear Completed, API asinkron ini perlu dipanggil secara massal. Oleh karena itu, logika di didFetch harus diimplementasikan di Callback `.then` dari permintaan asinkron manual.
+
+#### update
+
+Digunakan untuk Memperbarui Tugas to-do. Konfigurasi spesifiknya sebagai berikut:
+
+- Konfigurasikan URL permintaan dan metode HTTP sesuai format dalam dokumentasi OpenAPI.
+- Konfigurasikan handler willFetch. Seperti pada add, kita perlu mengubah Konten Tugas menjadi struktur data yang dapat dikenali YiDA. Implementasi spesifiknya sebagai berikut:
+
+```js
+function willFetch(vars, config) {
+  const { id, content, done } = vars.data;
+  vars.data.formInstId = id; // ID Tugas, identifier unik Tugas
+  const data = {};
+  if (content) {
+    // Jika Konten perlu dimodifikasi, sertakan parameter ini
+    data.textField_kymq5pdi = content;
+  }
+  if (typeof done === 'boolean') {
+    // Jika status perlu dimodifikasi, sertakan parameter ini
+    data.radioField_kymq5pdj = done ? 'Selesai' : 'Belum Selesai';  // Selesai : Belum Selesai
+  }
+  vars.data.updateFormDataJson = JSON.stringify(data);
+}
+```
+
+- Konfigurasikan handler didFetch. Logikanya mirip dengan add — tampilkan toast berhasil dan muat ulang Daftar. Implementasi spesifiknya sebagai berikut:
+
+```js
+function didFetch(content) {
+  this.utils.toast({
+    title: 'Update Success!',
+  });
+  this.reloadDataSource();
+  return content; // Penting: kembalikan content
+}
+```
+
+<Warning>
+Saat menambahkan Konfigurasi remote API, kita juga Menghapus beberapa variabel global yang diatur sebelumnya:
+
+- **todoList** — Karena Daftar sekarang diambil melalui remote API, tidak perlu menyimpan informasi todoList di state.
+- **newId** — Karena YiDA secara otomatis menghasilkan formInstId unik setiap kali Tugas to-do Dibuat, tidak perlu menghasilkan ID Tugas sendiri.
+
+</Warning>
+
+### Langkah 3: Ganti Logika Manajemen Data Asli dengan Panggilan remote API
+
+Setelah menyelesaikan pengaturan remote API di atas, kita hanya perlu memodifikasi logika di bagian sebelumnya, Mengganti operasi pada variabel global dengan panggilan remote API. Perubahan spesifiknya sebagai berikut:
+
+- Modifikasi implementasi **onRowAdd** untuk memanggil remote API add untuk Membuat Tugas. Implementasi spesifiknya sebagai berikut:
+
+```js
+export function onRowAdd(e) {
+  // Hanya tangani tombol Enter
+  if (e.keyCode !== 13) return;
+  this.dataSourceMap.add.load({
+    // Panggil remote API
+    content: this.$('input').getValue(),
+  });
+}
+```
+
+- Modifikasi implementasi **onDelete** untuk memanggil remote API del untuk Menghapus Tugas. Implementasi spesifiknya sebagai berikut:
+
+```js
+export function onDelete() {
+  this.dataSourceMap.del
+    .load({
+      // Panggil remote API
+      formInstId: this.item.id, // Lewatkan parameter dinamis
+    })
+    .then((res) => {
+      // Callback remote API, mirip dengan didFetch di Konfigurasi
+      this.utils.toast({
+        // Toast berhasil
+        title: 'Delete Success!',
+      });
+      this.reloadDataSource(); // Muat ulang Daftar Tugas
+    });
+}
+```
+
+- Modifikasi implementasi **onRuleEdit** untuk memanggil remote API update untuk Memperbarui Konten Tugas. Implementasi spesifiknya sebagai berikut:
+
+```js
+export function onRowEdit(e) {
+  // Hanya tangani tombol Enter
+  if (e.keyCode !== 13) return;
+
+  this.dataSourceMap.update.load({
+    id: this.item.id,
+    content: this.$('rowInput').getValue(),
+  });
+  this.setState({
+    editRowId: 0,
+  });
+}
+```
+
+- Modifikasi implementasi **onTodoCheck** untuk memanggil remote API update untuk Memperbarui status Tugas. Implementasi spesifiknya sebagai berikut:
+
+```js
+export function onTodoCheck({ value }) {
+  this.dataSourceMap.update.load({
+    id: this.item.id,
+    done: value === 'done',
+  });
+  this.setState({
+    editRowId: 0,
+  });
+}
+```
+
+- Modifikasi implementasi **onClearCompleted** untuk memanggil remote API del secara massal untuk Menghapus Tugas yang telah Selesai. Implementasi spesifiknya sebagai berikut:
+
+```js
+export function onClearCompleted() {
+  const deleteItems = this.state.todoList.filter((item) => item.done); // Filter Daftar Tugas yang akan Dihapus
+  Promise.all(
+    deleteItems.map((item) =>
+      this.dataSourceMap.del.load({
+        // Panggil remote API del secara massal melalui Promise.all untuk Menghapus Tugas
+        formInstId: item.id,
+      })
+    )
+  ).then((res) => {
+    // Callback Promise.all
+    this.utils.toast({
+      // Toast berhasil
+      title: 'Clear Success!',
+    });
+    this.reloadDataSource(); // Muat ulang Daftar Tugas
+  });
+}
+```
+
+## Coba Online
+
+[Pusat Pengalaman Contoh | TodoMVC](https://www.aliwork.com/o/coc?tplUuid=TPL_PMFQNW628OML366HTNJO&from=developers_subject)
+
+## Kesimpulan
+
+Tutorial ini telah memandu developer langkah demi langkah untuk Membangun halaman kustom TodoMVC dari nol, mencakup hampir semua pengetahuan umum yang diperlukan untuk halaman kustom YiDA. Kami berharap contoh ini membawa keterampilan YiDA Anda ke tingkat berikutnya dan memungkinkan Anda mendukung skenario bisnis yang lebih kompleks. Jika Anda memiliki pertanyaan, jangan ragu untuk berbagi masukan Anda.

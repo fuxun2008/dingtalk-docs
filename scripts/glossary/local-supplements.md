@@ -534,3 +534,67 @@
 - API 类专有词前后**留半角空格**：`access token を取得する` ✓ ／`access tokenを取得する` ✗
 - 命令式动词偏好「〜します」/「〜してください」短句，避免「〜することができます」滥用
 - 表格列头用名词：「必須」「タイプ」「説明」「例」
+
+## 宜搭（YiDA）专项术语（品牌 / 产品）
+
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 宜搭 | YiDA | YiDA | YiDA | 官方英文名 YiDA（全大写 DA）；域名 yidaapps.com 保持小写；禁止 Yida / YiDa / Easy Build |
+| 专属宜搭 | YiDA Dedicated | YiDA専用版 | YiDA Dedicated |  |
+| 酷应用 | Cool App | クールアプリ | Cool App | 钉钉官方能力名 |
+| 低代码 | low-code | ローコード | low-code |  |
+| 连接器工厂 | Connector Factory | コネクタファクトリー | Connector Factory |  |
+| 模板中心 | Template Center | テンプレートセンター | Pusat Template |  |
+
+## 宜搭 表单 / 组件
+
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 普通表单 | regular form | 通常フォーム | formulir biasa |  |
+| 流程表单 | workflow form | ワークフローフォーム | formulir alur kerja |  |
+| 子表单 | subform | サブフォーム | subformulir |  |
+| 关联表单 | associated form | 関連フォーム | formulir terkait |  |
+| 表单组件 | form component | フォームコンポーネント | komponen formulir |  |
+| 成员组件 | member component | メンバーコンポーネント | komponen anggota |  |
+| 明细组件 | detail component | 明細コンポーネント | komponen rincian |  |
+| 表单设计器 | form designer | フォームデザイナー | desainer formulir |  |
+| 页面设计器 | page designer | ページデザイナー | desainer halaman |  |
+| 自定义页面 | custom page | カスタムページ | halaman kustom |  |
+| 数据管理页 | data management page | データ管理ページ | halaman manajemen data |  |
+| 表单实例 | form instance | フォームインスタンス | instans formulir |  |
+| 公式函数 | formula function | 数式関数 | fungsi formula |  |
+| 提交校验 | submission validation | 送信時検証 | validasi pengiriman |  |
+| 数据校验 | data validation | データ検証 | validasi data |  |
+| 数据联动 | data linkage | データ連動 | keterkaitan data |  |
+
+## 宜搭 流程 / 报表 / 页面
+
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 流程设计 | workflow design | ワークフロー設計 | desain alur kerja |  |
+| 流程实例 | workflow instance | ワークフローインスタンス | instans alur kerja |  |
+| 审批人 | approver | 承認者 | penyetuju |  |
+| 聚合表 | aggregate table | 集計テーブル | tabel agregat |  |
+| 报表 | report | レポート | laporan | 宜搭报表设计语境 |
+| 门户 | portal | ポータル | portal |  |
+| 门户设计 | portal design | ポータル設計 | desain portal |  |
+| JS 动作面板 | JS action panel | JS アクションパネル | panel aksi JS |  |
+
+## 宜搭 管理 / 平台
+
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 平台管理 | platform management | プラットフォーム管理 | manajemen platform |  |
+| 权限组 | permission group | 権限グループ | grup izin |  |
+| 应用分发 | app distribution | アプリ配布 | distribusi aplikasi |  |
+| 工作空间 | workspace | ワークスペース | ruang kerja | 专属宜搭语境 |
+| 集成自动化 | integration & automation | 統合と自動化 | integrasi & otomatisasi |  |
+| 集成&自动化 | Integration & Automation | 統合と自動化 | Integrasi & Otomatisasi | 分组名 |
+
+## 宜搭 套餐版本
+
+| 中文 | 英文 | 日文 | 印尼语 | 备注 |
+|---|---|---|---|---|
+| 轻享版 | Basic edition | ベーシック版 | Edisi Basic | 宜搭套餐 |
+| 专业版 | Professional edition | プロフェッショナル版 | Edisi Professional | 宜搭套餐 |
+| 专属版 | Dedicated edition | 専用版 | Edisi Dedicated | 宜搭套餐 |

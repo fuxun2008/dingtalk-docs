@@ -1,0 +1,156 @@
+---
+title: "統合センター"
+description: "YiDAプラットフォームを通じて、タスクデータを社内のタスクセンターやTo-Doシステムに接続する方法を解説します。HTTPコネクタの設定、コネクタアクションの構成、承認関連イベントの処理手順を詳しく紹介します。"
+polished: true
+---
+
+## **機能概要**
+
+YiDAのプロセスページからデータが送信されると、アプリレベルと組織レベルの両方のタスクセンターにタスクデータが生成されます。タスクはステータスに応じて「作成者は自分」「自分が処理する」「自分が処理した」「CC宛先」に分類されます。プロセスの進行に伴い、これらのデータはYiDA自身のサービスによって保存・更新・照会されます。
+
+YiDA専用版をご利用の組織は、統合センターの企業承認タスクメッセージ統合機能を使用して、YiDAサービスを社内のタスクセンターやTo-Doシステムに接続できます。アプリのプロセスがタスクを生成または更新すると、YiDAは組織側のサービスを呼び出してデータをプッシュします。
+
+コネクタを設定すると、社内のあらゆるYiDAアプリで発生するすべての承認タスクが、以下に示す登録済みのサービスアドレスへ自動的にプッシュされます。組織は該当するサービスコールバック内で、必要に応じてYiDAの承認関連イベントを選択的に処理・利用できます。
+
+## **利用方法**
+
+### **前提条件**
+
+1. 組織がYiDA専用版を利用していること。
+2. YiDAから呼び出せるHTTPベースのサービスを公開できる自社サービスシステムを保有していること。
+3. サービスがYiDAのコールバック形式要件を満たしていること。
+4. サービスがネットワーク経由でアクセス可能であること。
+
+### **統合の流れ**
+
+#### **HTTPコネクタの作成**
+
+対象組織内でHTTPコネクタを作成し、以下の手順で接続先サービスを設定します。
+
+インターフェースサービスごとに1コネクタ・1アクションを個別に作成することも、1つのコネクタ内に複数のアクションを作成して異なるインターフェースサービスを表現することもできます。
+
+- 承認タスクの作成・完了・キャンセル・削除・CCに対応する5つのコネクタアクションを設定します。Webhookと同様に、これらのイベントがトリガーされると、YiDAシステムは登録済みアドレス www.yourCorpService.com/xx-interface を自動的にコールバックします。
+
+#### **コネクタアクションの追加**
+
+コネクタアクションの作成手順については、以下を参照してください。
+
+[https://docs.aliwork.com/docs/yida_support/wtwabe/zevvr1/_1/zbq17y](/ja/yida/platform-admin/zbq17y)
+
+備考：専用版タスクセンターのコールバックサービスを呼び出す際、インターフェースには既に署名検証機構が組み込まれています。コネクタアクションを作成する際は「認証なし」を選択できます。それでもコネクタ認証が必要な場合は、コネクタのドキュメントに従ってください。
+
+以下のセクションでは、専用版タスクセンターが必要とする情報について説明します。
+
+##### **コネクタアクション：タスクの作成**
+
+- HTTP メソッド：POST
+- リクエストパラメータ：
+
+- レスポンス：特別な要件はありません。
+
+```text
+自分が作成者となるタスクが生成された際に返されるタスク詳細データのサンプル:
+{
+  "actionerId": null,
+  "actionerName": null,
+  "appType": "APP_RY60OCRF33Z7534***",
+  "createTime": 1693462062502,
+  "currentActivityInstances": null,
+  "dataMap": {
+    "cascadeDateField_l4sbkqco": null,
+    "selectField_l523dlqi_value": null,
+    "selectField_l523dlqi_value_en_us": null,
+    "multiSelectField_l523dlqk": null,
+    "numberField_l4s57vma": "1",
+    "selectField_l523dlqi": null,
+    "imageField_llyrklcy": "",
+    "textareaField_l4s57vmf": "",
+    "textField_l4s57vm9": "",
+    "tableField_l4s57vmb": "[{\"numberField_li9yr6gs\":\"\",\"textField_l4s57vmc\":\"\",\"textField_l4s57vmd\":\"\",\"textField_l51tzkqs\":\"\"}]"
+  },
+  "dataType": "pinst",
+  "deep3": true,
+  "finishTime": null,
+  "formInstanceId": "65ab8549-aa06-486a-b5b7-8abe845303a5",
+  "formUuid": "FORM-MT866EA1X3N9W79GDQM2HB400M413OS76A2GL51",
+  "instValue": "***"
+  "modifiedTime": 1693462062502,
+  "modifyUserAvatar": "",
+  "modifyUserDisplayName": "",
+  "modifyUserId": "01690741902689",
+  "openAvatar": "",
+  "openId": "",
+  "openNickname": "",
+  "openSource": "",
+  "originatorAvatar": "https://static.dingtalk.com/media/lALPDfJ6d8zhRL_NAbjNAbg_440_440.png",
+  "originatorCorpId": "ding5d17e3add038d44535c2f4657eb6378f",
+  "originatorCorpName": "",
+  "originatorDisplayName": "山田花子",
+  "originatorId": "01690741902689",
+  "processApprovedResult": "",
+  "processApprovedResultText": "",
+  "processCode": "TPROC--9BC6687125N9XAJ8873I0864QY122BZ96A2GL1",
+  "processId": 0,
+  "processInstanceId": "",
+  "processInstanceStatus": "",
+  "processInstanceStatusText": "",
+  "processName": "",
+  "serialNo": "",
+  "title": "**による1名の来訪申請",
+  "version": 10
+}
+```
+
+##### **コネクタアクション：タスクの完了**
+
+- HTTP メソッド：POST
+- リクエストパラメータ：
+
+- レスポンス：特別な要件はありません。
+
+##### コネクタアクション：タスクのキャンセル
+
+- HTTP メソッド：POST
+- リクエストパラメータ：
+
+- レスポンス：特別な要件はありません。
+
+##### **コネクタアクション：タスクの削除**
+
+備考：タスクの削除は現状、インスタンスが削除された場合にのみ発生します。そのため、サービスをコールバックする際にはインスタンスIDがパラメータとして渡されます。
+
+- HTTP メソッド：POST
+- リクエストパラメータ：
+
+- レスポンス：特別な要件はありません。
+
+#### **署名処理**
+
+サービスコールバックインターフェースの署名では、MD5を使用してリクエストパラメータを暗号化します。暗号化された結果はsignパラメータを介してサービスプロバイダーに渡されます。署名キーとしてYiDAアプリのsystemTokenが必要です。
+
+1. すべてのリクエストパラメータのキーをString.CASE_INSENSITIVE_ORDERで並び替えます。
+2. キーの順序に従って対応するパラメータ値を連結し、暗号化対象の文字列を生成します。
+3. ステップ2で生成した文字列にsystemTokenを追加します。
+4. ステップ3の文字列をUTF-8文字セットとMD5アルゴリズムで暗号化します。
+
+<Warning>
+⚠️ 備考：systemTokenはAppSecretです。「アプリ設定」＞「デプロイと運用」＞「AppSecret」から確認できます。
+</Warning>
+
+### 同期ポリシーの設定
+
+- 統合センターで、既存の承認コネクタを設定します。
+
+## 実施結果
+
+一例として、以下の図は、ある業界の顧客がYiDA専用版の統合・開発機能を活用して、複数プラットフォーム上のさまざまなYiDAシステムアプリと社内の業務・生産・管理システムにまたがるBPMプロセスを統一し、承認タスクを自社構築の承認タスクセンターに集約した事例を示しています。
+
+## FAQ
+
+**Q：統合センターを設定した後、過去データにも適用されますか？**
+
+A：適用されません。新規データにのみ適用されます。
+
+**Q：統合センターがプッシュしたサービスが、顧客側システムの障害によりエラーを返した場合、YiDAは関連ログを照会する手段を提供していますか？プッシュ失敗時のフォールバックリトライ機構はありますか？**
+
+A：YiDA統合センターはイベント駆動型です。現時点でフォールバック機構は提供されておらず、システムにもリトライロジックは組み込まれていません。

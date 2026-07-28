@@ -1,0 +1,765 @@
+---
+title: "YiDA JS-API"
+description: "The complete YiDA JS-API reference. Covers every API you can call directly from the JS panel and variable bindings, including data fetching, component operations, and page interactions, with sample code for each API."
+polished: true
+---
+
+This document introduces the APIs that you can call directly from the JS panel or the variable-binding dialog on the YiDA platform, along with their usage. Every API is accompanied by a sample that demonstrates its concrete usage. In each sample, the code is wrapped in the following function structure to simulate a real-world scenario of using the action panel (in a real environment, you are free to name the wrapping function as you like).
+```js
+export function someFunctionName() {
+  ...
+}
+```
+
+## Before You Begin
+
+The following APIs require a basic knowledge of `JavaScript`. You should be familiar with common data types, declaring and using variables and functions, and know how to avoid a few common `JavaScript` pitfalls.
+
+Take `this.state`, `this.setState`, and `this.$()`, which appear frequently in the APIs below, as an example. When `this` appears at the top level of an event handler function, it points to the correct execution context, so you can read from and write to Data Sources and read values from other form fields without issue:
+
+```js
+export function setSomeValue() {
+  const status = this.state.status;
+  const newStatus = status + 1;
+  this.setState({ status: newStatus });
+  this.$('numberField_xxx').setValue(newStatus);
+}
+```
+
+However, when `this` appears inside a nested function, make sure it still points to the right context:
+
+```js
+export function setSomeValue(value) {
+  // Save a reference to this
+  const that = this;
+
+  this.dataSourceMap.xxx.load(function (ret) {
+    // WRONG!!! function creates a new execution context.
+    // this has changed here and cannot read Data Sources or access other fields.
+    this.$('numberField_xxx').setValue(ret);
+
+    // Workaround: use the correct reference saved outside instead
+    that.$('numberField_xxx').setValue(ret);
+  });
+
+  // Or use an arrow function to prevent this from being rebound
+  this.dataSourceMap.xxx.load((ret) => {
+    // Arrow functions do not create a new context, so this is preserved
+    this.$('numberField_xxx').setValue(ret);
+  });
+}
+```
+
+Recommended `JavaScript` getting-started guides:
+* [JavaScript on MDN](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
+* [JavaScript Reference - Expressions and Operators - this](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/this)
+* [Stack Overflow](https://stackoverflow.com/)
+
+## Global Variable APIs
+YiDA's design pattern is largely inspired by React. It provides global variables for page-level state management, along with APIs that trigger a page re-render (see the [global variable documentation](/open/yida/guide/concept/state) for details).
+
+### this.state.xxx
+Get the value of a global variable (identical to the React API).
+
+`xxx` is typically the variable name of a page-level Data Source.
+
+Example:
+```js
+export function getState() {
+  // Read the value of a page-level global variable and print it via console
+  const status = this.state.status;
+  console.log( `status: ${status}` )
+}
+```
+
+### this.setState()
+Set the value of a global variable and trigger a page re-render (largely identical to the React API).
+
+**Note: Do not modify a variable using `this.state.a = b`. Compatibility is not guaranteed in future updates, and such code may stop working.**
+
+Example:
+```js
+export function setStateValue() {
+  // Set a page-level global variable and trigger a page re-render
+  this.setState({
+    status: 'loading',
+    text: 'Loading...'
+  });
+}
+```
+
+## Remote Data APIs
+YiDA supports configuring remote Data Sources and provides APIs that trigger remote Data Source calls from JS (see the [remote API documentation](/open/yida/guide/concept/datasource) for details).
+
+### this.dataSourceMap.xxx.load()
+Manually call the specified remote API. `xxx` is the Data Source name configured in the Data Source panel. You can also pass request parameters; the parameters passed here are merged with the ones configured in the Data Source before the request is sent. `load` returns a Promise.
+
+Example:
+```js
+export function fetchData() { 
+  // Call the getDataList remote API configured in the Data Source with pageSize and page parameters.
+  // On success, print the result in the console; on failure, show a toast.
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10, 
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error', 
+      title: 'Request failed!'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+Reload all remote APIs whose auto-load option is set to true. This method also returns a Promise.
+
+Example:
+```js
+export function reload() {
+  // Re-execute all initial requests and show a toast on success
+  this.reloadDataSource().then(res => {
+    this.utils.toast({
+      type: 'success', 
+      title: 'Refreshed successfully!'
+    })；
+  });
+}
+
+```
+
+## JS Invocation APIs
+YiDA provides the action panel for authoring JS code. Functions in the action panel can be bound to variables or actions, and can also invoke each other.
+
+### this.methodName()
+YiDA provides a way to invoke other JS functions in the action panel. Call `this.xxx()`, where `xxx` is the name of the other function.
+
+Example:
+```js
+export function hello(params) {
+  this.utils.toast({
+    title: `hello ${params}` , 
+    type: 'success'
+  })
+}
+
+export function onClickInvoke(){
+  const value = this.$('textField_k1u12o6l').getValue()
+  // Call another function defined in the action panel
+  this.hello(value)
+}
+```
+
+## Utility APIs
+YiDA provides many built-in utility functions that help you implement common features more easily.
+
+### this.utils.dialog()
+Open a dialog. The effect is shown below. The user must close it manually.
+
+YiDA uses [Fusion](https://fusion.design/) components under the hood, so you can configure any property supported by the Dialog component.
+[Documentation](https://fusion.design/pc/component/dialog?themeid=2#demo-api). The commonly used properties are listed below:
+
+| Parameter | Value | Default | Description |
+| :--- | :--- | :--- | :--- |
+| type | 'alert', 'confirm', 'show' | 'alert' | - |
+| title | (String) | - | - |
+| content | (String\|ReactNode) | - | HTML/JSX is also accepted for complex layouts |
+| hasMask | (Boolean) | true | Whether to display a mask |
+| footer | (Boolean) | true | Whether to display footer action buttons |
+| footerAlign | 'left', 'center', 'right' | 'right' | Alignment of footer actions |
+| footerActions | ['cancel', 'ok'], ['ok', 'cancel'], ['ok'], ['cancel'] | - | Type and order of footer actions |
+| onOk | (Func) | - | Callback when Confirm is clicked | 
+| onCancel | (Func) | - | Callback when Cancel is clicked |
+
+Example:
+```js
+export function popDialog(){
+  this.utils.dialog({
+    type: 'confirm', 
+    title: 'title', 
+    content: 'content', // Pass HTML/JSX for line breaks
+    onOk: () => { }, 
+    onCancel: () => { }, 
+  });
+}
+
+// Close the dialog manually
+export function closeDialog() {
+  // Capture the return value of dialog, which is an object
+  const dialog = this.utils.dialog({});
+
+  // Call the hide method on the returned object at the right moment to close the dialog
+  dialog.hide();
+}
+```
+
+### this.utils.formatter()
+A common formatter function for formatting dates, currency, phone numbers, and more.
+
+Example:
+```js
+export function format() {
+  // Format a date. Output: 2022-01-29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY-MM-DD');
+
+  // Format a date. Output: 2022/01/29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY/MM/DD');
+
+  // Format a date-time. Output: 2022-01-29 13:01:02
+  const formatDate2 = this.utils.formatter('date', new Date(), 'YYYY-MM-DD HH:mm:ss');
+
+  // Format currency. Output: 10, 000.99
+  const formatMoney = this.utils.formatter('money', '10000.99', ', ');
+  
+  // Format a phone number. Output: +86 1565 2988 282
+  const formatPhoneNumber = this.utils.formatter('cnmobile', '+8615652988282');
+
+  // Format a bank card number. Output: 1565 2988 2821 2233
+  const formatCardNumber = this.utils.formatter('card', '1565298828212233');
+}
+```
+
+### this.utils.getDateTimeRange(when, type)
+Get the start and end timestamps of the current or a specified date range.
+
+Both `when` and `type` are optional. By default it returns the start and end of the current day; you can also specify the date and range type.
+
+| Parameter | Value | Default | Description |
+| :--- | :--- | :--- | :--- |
+| when | timestamp or Date type | Current time `new Date()` | The specified date |
+| type | 'year', 'month', 'week', 'day', 'date', 'hour', 'minute', 'second' | 'day' | Range type to return |
+
+Example:
+```js
+export function search() {
+  const [dayStart, dayEnd] = this.utils.getDateTimeRange();
+  console.log( `dayStart: ${dayStart}, dayEnd: ${dayEnd}` );
+  // Print the start and end timestamps of the current day
+
+  const [monthStart, monthEnd] = this.utils.getDateTimeRange(new Date(), 'month');
+  console.log( `monthStart: ${monthStart}, dayEnd: ${monthEnd}` );
+  // Print the start and end timestamps of the current month
+}
+```
+
+### this.utils.getLocale()
+Get the current page locale.
+
+Example:
+```js
+export function locale() {
+  const locale = this.utils.getLocale();
+
+  console.log( `locale: ${locale}` );
+  // Output: locale: zh_CN
+}
+```
+
+### this.utils.getLoginUserId()
+Get the ID of the signed-in user.
+
+Example:
+```js
+export function getUserInfo() {
+  const userId = this.utils.getLoginUserId();
+  console.log( `userId: ${userId}` );
+  // Output: userId: 43314767738888
+}
+```
+
+### this.utils.getLoginUserName()
+Get the name of the signed-in user.
+
+Example:
+```js
+export function getUserInfo() {
+  const userName = this.utils.getLoginUserName();
+  console.log( `userName: ${userName}` );
+  // Output: userName: John Smith
+}
+```
+
+### this.utils.isMobile()
+Check whether the current environment is a mobile device.
+
+Example:
+```js
+export function someFunctionName() {
+  console.log('isMobile', this.utils.isMobile());
+}
+```
+
+### this.utils.isSubmissionPage()
+Check whether the current page is a data-submission page.
+
+Example:
+```js
+export function someFunctionName() {
+  console.log('isSubmissionPage', this.utils.isSubmissionPage());
+}
+```
+
+### this.utils.isViewPage()
+Check whether the current page is a data-view page.
+
+Example:
+```js
+export function someFunctionName() {
+  console.log('isViewPage', this.utils.isViewPage());
+}
+```
+
+### this.utils.loadScript()
+Dynamically load a remote script.
+
+Example:
+```js
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "http://jindo.dev.naver.com/collie",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### this.utils.openPage()
+Open a new page.
+
+In the DingTalk environment, the DingTalk API is used to open the new page for a smoother experience.
+
+Example:
+```js
+export function someFunctionName() {
+  this.utils.openPage('/workbench');
+}
+```
+
+### this.utils.previewImage()
+Preview an Image. This API provides a lightweight Image preview experience, as shown below:
+
+Example:
+```js
+export function previewImg() {
+  this.utils.previewImage({ current: 'https://img.alicdn.com/tfs/TB1JUnZ2GL7gK0jSZFBXXXZZpXa-260-192.png_.webp' });
+}
+```
+
+### this.utils.toast()
+Show a lightweight message. Compared with the Dialog, a toast is more lightweight and disappears automatically after a short delay, as shown below:
+
+Parameters:
+
+| Parameter | Value | Default | Description |
+| :--- | :--- | :--- | :--- |
+| type | 'success', 'warning', 'error', 'notice', 'help', 'loading' | 'notice' | - |
+| title | (String) | - | - |
+| size | 'medium', 'large' | 'medium' | - |
+| duration | (Number) | - | Ignored when type is loading |
+
+Example:
+```js
+export function popToast(){
+  this.utils.toast({
+    title: 'success', 
+    type: 'success', 
+    size: 'large', 
+  })
+}
+
+// The close method can be invoked manually
+export function showLoadingToast() {
+  // Capture the return value, which is a close function
+  const close = this.utils.toast({
+    title: 'Loading', 
+    type: 'loading', 
+    size: 'large', 
+  });
+  
+  // Call the close function at the right moment
+  setTimeout(close, 3000);
+}
+```
+
+## Routing APIs
+YiDA provides APIs for retrieving routing information and navigating between pages. These APIs are built on top of [react-router](https://reactrouter.com/), so the navigation APIs are largely consistent with the react-router APIs. YiDA also offers a few additional routing extensions.
+
+### this.utils.router.push()
+Navigate to a new page and push the entry onto the routing stack, so the user can go back via the browser's Back button. The parameters of `push` are described below:
+
+```typescript
+function push(path: string, params?: object, blank?: boolean, isUrl?: boolean, type?: string) => void;
+```
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| path | string | Yes | The target address. It can be a full URL, a URL fragment, or a string composed of the pageID. If a slug is defined, the slug (page alias, not yet configurable in YiDA) takes precedence.<br/> When `isUrl` is `true`, the value is parsed as a URL; otherwise it is parsed as a `pageId` for navigation between internal pages. |
+| params | object | No | Query parameters appended to the target address. `{q: 'a', r: 'b'}` is equivalent to `?q=a&r=b`. |
+| blank | boolean | No | Whether to open in a new page. Default: `false`. |
+| isUrl | boolean | No | Whether the path is a `url`. Default: `false`. |
+| type | string | No | Optional values: `push` or `replace`. Navigate using push or replace semantics. |
+
+Example:
+```js
+export function pushUrl() {
+  // Navigate to a page with an injected fromSource parameter. Final URL: https://www.yidaapps.com?formSource=customPage
+  this.utils.router.push('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.replace()
+Replace the current page. Unlike `router.push`, this API replaces the current page instead of pushing a new one, so it cannot be reversed by the browser's Back button. Equivalent to:
+
+```js
+this.utils.router.push(path, params, false, false, 'replace');
+```
+
+Example:
+```js
+export function replaceUrl() {
+  // Navigate to a page with an injected fromSource parameter
+  this.utils.router.replace('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.getQuery()
+Get URL parameters of the current page. When a `key` is provided, return the corresponding value; otherwise return all URL parameters. Parameters of `getQuery`:
+```typescript
+function getQuery(key?: string, queryStr?: string) => Record<string, string> | string | undefined;
+```
+
+| Parameter | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| key | string | No | When a key is provided, return the corresponding value; otherwise return the entire object. |
+| queryStr | string | No | Default: `location.search + location.hash`, with `hash` overriding `search`. A custom query string in the form `'?a=1&b=2'` is also supported. |
+
+Example:
+```js
+export function getQuery() {
+  // Get the fromSource parameter from the URL
+  const fromSource = this.utils.router.getQuery('fromSource');
+  console.log( `fromSource: ${fromSource}` );
+}
+```
+
+### this.utils.router.stringifyQuery()
+Serialize URL parameters, converting an object into a URL query string.
+
+Example:
+```js
+export function stringifyQuery() {
+  // Serialize an object into URL query parameters and print via console
+  const params = {
+    name: 'yida', 
+    gender: 'm'
+  };
+  const urlStr = this.utils.router.stringifyQuery(params);
+  console.log( `urlParams: ${urlStr}` );
+  // Output: urlParams: name=yida&gender='m'
+}
+```
+
+## Common Component APIs
+Before diving into component-specific APIs, a few [concepts](/open/yida/guide/keywords) should be introduced up front:
+* Component unique identifier (fieldId) — YiDA assigns a unique identifier to every Component to distinguish Component instances. The identifier can be viewed in the Component property panel.
+* Component property (prop) — In YiDA, every Component exposes properties to enable different behaviors (similar to React props). Hover a control in the Component property panel to see the corresponding property name.
+
+Common Component APIs apply to every Component YiDA offers, and are mainly used to read or set Component properties.
+### this.$(fieldId).get(prop)
+Look up a Component by fieldId and read one of its property values. `fieldId` is the Component identifier and `prop` is the Component property name.
+
+**Note: Do not read a property value using `this.$(fieldId).xxx`. Compatibility is not guaranteed in future updates, and such code may stop working.**
+
+Example:
+```js
+export function getAttribute(){
+  // Get the content property of a Text component and print it in the console
+  const content = this.$('text_kyz78exo').get('content')
+  console.log( `text content: ${content}` );
+}
+```
+
+### this.$(fieldId).set(prop, value)
+Look up a Component by fieldId and set one of its property values. `fieldId` is the Component identifier, `prop` is the property name, and `value` is the value to set.
+
+**Note: Do not set a property value using `this.$(fieldId).xxx = xxx`. Compatibility is not guaranteed in future updates, and such code may stop working.**
+
+Example:
+```js
+export function setAttribute(){
+  // Set the maxLine property of a Text component
+  this.$('text_kyz78exo').set('maxLine', 5);
+}
+```
+
+## Form Component APIs
+Form components are the most important type of Component on the YiDA platform. They are typically used to collect Data — for example, text fields, single-choice, Multiselect, and dropdown selects. This section covers the APIs related to form components.
+
+### this.$(fieldId)
+Get a Component instance, where `fieldId` is the component unique identifier. Before calling a Component API, obtain the Component instance via `this.$(fieldId)` first.
+
+**Note: Do not access undocumented APIs or properties through `this.$(fieldId).xxx`. Anything not documented is a private internal implementation. Compatibility is not guaranteed in future updates, and such code may stop working.**
+
+### this.$(fieldId).getValue()
+Get the input value of the specified form component.
+
+Example:
+```js
+export function getValue(){
+  // Get the user input from a text field and print it in the console
+  const value = this.$('textField_kyz78exp').getValue();
+  console.log( `input value: ${value}` );
+}
+```
+
+### this.$(fieldId).setValue()
+Set the input value of the specified form component. Parameters of `setValue`:
+```typescript
+interface IOptions {
+  doNotValidate: boolean; // Whether to skip automatic validation. Default: false
+  formatted: boolean; // Whether the value has already been formatted. Default: false
+  triggerChange: boolean; // Whether to trigger the component's change event. Default: true
+};
+
+/**
+ * @param {any} value  The form value to set
+ * @param {IOptions} [options] Configuration options, optional
+ */
+function setValue(value: any, options?: IOptions) => void;
+```
+
+Example:
+```js
+export function setValue(){
+  // Set the text field value to "hello world"
+   this.$('textField_kyz78exp').setValue('hello world');
+}
+```
+
+### this.$(fieldId).reset()
+Reset the input value of the specified form component. Parameters of `reset`:
+```typescript
+/**
+ * @param {boolean} toDefault Whether to reset to the component's Default value. Default: true
+ */
+function reset(toDefault?: boolean) => void;
+
+```
+
+Example:
+```js
+export function reset() {
+  // Reset the text field value
+   this.$('textField_kyz78exp').reset();
+}
+```
+
+### this.$(fieldId).getBehavior()
+Get the current state of the specified form component. Possible states include:
+* **NORMAL** — normal state (editable).
+* **READONLY** — read-only state.
+* **DISABLED** — disabled state.
+* **HIDDEN** — hidden state.
+
+Example:
+```js
+export function getBehavior() {
+  // Get the state of the text field and print it
+  const behavior = this.$('textField_kyz78exp').getBehavior();
+  console.log( `text behavior: ${behavior}` );
+}
+```
+
+### this.$(fieldId).setBehavior()
+Set the state of the specified form component. Available states are described in the `getBehavior` section.
+
+Example:
+```js
+export function setBehavior() {
+  // Set the text field state to DISABLED
+  this.$('textField_kyz78exp').setBehavior('DISABLED');
+}
+```
+
+### this.$(fieldId).resetBehavior()
+Reset the state of the specified form component.
+
+Example:
+```js
+export function resetBehavior() {
+  // Reset the state of the text field
+  this.$('textField_kyz78exp').resetBehavior();
+}
+```
+
+### this.$(fieldId).validate()
+Run validation once on the specified form component. Parameters of `validate`:
+```typescript
+/**
+ * @param {Array|null} errors Error messages, or null if there are no errors
+ * @param {Object} values The form component values
+ */
+function ValidateCallback(errors: string[] | null, values: object | null) => void
+
+/**
+ * @param {Function} callback Validation callback, optional
+ */
+function validate(callback?: ValidateCallback) => void;
+```
+
+Example:
+```js
+export function validate() {
+  // Validate the text field. On failure, print errors and values in the console.
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+When a text field's validation rule is Phone number and validation fails, the following structure is printed:
+```json
+{
+  "errors": {
+    "textField_kyz78exp": {
+      "errors": [
+        "The text field is not a valid phone number format"
+      ]
+    }
+  }, 
+  "values": {
+    "textField_kyz78exp": "33"
+  }
+}
+```
+
+### this.$(fieldId).disableValid()
+Disable validation on the form component.
+
+Example:
+```js
+export function disableValid() {
+  this.$('textField_kyz78exp').disableValid();
+}
+```
+
+### this.$(fieldId).enableValid()
+Enable validation on the form component. Parameters of `enableValid`:
+```typescript
+/**
+ * @param {boolean} doValidate Whether to run validation immediately. Optional. Default: false
+ */
+function enableValid(doValidate?: boolean) => void;
+```
+
+Example:
+```js
+export function enableValid() {
+  // Enable validation on the text field and run it immediately
+  this.$('textField_kyz78exp').enableValid(true);
+}
+```
+
+### this.$(fieldId).setValidation()
+Set the validation rules on the form component. Parameters of `setValidation`:
+
+```typescript
+interface IRule {
+  type: string; // Validation type
+  param: any; // Parameter for the validation type
+  message: string; // Error message
+}
+
+/**
+ * @param {IRule[]} rules Validation rules. Required.
+ * @param {boolean} [doValidate] Whether to run validation immediately. Optional. Default: false
+ */
+function setValidation(rules: IRule[], doValidate?: boolean) => void;
+```
+
+Validation types supported by YiDA:
+
+| Supported validation rule | Attribute |
+| :--- | :--- |
+| Required | `{"type": "required"}` |
+| Minimum length | `{"type": "minLength", "param": "23" }` |
+| Maximum length | `{"type": "maxLength", "param": "23" }` |
+| Mail | `{"type": "email"}` |
+| Phone | `{"type": "mobile"}` |
+| URL | `{"type": "url"}` |
+| Minimum value | `{"type": "minValue", "param": "3"}` |
+| Maximum value | `{"type": "maxValue", "param": "3"}` |
+| Custom function | `{"type": "customValidate", "param": (value, rule) => { return ture; }}` |
+
+Example:
+```js
+export function setValidation() {
+  // Set validation rules on the text field: Required, maximum length 10, and numeric-only
+  this.$('textField_kyz78exp').setValidation([{
+    type: 'required'
+  }, {
+    type: 'maxLength', 
+    param: '10'
+  }, {
+    type: 'customValidate', 
+    param: (value, rule) => {
+      if(/^\d*$/.test(value)) {
+        return true;
+      }
+
+      return rule.message;
+    }, 
+    message: 'Only numbers are allowed'
+  }]);
+}
+```
+
+### this.$(fieldId).resetValidation()
+Reset the validation rules on the form component. Use it after `setValidation` to restore the previous rules. Parameters of `resetValidation`:
+```typescript
+/**
+ * @param {boolean} [doValidate] Whether to run validation immediately. Optional. Default: false
+ */
+function resetValidation(doValidate?: boolean) => void;
+```
+
+Example:
+```js
+export function resetValiation() {
+  // Reset the text field's validation rules and run validation immediately
+  this.$('textField_kyz78exp').resetValidation(true);
+}
+```
+
+## Dialog Component APIs
+YiDA provides a Dialog component for displaying content in a dialog window, along with APIs to control the Dialog's behavior.
+
+### this.$(fieldId).show()
+Show the specified Dialog. The API accepts a callback that fires after the Dialog is displayed.
+
+Example:
+```js
+export function openDialog() {
+  this.$('dialog_kyz78exr').show(() => {
+    console.log('Dialog is open');
+  });
+}
+```
+
+### this.$(fieldId).hide()
+Close the specified Dialog.
+
+Example:
+```js
+export function closeDialog() {
+  this.$('dialog_kyz78exr').hide();
+}
+```

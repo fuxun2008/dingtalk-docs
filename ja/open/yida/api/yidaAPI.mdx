@@ -1,0 +1,765 @@
+---
+title: "YiDA JS-API"
+description: "YiDA JS-API の完全リファレンス。JS パネルや変数バインディングから直接呼び出せる、データ取得・コンポーネント操作・ページインタラクションの API とサンプルコードを網羅的に解説します。"
+polished: true
+---
+
+本ドキュメントでは、YiDA プラットフォームの JS パネルまたは変数バインディングダイアログから直接呼び出せる API とその使用方法を紹介します。すべての API に、具体的な使用方法を示すサンプルが付属しています。各サンプルでは、アクションパネルを使用する実際のシナリオを模倣するため、以下の関数構造でコードをラップしています（実環境では、ラップする関数名は自由に命名できます）。
+```js
+export function someFunctionName() {
+  ...
+}
+```
+
+## 事前準備
+
+以下の API を使用するには、`JavaScript` の基本知識が必要です。一般的なデータ型、変数と関数の宣言・使用に精通し、`JavaScript` によくある落とし穴を回避する方法を理解している必要があります。
+
+以下の API に頻繁に登場する `this.state`、`this.setState`、`this.$()` を例にします。イベントハンドラー関数のトップレベルに `this` が現れる場合、正しい実行コンテキストを指しているため、データソースの読み書きや他のフォームフィールドの値の読み取りを問題なく行えます。
+
+```js
+export function setSomeValue() {
+  const status = this.state.status;
+  const newStatus = status + 1;
+  this.setState({ status: newStatus });
+  this.$('numberField_xxx').setValue(newStatus);
+}
+```
+
+ただし、ネストされた関数の中で `this` が現れる場合、依然として正しいコンテキストを指しているか確認する必要があります。
+
+```js
+export function setSomeValue(value) {
+  // this への参照を保存
+  const that = this;
+
+  this.dataSourceMap.xxx.load(function (ret) {
+    // 誤り！！！function は新しい実行コンテキストを生成します。
+    // ここでは this が変わっており、データソースの読み取りや他のフィールドへのアクセスができません。
+    this.$('numberField_xxx').setValue(ret);
+
+    // 回避策：外側で保存した正しい参照を使用します。
+    that.$('numberField_xxx').setValue(ret);
+  });
+
+  // または、アロー関数を使用して this の再バインドを防ぎます。
+  this.dataSourceMap.xxx.load((ret) => {
+    // アロー関数は新しいコンテキストを生成しないため、this が保持されます。
+    this.$('numberField_xxx').setValue(ret);
+  });
+}
+```
+
+推奨する `JavaScript` のはじめにガイド：
+* [MDN の JavaScript](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
+* [JavaScript リファレンス - 式と演算子 - this](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/this)
+* [Stack Overflow](https://stackoverflow.com/)
+
+## グローバル変数 API
+YiDA のデザインパターンは React から大きな影響を受けています。ページレベルの状態管理のためのグローバル変数と、ページの再レンダリングをトリガーする対応の API を提供しています（詳細は[グローバル変数ドキュメント](/ja/open/yida/guide/concept/state)を参照してください）。
+
+### this.state.xxx
+グローバル変数の値を取得します（React の API と同じです）。
+
+`xxx` は通常、ページレベルのデータソースの変数名です。
+
+例：
+```js
+export function getState() {
+  // ページレベルのグローバル変数の値を読み取り、console に出力します。
+  const status = this.state.status;
+  console.log( `status: ${status}` )
+}
+```
+
+### this.setState()
+グローバル変数の値を設定し、ページの再レンダリングをトリガーします（React の API とほぼ同じです）。
+
+**注意：`this.state.a = b` を使用して変数を変更しないでください。将来のアップデートで互換性が保証されず、コードが動作しなくなる可能性があります。**
+
+例：
+```js
+export function setStateValue() {
+  // ページレベルのグローバル変数を設定し、ページの再レンダリングをトリガーします。
+  this.setState({
+    status: 'loading',
+    text: '読み込み中...'
+  });
+}
+```
+
+## リモートデータ API
+YiDA はリモートデータソースの設定に対応しており、JS からリモートデータソースの呼び出しをトリガーする API を提供しています（詳細は[リモート API ドキュメント](/ja/open/yida/guide/concept/datasource)を参照してください）。
+
+### this.dataSourceMap.xxx.load()
+指定したリモート API を手動で呼び出します。`xxx` はデータソースパネルで設定したデータソース名です。リクエストパラメータを渡すこともでき、ここで渡されたパラメータはデータソースで設定されたものとマージされてからリクエストが送信されます。`load` は Promise を返します。
+
+例：
+```js
+export function fetchData() { 
+  // データソースに設定された getDataList リモート API を pageSize と page パラメータ付きで呼び出します。
+  // 成功時は console に結果を出力し、失敗時はトーストを表示します。
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10, 
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error', 
+      title: 'リクエストに失敗しました！'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+自動読み込みオプションが true に設定されたすべてのリモート API を再読み込みします。このメソッドも Promise を返します。
+
+例：
+```js
+export function reload() {
+  // すべての初期リクエストを再実行し、成功時にトーストを表示します。
+  this.reloadDataSource().then(res => {
+    this.utils.toast({
+      type: 'success', 
+      title: '更新に成功しました！'
+    })；
+  });
+}
+
+```
+
+## JS 呼び出し API
+YiDA は JS コードを記述するためのアクションパネルを提供しています。アクションパネル内の関数は変数やアクションにバインドでき、また相互に呼び出すこともできます。
+
+### this.methodName()
+YiDA はアクションパネル内の他の JS 関数を呼び出す方法を提供しています。`this.xxx()` を呼び出します。ここで `xxx` は他の関数の名前です。
+
+例：
+```js
+export function hello(params) {
+  this.utils.toast({
+    title: `hello ${params}` , 
+    type: 'success'
+  })
+}
+
+export function onClickInvoke(){
+  const value = this.$('textField_k1u12o6l').getValue()
+  // アクションパネルで定義された別の関数を呼び出します。
+  this.hello(value)
+}
+```
+
+## ユーティリティ API
+YiDA には、一般的な機能を簡単に実装できるよう、多くの組み込みユーティリティ関数が用意されています。
+
+### this.utils.dialog()
+ダイアログを開きます。効果は以下の通りです。ユーザーが手動で閉じる必要があります。
+
+YiDA は内部で [Fusion](https://fusion.design/) コンポーネントを使用しているため、Dialog コンポーネントがサポートするあらゆるプロパティを設定できます。
+[ドキュメント](https://fusion.design/pc/component/dialog?themeid=2#demo-api)。よく使用されるプロパティは以下の通りです。
+
+| パラメータ | 値 | デフォルト | 説明 |
+| :--- | :--- | :--- | :--- |
+| type | 'alert', 'confirm', 'show' | 'alert' | - |
+| title | (String) | - | - |
+| content | (String\|ReactNode) | - | 複雑なレイアウトの場合、HTML/JSX も受け付けます |
+| hasMask | (Boolean) | true | マスクを表示するかどうか |
+| footer | (Boolean) | true | フッターのアクションボタンを表示するかどうか |
+| footerAlign | 'left', 'center', 'right' | 'right' | フッターアクションの配置 |
+| footerActions | ['cancel', 'ok'], ['ok', 'cancel'], ['ok'], ['cancel'] | - | フッターアクションの種類と順序 |
+| onOk | (Func) | - | 確認ボタンをクリックした時のコールバック |
+| onCancel | (Func) | - | キャンセルをクリックした時のコールバック |
+
+例：
+```js
+export function popDialog(){
+  this.utils.dialog({
+    type: 'confirm', 
+    title: 'タイトル', 
+    content: 'コンテンツ', // 改行のために HTML/JSX を渡すこともできます
+    onOk: () => { }, 
+    onCancel: () => { }, 
+  });
+}
+
+// ダイアログを手動で閉じる
+export function closeDialog() {
+  // dialog の返り値を取得します（オブジェクトです）。
+  const dialog = this.utils.dialog({});
+
+  // 適切なタイミングで、返り値の hide メソッドを呼び出してダイアログを閉じます。
+  dialog.hide();
+}
+```
+
+### this.utils.formatter()
+日付、通貨、電話番号などをフォーマットするための一般的なフォーマッタ関数です。
+
+例：
+```js
+export function format() {
+  // 日付のフォーマット。出力: 2022-01-29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY-MM-DD');
+
+  // 日付のフォーマット。出力: 2022/01/29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY/MM/DD');
+
+  // 日時のフォーマット。出力: 2022-01-29 13:01:02
+  const formatDate2 = this.utils.formatter('date', new Date(), 'YYYY-MM-DD HH:mm:ss');
+
+  // 通貨のフォーマット。出力: 10, 000.99
+  const formatMoney = this.utils.formatter('money', '10000.99', ', ');
+  
+  // 電話番号のフォーマット。出力: +86 1565 2988 282
+  const formatPhoneNumber = this.utils.formatter('cnmobile', '+8615652988282');
+
+  // 銀行カード番号のフォーマット。出力: 1565 2988 2821 2233
+  const formatCardNumber = this.utils.formatter('card', '1565298828212233');
+}
+```
+
+### this.utils.getDateTimeRange(when, type)
+現在または指定した日付範囲の開始・終了タイムスタンプを取得します。
+
+`when` と `type` は共に任意です。デフォルトでは当日の開始と終了を返します。日付と範囲タイプを指定することもできます。
+
+| パラメータ | 値 | デフォルト | 説明 |
+| :--- | :--- | :--- | :--- |
+| when | タイムスタンプまたは日付種類 | 現在時刻 `new Date()` | 指定する日付 |
+| type | 'year', 'month', 'week', 'day', 'date', 'hour', 'minute', 'second' | 'day' | 返す範囲タイプ |
+
+例：
+```js
+export function search() {
+  const [dayStart, dayEnd] = this.utils.getDateTimeRange();
+  console.log( `dayStart: ${dayStart}, dayEnd: ${dayEnd}` );
+  // 当日の開始・終了タイムスタンプを出力
+
+  const [monthStart, monthEnd] = this.utils.getDateTimeRange(new Date(), 'month');
+  console.log( `monthStart: ${monthStart}, dayEnd: ${monthEnd}` );
+  // 当月の開始・終了タイムスタンプを出力
+}
+```
+
+### this.utils.getLocale()
+現在のページのロケールを取得します。
+
+例：
+```js
+export function locale() {
+  const locale = this.utils.getLocale();
+
+  console.log( `locale: ${locale}` );
+  // 出力: locale: zh_CN
+}
+```
+
+### this.utils.getLoginUserId()
+サインイン中のユーザーの ID を取得します。
+
+例：
+```js
+export function getUserInfo() {
+  const userId = this.utils.getLoginUserId();
+  console.log( `userId: ${userId}` );
+  // 出力: userId: 43314767738888
+}
+```
+
+### this.utils.getLoginUserName()
+サインイン中のユーザーの名前を取得します。
+
+例：
+```js
+export function getUserInfo() {
+  const userName = this.utils.getLoginUserName();
+  console.log( `userName: ${userName}` );
+  // 出力: userName: 山田太郎
+}
+```
+
+### this.utils.isMobile()
+現在の環境がモバイルデバイスかどうかを確認します。
+
+例：
+```js
+export function someFunctionName() {
+  console.log('isMobile', this.utils.isMobile());
+}
+```
+
+### this.utils.isSubmissionPage()
+現在のページがデータ送信ページかどうかを確認します。
+
+例：
+```js
+export function someFunctionName() {
+  console.log('isSubmissionPage', this.utils.isSubmissionPage());
+}
+```
+
+### this.utils.isViewPage()
+現在のページがデータ表示ページかどうかを確認します。
+
+例：
+```js
+export function someFunctionName() {
+  console.log('isViewPage', this.utils.isViewPage());
+}
+```
+
+### this.utils.loadScript()
+リモートスクリプトを動的に読み込みます。
+
+例：
+```js
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "http://jindo.dev.naver.com/collie",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### this.utils.openPage()
+新しいページを開きます。
+
+DingTalk 環境では、DingTalk API を使用して新しいページを開き、よりスムーズな体験を提供します。
+
+例：
+```js
+export function someFunctionName() {
+  this.utils.openPage('/workbench');
+}
+```
+
+### this.utils.previewImage()
+画像をプレビューします。この API は以下のような軽量な画像プレビュー体験を提供します。
+
+例：
+```js
+export function previewImg() {
+  this.utils.previewImage({ current: 'https://img.alicdn.com/tfs/TB1JUnZ2GL7gK0jSZFBXXXZZpXa-260-192.png_.webp' });
+}
+```
+
+### this.utils.toast()
+軽量なメッセージを表示します。Dialog と比較して、トーストはより軽量で、以下のように短時間経過後に自動的に消えます。
+
+パラメータ：
+
+| パラメータ | 値 | デフォルト | 説明 |
+| :--- | :--- | :--- | :--- |
+| type | 'success', 'warning', 'error', 'notice', 'help', 'loading' | 'notice' | - |
+| title | (String) | - | - |
+| size | 'medium', 'large' | 'medium' | - |
+| duration | (Number) | - | type が loading の場合は無視されます |
+
+例：
+```js
+export function popToast(){
+  this.utils.toast({
+    title: '成功', 
+    type: 'success', 
+    size: 'large', 
+  })
+}
+
+// close メソッドを手動で呼び出すことができます。
+export function showLoadingToast() {
+  // 返り値（close 関数）を取得します。
+  const close = this.utils.toast({
+    title: '読み込み中', 
+    type: 'loading', 
+    size: 'large', 
+  });
+  
+  // 適切なタイミングで close 関数を呼び出します。
+  setTimeout(close, 3000);
+}
+```
+
+## ルーティング API
+YiDA はルーティング情報の取得とページ間ナビゲーションのための API を提供しています。これらの API は [react-router](https://reactrouter.com/) の上に構築されているため、ナビゲーション API は react-router の API とほぼ一致しています。YiDA はさらに、いくつかのルーティング拡張も提供しています。
+
+### this.utils.router.push()
+新しいページに遷移し、エントリをルーティングスタックにプッシュします。これにより、ユーザーはブラウザの戻るボタンで前のページに戻れます。`push` のパラメータは以下の通りです。
+
+```typescript
+function push(path: string, params?: object, blank?: boolean, isUrl?: boolean, type?: string) => void;
+```
+
+| パラメータ | タイプ | 必須 | 説明 |
+| :--- | :--- | :--- | :--- |
+| path | string | はい | 遷移先アドレスです。完全な URL、URL フラグメント、または pageID で構成された文字列にできます。slug が定義されている場合、slug（ページの表示名、現在 YiDA では設定できません）が優先されます。<br/> `isUrl` が `true` の場合、値は URL として解析されます。それ以外の場合は内部ページ間の遷移のため `pageId` として解析されます。 |
+| params | object | いいえ | 遷移先アドレスに追加されるクエリパラメータです。`{q: 'a', r: 'b'}` は `?q=a&r=b` と同等です。 |
+| blank | boolean | いいえ | 新しいページで開くかどうか。デフォルト：`false` |
+| isUrl | boolean | いいえ | パスが `url` かどうか。デフォルト：`false` |
+| type | string | いいえ | 選択可能な値：`push` または `replace`。push または replace セマンティクスで遷移します。 |
+
+例：
+```js
+export function pushUrl() {
+  // fromSource パラメータを注入してページに遷移します。最終的な URL: https://www.yidaapps.com?formSource=customPage
+  this.utils.router.push('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.replace()
+現在のページを置き換えます。`router.push` とは異なり、この API は新しいページをプッシュするのではなく現在のページを置き換えるため、ブラウザの戻るボタンでは元に戻せません。以下と同等です。
+
+```js
+this.utils.router.push(path, params, false, false, 'replace');
+```
+
+例：
+```js
+export function replaceUrl() {
+  // fromSource パラメータを注入してページに遷移します。
+  this.utils.router.replace('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.getQuery()
+現在のページの URL パラメータを取得します。`key` が指定されている場合は対応する値を返し、それ以外の場合はすべての URL パラメータを返します。`getQuery` のパラメータ：
+```typescript
+function getQuery(key?: string, queryStr?: string) => Record<string, string> | string | undefined;
+```
+
+| パラメータ | タイプ | 必須 | 説明 |
+| :--- | :--- | :--- | :--- |
+| key | string | いいえ | key が指定されている場合は対応する値を返し、それ以外の場合はオブジェクト全体を返します。 |
+| queryStr | string | いいえ | デフォルト：`location.search + location.hash`（`hash` が `search` を上書きします）。`'?a=1&b=2'` 形式のカスタムクエリ文字列にも対応します。 |
+
+例：
+```js
+export function getQuery() {
+  // URL から fromSource パラメータを取得します。
+  const fromSource = this.utils.router.getQuery('fromSource');
+  console.log( `fromSource: ${fromSource}` );
+}
+```
+
+### this.utils.router.stringifyQuery()
+URL パラメータをシリアライズし、オブジェクトを URL クエリ文字列に変換します。
+
+例：
+```js
+export function stringifyQuery() {
+  // オブジェクトを URL クエリパラメータにシリアライズし、console に出力します。
+  const params = {
+    name: 'yida', 
+    gender: 'm'
+  };
+  const urlStr = this.utils.router.stringifyQuery(params);
+  console.log( `urlParams: ${urlStr}` );
+  // 出力: urlParams: name=yida&gender='m'
+}
+```
+
+## 共通コンポーネント API
+コンポーネント固有の API に入る前に、いくつかの[概念](/ja/open/yida/guide/keywords)を事前に紹介します。
+* コンポーネント一意識別子（fieldId）— YiDA はすべてのコンポーネントに一意識別子を割り当ててコンポーネントインスタンスを区別します。識別子はコンポーネントプロパティパネルで確認できます。
+* コンポーネントプロパティ（prop）— YiDA では、すべてのコンポーネントがさまざまな動作を可能にするためのプロパティを公開しています（React の props と同様）。コンポーネントプロパティパネル上のコントロールにホバーすると、対応するプロパティ名が表示されます。
+
+共通コンポーネント API は YiDA が提供するすべてのコンポーネントに適用され、主にコンポーネントプロパティの読み取りや設定に使用されます。
+### this.$(fieldId).get(prop)
+fieldId でコンポーネントを検索し、そのプロパティ値の 1 つを読み取ります。`fieldId` はコンポーネント一意識別子で、`prop` はコンポーネントプロパティ名です。
+
+**注意：`this.$(fieldId).xxx` を使用してプロパティ値を読み取らないでください。将来のアップデートで互換性が保証されず、コードが動作しなくなる可能性があります。**
+
+例：
+```js
+export function getAttribute(){
+  // テキストコンポーネントの content プロパティを取得し、console に出力します。
+  const content = this.$('text_kyz78exo').get('content')
+  console.log( `text content: ${content}` );
+}
+```
+
+### this.$(fieldId).set(prop, value)
+fieldId でコンポーネントを検索し、そのプロパティ値の 1 つを設定します。`fieldId` はコンポーネント一意識別子、`prop` はプロパティ名、`value` は設定する値です。
+
+**注意：`this.$(fieldId).xxx = xxx` を使用してプロパティ値を設定しないでください。将来のアップデートで互換性が保証されず、コードが動作しなくなる可能性があります。**
+
+例：
+```js
+export function setAttribute(){
+  // テキストコンポーネントの maxLine プロパティを設定します。
+  this.$('text_kyz78exo').set('maxLine', 5);
+}
+```
+
+## フォームコンポーネント API
+フォームコンポーネントは YiDA プラットフォームで最も重要なコンポーネントの種類です。通常、データの収集に使用されます。例えば、テキストフィールド、単一選択、複数選択、ドロップダウン選択などです。このセクションでは、フォームコンポーネントに関連する API について説明します。
+
+### this.$(fieldId)
+コンポーネントインスタンスを取得します。ここで `fieldId` はコンポーネント一意識別子です。コンポーネント API を呼び出す前に、通常は `this.$(fieldId)` を通じてコンポーネントインスタンスを取得する必要があります。
+
+**注意：`this.$(fieldId).xxx` を通じてドキュメント化されていない API やプロパティにアクセスしないでください。ドキュメント化されていないものは、内部のプライベートな実装です。将来のアップデートで互換性が保証されず、コードが動作しなくなる可能性があります。**
+
+### this.$(fieldId).getValue()
+指定したフォームコンポーネントの入力値を取得します。
+
+例：
+```js
+export function getValue(){
+  // テキストフィールドのユーザー入力を取得し、console に出力します。
+  const value = this.$('textField_kyz78exp').getValue();
+  console.log( `input value: ${value}` );
+}
+```
+
+### this.$(fieldId).setValue()
+指定したフォームコンポーネントの入力値を設定します。`setValue` のパラメータ：
+```typescript
+interface IOptions {
+  doNotValidate: boolean; // 自動検証をスキップするかどうか。デフォルト: false
+  formatted: boolean; // 値が既にフォーマット済みかどうか。デフォルト: false
+  triggerChange: boolean; // コンポーネントの change イベントをトリガーするかどうか。デフォルト: true
+};
+
+/**
+ * @param {any} value  設定するフォームの値
+ * @param {IOptions} [options] 設定オプション、任意
+ */
+function setValue(value: any, options?: IOptions) => void;
+```
+
+例：
+```js
+export function setValue(){
+  // テキストフィールドの値を "hello world" に設定します。
+   this.$('textField_kyz78exp').setValue('hello world');
+}
+```
+
+### this.$(fieldId).reset()
+指定したフォームコンポーネントの入力値をリセットします。`reset` のパラメータ：
+```typescript
+/**
+ * @param {boolean} toDefault コンポーネントのデフォルト値にリセットするかどうか。デフォルト: true
+ */
+function reset(toDefault?: boolean) => void;
+
+```
+
+例：
+```js
+export function reset() {
+  // テキストフィールドの値をリセットします。
+   this.$('textField_kyz78exp').reset();
+}
+```
+
+### this.$(fieldId).getBehavior()
+指定したフォームコンポーネントの現在の状態を取得します。取り得る状態：
+* **NORMAL** — 通常の状態（編集可能）。
+* **READONLY** — 閲覧のみの状態。
+* **DISABLED** — 無効の状態。
+* **HIDDEN** — 非表示の状態。
+
+例：
+```js
+export function getBehavior() {
+  // テキストフィールドの状態を取得して出力します。
+  const behavior = this.$('textField_kyz78exp').getBehavior();
+  console.log( `text behavior: ${behavior}` );
+}
+```
+
+### this.$(fieldId).setBehavior()
+指定したフォームコンポーネントの状態を設定します。使用可能な状態は `getBehavior` セクションで説明しています。
+
+例：
+```js
+export function setBehavior() {
+  // テキストフィールドの状態を DISABLED に設定します。
+  this.$('textField_kyz78exp').setBehavior('DISABLED');
+}
+```
+
+### this.$(fieldId).resetBehavior()
+指定したフォームコンポーネントの状態をリセットします。
+
+例：
+```js
+export function resetBehavior() {
+  // テキストフィールドの状態をリセットします。
+  this.$('textField_kyz78exp').resetBehavior();
+}
+```
+
+### this.$(fieldId).validate()
+指定したフォームコンポーネントで検証を 1 回実行します。`validate` のパラメータ：
+```typescript
+/**
+ * @param {Array|null} errors エラーメッセージ。エラーがない場合は null
+ * @param {Object} values フォームコンポーネントの値
+ */
+function ValidateCallback(errors: string[] | null, values: object | null) => void
+
+/**
+ * @param {Function} callback 検証コールバック、任意
+ */
+function validate(callback?: ValidateCallback) => void;
+```
+
+例：
+```js
+export function validate() {
+  // テキストフィールドを検証します。失敗時は console にエラーと値を出力します。
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+テキストフィールドの検証ルールが携帯番号で、検証に失敗した場合、以下の構造が出力されます。
+```json
+{
+  "errors": {
+    "textField_kyz78exp": {
+      "errors": [
+        "テキストフィールドは有効な電話番号形式ではありません"
+      ]
+    }
+  }, 
+  "values": {
+    "textField_kyz78exp": "33"
+  }
+}
+```
+
+### this.$(fieldId).disableValid()
+フォームコンポーネントの検証を無効にします。
+
+例：
+```js
+export function disableValid() {
+  this.$('textField_kyz78exp').disableValid();
+}
+```
+
+### this.$(fieldId).enableValid()
+フォームコンポーネントの検証を有効にします。`enableValid` のパラメータ：
+```typescript
+/**
+ * @param {boolean} doValidate 検証を直ちに実行するかどうか。任意。デフォルト: false
+ */
+function enableValid(doValidate?: boolean) => void;
+```
+
+例：
+```js
+export function enableValid() {
+  // テキストフィールドの検証を有効にし、直ちに実行します。
+  this.$('textField_kyz78exp').enableValid(true);
+}
+```
+
+### this.$(fieldId).setValidation()
+フォームコンポーネントの検証ルールを設定します。`setValidation` のパラメータ：
+
+```typescript
+interface IRule {
+  type: string; // 検証タイプ
+  param: any; // 検証タイプのパラメータ
+  message: string; // エラーメッセージ
+}
+
+/**
+ * @param {IRule[]} rules 検証ルール。必須。
+ * @param {boolean} [doValidate] 検証を直ちに実行するかどうか。任意。デフォルト: false
+ */
+function setValidation(rules: IRule[], doValidate?: boolean) => void;
+```
+
+YiDA がサポートする検証タイプ：
+
+| 対応する検証ルール | 属性 |
+| :--- | :--- |
+| 必須 | `{"type": "required"}` |
+| 最小長 | `{"type": "minLength", "param": "23" }` |
+| 最大長 | `{"type": "maxLength", "param": "23" }` |
+| メール | `{"type": "email"}` |
+| 電話番号 | `{"type": "mobile"}` |
+| URL | `{"type": "url"}` |
+| 最小値 | `{"type": "minValue", "param": "3"}` |
+| 最大値 | `{"type": "maxValue", "param": "3"}` |
+| カスタム関数 | `{"type": "customValidate", "param": (value, rule) => { return ture; }}` |
+
+例：
+```js
+export function setValidation() {
+  // テキストフィールドに検証ルールを設定：必須、最大長 10、数字のみ。
+  this.$('textField_kyz78exp').setValidation([{
+    type: 'required'
+  }, {
+    type: 'maxLength', 
+    param: '10'
+  }, {
+    type: 'customValidate', 
+    param: (value, rule) => {
+      if(/^\d*$/.test(value)) {
+        return true;
+      }
+
+      return rule.message;
+    }, 
+    message: '数字のみ入力可能です'
+  }]);
+}
+```
+
+### this.$(fieldId).resetValidation()
+フォームコンポーネントの検証ルールをリセットします。`setValidation` の後に使用して、以前のルールを復元します。`resetValidation` のパラメータ：
+```typescript
+/**
+ * @param {boolean} [doValidate] 検証を直ちに実行するかどうか。任意。デフォルト: false
+ */
+function resetValidation(doValidate?: boolean) => void;
+```
+
+例：
+```js
+export function resetValiation() {
+  // テキストフィールドの検証ルールをリセットし、直ちに検証を実行します。
+  this.$('textField_kyz78exp').resetValidation(true);
+}
+```
+
+## ダイアログコンポーネント API
+YiDA はダイアログウィンドウでコンテンツを表示するための Dialog コンポーネントと、Dialog の動作を制御する API を提供しています。
+
+### this.$(fieldId).show()
+指定した Dialog を表示します。この API は Dialog が表示された後に発火するコールバックを受け付けます。
+
+例：
+```js
+export function openDialog() {
+  this.$('dialog_kyz78exr').show(() => {
+    console.log('Dialog is open');
+  });
+}
+```
+
+### this.$(fieldId).hide()
+指定した Dialog を閉じます。
+
+例：
+```js
+export function closeDialog() {
+  this.$('dialog_kyz78exr').hide();
+}
+```

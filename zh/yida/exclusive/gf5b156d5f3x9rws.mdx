@@ -1,0 +1,231 @@
+---
+title: "集群模式本地OpenAPI开放"
+description: "本文介绍了如何在专属集群环境中调用宜搭OpenAPI，包括获取域名、AK/SK以及使用access_token进行接口调用的步骤。还提供了钉钉开放平台与集群版OpenAPI的主要区别和SDK配置方法。"
+---
+
+开启专属集群环境的应用数据保存在私有环境中，且无法出网，因此钉钉开放平台的宜搭 OpenAPI是无法获取数据的.需调用集群环境中的 OpenAPI 。集群环境中的 OpenAPI与钉钉开放平台的基本一致,只是host和所需的ak/sk不同.
+
+本文介绍在专属集群环境中如何调用宜搭OpenAPI。
+
+<Note>
+说明：
+
+目前专属宜搭已经将高频的数据服务接口进行了接口开放。基于2023.12月31的钉钉开放平台宜搭接口能力，共计 52 个 OpenAPI。
+</Note>
+
+## 调用流程
+
+集群环境中调用宜搭接口步骤与钉钉开放平台类似，钉钉开放平台相关OpenAPI都是调用api.dingtalk.com，集群的OpenAPI把api.dingtalk.com替换成自己组织的集群版宜搭域名即可。
+
+1. 获取你组织的宜搭专属集群的域名地址,比如域名为 ddyd.corp.com
+2. 获取当前组织的集群版对应的AK和SK
+
+<Note>
+联系自己组织的钉钉组织管理员,登录[钉钉开放平台](https://open-dev.dingtalk.com/),在企业内部应用中搜索 “宜搭专属集”，在名为【宜搭专属集群鉴权应用】中获取相关信息
+</Note>
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1741599532491-a69b855e-e356-4963-a4c7-ff0eeaebad63.png)
+</Frame>
+
+<Frame>
+  ![](https://yida-support.oss-cn-shanghai.aliyuncs.com/static/png/1741600105852-f065d450-cd17-443a-b2a1-c0cf8acc3576.png)
+</Frame>
+
+<Steps>
+  <Step title="步骤 1">
+    使用上一步获取的AK/SK调用 /v1.0/oauth2/accessToken 接口，获取应用的 access_token。接口请求参数请参考 获取企业内部应用的access_token 。
+
+    <Warning>
+    开放平台调用为 https://api.dingtalk.com/v1.0/oauth2/accessToken
+
+    假设你组织的宜搭域名为 https://本组织的私有版宜搭域名.com集群版调用则为 :
+
+    https://本组织的私有版宜搭域名.com集群/v1.0/oauth2/accessToken
+
+    access_token默认有效期2小时。
+    </Warning>
+  </Step>
+  <Step title="使用access_token调用宜搭接口">
+  </Step>
+</Steps>
+
+钉钉开放平台提供了Java、PHP、Python、.NET SDK供开发者使用。集群的OpenAPI也支持类似调用.
+
+<Note>
+企业内部应用、第三方企业应用的服务端SDK是相同的，点击以下任一链接均可下载。
+
+- 企业内部应用， 服务端SDK下载 。
+- 第三方企业应用， 服务端SDK下载 。
+</Note>
+
+5. 如果你使用的钉钉开放平台的SDK,可以做如下改动
+
+改动一:如果域名是http的,需要设置config.protocol = "http"
+
+改动二:需要显式设置client._endpoint为你组织宜搭的真实域名
+
+```java
+private static com.aliyun.dingtalkyida_2_0.Client createOpenApiClient() {
+        Config config = new Config();
+        config.regionId = "central";
+        config.protocol = "http";
+        config.connectTimeout = 60 * 1000;
+        config.readTimeout = 60 * 1000;
+        try {
+            com.aliyun.dingtalkyida_2_0.Client client = new com.aliyun.dingtalkyida_2_0.Client(config);
+          client._endpoint =  "本组织的私有版宜搭域名.com";
+            return client;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+```
+
+## 集群接口列表清单
+
+宜搭提供了丰富的接口开放能力，开发者通过API接口可以实现宜搭和企业业务系统打通。目前主要开放了表单、流程、应用领域的接口。
+
+<table>
+  <tr>
+    <td>所属模块</td>
+    <td>标准服务端API</td>
+    <td>说明</td>
+  </tr>
+  <tr>
+    <td rowSpan={7}>流程</td>
+    <td>[发起宜搭审批流程](https://open.dingtalk.com/document/orgapp/initiate-the-approval-process#)</td>
+    <td>发起宜搭审批流程到钉钉开放平台。</td>
+  </tr>
+  <tr>
+    <td>[删除流程实例](https://open.dingtalk.com/document/orgapp/delete-process-instance#)</td>
+    <td>删除流程实例。</td>
+  </tr>
+  <tr>
+    <td>[终止流程实例](https://open.dingtalk.com/document/orgapp/terminate-a-process-instance#)</td>
+    <td>终止流程实例。</td>
+  </tr>
+  <tr>
+    <td>[获取实例ID列表](https://open.dingtalk.com/document/orgapp/obtains-a-list-of-instance-ids#)</td>
+    <td>获取实例ID列表。</td>
+  </tr>
+  <tr>
+    <td>[批量获取流程实例列表](https://open.dingtalk.com/document/orgapp/queries-multiple-process-instances#)</td>
+    <td>根据流程实例ID，批量获取对应的流程实例详情。</td>
+  </tr>
+  <tr>
+    <td>[获取流程实例](https://open.dingtalk.com/document/orgapp/obtain-process-instance#)</td>
+    <td>获取宜搭的流程实例信息。</td>
+  </tr>
+  <tr>
+    <td>[根据流程实例ID获取流程实例](https://open.dingtalk.com/document/orgapp/queries-a-process-instance-based-on-its-id#)</td>
+    <td>根据指定流程实例ID获取流程实例详情。</td>
+  </tr>
+  <tr>
+    <td rowSpan={20}>表单</td>
+    <td>[获取指定应用下的表单列表](https://open.dingtalk.com/document/orgapp/depending-on-the-application-id-to-get-the-form-list#)</td>
+    <td>分页获取应用下的表单列表。</td>
+  </tr>
+  <tr>
+    <td>[获取表单内的组件信息](https://open.dingtalk.com/document/orgapp/get-form-field-information-based-on-form-uuid#)</td>
+    <td>根据表单ID，获取单据或流程表单内的组件信息。</td>
+  </tr>
+  <tr>
+    <td>[查询表单实例数据](https://open.dingtalk.com/document/orgapp/querying-form-instance-data#)</td>
+    <td>查询表单实例数据。</td>
+  </tr>
+  <tr>
+    <td>[保存表单数据](https://open.dingtalk.com/document/orgapp/save-form-data#)</td>
+    <td>新增一条无审批流程的宜搭表单实例。</td>
+  </tr>
+  <tr>
+    <td>[更新表单数据](https://open.dingtalk.com/document/orgapp/update-form-data#)</td>
+    <td>更新表单数据。</td>
+  </tr>
+  <tr>
+    <td>[查询表单数据](https://open.dingtalk.com/document/orgapp/query-form-data#)</td>
+    <td>通过表单实例ID查询表单数据。</td>
+  </tr>
+  <tr>
+    <td>[获取员工组件的值](https://open.dingtalk.com/document/orgapp/gets-the-value-of-the-employee-component#)</td>
+    <td>获取员工组件的值。</td>
+  </tr>
+  <tr>
+    <td>[获取表单组件定义列表](https://open.dingtalk.com/document/orgapp/get-a-list-of-form-component-definitions#)</td>
+    <td>获取表单组件定义列表。</td>
+  </tr>
+  <tr>
+    <td>[获取子表组件数据](https://open.dingtalk.com/document/orgapp/obtain-child-table-component-data#)</td>
+    <td>通过表单实例ID和子表组IDd获取子表组件数据。</td>
+  </tr>
+  <tr>
+    <td>[删除表单数据](https://open.dingtalk.com/document/orgapp/delete-form-data#)</td>
+    <td>删除表单数据。</td>
+  </tr>
+  <tr>
+    <td>[获取多个表单实例ID](https://open.dingtalk.com/document/orgapp/obtain-the-ids-of-multiple-form-instances#)</td>
+    <td>获取多个表单实例ID。</td>
+  </tr>
+  <tr>
+    <td>[批量获取表单实例数据](https://open.dingtalk.com/document/orgapp/obtain-multiple-form-instance-data#)</td>
+    <td>批量获取表单实例详情信息。</td>
+  </tr>
+  <tr>
+    <td>[批量删除表单实例](https://open.dingtalk.com/document/orgapp/delete-multiple-form-instances#)</td>
+    <td>批量删除表单实例数据。</td>
+  </tr>
+  <tr>
+    <td>[批量创建表单实例](https://open.dingtalk.com/document/orgapp/create-multiple-form-instances#)</td>
+    <td>批量创建表单实例数据。</td>
+  </tr>
+  <tr>
+    <td>[批量更新表单实例内的组件值](https://open.dingtalk.com/document/orgapp/batch-update-of-component-values-in-form-instances#)</td>
+    <td>根据宜搭表单实例Id，批量更新宜搭表单实例的组件值。</td>
+  </tr>
+  <tr>
+    <td>[新增或更新表单实例](https://open.dingtalk.com/document/orgapp/add-or-update-form-instances#)</td>
+    <td>使用筛选条件新增或更新表单实例。</td>
+  </tr>
+  <tr>
+    <td>[通过高级查询条件获取表单实例数据（包括子表单组件数据）](https://open.dingtalk.com/document/orgapp/query-form-instances-using-advanced-search-conditions#)</td>
+    <td>使用筛选条件获取表单实例详情。</td>
+  </tr>
+  <tr>
+    <td>[通过高级查询条件获取表单实例数据（不包括子表单组件数据）](https://open.dingtalk.com/document/orgapp/obtain-form-instance-data-using-advanced-query-conditions-excluding-subform#)</td>
+    <td>使用筛选条件获取表单实例详情，不包括子表单组件数据。</td>
+  </tr>
+  <tr>
+    <td>[通过表单实例数据批量更新表单实例](https://open.dingtalk.com/document/orgapp/update-multiple-form-instances-with-the-form-instance-data#)</td>
+    <td>根据宜搭表单组件数据，批量更新表单实例信息。</td>
+  </tr>
+  <tr>
+    <td>[查询表单的变更记录](https://open.dingtalk.com/document/orgapp/change-records-of-query-forms#)</td>
+    <td>查询表单的变更记录</td>
+  </tr>
+  <tr>
+    <td rowSpan={5}>审批任务</td>
+    <td>[获取审批记录](https://open.dingtalk.com/document/orgapp/queries-an-approval-record#)</td>
+    <td>获取审批记录。</td>
+  </tr>
+  <tr>
+    <td>[同意或拒绝宜搭审批任务](https://open.dingtalk.com/document/orgapp/execute-approval-tasks#)</td>
+    <td>同意或拒绝宜搭审批任务。</td>
+  </tr>
+  <tr>
+    <td>[转交任务](https://open.dingtalk.com/document/orgapp/transfer-tasks#)</td>
+    <td>转交任务。</td>
+  </tr>
+  <tr>
+    <td>[提交评论](https://open.dingtalk.com/document/orgapp/submit-comment#)</td>
+    <td>提交表单或流程实例下的评论。</td>
+  </tr>
+  <tr>
+    <td>[批量查询宜搭表单实例的评论](https://open.dingtalk.com/document/orgapp/batch-query-of-comments-appropriate-for-form-instances#)</td>
+    <td>批量查询宜搭表单下的所有评论。</td>
+  </tr>
+  <tr>
+    <td>应用</td>
+    <td>[查询宜搭应用列表](https://open.dingtalk.com/document/orgapp/query-the-application-list#)</td>
+    <td>查询组织下的宜搭应用列表。</td>
+  </tr>
+</table>
