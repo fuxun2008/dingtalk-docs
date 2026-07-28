@@ -1,0 +1,97 @@
+---
+title: "フォームバリデーション"
+description: "YiDA のフォームバリデーション機能について解説します。各フォームコンポーネントに組み込まれた検証ルールから、カスタム検証関数の記述方法まで、送信データの整合性を確保し、不正データの混入を防ぐ実装方法を紹介します。"
+polished: true
+---
+
+フォームは YiDA で最もよく利用されるシナリオです。フォームを扱う際には、フォームフィールドの検証が頻繁に必要となります。YiDA プラットフォームでは、各フォームコンポーネントに標準搭載された検証ルールに加え、カスタムフォームフィールド検証機能も提供しており、フォームデータの品質管理と不正データの送信防止に役立ちます。
+
+送信データが検証に失敗した場合は、フォームフィールドの下にエラーメッセージが表示され、送信がブロックされます。以下のとおりです。
+
+## バリデーションの設定
+
+YiDA プラットフォームでは、2 種類のフォームバリデーション方式を提供しています。
+
+### 組み込み検証ルール
+
+YiDA では、各フォームコンポーネントによく使われる検証ルールを標準搭載しています。ルールを設定して有効化するだけで利用可能です。例えば、上記の最低年齢設定は、以下の設定で簡単に実現できます。
+
+### カスタム検証ルール
+
+組み込みのフォームフィールド検証では、すべてのシナリオをカバーしきれない場合があります。そこで YiDA では、各フォームコンポーネントにカスタムルール設定を用意しており、関数によって検証結果を制御できます。カスタム検証ルール関数は以下のように定義します。
+
+```ts
+// value はフォームフィールドの現在の値です。検証が通過するかどうかを示す真偽値を返します
+function validateRule(value: any): boolean;
+```
+
+例えば、テキスト入力フィールドのコンテンツが「杭州」で始まるかどうかを検証するには、次のように記述します。
+
+```js
+// 値が「杭州」で始まるかどうか
+function validateRule(value) {
+  if (/^杭州/.test(value)) {
+    return true;
+  }
+  return false;
+```
+
+## API
+フォームバリデーションは、フォーム送信時に自動的にトリガーされるだけでなく、[フロントエンド API](/ja/open/yida/api/yidaAPI#thisfieldidvalidate) を通じて手動でトリガーすることもできます。以下のとおりです。
+
+```js
+export function validate() {
+  // 入力フィールドコンポーネントに対して検証を実行します。検証に失敗した場合、エラーと値をコンソールに出力します
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+
+## よく使うカスタムバリデーション
+### 銀行カード番号の検証
+#### カード番号の桁数検証
+カード番号は 16 桁または 19 桁である必要があります。
+
+```js
+function validateRule(value) {
+  return value && /^([0-9]{16}|[0-9]{19})$/.test(value);
+}
+```
+
+#### カード番号の妥当性検証
+[**Luhn アルゴリズム**](https://baike.baidu.com/item/Luhn%E7%AE%97%E6%B3%95/22799984) を使用して検証します。
+
+```js
+function validateRule(value) {
+  if (value && /^([0-9]{16}|[0-9]{19})$/.test(value)) {
+    let total = 0;
+    value.split('').reverse().forEach((item, idx) => {
+      const num = parseInt(item, 10);
+      total += idx % 2 ? 2 * num - (num > 4 ? 9 : 0) : num;
+    });
+    if (total === 0) {
+      return false;
+    }
+    return total % 10 === 0;
+  }
+  return false;
+}
+```
+
+### 身分証番号の検証
+
+```js
+function validateRule(value) {
+  if (value && value.length === 18) {
+    const coeff = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    const laststr = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+    let total = 0;
+    for(let i = 0; i < 17; ++ i) {
+      total+= parseInt(value[i], 10) * coeff[i];
+    }
+    return value[17] === laststr[total % 11];
+  }
+  return false;
+}
+```

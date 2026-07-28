@@ -1,0 +1,119 @@
+---
+title: "Apache ECharts の使用"
+description: "YiDA のカスタムページに ECharts.js などの外部 JS ライブラリをインポートしてフォームデータを可視化する手順を解説。標準コンポーネントの範囲を超えたチャート表現を実現します。"
+polished: true
+---
+
+## ユースケース
+
+YiDA のカスタムページで、YiDA コンポーネントライブラリに含まれていないコンポーネント（ECharts のチャートコンポーネントなど）を使用したい場合があります。開発者は ECharts.js をカスタムページにインポートすることで、YiDA 内部のデータを可視化できます。本チュートリアルでは、外部 JS ライブラリをカスタムページにインポートし、複雑なシナリオの要件に対応する方法を解説します。
+
+## 動画チュートリアル
+
+## 手順
+
+### 手順 1：JSX コンポーネントの属性設定
+
+カスタムページを作成し、コンポーネントライブラリから `JSX` コンポーネントを中央のキャンバスにドラッグします。続いて id 属性とスタイルを設定します。
+
+手順：
+
+1. ページ上の JSX コンポーネントを選択し、右側の属性パネルで「Edit JSX Code」ボタンをクリックします。
+2. div の後ろに `id="main"` フィールドを追加します。
+3. 右側の「Style」タブをクリックし、「Source Editing」を選択して `#main { height: 400px }` を入力します。
+
+下図のとおりです：
+
+### 手順 2：didMount ライフサイクルをバインドしてリモート JS リソースを読み込む
+
+ページの didMount ライフサイクルで CDN から JS リソースを読み込めます（カスタムページのライフサイクルの詳細については、[ドキュメント](/ja/open/yida/guide/concept/lifecycle)を参照してください）。以下のコードをカスタムページのアクションパネルの didMount セクションに直接コピーします。下図のとおりです：
+
+loadScript メソッドのコードは以下のとおりです：
+
+```js
+// loadScript メソッド：script タグを作成して外部 JS をインポートし、成功後に高速開発コードを実行します
+export function loadScript() {
+  // script タグを作成して echarts.js をインポート
+  // 非同期コードが成功した場合は resolve(...) を呼び出し、失敗した場合は reject(...) を呼び出します
+  new Promise((resolve, reject) => {
+    const src = 'https://g.alicdn.com/code/lib/echarts/5.3.0/echarts.min.js';
+    const script = document.createElement('script');
+    script.setAttribute('type', 'text/javascript');
+    script.src = src;
+    document.body.appendChild(script);
+    // script タグの onload イベントは、外部 js ファイルの読み込みと実行が完了した後にのみトリガーされます
+    script.onload = () => {
+      resolve('成功');
+    };
+    script.onerror = reject;
+  }).then(() => {
+    // インポート成功後にレーダーチャートの js を読み込みます
+    radar();
+  });
+}
+```
+
+### 手順 3：ECharts でレーダーチャートを描画
+
+上記の JS 実装から、リモート JS リソースの読み込み完了後に `radar` 関数を実行してレーダーチャートを描画していることがわかります。アクションパネルに radar 関数を追加し、手順 1 で作成した JSX コンポーネント上にレーダーチャートを描画します。レーダーチャートの具体的な使用方法については、[ECharts ドキュメント](https://echarts.apache.org/zh/index.html)を参照してください。
+
+radar メソッドのコードは以下のとおりです：
+
+```js
+// レーダーチャートの js メソッド
+export function radar() {
+  // レーダーチャートの js
+
+  var chartDom = document.getElementById('main');
+  chartDom.style.height = '400px';
+  // ECharts 用にサイズ（幅と高さ）を持つ DOM を準備し、JSX コンポーネントのスタイルで幅と高さを設定します
+  // 準備した DOM に基づいて echarts インスタンスを初期化します
+  var myChart = echarts.init(chartDom);
+  // チャートの設定とデータを指定します
+  var option;
+  option = {
+    // data は変数のデータソースを使用するか、直接記述することもできます
+    title: {
+      text: '社員の総合能力',
+    },
+    legend: {
+      data: state.nameArr,
+      // data: ["YiDA-ly"]
+    },
+    radar: {
+      // shape: 'circle',
+      indicator: [
+        { name: '業績', max: 100 },
+        { name: '総合能力', max: 100 },
+        { name: '反応力', max: 100 },
+        { name: '専門能力', max: 100 },
+        { name: '判断力', max: 100 },
+        { name: 'サービス力', max: 100 },
+      ],
+    },
+    series: [
+      {
+        name: '社員の総合能力',
+        type: 'radar',
+        data: state.dataArr,
+        // data: [
+        //   {
+        //     value: [80, 85, 90, 90, 88, 92],
+        //     name: 'YiDA-ly'
+        //   }
+        // ]
+      },
+    ],
+  };
+  // 指定した設定とデータでチャートを表示します
+  option && myChart.setOption(option);
+}
+```
+
+### 手順 3：データ変数のバインド
+
+上記の radar メソッドから、state から `nameArr` と `dataArr` の 2 つの変数を読み取っていることがわかります。そのため、レーダーチャート用のデータ変数を設定する必要があります。下図のとおりです：
+
+## 表示効果
+
+公式の [ECharts インポート例](https://docs.aliwork.com/docs/yida_subject/_1/cv1rpl1oi5eqlea9)にアクセスして、効果と具体的な実装をご確認いただけます。最終的な表示効果は以下のとおりです：

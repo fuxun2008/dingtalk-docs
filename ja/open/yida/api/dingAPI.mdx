@@ -1,0 +1,64 @@
+---
+title: "DingTalk JSAPI"
+description: "YiDA ページで DingTalk JSAPI を呼び出す方法を解説します。ネイティブダイアログ、デバイス情報、QR コードスキャンなどの機能を活用し、より豊かなクライアントサイド体験を実現する手順を紹介します。"
+polished: true
+---
+
+DingTalk は、ネイティブダイアログ、デバイス情報、QR コードスキャンなど、幅広い JSAPI 機能を提供しています。YiDA 開発者はこれらのネイティブ API 機能を活用することで、より優れたユーザー体験を実現できます。
+
+* [DingTalk JSAPI 機能一覧](https://open.dingtalk.com/document/orgapp/jsapi-overview-client-org)
+* DingTalk 開発者向けの基礎知識については、[基本概念](/ja/open/dingstart/basic-concepts-beta)を参照してください。
+
+<Warning>
+DingTalk JSAPI を呼び出す際は、以下の点にご注意ください。
+* YiDA アプリでは `window.dd` の存在は保証されません（現時点ではモバイルクライアントサイドのみがレガシーリソースを読み込みます）。手動で読み込んでください。
+* YiDA アプリでは、`dd.config` を設定しなくても認証が必要な API を呼び出せます。これらの API の使用には十分ご注意ください。
+* JSAPI の呼び出し時に必要な `corpId` パラメータは、`const { corpId } = window.pageConfig || {};` で取得できます。
+</Warning>
+
+## 使用ガイド
+
+### フローノード 1：DingTalk JSAPI リソースを非同期で読み込む
+YiDA ページでは `window.dd` の存在が保証されないため、`didMount` ライフサイクルフック内で DingTalk JSAPI スクリプトを手動で読み込みます。
+
+```js
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/dingding/dingtalk-jsapi/3.0.25/dingtalk.open.js');
+}
+```
+リソースの読み込みが完了したら、`window.dd` 経由で JSAPI 機能を呼び出せます。
+
+### フローノード 2：DingTalk JSAPI を呼び出す
+DingTalk JSAPI の読み込みが完了したら、アクションパネル内で `window.dd` 経由で DingTalk API を呼び出します。
+
+```js
+export function isDingTalk() {
+  return window.navigator && /dingtalk/i.test(window.navigator.userAgent)
+}
+
+export function dingAlert() {
+  if (window.dd && this.isDingTalk()) {
+    window.dd.device.notification.alert({
+      message: "テスト",
+      title: "お知らせ", // 空にすることも可能
+      buttonName: "了解しました",
+      onSuccess: function () {
+      },
+      onFail: function (err) { }
+    });
+  }
+}
+```
+
+<Warning>
+DingTalk JSAPI の多くのメソッドはアプリ内での呼び出しが必要です。呼び出す前に、ユーザーが DingTalk クライアントサイド内にいるかを確認してください。
+```js
+export function isDingTalk() {
+  return window.navigator && /dingtalk/i.test(window.navigator.userAgent)
+}
+```
+</Warning>
+
+## API 一覧
+
+対応 API の一覧については、[DingTalk オープンプラットフォームドキュメント](https://open.dingtalk.com/document/orgapp/jsapi-overview-client-org)を参照してください。
