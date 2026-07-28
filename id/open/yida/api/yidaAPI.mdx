@@ -1,0 +1,765 @@
+---
+title: "YiDA JS-API"
+description: "Referensi lengkap YiDA JS-API untuk pengembang low-code. Mencakup semua API yang dapat dipanggil dari panel JS dan pengikatan variabel, termasuk pengambilan data, operasi komponen, serta interaksi halaman dengan contoh kode."
+polished: true
+---
+
+Dokumen ini memperkenalkan API yang dapat Anda panggil langsung dari panel JS atau dialog pengikatan variabel di platform YiDA, beserta cara penggunaannya. Setiap API disertai contoh yang menunjukkan penggunaan konkret. Pada setiap contoh, kami membungkus kode dalam struktur fungsi berikut untuk menyimulasikan skenario penggunaan panel aksi di dunia nyata (di lingkungan sebenarnya, Anda bebas menamai fungsi pembungkus sesuai kebutuhan).
+```js
+export function someFunctionName() {
+  ...
+}
+```
+
+## Sebelum memulai
+
+API berikut memerlukan pengetahuan dasar `JavaScript`. Anda harus terbiasa dengan tipe data umum, mendeklarasikan dan menggunakan variabel serta fungsi, dan memahami cara menghindari jebakan umum `JavaScript`.
+
+Perhatikan `this.state`, `this.setState`, dan `this.$()` yang sering muncul pada API di bawah ini. Ketika `this` muncul di tingkat teratas fungsi penangan peristiwa, ia menunjuk ke konteks eksekusi yang benar, sehingga Anda dapat membaca dan menulis ke Sumber Data serta membaca nilai dari bidang formulir lain tanpa masalah:
+
+```js
+export function setSomeValue() {
+  const status = this.state.status;
+  const newStatus = status + 1;
+  this.setState({ status: newStatus });
+  this.$('numberField_xxx').setValue(newStatus);
+}
+```
+
+Namun, ketika `this` muncul di dalam fungsi bersarang, Anda perlu memastikan ia tetap menunjuk ke konteks yang benar:
+
+```js
+export function setSomeValue(value) {
+  // Simpan referensi ke this
+  const that = this;
+
+  this.dataSourceMap.xxx.load(function (ret) {
+    // SALAH!!! function membuat konteks eksekusi baru.
+    // this telah berubah di sini dan tidak dapat membaca Sumber Data atau mengakses bidang lain.
+    this.$('numberField_xxx').setValue(ret);
+
+    // Solusi: gunakan referensi yang benar yang disimpan di luar
+    that.$('numberField_xxx').setValue(ret);
+  });
+
+  // Atau gunakan arrow function agar this tidak diikat ulang
+  this.dataSourceMap.xxx.load((ret) => {
+    // Arrow function tidak membuat konteks baru, jadi this tetap terjaga
+    this.$('numberField_xxx').setValue(ret);
+  });
+}
+```
+
+Panduan Memulai `JavaScript` yang direkomendasikan:
+* [JavaScript di MDN](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
+* [Referensi JavaScript - Ekspresi dan Operator - this](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/this)
+* [Stack Overflow](https://stackoverflow.com/)
+
+## API variabel global
+Pola desain YiDA sebagian besar terinspirasi oleh React. YiDA menyediakan variabel global untuk manajemen state di tingkat halaman beserta API terkait untuk memicu render ulang halaman (lihat [dokumentasi variabel global](/id/open/yida/guide/concept/state) untuk detailnya).
+
+### this.state.xxx
+Mengambil nilai variabel global (identik dengan API React).
+
+`xxx` biasanya adalah nama variabel dari Sumber Data di tingkat halaman.
+
+Contoh:
+```js
+export function getState() {
+  // Baca nilai variabel global tingkat halaman dan cetak melalui console
+  const status = this.state.status;
+  console.log( `status: ${status}` )
+}
+```
+
+### this.setState()
+Menetapkan nilai variabel global dan memicu render ulang halaman (sebagian besar identik dengan API React).
+
+**Catatan: Jangan memodifikasi variabel menggunakan `this.state.a = b`. Kompatibilitas tidak dijamin pada pembaruan berikutnya dan kode semacam itu dapat berhenti berfungsi.**
+
+Contoh:
+```js
+export function setStateValue() {
+  // Tetapkan variabel global tingkat halaman dan picu render ulang halaman
+  this.setState({
+    status: 'loading',
+    text: 'Memuat...'
+  });
+}
+```
+
+## API data remote
+YiDA mendukung konfigurasi Sumber Data remote dan menyediakan API untuk memicu panggilan Sumber Data remote dari JS (lihat [dokumentasi remote API](/id/open/yida/guide/concept/datasource) untuk detailnya).
+
+### this.dataSourceMap.xxx.load()
+Memanggil remote API tertentu secara manual. `xxx` adalah nama Sumber Data yang dikonfigurasi di panel Sumber Data. Anda juga dapat meneruskan parameter permintaan; parameter yang diteruskan di sini digabungkan dengan parameter yang dikonfigurasi di Sumber Data sebelum permintaan dikirim. `load` mengembalikan sebuah Promise.
+
+Contoh:
+```js
+export function fetchData() { 
+  // Panggil remote API getDataList yang dikonfigurasi di Sumber Data dengan parameter pageSize dan page.
+  // Jika berhasil, cetak hasil di console; jika gagal, tampilkan toast.
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10, 
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error', 
+      title: 'Permintaan gagal!'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+Muat ulang semua remote API yang opsi auto-load-nya diatur ke true. Metode ini juga mengembalikan sebuah Promise.
+
+Contoh:
+```js
+export function reload() {
+  // Jalankan ulang semua permintaan awal dan tampilkan toast saat berhasil
+  this.reloadDataSource().then(res => {
+    this.utils.toast({
+      type: 'success', 
+      title: 'Berhasil disegarkan!'
+    })；
+  });
+}
+
+```
+
+## API pemanggilan JS
+YiDA menyediakan panel aksi untuk menulis kode JS. Fungsi di panel aksi dapat diikat ke variabel atau tindakan, dan juga dapat saling memanggil.
+
+### this.methodName()
+YiDA menyediakan cara untuk memanggil fungsi JS lain di panel aksi. Panggil `this.xxx()`, dengan `xxx` adalah nama fungsi lain.
+
+Contoh:
+```js
+export function hello(params) {
+  this.utils.toast({
+    title: `hello ${params}` , 
+    type: 'success'
+  })
+}
+
+export function onClickInvoke(){
+  const value = this.$('textField_k1u12o6l').getValue()
+  // Panggil fungsi lain yang didefinisikan di panel aksi
+  this.hello(value)
+}
+```
+
+## API utilitas
+YiDA menyediakan banyak fungsi utilitas bawaan untuk membantu Anda menerapkan fitur umum dengan lebih mudah.
+
+### this.utils.dialog()
+Membuka dialog. Efeknya ditampilkan di bawah. Pengguna harus menutupnya secara manual.
+
+YiDA menggunakan komponen [Fusion](https://fusion.design/) di baliknya, sehingga Anda dapat mengonfigurasi properti apa pun yang didukung komponen Dialog.
+[Dokumentasi](https://fusion.design/pc/component/dialog?themeid=2#demo-api). Properti yang umum digunakan tercantum di bawah ini:
+
+| Parameter | Nilai | Default | Deskripsi |
+| :--- | :--- | :--- | :--- |
+| type |'alert', 'confirm', 'show' | 'alert'| - |
+| title | (String) | - | - |
+| content | (String\|ReactNode) | - | HTML/JSX juga diterima untuk tata letak yang kompleks |
+| hasMask | (Boolean)  | true | Apakah menampilkan mask |
+| footer | (Boolean) | true | Apakah menampilkan tombol aksi footer |
+| footerAlign |'left', 'center', 'right' | 'right' | Perataan aksi footer |
+| footerActions | ['cancel', 'ok'], ['ok', 'cancel'], ['ok'], ['cancel'] | - | Tipe dan urutan aksi footer |
+| onOk | (Func) | - | Callback saat Konfirmasi diklik | 
+| onCancel | (Func) | - | Callback saat Batal diklik |
+
+Contoh:
+```js
+export function popDialog(){
+  this.utils.dialog({
+    type: 'confirm', 
+    title: 'judul', 
+    content: 'konten', // Teruskan HTML/JSX untuk baris baru
+    onOk: () => { }, 
+    onCancel: () => { }, 
+  });
+}
+
+// Tutup dialog secara manual
+export function closeDialog() {
+  // Tangkap nilai kembalian dari dialog, yang berupa object
+  const dialog = this.utils.dialog({});
+
+  // Panggil metode hide pada object yang dikembalikan pada saat yang tepat untuk menutup dialog
+  dialog.hide();
+}
+```
+
+### this.utils.formatter()
+Fungsi formatter umum untuk memformat tanggal, mata uang, nomor telepon, dan lainnya.
+
+Contoh:
+```js
+export function format() {
+  // Format tanggal. Output: 2022-01-29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY-MM-DD');
+
+  // Format tanggal. Output: 2022/01/29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY/MM/DD');
+
+  // Format tanggal-waktu. Output: 2022-01-29 13:01:02
+  const formatDate2 = this.utils.formatter('date', new Date(), 'YYYY-MM-DD HH:mm:ss');
+
+  // Format mata uang. Output: 10, 000.99
+  const formatMoney = this.utils.formatter('money', '10000.99', ', ');
+  
+  // Format nomor telepon. Output: +86 1565 2988 282
+  const formatPhoneNumber = this.utils.formatter('cnmobile', '+8615652988282');
+
+  // Format nomor kartu bank. Output: 1565 2988 2821 2233
+  const formatCardNumber = this.utils.formatter('card', '1565298828212233');
+}
+```
+
+### this.utils.getDateTimeRange(when, type)
+Mengambil stempel waktu awal dan akhir dari rentang tanggal saat ini atau yang ditentukan.
+
+`when` dan `type` keduanya opsional. Secara default mengembalikan awal dan akhir hari ini; Anda dapat menentukan tanggal dan tipe rentang.
+
+| Parameter | Nilai | Default | Deskripsi |
+| :--- | :--- | :--- | :--- |
+| when | Stempel waktu atau tipe Date | Waktu saat ini `new Date()` | Tanggal yang ditentukan |
+| type | 'year', 'month', 'week', 'day', 'date', 'hour', 'minute', 'second' | 'day'| Tipe rentang yang dikembalikan |
+
+Contoh:
+```js
+export function search() {
+  const [dayStart, dayEnd] = this.utils.getDateTimeRange();
+  console.log( `dayStart: ${dayStart}, dayEnd: ${dayEnd}` );
+  // Cetak stempel waktu awal dan akhir hari ini
+
+  const [monthStart, monthEnd] = this.utils.getDateTimeRange(new Date(), 'month');
+  console.log( `monthStart: ${monthStart}, dayEnd: ${monthEnd}` );
+  // Cetak stempel waktu awal dan akhir bulan ini
+}
+```
+
+### this.utils.getLocale()
+Mengambil locale halaman saat ini.
+
+Contoh:
+```js
+export function locale() {
+  const locale = this.utils.getLocale();
+
+  console.log( `locale: ${locale}` );
+  // Output: locale: zh_CN
+}
+```
+
+### this.utils.getLoginUserId()
+Mengambil ID pengguna yang sedang masuk.
+
+Contoh:
+```js
+export function getUserInfo() {
+  const userId = this.utils.getLoginUserId();
+  console.log( `userId: ${userId}` );
+  // Output: userId: 43314767738888
+}
+```
+
+### this.utils.getLoginUserName()
+Mengambil nama pengguna yang sedang masuk.
+
+Contoh:
+```js
+export function getUserInfo() {
+  const userName = this.utils.getLoginUserName();
+  console.log( `userName: ${userName}` );
+  // Output: userName: Budi Santoso
+}
+```
+
+### this.utils.isMobile()
+Memeriksa apakah lingkungan saat ini adalah perangkat mobile.
+
+Contoh:
+```js
+export function someFunctionName() {
+  console.log('isMobile', this.utils.isMobile());
+}
+```
+
+### this.utils.isSubmissionPage()
+Memeriksa apakah halaman saat ini adalah halaman pengiriman data.
+
+Contoh:
+```js
+export function someFunctionName() {
+  console.log('isSubmissionPage', this.utils.isSubmissionPage());
+}
+```
+
+### this.utils.isViewPage()
+Memeriksa apakah halaman saat ini adalah halaman tampilan data.
+
+Contoh:
+```js
+export function someFunctionName() {
+  console.log('isViewPage', this.utils.isViewPage());
+}
+```
+
+### this.utils.loadScript()
+Memuat skrip remote secara dinamis.
+
+Contoh:
+```js
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "http://jindo.dev.naver.com/collie",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### this.utils.openPage()
+Membuka halaman baru.
+
+Di lingkungan DingTalk, API DingTalk digunakan untuk membuka halaman baru demi pengalaman yang lebih mulus.
+
+Contoh:
+```js
+export function someFunctionName() {
+  this.utils.openPage('/workbench');
+}
+```
+
+### this.utils.previewImage()
+Pratinjau Gambar. API ini menyediakan pengalaman pratinjau Gambar yang ringan, seperti ditampilkan di bawah:
+
+Contoh:
+```js
+export function previewImg() {
+  this.utils.previewImage({ current: 'https://img.alicdn.com/tfs/TB1JUnZ2GL7gK0jSZFBXXXZZpXa-260-192.png_.webp' });
+}
+```
+
+### this.utils.toast()
+Menampilkan pesan ringan. Dibandingkan dengan Dialog, toast lebih ringan dan menghilang secara otomatis setelah jeda singkat, seperti ditampilkan di bawah:
+
+Parameter:
+
+| Parameter | Nilai | Default | Deskripsi |
+| :--- | :--- | :--- | :--- |
+| type |'success', 'warning', 'error', 'notice', 'help', 'loading' | 'notice'| - |
+| title | (String) | - | - |
+| size | 'medium', 'large' | 'medium' | - |
+| duration | (Number)  | - | Diabaikan ketika type adalah loading |
+
+Contoh:
+```js
+export function popToast(){
+  this.utils.toast({
+    title: 'berhasil', 
+    type: 'success', 
+    size: 'large', 
+  })
+}
+
+// Metode close dapat dipanggil secara manual
+export function showLoadingToast() {
+  // Tangkap nilai kembalian, yang berupa fungsi close
+  const close = this.utils.toast({
+    title: 'Memuat', 
+    type: 'loading', 
+    size: 'large', 
+  });
+  
+  // Panggil fungsi close pada saat yang tepat
+  setTimeout(close, 3000);
+}
+```
+
+## API routing
+YiDA menyediakan API untuk mengambil informasi routing dan menavigasi antar halaman. API ini dibangun di atas [react-router](https://reactrouter.com/), sehingga API navigasi sebagian besar konsisten dengan API react-router. YiDA juga menawarkan beberapa ekstensi routing tambahan.
+
+### this.utils.router.push()
+Navigasikan ke halaman baru dan tambahkan entri ke tumpukan routing, sehingga pengguna dapat kembali melalui tombol Kembali di browser. Parameter `push` dijelaskan di bawah ini:
+
+```typescript
+function push(path: string, params?: object, blank?: boolean, isUrl?: boolean, type?: string) => void;
+```
+
+| Parameter | Tipe | Wajib | Deskripsi |
+| :--- | :--- | :--- | :--- |
+| path | string | Ya | Alamat tujuan. Dapat berupa URL lengkap, fragmen URL, atau string yang terdiri dari pageID. Jika slug didefinisikan, slug (alias halaman, belum dapat dikonfigurasi di YiDA) diprioritaskan.<br/> Ketika `isUrl` bernilai `true`, nilainya diurai sebagai URL; jika tidak, diurai sebagai `pageId` untuk navigasi antar halaman internal. |
+| params | object | Tidak | Parameter query yang ditambahkan ke alamat tujuan. `{q: 'a', r: 'b'}` setara dengan `?q=a&r=b` |
+| blank | boolean | Tidak | Apakah membuka di halaman baru. Default: `false` |
+| isUrl | boolean | Tidak | Apakah path adalah `url`. Default: `false` |
+| type | string | Tidak | Nilai opsional: `push` atau `replace`. Navigasikan menggunakan semantik push atau replace. |
+
+Contoh:
+```js
+export function pushUrl() {
+  // Navigasikan ke halaman dengan parameter fromSource yang disuntikkan. URL akhir: https://www.yidaapps.com?formSource=customPage
+  this.utils.router.push('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.replace()
+Mengganti halaman saat ini. Berbeda dari `router.push`, API ini mengganti halaman saat ini alih-alih menambahkan yang baru, sehingga tidak dapat dibalik dengan tombol Kembali di browser. Setara dengan:
+
+```js
+this.utils.router.push(path, params, false, false, 'replace');
+```
+
+Contoh:
+```js
+export function replaceUrl() {
+  // Navigasikan ke halaman dengan parameter fromSource yang disuntikkan
+  this.utils.router.replace('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.getQuery()
+Mengambil parameter URL halaman saat ini. Ketika `key` diberikan, kembalikan nilai yang sesuai; jika tidak, kembalikan semua parameter URL. Parameter `getQuery`:
+```typescript
+function getQuery(key?: string, queryStr?: string) => Record<string, string> | string | undefined;
+```
+
+| Parameter | Tipe | Wajib | Deskripsi |
+| :--- | :--- | :--- | :--- |
+| key | string | Tidak | Ketika key diberikan, kembalikan nilai yang sesuai; jika tidak, kembalikan seluruh object. |
+| queryStr | string | Tidak | Default: `location.search + location.hash`, dengan `hash` menimpa `search`. String query kustom dalam bentuk `'?a=1&b=2'` juga didukung. |
+
+Contoh:
+```js
+export function getQuery() {
+  // Ambil parameter fromSource dari URL
+  const fromSource = this.utils.router.getQuery('fromSource');
+  console.log( `fromSource: ${fromSource}` );
+}
+```
+
+### this.utils.router.stringifyQuery()
+Menserialisasi parameter URL, mengonversi object menjadi string query URL.
+
+Contoh:
+```js
+export function stringifyQuery() {
+  // Serialisasi object menjadi parameter query URL dan cetak melalui console
+  const params = {
+    name: 'yida', 
+    gender: 'm'
+  };
+  const urlStr = this.utils.router.stringifyQuery(params);
+  console.log( `urlParams: ${urlStr}` );
+  // Output: urlParams: name=yida&gender='m'
+}
+```
+
+## API komponen umum
+Sebelum membahas API spesifik komponen, beberapa [konsep](/id/open/yida/guide/keywords) perlu diperkenalkan terlebih dahulu:
+* Pengidentifikasi unik komponen (fieldId) — YiDA memberikan pengidentifikasi unik kepada setiap Komponen untuk membedakan instance Komponen. Pengidentifikasi tersebut dapat dilihat di panel properti Komponen.
+* Properti komponen (prop) — Di YiDA, setiap Komponen mengekspos properti untuk mengaktifkan perilaku yang berbeda (mirip dengan props React). Arahkan kursor pada kontrol di panel properti Komponen untuk melihat nama properti yang sesuai.
+
+API komponen umum berlaku untuk setiap Komponen yang ditawarkan YiDA, dan terutama digunakan untuk membaca atau menetapkan properti Komponen.
+### this.$(fieldId).get(prop)
+Cari Komponen berdasarkan fieldId dan baca salah satu nilai propertinya. `fieldId` adalah pengidentifikasi Komponen dan `prop` adalah nama properti Komponen.
+
+**Catatan: Jangan membaca nilai properti menggunakan `this.$(fieldId).xxx`. Kompatibilitas tidak dijamin pada pembaruan berikutnya dan kode semacam itu dapat berhenti berfungsi.**
+
+Contoh:
+```js
+export function getAttribute(){
+  // Ambil properti content dari komponen Text dan cetak di console
+  const content = this.$('text_kyz78exo').get('content')
+  console.log( `text content: ${content}` );
+}
+```
+
+### this.$(fieldId).set(prop, value)
+Cari Komponen berdasarkan fieldId dan tetapkan salah satu nilai propertinya. `fieldId` adalah pengidentifikasi Komponen, `prop` adalah nama properti, dan `value` adalah nilai yang akan ditetapkan.
+
+**Catatan: Jangan menetapkan nilai properti menggunakan `this.$(fieldId).xxx = xxx`. Kompatibilitas tidak dijamin pada pembaruan berikutnya dan kode semacam itu dapat berhenti berfungsi.**
+
+Contoh:
+```js
+export function setAttribute(){
+  // Tetapkan properti maxLine dari komponen Text
+  this.$('text_kyz78exo').set('maxLine', 5);
+}
+```
+
+## API komponen formulir
+Komponen formulir adalah tipe Komponen paling penting di platform YiDA. Biasanya digunakan untuk mengumpulkan Data — misalnya, kolom teks, pilihan tunggal, Pilih Banyak, dan dropdown. Bagian ini membahas API yang terkait dengan komponen formulir.
+
+### this.$(fieldId)
+Mengambil instance Komponen, dengan `fieldId` sebagai pengidentifikasi unik komponen. Sebelum memanggil API Komponen, Anda biasanya perlu mengambil instance Komponen terlebih dahulu melalui `this.$(fieldId)`.
+
+**Catatan: Jangan mengakses API atau properti yang tidak terdokumentasi melalui `this.$(fieldId).xxx`. Apa pun yang tidak terdokumentasi adalah implementasi internal privat. Kompatibilitas tidak dijamin pada pembaruan berikutnya dan kode semacam itu dapat berhenti berfungsi.**
+
+### this.$(fieldId).getValue()
+Mengambil nilai input dari komponen formulir yang ditentukan.
+
+Contoh:
+```js
+export function getValue(){
+  // Ambil input pengguna dari kolom teks dan cetak di console
+  const value = this.$('textField_kyz78exp').getValue();
+  console.log( `input value: ${value}` );
+}
+```
+
+### this.$(fieldId).setValue()
+Menetapkan nilai input dari komponen formulir yang ditentukan. Parameter `setValue`:
+```typescript
+interface IOptions {
+  doNotValidate: boolean; // Apakah melewati validasi otomatis. Default: false
+  formatted: boolean; // Apakah nilainya sudah diformat. Default: false
+  triggerChange: boolean; // Apakah memicu peristiwa change komponen. Default: true
+};
+
+/**
+ * @param {any} value  Nilai formulir yang akan ditetapkan
+ * @param {IOptions} [options] Opsi konfigurasi, opsional
+ */
+function setValue(value: any, options?: IOptions) => void;
+```
+
+Contoh:
+```js
+export function setValue(){
+  // Tetapkan nilai kolom teks menjadi "hello world"
+   this.$('textField_kyz78exp').setValue('hello world');
+}
+```
+
+### this.$(fieldId).reset()
+Mengatur ulang nilai input dari komponen formulir yang ditentukan. Parameter `reset`:
+```typescript
+/**
+ * @param {boolean} toDefault Apakah mengatur ulang ke nilai Default komponen. Default: true
+ */
+function reset(toDefault?: boolean) => void;
+
+```
+
+Contoh:
+```js
+export function reset() {
+  // Atur ulang nilai kolom teks
+   this.$('textField_kyz78exp').reset();
+}
+```
+
+### this.$(fieldId).getBehavior()
+Mengambil state saat ini dari komponen formulir yang ditentukan. State yang mungkin meliputi:
+* **NORMAL** — state normal (dapat diedit).
+* **READONLY** — state Hanya Baca.
+* **DISABLED** — state Dinonaktifkan.
+* **HIDDEN** — state tersembunyi.
+
+Contoh:
+```js
+export function getBehavior() {
+  // Ambil state kolom teks dan cetak
+  const behavior = this.$('textField_kyz78exp').getBehavior();
+  console.log( `text behavior: ${behavior}` );
+}
+```
+
+### this.$(fieldId).setBehavior()
+Menetapkan state dari komponen formulir yang ditentukan. State yang tersedia dijelaskan di bagian `getBehavior`.
+
+Contoh:
+```js
+export function setBehavior() {
+  // Tetapkan state kolom teks menjadi DISABLED
+  this.$('textField_kyz78exp').setBehavior('DISABLED');
+}
+```
+
+### this.$(fieldId).resetBehavior()
+Mengatur ulang state dari komponen formulir yang ditentukan.
+
+Contoh:
+```js
+export function resetBehavior() {
+  // Atur ulang state kolom teks
+  this.$('textField_kyz78exp').resetBehavior();
+}
+```
+
+### this.$(fieldId).validate()
+Menjalankan validasi sekali pada komponen formulir yang ditentukan. Parameter `validate`:
+```typescript
+/**
+ * @param {Array|null} errors Pesan error, atau null jika tidak ada error
+ * @param {Object} values Nilai komponen formulir
+ */
+function ValidateCallback(errors: string[] | null, values: object | null) => void
+
+/**
+ * @param {Function} callback Callback validasi, opsional
+ */
+function validate(callback?: ValidateCallback) => void;
+```
+
+Contoh:
+```js
+export function validate() {
+  // Validasi kolom teks. Jika gagal, cetak errors dan values di console.
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+Ketika aturan validasi kolom teks adalah Nomor Telепон dan validasi gagal, struktur berikut dicetak:
+```json
+{
+  "errors": {
+    "textField_kyz78exp": {
+      "errors": [
+        "Kolom teks bukan format nomor telepon yang valid"
+      ]
+    }
+  }, 
+  "values": {
+    "textField_kyz78exp": "33"
+  }
+}
+```
+
+### this.$(fieldId).disableValid()
+Menonaktifkan validasi pada komponen formulir.
+
+Contoh:
+```js
+export function disableValid() {
+  this.$('textField_kyz78exp').disableValid();
+}
+```
+
+### this.$(fieldId).enableValid()
+Mengaktifkan validasi pada komponen formulir. Parameter `enableValid`:
+```typescript
+/**
+ * @param {boolean} doValidate Apakah menjalankan validasi segera. Opsional. Default: false
+ */
+function enableValid(doValidate?: boolean) => void;
+```
+
+Contoh:
+```js
+export function enableValid() {
+  // Aktifkan validasi pada kolom teks dan jalankan segera
+  this.$('textField_kyz78exp').enableValid(true);
+}
+```
+
+### this.$(fieldId).setValidation()
+Menetapkan aturan validasi pada komponen formulir. Parameter `setValidation`:
+
+```typescript
+interface IRule {
+  type: string; // Tipe validasi
+  param: any; // Parameter untuk tipe validasi
+  message: string; // Pesan error
+}
+
+/**
+ * @param {IRule[]} rules Aturan validasi. Wajib.
+ * @param {boolean} [doValidate] Apakah menjalankan validasi segera. Opsional. Default: false
+ */
+function setValidation(rules: IRule[], doValidate?: boolean) => void;
+```
+
+Tipe validasi yang didukung YiDA:
+
+| Aturan validasi yang didukung | Atribut |
+| :--- | :--- |
+| Wajib | `{"type": "required"}` |
+| Panjang minimum | `{"type": "minLength", "param": "23" }` |
+| Panjang maksimum | `{"type": "maxLength", "param": "23" }` |
+| Email | `{"type": "email"}` |
+| Telepon | `{"type": "mobile"}` |
+| URL | `{"type": "url"}` |
+| Nilai minimum | `{"type": "minValue", "param": "3"}` |
+| Nilai maksimum | `{"type": "maxValue", "param": "3"}` |
+| Fungsi kustom | `{"type": "customValidate", "param": (value, rule) => { return ture; }}` |
+
+Contoh:
+```js
+export function setValidation() {
+  // Tetapkan aturan validasi pada kolom teks: Wajib, panjang maksimum 10, dan hanya angka
+  this.$('textField_kyz78exp').setValidation([{
+    type: 'required'
+  }, {
+    type: 'maxLength', 
+    param: '10'
+  }, {
+    type: 'customValidate', 
+    param: (value, rule) => {
+      if(/^\d*$/.test(value)) {
+        return true;
+      }
+
+      return rule.message;
+    }, 
+    message: 'Hanya angka yang diizinkan'
+  }]);
+}
+```
+
+### this.$(fieldId).resetValidation()
+Mengatur ulang aturan validasi pada komponen formulir. Gunakan setelah `setValidation` untuk memulihkan aturan sebelumnya. Parameter `resetValidation`:
+```typescript
+/**
+ * @param {boolean} [doValidate] Apakah menjalankan validasi segera. Opsional. Default: false
+ */
+function resetValidation(doValidate?: boolean) => void;
+```
+
+Contoh:
+```js
+export function resetValiation() {
+  // Atur ulang aturan validasi kolom teks dan jalankan validasi segera
+  this.$('textField_kyz78exp').resetValidation(true);
+}
+```
+
+## API komponen Dialog
+YiDA menyediakan komponen Dialog untuk menampilkan konten di jendela dialog, beserta API untuk mengontrol perilaku Dialog.
+
+### this.$(fieldId).show()
+Menampilkan Dialog yang ditentukan. API ini menerima callback yang dipicu setelah Dialog ditampilkan.
+
+Contoh:
+```js
+export function openDialog() {
+  this.$('dialog_kyz78exr').show(() => {
+    console.log('Dialog terbuka');
+  });
+}
+```
+
+### this.$(fieldId).hide()
+Menutup Dialog yang ditentukan.
+
+Contoh:
+```js
+export function closeDialog() {
+  this.$('dialog_kyz78exr').hide();
+}
+```

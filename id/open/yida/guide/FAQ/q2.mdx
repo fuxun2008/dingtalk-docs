@@ -1,0 +1,118 @@
+---
+title: "Menggunakan Apache ECharts"
+description: "Tutorial: impor library JS eksternal seperti ECharts.js ke halaman kustom YiDA untuk memvisualisasikan data formulir dan memperluas kemampuan di luar komponen bawaan."
+polished: true
+---
+
+## Kasus penggunaan
+
+Dalam beberapa kasus, Anda mungkin perlu menggunakan komponen di halaman kustom YiDA yang tidak tersedia di library komponen YiDA, misalnya komponen bagan ECharts. Developer dapat mengimpor ECharts.js ke halaman kustom untuk memvisualisasikan data internal YiDA. Tutorial ini menunjukkan cara mengimpor library JS eksternal ke halaman kustom guna memenuhi kebutuhan skenario yang kompleks.
+
+## Tutorial video
+
+## Langkah-langkah
+
+### Langkah 1: Konfigurasikan atribut komponen JSX
+
+Buat halaman kustom lalu seret komponen `JSX` dari library komponen ke kanvas tengah. Atur atribut id dan gaya.
+Langkah-langkah:
+
+1. Pilih komponen JSX pada halaman. Di panel atribut sebelah kanan, klik tombol Edit Kode JSX.
+2. Tambahkan bidang `id="main"` setelah div.
+3. Klik tab Gaya di sebelah kanan, klik Pengeditan Sumber, lalu masukkan bidang `#main { height: 400px }`.
+
+Seperti yang ditunjukkan di bawah ini:
+
+### Langkah 2: Ikat siklus hidup didmount untuk memuat sumber daya JS jarak jauh
+
+Anda dapat memuat sumber daya JS dari CDN dalam siklus hidup didMount halaman (untuk informasi lebih lanjut tentang siklus hidup halaman kustom, lihat [dokumentasi](/id/open/yida/guide/concept/lifecycle)). Salin kode berikut langsung ke bagian didMount pada panel aksi halaman kustom, seperti yang ditunjukkan di bawah ini:
+
+Kode metode loadScript adalah sebagai berikut:
+
+```js
+// Metode loadScript: membuat tag script dan mengimpor JS eksternal, dieksekusi setelah berhasil dengan kode pengembangan cepat
+export function loadScript() {
+  // Buat tag script dan impor echarts.js
+  // Panggil resolve(...) saat kode async berhasil, panggil reject(...) saat kode async gagal
+  new Promise((resolve, reject) => {
+    const src = 'https://g.alicdn.com/code/lib/echarts/5.3.0/echarts.min.js';
+    const script = document.createElement('script');
+    script.setAttribute('type', 'text/javascript');
+    script.src = src;
+    document.body.appendChild(script);
+    // Event onload pada tag script hanya dipicu setelah file js eksternal dimuat dan dieksekusi
+    script.onload = () => {
+      resolve('Berhasil');
+    };
+    script.onerror = reject;
+  }).then(() => {
+    // Muat js bagan radar setelah impor berhasil
+    radar();
+  });
+}
+```
+
+### Langkah 3: Terapkan solusi rendering bagan radar dengan ECharts
+
+Dari implementasi JS di atas, Anda dapat melihat bahwa setelah memuat sumber daya JS jarak jauh, kami mengeksekusi fungsi `radar` untuk merender bagan radar. Tambahkan fungsi radar di panel aksi untuk merender bagan radar ke dalam komponen JSX yang dibuat pada Langkah 1. Untuk penggunaan bagan radar secara spesifik, lihat [dokumentasi ECharts](https://echarts.apache.org/zh/index.html).
+
+Kode metode radar adalah sebagai berikut:
+
+```js
+// Metode js bagan radar
+export function radar() {
+  // js bagan radar
+
+  var chartDom = document.getElementById('main');
+  chartDom.style.height = '400px';
+  // Siapkan DOM dengan ukuran (lebar dan tinggi) untuk ECharts, atur lebar dan tinggi pada gaya komponen JSX
+  // Inisialisasi instance echarts berdasarkan DOM yang telah disiapkan
+  var myChart = echarts.init(chartDom);
+  // Tentukan konfigurasi dan data bagan
+  var option;
+  option = {
+    // data menggunakan sumber data variabel, atau dapat ditulis langsung
+    title: {
+      text: 'Kemampuan Komprehensif Karyawan',
+    },
+    legend: {
+      data: state.nameArr,
+      // data: ["YiDA-ly"]
+    },
+    radar: {
+      // shape: 'circle',
+      indicator: [
+        { name: 'Kinerja', max: 100 },
+        { name: 'Kemampuan Komprehensif', max: 100 },
+        { name: 'Kemampuan Reaksi', max: 100 },
+        { name: 'Kemampuan Profesional', max: 100 },
+        { name: 'Kemampuan Penilaian', max: 100 },
+        { name: 'Kemampuan Pelayanan', max: 100 },
+      ],
+    },
+    series: [
+      {
+        name: 'Kemampuan Komprehensif Karyawan',
+        type: 'radar',
+        data: state.dataArr,
+        // data: [
+        //   {
+        //     value: [80, 85, 90, 90, 88, 92],
+        //     name: 'YiDA-ly'
+        //   }
+        // ]
+      },
+    ],
+  };
+  // Tampilkan bagan menggunakan konfigurasi dan data yang ditentukan
+  option && myChart.setOption(option);
+}
+```
+
+### Langkah 3: Ikat variabel data
+
+Dari metode radar di atas, Anda dapat melihat bahwa kami membaca dua variabel dari state: `nameArr` dan `dataArr`. Oleh karena itu, Anda perlu mengatur variabel data untuk bagan radar, seperti yang ditunjukkan di bawah ini:
+
+## Efek tampilan
+
+Anda dapat mengunjungi [Contoh Impor ECharts](https://docs.aliwork.com/docs/yida_subject/_1/cv1rpl1oi5eqlea9) resmi untuk melihat efek dan implementasi spesifiknya. Hasil tampilan akhirnya adalah sebagai berikut:
