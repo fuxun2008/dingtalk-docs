@@ -1,0 +1,223 @@
+---
+title: "クラスターモードでのローカル OpenAPI アクセス"
+description: "Yida専用クラスター環境でOpenAPIを呼び出す方法を解説。ドメイン取得、AK/SK設定、access_tokenを使ったAPI呼び出しの手順に加え、DingTalk Open Platformとクラスター版OpenAPIの主な差異やSDK設定まで、開発者向けに詳しく紹介します。"
+polished: true
+---
+専用クラスター環境のアプリデータはプライベート環境に保存されており、パブリックネットワークからアクセスできません。そのため、DingTalk Open Platform 上の Yida OpenAPI ではこれらのデータを取得できません。クラスター環境内で OpenAPI を呼び出す必要があります。クラスター環境の OpenAPI は基本的に DingTalk Open Platform と同じで、ホストと必要な AK/SK のみが異なります。
+
+本記事では、Yida専用版クラスター環境で Yida OpenAPI を呼び出す方法について説明します。
+
+<Note>
+注意:
+
+Yida専用版は現在、高頻度で利用されるデータサービス API を公開しています。2023年12月31日時点で DingTalk Open Platform 上で利用可能な Yida API 機能に基づき、合計 52 個の OpenAPI が利用可能です。
+</Note>
+
+## 呼び出しフロー
+
+クラスター環境における Yida API の呼び出しは、DingTalk Open Platform と類似しています。DingTalk Open Platform 上のすべての関連 OpenAPI は api.dingtalk.com 経由で呼び出されます。クラスター版 OpenAPI の場合は、api.dingtalk.com を組織のクラスター版 Yida ドメインに置き換えるだけです。
+
+1. 社内の Yida専用版クラスターのドメイン（例: ddyd.corp.com）を取得します。
+2. 社内のクラスター版の AK と SK を取得します。
+
+<Note>
+社内の DingTalk 管理者にお問い合わせください。[DingTalk Open Platform](https://open-dev.dingtalk.com/) にログインし、社内アプリの中から「Yida Dedicated Cluster」を検索し、**Yida Dedicated Cluster Authentication App** という名前のアプリから関連情報を取得します。
+</Note>
+
+<Steps>
+  <Step title="ステップ 1">
+    前の手順で取得した AK/SK を使用して /v1.0/oauth2/accessToken エンドポイントを呼び出し、アプリの access_token を取得します。リクエストパラメータについては、社内アプリの access_token を取得する方法を参照してください。
+
+    <Warning>
+    Open Platform では、呼び出しは https://api.dingtalk.com/v1.0/oauth2/accessToken となります。
+
+    社内の Yida ドメインが https://your-org-private-yida-domain.com であると仮定すると、クラスター版の呼び出しは次のようになります:
+
+    https://your-org-private-yida-domain.com/v1.0/oauth2/accessToken
+
+    access_token はデフォルトで 2 時間有効です。
+    </Warning>
+  </Step>
+  <Step title="access_token を使用して Yida API を呼び出す">
+  </Step>
+</Steps>
+
+DingTalk Open Platform は、開発者向けに Java、PHP、Python、.NET の SDK を提供しています。クラスター版 OpenAPI も同様の呼び出しをサポートしています。
+
+<Note>
+社内アプリとサードパーティ社内アプリは同じサーバーサイド SDK を共有しています。以下のいずれかのリンクをクリックしてダウンロードしてください。
+
+- 社内アプリ: サーバーサイド SDK をダウンロードします。
+- サードパーティ社内アプリ: サーバーサイド SDK をダウンロードします。
+</Note>
+
+5. DingTalk Open Platform SDK を使用している場合は、次の変更を適用します。
+
+変更 1: ドメインが http を使用する場合、config.protocol = "http" を設定します。
+
+変更 2: client._endpoint に社内の実際の Yida ドメインを明示的に設定します。
+
+```java
+private static com.aliyun.dingtalkyida_2_0.Client createOpenApiClient() {
+        Config config = new Config();
+        config.regionId = "central";
+        config.protocol = "http";
+        config.connectTimeout = 60 * 1000;
+        config.readTimeout = 60 * 1000;
+        try {
+            com.aliyun.dingtalkyida_2_0.Client client = new com.aliyun.dingtalkyida_2_0.Client(config);
+          client._endpoint =  "your-org-private-yida-domain.com";
+            return client;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+```
+
+## クラスター API 一覧
+
+Yida は豊富な API 機能を提供しており、開発者は Yida を企業の業務システムと統合できます。現在、API は主にフォーム、作業フロー、アプリ向けに公開されています。
+
+<table>
+  <tr>
+    <td>モジュール</td>
+    <td>標準サーバー API</td>
+    <td>説明</td>
+  </tr>
+  <tr>
+    <td rowSpan={7}>作業フロー</td>
+    <td>[Yida 承認フローを開始する](https://open.dingtalk.com/document/orgapp/initiate-the-approval-process#)</td>
+    <td>DingTalk Open Platform 上で Yida 承認フローを開始します。</td>
+  </tr>
+  <tr>
+    <td>[ワークフローインスタンスを削除する](https://open.dingtalk.com/document/orgapp/delete-process-instance#)</td>
+    <td>ワークフローインスタンスを削除します。</td>
+  </tr>
+  <tr>
+    <td>[ワークフローインスタンスを終了する](https://open.dingtalk.com/document/orgapp/terminate-a-process-instance#)</td>
+    <td>ワークフローインスタンスを終了します。</td>
+  </tr>
+  <tr>
+    <td>[インスタンス ID の一覧を取得する](https://open.dingtalk.com/document/orgapp/obtains-a-list-of-instance-ids#)</td>
+    <td>インスタンス ID の一覧を取得します。</td>
+  </tr>
+  <tr>
+    <td>[複数のワークフローインスタンスを一括取得する](https://open.dingtalk.com/document/orgapp/queries-multiple-process-instances#)</td>
+    <td>ID を指定して複数のワークフローインスタンスの詳細を一括取得します。</td>
+  </tr>
+  <tr>
+    <td>[ワークフローインスタンスを取得する](https://open.dingtalk.com/document/orgapp/obtain-process-instance#)</td>
+    <td>Yida からワークフローインスタンス情報を取得します。</td>
+  </tr>
+  <tr>
+    <td>[ID でワークフローインスタンスを取得する](https://open.dingtalk.com/document/orgapp/queries-a-process-instance-based-on-its-id#)</td>
+    <td>ID を指定してワークフローインスタンスの詳細を取得します。</td>
+  </tr>
+  <tr>
+    <td rowSpan={20}>フォーム</td>
+    <td>[指定したアプリのフォーム一覧を取得する](https://open.dingtalk.com/document/orgapp/depending-on-the-application-id-to-get-the-form-list#)</td>
+    <td>アプリのフォーム一覧をページングで取得します。</td>
+  </tr>
+  <tr>
+    <td>[フォーム内のコンポーネント情報を取得する](https://open.dingtalk.com/document/orgapp/get-form-field-information-based-on-form-uuid#)</td>
+    <td>フォーム ID を指定して、フォームまたはワークフローフォーム内のコンポーネント情報を取得します。</td>
+  </tr>
+  <tr>
+    <td>[フォームインスタンスデータを検索する](https://open.dingtalk.com/document/orgapp/querying-form-instance-data#)</td>
+    <td>フォームインスタンスデータを検索します。</td>
+  </tr>
+  <tr>
+    <td>[フォームデータを保存する](https://open.dingtalk.com/document/orgapp/save-form-data#)</td>
+    <td>承認フローなしで Yida フォームインスタンスを作成します。</td>
+  </tr>
+  <tr>
+    <td>[フォームデータを更新する](https://open.dingtalk.com/document/orgapp/update-form-data#)</td>
+    <td>フォームデータを更新します。</td>
+  </tr>
+  <tr>
+    <td>[フォームデータを検索する](https://open.dingtalk.com/document/orgapp/query-form-data#)</td>
+    <td>フォームインスタンス ID を指定してフォームデータを検索します。</td>
+  </tr>
+  <tr>
+    <td>[社員コンポーネントの値を取得する](https://open.dingtalk.com/document/orgapp/gets-the-value-of-the-employee-component#)</td>
+    <td>社員コンポーネントの値を取得します。</td>
+  </tr>
+  <tr>
+    <td>[フォームコンポーネント定義の一覧を取得する](https://open.dingtalk.com/document/orgapp/get-a-list-of-form-component-definitions#)</td>
+    <td>フォームコンポーネント定義の一覧を取得します。</td>
+  </tr>
+  <tr>
+    <td>[サブフォームコンポーネントのデータを取得する](https://open.dingtalk.com/document/orgapp/obtain-child-table-component-data#)</td>
+    <td>フォームインスタンス ID とサブフォームコンポーネント ID を指定して、サブフォームコンポーネントのデータを取得します。</td>
+  </tr>
+  <tr>
+    <td>[フォームデータを削除する](https://open.dingtalk.com/document/orgapp/delete-form-data#)</td>
+    <td>フォームデータを削除します。</td>
+  </tr>
+  <tr>
+    <td>[複数のフォームインスタンス ID を取得する](https://open.dingtalk.com/document/orgapp/obtain-the-ids-of-multiple-form-instances#)</td>
+    <td>複数のフォームインスタンス ID を取得します。</td>
+  </tr>
+  <tr>
+    <td>[複数のフォームインスタンスを一括取得する](https://open.dingtalk.com/document/orgapp/obtain-multiple-form-instance-data#)</td>
+    <td>複数のフォームインスタンスの詳細を一括取得します。</td>
+  </tr>
+  <tr>
+    <td>[複数のフォームインスタンスを一括削除する](https://open.dingtalk.com/document/orgapp/delete-multiple-form-instances#)</td>
+    <td>複数のフォームインスタンスレコードを一括削除します。</td>
+  </tr>
+  <tr>
+    <td>[複数のフォームインスタンスを一括作成する](https://open.dingtalk.com/document/orgapp/create-multiple-form-instances#)</td>
+    <td>複数のフォームインスタンスレコードを一括作成します。</td>
+  </tr>
+  <tr>
+    <td>[フォームインスタンス内のコンポーネント値を一括更新する](https://open.dingtalk.com/document/orgapp/batch-update-of-component-values-in-form-instances#)</td>
+    <td>フォームインスタンス ID を指定して、Yida フォームインスタンス内のコンポーネント値を一括更新します。</td>
+  </tr>
+  <tr>
+    <td>[フォームインスタンスを作成または更新する](https://open.dingtalk.com/document/orgapp/add-or-update-form-instances#)</td>
+    <td>フィルターを使用してフォームインスタンスを作成または更新します。</td>
+  </tr>
+  <tr>
+    <td>[高度な検索条件でフォームインスタンスデータを検索する（サブフォームコンポーネントデータを含む）](https://open.dingtalk.com/document/orgapp/query-form-instances-using-advanced-search-conditions#)</td>
+    <td>フィルターを使用してフォームインスタンスの詳細を取得します。</td>
+  </tr>
+  <tr>
+    <td>[高度な検索条件でフォームインスタンスデータを検索する（サブフォームコンポーネントデータを除く）](https://open.dingtalk.com/document/orgapp/obtain-form-instance-data-using-advanced-query-conditions-excluding-subform#)</td>
+    <td>フィルターを使用してフォームインスタンスの詳細を取得します（サブフォームコンポーネントのデータを除く）。</td>
+  </tr>
+  <tr>
+    <td>[フォームインスタンスデータでフォームインスタンスを一括更新する](https://open.dingtalk.com/document/orgapp/update-multiple-form-instances-with-the-form-instance-data#)</td>
+    <td>Yida フォームコンポーネントのデータを使用して、フォームインスタンス情報を一括更新します。</td>
+  </tr>
+  <tr>
+    <td>[フォームの変更履歴を検索する](https://open.dingtalk.com/document/orgapp/change-records-of-query-forms#)</td>
+    <td>フォームの変更履歴を検索します。</td>
+  </tr>
+  <tr>
+    <td rowSpan={5}>承認タスク</td>
+    <td>[承認履歴を取得する](https://open.dingtalk.com/document/orgapp/queries-an-approval-record#)</td>
+    <td>承認履歴を取得します。</td>
+  </tr>
+  <tr>
+    <td>[Yida 承認タスクを承認または却下する](https://open.dingtalk.com/document/orgapp/execute-approval-tasks#)</td>
+    <td>Yida 承認タスクを承認または却下します。</td>
+  </tr>
+  <tr>
+    <td>[タスクを転送する](https://open.dingtalk.com/document/orgapp/transfer-tasks#)</td>
+    <td>タスクを転送します。</td>
+  </tr>
+  <tr>
+    <td>[コメントを送信する](https://open.dingtalk.com/document/orgapp/submit-comment#)</td>
+    <td>フォームまたはワークフローインスタンスにコメントを送信します。</td>
+  </tr>
+  <tr>
+    <td>[Yida フォームインスタンスのコメントを一括検索する](https://open.dingtalk.com/document/orgapp/batch-query-of-comments-appropriate-for-form-instances#)</td>
+    <td>Yida フォームのすべてのコメントを一括検索します。</td>
+  </tr>
+  <tr>
+    <td>アプリ</td>
+    <td>[Yida アプリ一覧を検索する](https://open.dingtalk.com/document/orgapp/query-the-application-list#)</td>
+    <td>社内の Yida アプリ一覧を検索します。</td>
+  </tr>
+</table>

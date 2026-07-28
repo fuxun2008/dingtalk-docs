@@ -1,0 +1,216 @@
+---
+title: "JS アクションパネル"
+description: "Yida の JS アクションパネルでビジネスロジックや条件判定用の JS コードを記述する方法を解説します。対応エディション、コード入力、アクション連携、コールバック関数のパラメータ取得、API 使い方ガイド、JS デバッグ手法、サブフォーム API 改善まで網羅した開発者向けドキュメントです。"
+polished: true
+---
+
+| **機能** | **Freeプラン** | **ベーシック版** | **プロフェッショナル版** | **専用版** |
+|---|---|---|---|---|
+| ページ JS コード | 非対応 | 非対応 | 対応 | 対応 |
+
+## 1. 概要
+
+Yida の JS アクションパネルを使用して、ビジネスロジックや条件判定を実装する JS コードを記述します。
+
+アクションパネルを活用することで、コードの整理・再利用や、複雑なインタラクションの構築が容易になります。
+
+<Warning>
+- JS パネルに記述したロジックは、原則として過去のデータには適用されません。
+</Warning>
+
+## 2. アクションパネルでのコード入力
+
+`export` で宣言された関数はアクションパネルから認識され、選択および呼び出しが可能です。
+
+以下のコードをご参照ください。
+
+```javascript
+/**
+ * カスタムユーティリティ関数。コンテキスト (this) は使用しない
+ */
+function something() {
+  alert('something')
+}
+
+/**
+ * @title カスタムアクション A
+ * コンテキスト (this) を使用可能
+ */
+export function custom_action_a() {
+  alert('custom action a')
+}
+
+/**
+ * @title カスタムアクション B
+ */
+export function custom_action_b() {
+  something(); // カスタムユーティリティ関数を呼び出す
+  this.custom_action_a(); // カスタムアクション関数を呼び出す
+}
+```
+
+**備考:**
+
+<Warning>
+コンポーネントのアクションパネルで認識されるのは、`export function xxx() {}` の形式で宣言された関数のみです。エクスポートするメソッド名は一意である必要があります。
+</Warning>
+
+パネル内でアクションを手動で取得・呼び出す場合は、`this.methodName();` を直接呼び出します。
+
+### 2.1 アクションパネルでのアクション連携
+
+Yida のほとんどのコンポーネントはアクション連携に対応しています。
+
+アクション連携により、コンポーネントの操作をアクションパネルで定義した関数に紐付けできます。
+
+### 2.2 コールバック関数のパラメータ取得
+
+コールバック関数に設定したパラメータを取得します。
+
+#### (1) アクション設定でパラメータを設定
+
+アクションを作成します。
+
+#### (2) 以下の方法でパラメータを取得します
+
+```javascript
+export function onClick(){
+  const { name, age } = this.params
+  console.log(name,age);
+}
+```
+
+## 3. API 使い方ガイド
+
+詳細は [https://developers.aliwork.com/docs/api/about](/zh/open/yida/api/about) をご参照ください。
+
+## 4. JS コードのデバッグ方法
+
+Chrome の [Devtools](https://developers.google.cn/web/tools/chrome-devtools/) を使用してデバッグします。頻繁にデバッグを行う場合は、ブラウザから Yida にアクセスすることをおすすめします。
+
+最もよく使用するパネルは `Console`、`Network`、`Elements` です。
+
+Yida の表示ページは React で構築されているため、[React Developer Tools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi?hl=en) をインストールして Yida の UI をデバッグすることも可能です。
+
+### 4.1 コード内で `debugger` キーワードを使用する
+
+JS 関数内で `debugger` キーワードを使用すると、実行を一時停止してデバッグできます。以下の動画では `debugger` の基本的な使い方を紹介しています。
+
+### 4.2 サードパーティ製 JS リソースの参照方法
+
+**参照する JS リソースの安全性は必ず確認してください。** 以下のコードをご参照ください。
+
+```javascript
+this.utils.loadScript("url", () => {})
+
+// 例:
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "https://www.yidaapps.com",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### 4.3 JS の学習方法
+
+- Yida Developer Center
+- JavaScript Garden
+- JavaScript | MDN
+- 推薦書籍:『Professional JavaScript for Web Developers』(最新版)
+- コミュニティ: Juejin、Stack Overflow、GitHub など
+
+## 5. サブフォーム API の改善
+
+### 5.1 サブフォームデータの取得
+
+```javascript
+const subFormInst = this.$('subformUniqueId');
+console.log(subFormInst.getValue()); // サブフォームデータの一覧全体を取得
+// まず行識別子を取得する
+const items = subFormInst.getItems(); //  ["tfitem_1", "tfitem_2"]
+items.forEach(item => {
+  const rowData = subFormInst.getItemValue(item); // 行データを取得
+  console.log(rowData['subformInnerComponentUniqueId']); // 指定行のフィールドデータを取得
+});
+```
+
+### 5.2 サブフォームの変更検知
+
+サブフォームデータが変更された場合、セル単位の編集に加えて、数式計算、データ連動、外部からの代入もサブフォームの onChange イベントをトリガーします。変更元を識別できるように、どのセルのデータが変更されたかを示す `changes.fieldId` が追加されています。
+
+```javascript
+// サブフォームにバインドされたイベント
+export function onChange({value, extra}) {
+  const { formGroupId, from, changes = {} } = extra || {};
+
+  // デバイスフィールドが変更されたか判定
+ 	if (changes.fieldId === 'subformDeviceFieldUniqueId') {
+  // サブフォーム変更後に実行するロジックをここに追加
+  };
+}
+```
+
+### 5.3 テーブル内のデータ変更に応じた関連行データの更新
+
+`updateItemValue` API を使用してセルに値を代入します。
+
+例として、デバイスが変更された際に、この API を使用して現在のサブフォームの残りの情報を自動入力します。
+
+```javascript
+// サブフォームにバインドされたイベント
+export function onChange({value, extra}) {
+  const { formGroupId, from, changes } = extra || {};
+  if (from === 'setItemValue') return; // updateItemValue が再度 onChange をトリガーする無限ループを防止
+
+  // 単一行データ変更の処理
+  const tableField = this.$('subformUniqueId');
+
+  // デバイスフィールドが変更されたか判定
+ 	if (changes.fieldId === 'subformDeviceFieldUniqueId') {
+  		getDeviceInfo() // デバイス情報を取得するカスタム API
+    			.then((data) => {
+      				tableField.updateItemValue(formGroupId, {
+                'numberField_l00o018a': data.price, // デバイス価格を更新
+                'textareaField_kysd3grq': data.description, // デバイス説明を更新
+              });
+      		})
+  };
+}
+```
+
+従来のように `getComponent().setValue` で 1 つずつ値を代入する必要はなくなりました。従来の方式では、非同期シナリオにおいてフォームの完全な更新を保証できませんでした。
+
+## 6. よくあるエラー
+
+### 6.1 Cannot read property '$' of undefined.
+
+```diff
+export function didMount(){
+	console.log('テストメソッドに入りました');
+-  test1()  // この呼び出し方では上記のエラーが発生します。
++  this.test1() // 正しい呼び出し方。原則はシンプルで、コンテキストは this を通じて渡す必要があります。
+}
+
+export function test1(){
+	console.log(this.$('abc').getValue());
+}
+```
+
+### 6.2 This request has been blocked; the content must be served over HTTPS
+
+Yida のドメインは https://www.yidaapps.com です。ブラウザのセキュリティ制限により、リクエストできるのは HTTPS エンドポイントのみで、HTTP エンドポイントは許可されません。http://192.168.xxx のようなローカルエンドポイントもブロックされます。
+
+**重要:**
+
+API サービスを提供するには、エンドポイントが以下の要件を満たす必要があります。
+
+1. 有効な証明書付きの HTTPS プロトコルを使用すること。
+
+2. www.yidaapps.com からの [**クロスオリジンアクセス**](http://www.ruanyifeng.com/blog/2016/04/cors.html) を許可すること。許可しない場合、クロスサイトポリシーエラーが発生します。

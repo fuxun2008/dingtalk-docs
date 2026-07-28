@@ -1,0 +1,1334 @@
+---
+title: "Yida プラットフォーム API"
+description: "Yida プラットフォームのワークフローインスタンス起動 API を解説。使用上の注意、HTTP URL の組み立てルール、パラメータ設定手順を、業務アプリ開発者向けに詳しく紹介します。"
+polished: true
+---
+| **機能** | **Freeプラン** | **ベーシック版** | **プロフェッショナル版** | **専用版** |
+|---|---|---|---|---|
+| Yida ページのデータソース | 非対応 | 非対応 | 対応 | 対応 |
+
+## 1. 使用上の注意
+
+### 1.1 HTTP URL の組み立てルール
+
+現在はアプリレベルの API に対応しています。アプリ内（クロスアプリも対応）で、以下の形式で該当 API にアクセスできます。
+
+```text
+${Yida Domain}/dingtalk/web/${App code} + API path.
+```
+
+たとえば、アプリコードが APP_X1X2X3X4 のアプリに対して、ブラウザから「ワークフローインスタンス – ワークフロー起動」サービス API を呼び出す場合、データパネルで使用するリクエスト URL は次のとおりです（**相対パスで十分です**）。
+
+```text
+/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json
+```
+
+詳細なハンズオンデモは [II. ワークフローインスタンス] → [1. ワークフロー起動] を参照してください。
+
+**注意：現在のバージョンでは、searchFieldJson および dynamicOrder フィールドは文字列値である必要があります。例：**
+
+```javascript
+const someJson = {
+	"textField_kkm9o5cd":"123"
+}
+
+// someJson を直接 searchFieldJson に渡しても効果はありません。JSON.stringify でオブジェクトを文字列に変換する必要があります。
+const fieldJson = JSON.stringify(someJson); // '{"textField_kkm9o5cd":"123"}'
+```
+
+## 2. ワークフローインスタンス
+
+### 2.1 ワークフロー起動
+
+- API: /v1/process/startInstance.json
+- HTTP メソッド: POST
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processCode | ワークフローコード | はい | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 | スタンドアロン起動ページの URL から取得可能 |
+| formUuid | フォーム ID | はい | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | スタンドアロン起動ページの URL から取得可能 |
+| formDataJson | フォームデータ | はい | <br /> | タイプ: String<br />参照: 付録 1 – フォームデータの保存 / 更新フォーマット |
+| deptId | 提出者の部門 ID | いいえ | 18295 | 省略した場合は提出者の主部門がデフォルトになります |
+
+- 戻り値：
+
+- 戻り値
+
+```json
+{
+  "result": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+  "success": true
+}
+```
+
+**シナリオ解説：**
+
+①. シンプルなワークフローページを作成し、値をカスタム値で埋めたいコンポーネントをクリックし、その一意識別子を取得します。この例では、一行テキストのテキストボックスの一意識別子は `textField_kkm9o5cd` です。
+
+②. プレミアム表示ページを作成し、ボタンをページ上にドラッグしてデータソースを追加します。
+
+このページ内で一意でわかりやすい名前を入力し、業務ニーズに合わせて HTTP URL を入力します。この例では、ボタンをクリックするとワークフローを起動したいので、HTTP URL は /alibaba/web/APP_D45S78OXJSL51QTQVHT8/v1/process/startInstance.json となります。ここで APP_D45S78OXJSL51QTQVHT8 は一意のアプリ識別子です。ご自身のアプリの一意識別子に置き換えてください。HTTP メソッドは POST を選択してください。
+
+③. ボタンに onClick イベントを追加し、\<> アイコンをクリックしてリモートデータソースをボタンに紐付けます：
+
+参照: [https://developers.aliwork.com/docs/api/about](/zh/open/yida/api/about)
+
+以下のようにバインドコードを記述します。ここでは一行テキストのフォームコントロール（一意識別子: `textField_kkm9o5cd`）に固定値 `123` を入力しています。
+
+formUuid および processCode パラメータは、[アプリ設定] – [アプリデータ] – [XX ワークフロー] にあるフォーム ID とワークフローコードから取得できます。
+
+```javascript
+export function onClick(){
+  const params = {
+    "processCode":"TPROC--CFYJ5HYUN89NJ1JW3IXBI7A95RXM3652O9MKK3",
+    "formUuid": "FORM-CFYJ5HYUN89NJ1JW3IXBI7A95RXM3552O9MKK2",
+    "formDataJson": '{"textField_kkm9o5cd":"123"}'
+  }
+
+  this.dataSourceMap.myDatasource.load(params).then((response) => {
+    this.utils.dialog({
+      method: 'alert', // or confirm
+      title: 'リクエスト成功',
+      type: 'success', // PC 上では info/success/error に対応
+      content: `Response: ${response}`,
+    })
+  })
+  console.log('onClick');
+}
+```
+
+④. コードを記述したら、ページ右上の保存ボタンをクリックします。
+
+⑤. 実行時ページに移動してワークフロー起動をテストします。ボタンをクリックすると、ブラウザに内蔵されているデバッグツールの Network で startInstance リクエストが成功していることが確認できます。レスポンス `da5ed25c-977b-40e0-acff-4a1c07aa6f41` はワークフローインスタンス ID で、このワークフローインスタンスを一意に識別します。
+
+⑥. 続いて、対応するワークフローのデータ管理ページに移動します。先ほど起動したワークフローが見つかり、一行テキストのコンテンツはコードで入力した固定値 `123` になっています。すべてのテストと検証は完了です。
+
+- 動画解説
+
+### 2.2 条件によるワークフローインスタンス ID の検索
+
+- API: /v1/process/getInstanceIds.json
+- HTTP メソッド: GET
+- 権限：ワークフローにインスタンスの閲覧権限が設定されている必要があります（管理者は対象外）
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | フォーム内のコンポーネント値による検索 | いいえ | <br /> | タイプ: String<br />付録 2 参照：コンポーネント値によるフィルター検索 – コンポーネント値のフォーマット |
+| taskId | タスクID | いいえ | 2199132092 | 使用頻度は少ないです。 |
+| instanceStatus | インスタンスステータス | いいえ | RUNNING | 列挙値: RUNNING、TERMINATED、COMPLETED、ERROR。<br />意味: 実行中、中止、完了、エラー。 |
+| approvedResult | ワークフロー承認結果 | いいえ | agree | 列挙値: agree、disagree。<br />意味: 承認、辞退。 |
+| currentPage | 現在ページ | いいえ | 1 | 0 より大きい必要があります<br />デフォルト: 1 |
+| pageSize | 1 ページあたりの件数 | いいえ | 10 | 0 より大きい必要があります<br />デフォルト: 10<br />100 を超えることはできません |
+| originatorId | ワークフロー提出者の社員番号による検索 | いいえ | <br /> | <br /> |
+| createFrom | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式）<br />yyyy-MM-DD |
+| createTo | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式）。<br />createFrom と組み合わせて、<br />2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に作成されたデータを検索します。 |
+| modifiedFrom | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式） |
+| modifiedTo | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式）。modifiedFrom と組み合わせて、2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に更新されたデータを検索します。 |
+
+- 戻り値
+
+```json
+{
+  "result": {
+    "data": [
+      "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "bc0950a3-fe1b-459c-b6ba-282be38523ab",
+      "f540cbd7-43eb-40de-b915-6716578a2802"
+    ],
+    "totalCount": 3,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### 2.3 検索条件によるインスタンス詳細リストの取得
+
+- API: /v1/process/getInstances.json
+- HTTP メソッド: GET
+- 権限：ワークフローにインスタンスの閲覧権限が設定されている必要があります（管理者は対象外）
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | フォーム内のコンポーネント値による検索 | いいえ | <br /> | タイプ: String<br />付録 2 参照：コンポーネント値によるフィルター検索 – コンポーネント値のフォーマット |
+| taskId | タスクID | いいえ | 2199132092 | 使用頻度は少ないです。 |
+| instanceStatus | インスタンスステータス | いいえ | RUNNING | 列挙値: RUNNING、TERMINATED、COMPLETED、ERROR。<br />意味: 実行中、中止、完了、エラー。 |
+| approvedResult | ワークフロー承認結果 | いいえ | agree | 列挙値: agree、disagree。<br />意味: 承認、辞退。 |
+| currentPage | 現在ページ | いいえ | 1 | 0 より大きい必要があります<br />デフォルト: 1 |
+| pageSize | 1 ページあたりの件数 | いいえ | 10 | 0 より大きい必要があります<br />デフォルト: 10<br />100 を超えることはできません |
+| originatorId | ワークフロー提出者の社員番号による検索 | いいえ | <br /> | <br /> |
+| createFrom | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式） |
+| createTo | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式）。<br />createFrom と組み合わせて、<br />2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に作成されたデータを検索します。<br />データは、yyyy-MM-DD 値に 00:00:00 を付加して取得します |
+| modifiedFrom | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式） |
+| modifiedTo | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式）。modifiedFrom と組み合わせて、2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に更新されたデータを検索します。 |
+
+- 戻り値
+
+### 2.4 インスタンス ID によるワークフローインスタンス詳細の取得
+
+- API: /v1/process/getInstanceById.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processInstanceId | ワークフローインスタンス ID | はい | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- 戻り値
+
+### 2.5 ワークフローインスタンスの削除
+
+- API: /v1/process/deleteInstance.json
+- HTTP メソッド: POST
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processInstanceId | ワークフローインスタンス ID | はい | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- 戻り値
+
+### 2.6 ワークフローインスタンスの中止
+
+- API: /v1/process/terminateInstance.json
+- HTTP メソッド: POST
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processInstanceId | ワークフローインスタンス ID | はい | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- 戻り値
+
+#### 2.7 インスタンス ID による複数ワークフローインスタンス詳細の一括取得［未公開］
+
+- API: /v1/process/getInstancesByIds.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processInstanceIds | ワークフローインスタンス ID のリスト（カンマ区切り） | はい | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530,d230233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- 戻り値
+
+### 2.7 単一タスクの実行 API
+
+- API: /v1/task/executeTask.json
+- HTTP メソッド: POST
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| taskId | タスクID | はい | 12002575 | <br /> |
+| procInstId | インスタンス ID | はい | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+| outResult | 承認結果 | はい | AGREE | AGREE（承認）、DISAGREE（辞退） |
+| remark | 承認コメント | はい | 確認済み、承認します | <br /> |
+| formDataJson | 更新するフォーム値 | いいえ | <br /> | 参照: 付録 1 – フォームデータの保存 / 更新フォーマット。<br />パラメータに含まれるコンポーネントは更新され、含まれないコンポーネントは変更されません。<br />詳細値は全体としてのみ更新可能で、サブフォーム内の単一コンポーネントの値を個別に更新することはできません |
+| noExecuteExpressions | バリデーションと関連アクションをスキップするかどうか | いいえ | y | このタスクノードにバリデーションルールや関連アクションが紐付けられている場合、<br />y -> バリデーションルールおよび関連アクションを実行しない<br />n -> バリデーションルールおよび関連アクションを実行する<br />省略時のデフォルトは n（バリデーションルールおよび関連アクションが実行されます） |
+
+- 戻り値
+
+### 2.8 承認記録の取得
+
+- API: /v1/process/getOperationRecords.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processInstanceId | ワークフローインスタンス ID | はい | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | <br /> |
+
+- 戻り値
+
+- 戻り値フォーマット
+
+```json
+{
+  "success": true,
+  "content": [
+    {
+      "operateTime": "2018-06-22 14:35:40",
+      "remark": "",
+      "taskHoldTime": 0,
+      "type": "HISTORY",
+      "operatorName": "Yidaユーザー",
+      "operator": "yida",
+      "activityId": "sid-restartevent",
+      "action": "申請の提出",
+      "actionExt": "submit",
+      "id": 2846866118,
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "申請の提出",
+      "operateType": "NEW_PROCESS",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Yidaユーザー",
+      "taskId": "null"
+    },
+    {
+      "taskHoldTime": 531398377,
+      "type": "TODO",
+      "operatorName": "Yidaユーザー",
+      "operator": "yida",
+      "activityId": "sidJIOB2P2J1JW3RPMDOS28",
+      "taskType": "COMMON_ALL_AT_ONCE",
+      "actionExt": "doing",
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "担当者",
+      "activeTime": "2018-06-22 14:35:41",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Yidaユーザー",
+      "taskId": "2846866145"
+    }
+  ]
+}
+```
+
+### 2.9 ワークフローインスタンスの更新
+
+- API: /v1/process/updateInstance.json
+- HTTP メソッド: POST
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processInstanceId | インスタンス ID | はい | <br /> | <br /> |
+| updateFormDataJson | 更新するフォームデータ | はい | <br /> | 参照: 付録 1 – フォームデータの保存 / 更新フォーマット |
+
+- 戻り値：
+
+- 戻り値デモ
+
+```json
+{
+  "success":true
+}
+```
+
+#### 2.8 ワークフロー設計ノードのボタンリスト取得［未公開］
+
+- API: /v1/process/getActivityButtonVOs.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| processCode | ワークフローコード | はい | TPROC--X1G\*\*\*42ZMGA31OYELIWJ1 | <br /> |
+| activityId | ノード ID | はい | <br /> | <br /> |
+
+- 戻り値：
+
+- 戻り値デモ：
+
+```json
+{
+  "result": [
+    {
+      "aliasEn": "Forward",
+      "alias": "転送",
+    },
+    {
+      "aliasEn": "Append",
+      "alias": "リクエスト署名",
+    },
+    {
+      "aliasEn": "Return",
+      "alias": "差し戻し",
+    }
+  ],
+  "success": true,
+  "errorCode": null,
+  "content": null,
+  "errorMsg": null
+}
+```
+
+## 3. フォームインスタンス
+
+### 3.1 フォームインスタンスの作成
+
+- API: /v1/form/saveFormData.json
+- HTTP メソッド: POST
+- パラメータ：
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB | <br /> |
+| appType | アプリ ID | はい | APP_DR4OK27ZKL5N22B907E8 | <br /> |
+| formDataJson | フォームデータ | はい | \{"textField_jcpm6agt": "一行","employeeField_jcos0sar": ["workno"]} | タイプ: String<br />参照: [付録 1 – フォームデータの保存 / 更新フォーマット](/ja/yida/developer-features/aql605) |
+
+- 戻り値：
+
+- 戻り値デモ：
+
+```json
+{
+  "result":"FINST-EF6Y93URN2UZ1SBPLIP9NAV6HR2GEO1Z4ZCHSCJ0",
+  "success":true
+}
+```
+
+### 3.2 フォーム内の指定コンポーネント値の更新
+
+- API: /v1/form/updateFormData.json
+- HTTP メソッド: POST
+- パラメータ：
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formInstId | 更新するフォームデータ ID | はい | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+| updateFormDataJson | 更新するフォームコンポーネント値（必須） | はい | \{"employeeField_jcpm5gy2":<br />["xxxxx","yyyyy"]}<br />（ここではメンバーコンポーネントの例） | タイプ: String<br />参照: [付録 1 – フォームデータの保存 / 更新フォーマット](/ja/yida/developer-features/aql605)。パラメータに含まれるコンポーネントは更新され、含まれないコンポーネントは変更されません。詳細値は全体としてのみ更新可能で、サブフォーム内の単一コンポーネントの値を個別に更新することはできません |
+| useLatestVersion | 最新のフォームバージョンで更新するか | いいえ | y | **重要**<br />デフォルトは n です。y を推奨します。 |
+
+- 戻り値：
+
+- 戻り値デモ
+
+```json
+{
+  "success":true
+}
+```
+
+### 3.3 フォームインスタンスの削除
+
+- API: /v1/form/deleteFormData.json
+- HTTP メソッド: POST
+- パラメータ：
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formInstId | 削除するフォームデータ ID | はい | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+
+- 戻り値：
+
+- 戻り値デモ
+
+```json
+{
+  "success":true
+}
+```
+
+---
+
+### 3.4 フォームインスタンス ID によるフォームインスタンス詳細の取得
+
+- API: /v1/form/getFormDataById.json
+- HTTP メソッド: GET
+- パラメータ：
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formInstId | 取得対象インスタンスのインスタンス ID | はい | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+
+- 戻り値
+
+---
+
+### 3.5 条件によるフォームインスタンス ID リストの検索
+
+- API: /v1/form/searchFormDataIds.json
+- HTTP メソッド: GET
+- 権限：この API はページレベルの権限に従います（管理者は対象外）。
+- パラメータ：
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | フォーム内のコンポーネント値による検索 | いいえ | <br /> | タイプ: String<br />付録 2 参照：コンポーネント値によるフィルター検索 – コンポーネント値のフォーマット |
+| currentPage | 現在ページ | いいえ | 1 | 0 より大きい必要があります<br />デフォルト: 1 |
+| pageSize | 1 ページあたりの件数 | いいえ | 10 | 0 より大きい必要があります<br />デフォルト: 10<br />100 を超えることはできません |
+| originatorId | データ提出者の社員番号による検索 | いいえ | <br /> | <br /> |
+| createFrom | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式） |
+| createTo | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式）。<br />createFrom と組み合わせて、<br />2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に作成されたデータを検索します。<br />データは、yyyy-MM-DD 値に 00:00:00 を付加して取得します |
+| modifiedFrom | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式） |
+| modifiedTo | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式）。modifiedFrom と組み合わせて、2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に更新されたデータを検索します。 |
+| dynamicOrder | 並べ替え | いいえ | column: '+' | 昇順は +、降順は - |
+
+- 戻り値
+
+- 戻り値デモ：
+
+```json
+{
+  "result":{
+    "data":[
+      "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0"
+    ],
+	  "totalCount":1,
+    "currentPage":1
+  },
+  "success":true
+}
+```
+
+### 3.6 条件によるフォームインスタンス詳細リストの検索
+
+- API: /v1/form/searchFormDatas.json
+- HTTP メソッド: GET
+- 権限：この API はページレベルの権限に従います（管理者は対象外）。
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| searchFieldJson | フォーム内のコンポーネント値による検索 | いいえ | <br /> | タイプ: String<br />付録 2 参照：コンポーネント値によるフィルター検索 – コンポーネント値のフォーマット |
+| currentPage | 現在ページ | いいえ | 1 | 0 より大きい必要があります。デフォルト: 1 |
+| pageSize | 1 ページあたりの件数 | いいえ | 10 | 0 より大きい必要があります<br />デフォルト: 10<br />100 を超えることはできません |
+| originatorId | データ提出者の社員番号による検索 | いいえ | <br /> | <br /> |
+| createFrom | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式）<br />（もしくは秒精度<br />yyyy-MM-DD HH:mm:ss） |
+| createTo | createFrom と createTo で時間範囲を指定します。この範囲内に作成されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式。もしくは秒精度<br />yyyy-MM-DD HH:mm:ss）<br />createFrom と組み合わせて、<br />2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に作成されたデータを検索します。 |
+| modifiedFrom | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-01-01 | 文字列（yyyy-MM-DD 形式。もしくは秒精度<br />yyyy-MM-DD HH:mm:ss） |
+| modifiedTo | modifiedFrom と modifiedTo で時間範囲を指定します。この範囲内に更新されたデータリストを検索します。 | いいえ | 2018-02-01 | 文字列（yyyy-MM-DD 形式。もしくは秒精度<br />yyyy-MM-DD HH:mm:ss）。modifiedFrom と組み合わせて、2018-01-01 から 2018-01-31 の間（1 日と 31 日を含む）に更新されたデータを検索します。 |
+| dynamicOrder | 並べ替えフィールドを指定 | いいえ | \{"numberField_1ac":"+"} | numberField_1ac フィールドで昇順に並べ替えます |
+
+- 戻り値
+
+### 3.7 フォーム定義の取得
+
+- API: /v1/form/getFormComponentDefinationList.json
+- HTTP メソッド: GET
+- パラメータ：
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB | <br /> |
+| version | フォームバージョン | いいえ | 1 | formData の `version` フィールドを受け付けます。<br />空の場合、最新バージョンの定義を返します |
+
+- 戻り値：
+
+- 戻り値フォーマット
+
+```json
+{
+    "success":true,
+    "content":[
+        {
+            "label":"{"en_US":"CheckBox Field","zh_CN":"複数選択","type":"i18n"}",
+            "key":"checkboxField_jiwvhkdi"
+        },
+        {
+            "label":"{"en_US":"Textarea Field","zh_CN":"複数行テキストボックス","type":"i18n"}",
+            "key":"textareaField_jiwvhkdh"
+        },
+        {
+            "label":"{"en_US":"Select Field","zh_CN":"ドロップダウン単一選択","type":"i18n"}",
+            "key":"selectField_jiwvhkdg"
+        }
+    ]
+}
+```
+
+### 3.8 サブフォームデータの取得
+
+- API: /v1/form/listTableDataByFormInstIdAndTableId.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| formUuid | フォーム ID | はい | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| formInstanceId | 取得対象インスタンスのインスタンス ID | はい | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | <br /> |
+| tableFieldId | 取得対象のサブフォームコンポーネントの一意識別子 | はい | tableField_ksyaujq1 | <br /> |
+| currentPage | 現在ページ | はい | 10 | 0 より大きい必要があります。デフォルト: 1 |
+| pageSize | 1 ページあたりの件数 | はい | 50 | 0 より大きく 50 未満。デフォルト: 10 |
+
+- 戻り値
+
+- 戻り値フォーマット
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "textField_kstqokaa": ""
+      },
+      {
+        "textField_kstqokaa": "1"
+      },
+      {
+        "textField_kstqokaa": "2"
+      }
+    ],
+    "totalCount": 120,
+    "currentPage": 1,
+  },
+  "success": true,
+}
+```
+
+## 4. タスクセンター
+
+### 4.1 送信済みタスク
+
+- API: /v1/process/getMySubmitInApp.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| pageSize | 1 ページあたりの件数 | はい | 10 | 0 より大きい必要があります。デフォルト: 10、最大: 100 |
+| currentPage | 現在ページ | はい | 1 | 0 より大きい必要があります。デフォルト: 1 |
+| keyword | キーワード | いいえ | <br /> | <br /> |
+
+- 戻り値：
+
+- 戻り値フォーマット
+
+成功時：
+
+```javascript
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "チケット",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "名前",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "jack"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+失敗時：
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "権限なし"
+}
+```
+
+**ヒント：instValue は文字列を返します。その内容は JSON 配列形式です。**
+
+サンプルリクエストコード：
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getMySubmmitInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.2 未処理タスク
+
+- API: /v1/task/getTodoTasksInApp.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| pageSize | 1 ページあたりの件数 | はい | 10 | 0 より大きい必要があります。デフォルト: 10、最大: 100 |
+| currentPage | 現在ページ | はい | 1 | 0 より大きい必要があります。デフォルト: 1 |
+| keyword | キーワード | いいえ | <br /> | <br /> |
+
+- 戻り値：
+
+- 戻り値フォーマット
+
+成功時：
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "XXXXXX",
+        "originatorName": "XXX",
+        "title": "XXX が起動した作業フロー",
+        "originatorPhoto": "http://static.dingtalk.com/media/lADPdfafafsAXXXXXX.jpg",
+        "titleEn": "workflow started by XXX",
+        "createTime": "2018-04-13 13:35:58",
+        "appType": "APP_R8MdfadfXXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "NEW"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+失敗時：
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "権限なし"
+}
+```
+
+サンプルリクエストコード：
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getTodoTasksInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.3 完了済みタスク
+
+- API: /v1/task/getDoneTasksInApp.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| pageSize | 1 ページあたりの件数 | はい | 10 | 0 より大きい必要があります。デフォルト: 10、最大: 100 |
+| currentPage | 現在ページ | はい | 1 | 0 より大きい必要があります。デフォルト: 1 |
+| keyword | キーワード | いいえ | <br /> | <br /> |
+
+- 戻り値：
+
+- 戻り値フォーマット
+
+成功時：
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "abc434rfds23XXXXXX",
+        "finishTime": "2018-03-28 17:46:14",
+        "originatorName": "",
+        "title": "XXX が起動した作業フローページ",
+        "originatorPhoto": "//img.alicdn.com/tfs/TB1msdfsXXXXXX.jpg",
+        "titleEn": "workflow Page started by XXX",
+        "createTime": "2018-03-28 17:45:43",
+        "appType": "XXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "COMPLETED"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+失敗時：
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "権限なし"
+}
+```
+
+サンプルリクエストコード：
+
+```java
+ @Test
+    public void postYidaOutTaskTest() {
+        String api = "/yida_vpc/process/getDoneTasksInCorp.json";
+        String corpId = "ding5d17e3add038d44535c2f4657eb63711";
+        String userId = "141940523222800011";
+        String corpCode = "AJ1L4CJVOL0UUQPTQWX8YOTCCS7O1T4CSNJF11";
+
+        PostClient postClient = ExecutableClient.getInstance().newPostClient(api);
+        postClient.addParameter("page", "1");
+        postClient.addParameter("limit", "10");
+        postClient.addParameter("corpId", corpId);
+//        postClient.addParameter("appTypes", "[\"APP_I3D2FD2ZQB75KLLKL48Y\"]");
+        postClient.addParameter("userId", userId);
+        String token = DigestUtils.md5DigestAsHex(String.format("%s%s%s", corpId, userId, corpCode).getBytes()).toUpperCase();
+        postClient.addParameter("token", token);
+
+        String apiResult = postClient.post();
+        Assert.notNull(apiResult);
+    }
+```
+
+---
+
+### 4.4 自分宛の CC タスク（アプリレベル）
+
+- API: /v1/task/getNotifyMeTasksInApp.json
+- HTTP メソッド: GET
+- パラメータ
+
+| パラメータ | 説明 | 必須 | 例 | 備考 |
+|---|---|---|---|---|
+| pageSize | 1 ページあたりの件数 | はい | 10 | 0 より大きい必要があります。デフォルト: 10、最大: 100 |
+| currentPage | 現在ページ | はい | 1 | 0 より大きい必要があります。デフォルト: 1 |
+| keyword | キーワード | いいえ | <br /> | <br /> |
+| processCodes | ワークフローコードのリスト | いいえ | ["xx","xxx"] | <br /> |
+| instanceStatus | インスタンスステータス | いいえ | <br /> | 列挙値 |
+
+- 戻り値：
+
+- 戻り値フォーマット
+
+成功時：
+
+```javascript
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "チケット",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "名前",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "jack"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+失敗時：
+
+```javascript
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "権限なし"
+}
+```
+
+- ヒント：instValue は文字列を返します。その内容は JSON 配列形式です。
+
+## 5. 付録
+
+### 5.1 フォームデータの保存 / 更新フォーマット
+
+- フォーム内の各コンポーネントには一意の ID があり（ページデザイナーでコンポーネントの右側のプレミアムパネルから確認可能）、各コンポーネントの値には固定のフォーマットがあります。現在対応しているフォームコンポーネントは、一行、複数行、数値、選択、ドロップダウン単一選択、複数選択、ドロップダウン複数選択、日付、日付範囲、ユーザー検索ボックス、地域選択、部門選択、カスケード選択、およびサブフォームコンポーネントです。
+- フォームデータを保存 / 更新する際、フォーム内のデータは Map\<String, Object> 形式の JsonString として渡されます。key はコンポーネント ID、Object はコンポーネントの値です。各コンポーネントの値のフォーマットは以下のとおりです。
+
+| コンポーネント種別 | データフォーマット | デモ | 備考 |
+|---|---|---|---|
+| 一行テキストボックス | string | "danhang" | <br /> |
+| 複数行テキストボックス | string | "duohang" | <br /> |
+| 数値テキストボックス | Number | 1 | <br /> |
+| 選択 | string | "選択肢 1" | <br /> |
+| ドロップダウン単一選択 | string | "選択肢 1" | <br /> |
+| 複数選択 | 文字列配列 | ["選択肢 1","選択肢 2"] | <br /> |
+| ドロップダウン複数選択 | 文字列配列 | ["選択肢 1","選択肢 2"] | <br /> |
+| 日付コンポーネント | タイムスタンプ | 1516204800000 | <br /> |
+| カスケード日付 | 文字列配列 | ["1514736000000","1517328000000"]。<br />終了時刻のみ存在する場合は ["","1517328000000"] | 1 つ目は開始時刻のタイムスタンプ文字列、2 つ目は終了時刻のタイムスタンプ文字列 |
+| ユーザー検索ボックス | 文字列配列 | ["231344123","231344156"] | ["xxx"] の内容は userId です |
+| 都市選択 | 文字列配列 | ["110000","110100","110101"] | 1 つ目は省 ID、2 つ目は市 ID、3 つ目は区 ID である必要があります。 |
+| 部門選択 | 文字列配列 | ["1123456"] | ["xxx"] の内容は部門 ID です |
+| カスケード選択 | 文字列配列 | ["part","part_b"] | カスケードの順序で配列に格納する必要があります |
+| 添付コンポーネント | 文字列配列 | [<br />\{<br />"downloadUrl": "ファイルダウンロード URL",<br />"name": "ファイル名",<br />"previewUrl": "ファイルプレビュー URL",<br />"url": "ファイルダウンロード URL",<br />"ext": "docx"<br />}<br />] | <br /> |
+| 画像コンポーネント | 文字列配列 | [<br />\{<br />"downloadUrl": "ファイルダウンロード URL",<br />"name": "ファイル名",<br />"previewUrl": "ファイルプレビュー URL",<br />"url": "ファイルダウンロード URL",<br />}<br />] |  |
+| ハイパーリンクコンポーネント | 文字列配列 | [<br />\{<br />"link":"http://www.yidaapps.com",<br />"text":"Yida"<br />}<br />] | <br /> |
+| サブフォーム | JSONARRAY | [\{"textField_jcr0069m": "danhang1"},\{"textField_jcr0069m": "danhang2"}]<br />（textField_jcr0069m はサブフォーム内の一行のコンポーネント ID） | サブフォームには複数のレコードがあるため JSONARRAY を使用します。各レコードは複数コンポーネントの値で構成されるため、JSONObject で各コンポーネントの値を格納します |
+| 署名 | string | "画像 URL" | <br /> |
+
+- フォームデータの完全なフォーマットは以下のとおりです。
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": 1,
+  "radioField_jcr0069p": "選択肢 1",
+  "selectField_jcr0069q": "選択肢 1",
+  "checkboxField_jcr0069r": [
+    "選択肢 2",
+    "選択肢 3"
+  ],
+  "multiSelectField_jcr0069s": [
+    "選択肢 2",
+    "選択肢 3"
+  ],
+  "dateField_jcr0069t": 1516636800000,
+  "cascadeDate_jcr0069u": [
+    "1514736000000",
+    "1517328000000"
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": 1123456,
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  {
+  "attachmentField_jna1lvyb": [
+    {
+      "downloadUrl": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "name": "test.txt",
+      "previewUrl": "https://www.yidaapps.com/inst/preview?appType=default_tianshu_app&fileName=test.txt&fileSize=4&downloadUrl=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt",
+      "url": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "ext": "txt"
+    }
+  ]
+},
+  "tableField_jcr006a1": [
+    {
+      "cascadeDate_jcr006aa": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006ae": [
+        "product",
+        "product_a"
+      ],
+      "checkboxField_jcr006a7": [
+        "選択肢 1",
+        "選択肢 2",
+        "選択肢 3"
+      ],
+      "citySelectField_jcr006ac": [
+        "120000",
+        "120100",
+        "120102"
+      ],
+      "dateField_jcr006a9": 1517328000000,
+      "departmentField_jcr006ad": ["1123456"],
+      "employeeField_jcr006ab": [
+        "yyyyy",
+        "xxxxx"
+      ],
+      "multiSelectField_jcr006a8": [
+        "選択肢 1",
+        "選択肢 2",
+        "選択肢 3"
+      ],
+      "numberField_jcr006a4": 2,
+      "radioField_jcr006a5": "選択肢 2",
+      "selectField_jcr006a6": "選択肢 3",
+      "textField_jcr006a2": "サブフォーム内の一行",
+      "textareaField_jcr006a3": "サブフォーム内の複数行"
+    }
+  ],
+	"digitalSignatureField_kt3nh972": "https://tianshu-vpc.oss-cn-shanghai.aliyuncs.com/5e03f863-dd39-4f62-ba9b-497af2c9ad9f.png"
+}
+```
+
+### 5.2 コンポーネント値によるフィルター検索 – コンポーネント値のフォーマット
+
+- フォーム内の各コンポーネントには一意の ID があり（ページデザイナーでコンポーネントの右側のプレミアムパネルから確認可能）、各コンポーネントの検索フォーマットは異なります。現在検索対応しているフォームコンポーネントは、一行、複数行、数値、選択、ドロップダウン単一選択、複数選択、ドロップダウン複数選択、日付、日付範囲、ユーザー検索ボックス、地域選択、部門選択、カスケード選択、およびサブフォームコンポーネントです。
+- 検索時、各コンポーネントの検索条件は Map\<String, Object> として表現されます。key はコンポーネント ID、Object はコンポーネントの検索値です。各コンポーネントの検索タイプと値のフォーマットは以下のとおりです。
+
+| コンポーネント種別 | データフォーマット | デモ | 備考 |
+|---|---|---|---|
+| 一行テキストボックス | string | "danhang" | あいまい検索 |
+| 複数行テキストボックス | string | "duohang" | あいまい検索 |
+| 数値テキストボックス | 文字列配列 | ["1","10"] | 範囲検索。1 つ目は最小値、2 つ目は最大値 |
+| 選択 | string | "選択肢 2" | 完全一致検索 |
+| ドロップダウン単一選択 | string | "選択肢 2" | 完全一致検索 |
+| 複数選択 | 文字列配列 | ["選択肢 2"] | 配列検索。<br />検索値は複数選択値のサブセットである必要があります |
+| ドロップダウン複数選択 | 文字列配列 | ["選択肢 2"] | 配列検索。検索値は複数選択値のサブセットである必要があります |
+| 日付コンポーネント | 文字列配列 | ["1514736000000","1517414399000"] | 範囲検索。1 つ目は開始日のタイムスタンプ、2 つ目は終了日のタイムスタンプ。 |
+| 日付範囲 | 配列 | [["1514736000000","1517414399000"],["1514736000000","1517414399000"]] | 範囲検索。1 つ目の配列は日付範囲の開始側の検索範囲、2 つ目の配列は日付範囲の終了側の検索範囲です。 |
+| ユーザー検索ボックス | 文字列配列 | ["xxxxx","yyyyyy"] | 完全一致。値は社員番号の順序を含めて完全に一致する必要があります。 |
+| 都市選択 | 文字列配列 | [500000, 500100, 500104, 500104003] | 配列検索。<br />検索値は都市値のサブセットである必要があります。<br />また、市 ID がある場合は省 ID が必要です。区 ID がある場合は省 ID と市 ID の両方が必要です。 |
+| 部門選択 | Number | 1123456 | 完全一致 |
+| カスケード選択 | 文字列配列 | ["part","part_b"] | 配列検索。都市選択と同じ制約があります。 |
+| サブフォームコンポーネント | string | danhang | あいまい検索。<br />サブフォーム下の値は 1 つの大きなテキストとなり、検索はあいまい検索を使用します。 |
+
+- 完全な例
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": [
+    "1",
+    "10"
+  ],
+  "radioField_jcr0069p": "選択肢 1",
+  "selectField_jcr0069q": "選択肢 1",
+  "checkboxField_jcr0069r": [
+    "選択肢 2"
+  ],
+  "multiSelectField_jcr0069s": [
+    "選択肢 2",
+    "選択肢 3"
+  ],
+  "dateField_jcr0069t": [
+    1514736000000,
+    1517414399000
+  ],
+  "cascadeDate_jcr0069u": [
+    [
+      1514736000000,
+      1517414399000
+    ],
+    [
+      1514736000000,
+      1517414399000
+    ]
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": ["1123456"],
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  "tableField_jcr006a1": "サブフォームデータ"
+}
+```
+
+### 5.3 ワークフローインスタンス詳細オブジェクトのフォーマット
+
+| フィールド | 説明 | 例 | 備考 |
+|---|---|---|---|
+| actioners | ワークフローインスタンスの現在のタスク担当者 | [<br />\{<br />"name": \{<br />"en_US": "user_en_name",<br />"zh_CN": "user_zh_name",<br />"type": "i18n"<br />},<br />"userId": "workno"<br />}<br />]<br /><br /> | ワークフローがすでに完了しており担当者がいない場合、このフィールドは空になります |
+| processInstanceId | インスタンス ID | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 | 固定値 |
+| formUuid | ワークフローフォーム ID | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 | <br /> |
+| processCode | ワークフローコード | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 | <br /> |
+| title | インスタンスタイトル | xxxx が起動したワークフロー | 使用中の言語環境に対応するタイトルを返します |
+| instanceStatus | インスタンスステータス | RUNNING | <br /> |
+| approvedResult | ワークフロー終了時の承認結果 | agree | agree -> 通過<br />disagree -> 辞退 |
+| originator | 提出者情報 | [ \{ "name": \{ "en_US": "user_en_name", "zh_CN": "user_zh_name", "type": "i18n" }, "userId": "workno" } ] | <br /> |
+| data | フォームデータ | <br /> | 付録 4 参照 – 戻り値としてのフォームデータフォーマット |
+
+- 完全なデータフォーマットデモ
+
+```json
+{
+  "result": {
+    "data": {
+      "actioners": [
+        {
+          "name": {
+            "pureEn_US": "xxx",
+            "en_US": "xxx",
+            "zh_CN": "xxx",
+            "type": "i18n"
+          },
+          "userId": "xxx"
+        }
+      ],
+      "processInstanceId": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "formUuid": "FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3",
+      "data": {
+        "numberField_jcr0069o": 1,
+        "multiSelectField_jcr0069s": [
+          "選択肢 3",
+          "選択肢 2"
+        ],
+        "textareaField_jcr0069n": "duohang",
+        "employeeField_jcr0069x": [
+          "xxxx"
+        ],
+        "departmentField_jcr0069z": "情報 xxx プラットフォーム",
+        "cascadeDate_jcr0069u": [
+          "1514736000000",
+          "1517328000000"
+        ],
+        "cascadeSelectField_jcr006a0": [
+          "part",
+          "part_b"
+        ],
+        "tableField_jcr006a1": [
+          {
+            "departmentField_jcr006ad": "情報 xxx",
+            "cascadeDate_jcr006aa": [
+              "1514736000000",
+              "1517328000000"
+            ],
+            "selectField_jcr006a6": "選択肢 3",
+            "citySelectField_jcr006ac": [
+              "天津",
+              "天津",
+              "河東区"
+            ],
+            "radioField_jcr006a5": "選択肢 2",
+            "employeeField_jcr006ab": [
+              "yyyyy",
+              "xxxxxx"
+            ],
+            "dateField_jcr006a9": 1517328000000,
+            "textField_jcr006a2": "サブフォーム内の一行",
+            "textareaField_jcr006a3": "サブフォーム内の複数行",
+            "cascadeSelectField_jcr006ae": [
+              "product",
+              "product_a"
+            ],
+            "numberField_jcr006a4": 2,
+            "checkboxField_jcr006a7": [
+              "選択肢 1",
+              "選択肢 3",
+              "選択肢 2"
+            ],
+            "multiSelectField_jcr006a8": [
+              "選択肢 1",
+              "選択肢 3",
+              "選択肢 2"
+            ]
+          }
+        ],
+        "selectField_jcr0069q": "選択肢 1",
+        "citySelectField_jcr0069y": [
+          "北京",
+          "北京",
+          "東城区"
+        ],
+        "checkboxField_jcr0069r": [
+          "選択肢 3",
+          "選択肢 2"
+        ],
+        "textField_jcr0069m": "danhang",
+        "radioField_jcr0069p": "選択肢 1",
+        "dateField_jcr0069t": 1516636800000
+      },
+      "processCode": "TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4",
+      "originator": {
+        "name": {
+          "pureEn_US": "xxx",
+          "en_US": "xxxx",
+          "zh_CN": "xxx",
+          "type": "i18n"
+        },
+        "userId": "xxxx"
+      },
+      "title": "xxx が起動したワークフロー",
+      "instanceStatus": "RUNNING"
+    },
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### 5.4 戻り値としてのフォームデータフォーマット
+
+戻り値としてのフォームデータフォーマットは、「付録 1 – フォームデータの保存 / 更新フォーマット」と基本的に同じです。相違点は以下のとおりです。
+
+- 送信時、地域コンポーネントの値は ["省 ID", "市 ID", "区 ID"] です。戻り値では ["省名","市名","区名"] になります。
+- 選択、ドロップダウン単一選択、複数選択、ドロップダウン複数選択は国際化されています。戻り値としては、渡した `language` パラメータに対応するデータ値を返します。
+
+### 5.5 フォームインスタンス詳細オブジェクトのフォーマット
+
+| フィールド | 説明 | 例 | 備考 |
+|---|---|---|---|
+| gmtModified | 最後更新時間 | 2018-01-24 11:22:01 | <br /> |
+| formUuid | フォーム ID | FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1 | <br /> |
+| formInstId | インスタンス ID | FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0 | <br /> |
+| originator | 提出者詳細 | [\{"name": \{"en_US": "user_en_name","zh_CN": "user_zh_name","type": "i18n"},"userId": "workno"}] | <br /> |
+| formData | フォームデータ詳細 | <br /> | 付録 4 参照 – 戻り値としてのフォームデータフォーマット |
+
+完全なデモは以下のとおりです。
+
+```json
+{
+  "result": {
+    "gmtModified": "2018-01-24 11:22:01",
+    "formUuid": "FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1",
+    "formInstId": "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0",
+    "formData": {
+      "numberField_jcr0069o": 1,
+      "multiSelectField_jcr0069s": [
+        "選択肢 3",
+        "選択肢 2"
+      ],
+      "textareaField_jcr0069n": "duohang",
+      "employeeField_jcr0069x": [
+        "xxxx"
+      ],
+      "departmentField_jcr0069z": "xxxx",
+      "cascadeDate_jcr0069u": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006a0": [
+        "part",
+        "part_b"
+      ],
+      "tableField_jcr006a1": [
+        {
+          "departmentField_jcr006ad": "xxxx",
+          "cascadeDate_jcr006aa": [
+            "1514736000000",
+            "1517328000000"
+          ],
+          "selectField_jcr006a6": "選択肢 3",
+          "citySelectField_jcr006ac": [
+            "天津",
+            "天津",
+            "河東区"
+          ],
+          "radioField_jcr006a5": "選択肢 2",
+          "employeeField_jcr006ab": [
+            "xxxxxx",
+            "yyyyyy"
+          ],
+          "dateField_jcr006a9": 1517328000000,
+          "textField_jcr006a2": "サブフォーム内の一行",
+          "textareaField_jcr006a3": "サブフォーム内の複数行",
+          "cascadeSelectField_jcr006ae": [
+            "product",
+            "product_a"
+          ],
+          "numberField_jcr006a4": 2,
+          "checkboxField_jcr006a7": [
+            "選択肢 1",
+            "選択肢 3",
+            "選択肢 2"
+          ],
+          "multiSelectField_jcr006a8": [
+            "選択肢 1",
+            "選択肢 3",
+            "選択肢 2"
+          ]
+        }
+      ],
+      "selectField_jcr0069q": "選択肢 1",
+      "citySelectField_jcr0069y": [
+        "北京",
+        "北京",
+        "東城区"
+      ],
+      "checkboxField_jcr0069r": [
+        "選択肢 3",
+        "選択肢 2"
+      ],
+      "textField_jcr0069m": "danhang",
+      "radioField_jcr0069p": "選択肢 1",
+      "dateField_jcr0069t": 1516636800000
+    },
+    "originator": {
+      "name": {
+        "pureEn_US": "userEnglishName",
+        "en_US": "userEnglishName",
+        "zh_CN": "userName",
+        "type": "i18n"
+      },
+      "userId": "xxxx"
+    }
+  },
+  "success": true
+}
+```

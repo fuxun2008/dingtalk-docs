@@ -1,0 +1,148 @@
+---
+title: "ツリーコンポーネント"
+description: "Yida のツリーコンポーネントでカテゴリとサブカテゴリの階層情報を表示する方法を解説します。通常フォームの作成、カスタムページの設定、リモート API の設定、変数のバインドまでの手順を紹介します。"
+polished: true
+---
+
+| **機能** | **Freeプラン** | **ベーシック版** | **プロフェッショナル版** | **専用版** |
+|---|---|---|---|---|
+| ツリーコンポーネント | 非対応 | 非対応 | 対応 | 対応 |
+
+## 1. ユースケース
+
+カテゴリ配下のサブカテゴリを表示したい場合は、カスタムページ上でツリーコンポーネントを使用します。
+
+<Note>
+コンポーネントの属性、使い方、および例については、[**ドキュメント**](/zh/open/yida/components/advanced/tree)を参照してください。
+</Note>
+
+## 2. 動画デモ
+
+## 3. 手順
+
+### 3.1 通常フォームの作成
+
+通常フォームを作成し、複数の一行テキストコンポーネントを追加します。右側の属性パネルでタイトルを編集し、「保存」をクリックします。
+
+### 3.2 カスタムページの作成
+
+テンプレート選択ページで「スキップ」をクリックし、カスタムページエディタを開きます。ツリーコンポーネントとボタンコンポーネントをキャンバスにドラッグします。
+
+### 3.3 リモート API の作成
+
+カスタムページの左側で「データソース」をクリックし、新しいリモート API を作成します。名前、リクエスト URL、リクエストパラメータ、およびデータ処理を設定します。
+
+リクエスト URL：[Yida プラットフォーム API（ページのデータソースから直接呼び出し可能）](/ja/yida/developer-features/aql605)
+
+例：[https://www.yidaapps.com/dingtalk/web/](https://www.yidaapps.com/dingtalk/web/)APP-XXXXXX/v1/form/searchFormDatas.json
+
+リクエストパラメータの formUuid は、ホーム右上のアプリ設定から取得できます。各フォームには固有の ID があるので、コピーしてリクエストパラメータに貼り付けます。
+
+データ処理セクションで、リクエスト完了コールバック関数内のコードを探し、dataMap の後ろの識別子を更新します。識別子はフォーム上の一行テキストコンポーネントから取得します。貼り付けたら「保存」をクリックします。
+
+```javascript
+function didFetch(content) {
+  const data = content.data.map(item => {
+    let dataMap = item.formData;
+    return {
+      label: dataMap['textField_kplzoi0z'],
+      key: dataMap['textField_kplzoi0z'],
+      children: [{
+        label: dataMap['textField_kplzoi10'],
+        key: dataMap['textField_kplzoi10'],
+        children: [{
+          label: dataMap['textField_kplzoi11'],
+          key: dataMap['textField_kplzoi11']
+        }]
+      }]
+
+    }
+  })
+  content = data;
+  console.log("item=====>", data)
+
+  function findItem(item, arr) {
+    console.log("item........", item)
+    console.log("arr........", arr)
+    return arr.findIndex(value => value.key === item.key);
+  }
+
+  function recursion(arr) {
+    console.log("Deduplicating entries", arr)
+    const newArr = [];
+    arr.forEach((item) => {
+      let index = findItem(item, newArr);
+      if (index !== -1) {
+
+      } else {
+        newArr.push(item);
+      }
+    })
+    return newArr;
+  }
+
+  let newArr = recursion(content);
+  console.log("newArr========>", newArr)
+  content = newArr;
+
+  console.log("content========>", content)
+  // return item;
+
+  // console.log('data:', data)
+  // this.setState({
+  //   tree: data
+  // })
+  return content; // 重要：content を返す必要があります
+}
+```
+
+左側の JS アクションパネルをクリックし、以下のコードをコピーします。
+
+```javascript
+export function onEditFinish(key, label, node) {
+  console.log('key: ', key, ' label: ', label, ' node: ', node);
+}
+/**
+* Tree onSelect
+* @param selectedKeys 選択されたノードキーの配列
+* @param extra 追加パラメータ
+*/
+export function onSelect(selectedKeys, extra) {
+
+  console.log('選択されたノードキーの配列: ', selectedKeys, ' 追加パラメータ: ', extra);
+}
+
+/**
+ * menu onItemClick
+ * パラメータ設定については、以下を参照してください: https://fusion.design/pc/component/menu
+ */
+export function onItemClick(key, item, event) {
+  console.log(key, item, event);
+}
+
+/**
+* button onClick
+*/
+export function onClic() {
+  console.log(this.$('tree_kne7wdg0').get('dataSource'));
+}
+
+/**
+* button onClick
+*/
+export function onClick(){
+  console.log('onClick');
+}
+```
+
+### 3.4 変数のバインド
+
+右側の「ノードデータ」をクリックし、先ほど作成したリモート API から変数を選択して「確認」をクリックします。
+
+右下のアクション作成パネルでアクションを設定します。ここでは、ノードの編集完了時に実行するアクションを選択します。
+
+### 3.5 新しいボタンコンポーネントのドラッグ
+
+ボタンコンポーネントを選択します。右下のアクション作成パネルで、組み込みの「URL を開く」アクションを選択します。URL には、先ほど設定した一行テキストフォームのページ（データの表示または追加用のページ）を設定します。
+
+「保存」をクリックしてホームに戻ります。これで設定をテストでき、ツリーコンポーネントが使用可能になります。

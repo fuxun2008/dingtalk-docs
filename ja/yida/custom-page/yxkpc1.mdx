@@ -1,0 +1,119 @@
+---
+title: "ページネーションコンポーネント"
+description: "本記事では、ページネーションコンポーネントの対応エディションと、カスタムページ上でデータをページ分けして表示する方法について説明します。フォームの作成、カスタムページへのページネーションコンポーネントの追加、リモートデータソースの設定、ループデータの設定、変数のバインドについて解説します。"
+polished: true
+---
+
+| **機能** | **Freeプラン** | **ベーシック版** | **プロフェッショナル版** | **専用版** |
+|---|---|---|---|---|
+| ページネーションコンポーネント | 非対応 | 非対応 | 対応 | 対応 |
+
+## 1. ユースケース
+
+カスタムページ上でデータをページ分けして表示したい場合に、ページネーションコンポーネントを使用します。
+
+<Note>
+コンポーネントの属性、使用方法、例については、[**プレビュー**](/zh/open/yida/components/advanced/pagination)をクリックしてください。
+</Note>
+
+## 2. 動画デモ
+
+## 3. 手順
+
+### 3.1 通常フォームを作成する
+
+一行テキストコンポーネントをフォームにドラッグし、「保存」をクリックします。アプリのホームに戻り、このフォームにデータをいくつか追加します。
+
+### 3.2 カスタムページを作成する
+
+コンテナコンポーネントをカスタムページにドラッグし、その中にテキストコンポーネントとページネーションコンポーネントを追加します。アウトラインツリーで、コンポーネントのネスト構造を確認できます。
+
+カスタムページ
+
+### 3.3 リモートデータソースを作成する
+
+カスタムページで左側の「データソース」をクリックし、「追加」を選択してリモートAPIを作成します。必要に応じて名前を変更できます。
+
+カスタムページのデータソース
+
+「リクエストURL」をクリックし、必要なAPIエンドポイントに変更します：
+
+'/$\{window.pageConfig.appType || window.g_config.appKey}/v1/form/searchFormDatas.json'
+
+詳細はAPIドキュメントをご参照ください：[Yidaプラットフォーム API（ページのデータソースから直接呼び出し可能）](/ja/yida/developer-features/aql605)
+
+リクエストパラメータを修正するか、「追加」をクリックして新しいパラメータを追加します。ドキュメントに記載のとおり、パラメータ名は formUuid です。
+
+パラメータ値：アプリホーム >> アプリ設定 >> デプロイと運用 >> 対応するフォームIDを選択
+
+アプリ設定
+
+「データ処理」の横のプラス記号をクリックしてリクエスト完了コールバック関数を作成し、「保存」をクリックします。
+
+データソースを追加
+
+### 3.4 コンテナコンポーネントにループデータを設定する
+
+アウトラインツリーをクリックしてコンテナコンポーネントを選択します。右側の「ループデータ」を見つけて「変数バインド」をクリックします。searchFormDatas リモートAPIに .data を付加し、「確認」をクリックして保存します。
+
+### 3.5 変数をバインドする
+
+カスタムページ上のテキストコンポーネントをクリックし、右側で「コンテンツ」の「変数バインド」を見つけます。this.item.formData. の後に、通常フォーム内の一行テキストコンポーネントの固定値識別子を入力します。
+
+formData の確認方法：編集ページで「プレビュー」をクリックし、右クリックで「検証」を選択、コンソールを開いて formData を確認します。
+
+### 3.6 変数データソースを作成する
+
+左側の「データソース」をクリックし、変数（本例では pageSizeA）を作成します。名前を変更するだけで済みます。
+
+### 3.7 アクションを作成する
+
+ページネーションコンポーネントをクリックし、右下の「アクション設定」を見つけます。「アクションを作成」をクリックして、2つのアクション（本例ではページ番号変更とページサイズ変更）を作成します。アクション作成後、左側にJSパネルが自動的に開きます。そこにコードを記述して、データソースを再読み込みします。
+
+```javascript
+export function didMount() {
+  console.log(`Page JS: current page URL ${location.href}`);
+  // console.log(`Page JS: current page id parameter is ${this.state.urlParams.id}`);
+  // For more this-related APIs, see: https://developers.aliwork.com/
+  // document.title = window.loginUser.userName + ' | Yida';
+
+ }
+/**
+* Pagination onChange
+* @param currentPagination Current page number
+*/
+export function onChange(currentPagination) {
+  let params = {
+    currentPage: currentPagination
+  };
+  this.dataSourceMap.dp4.load(params);
+  console.log('onChange', currentPagination);
+}
+
+/**
+* Pagination onPageSizeChange
+* @param pageSize Number of records per page after the change
+*/
+export function onPageSizeChange(pageSize) {
+  this.setState({
+    pageSizeA: pageSize
+  });
+  let params = {
+    pageSize: pageSize,
+  };
+  this.dataSourceMap.dp4.load(params);
+  console.log('onPageSizeChange', pageSize);
+}
+```
+
+### 3.8 変数をバインドする（総レコード数と現在のページ番号）
+
+(1) ページネーションコンポーネント右側の「総レコード数」の「変数バインド」をクリックし、state.searchFormDatas.totalCount（totalCount はレコードの総数）を入力します。「確認」をクリックします。
+
+(2) 「現在のページ番号」の「変数バインド」をクリックし、state.searchFormDatas.currentPage（currentPage は現在のページ）を入力します。「確認」をクリックします。
+
+### 3.9 pageSize 変数をバインドする
+
+pageSize の「変数バインド」をクリックし、JSコードで三項演算子を使用します：state.pageSizeA?state.pageSize:5。これにより、現在のページに表示するデータ量を決定します。
+
+「確認」をクリックし、保存してホームに戻ります。
