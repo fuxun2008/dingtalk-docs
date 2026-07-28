@@ -101,11 +101,11 @@ H. 代码示例按铁律 3 的 4 类处理。注释翻译，方法名 / 变量�
 I. 英文 Heading 用 Sentence case + 专有名词大写；动作导向祈使句（Klik / Panggil / Konfigurasikan）。"""
 
 
-# 宜搭 (Yida) 专属规则 — 仅 root=yida 注入
-YIDA_RULES = """宜搭 (Yida) 专属规则 — 违反任意一条则译文无效：
+# 宜搭 (YiDA) 专属规则 — 仅 root=yida 注入
+YIDA_RULES = """宜搭 (YiDA) 专属规则 — 违反任意一条则译文无效：
 
 【品牌 / 产品名】
-A. **Yida** 是品牌名，原样保留不译；Yida Dedicated / Yida platform / Yida app 同理。
+A. **YiDA** 是品牌名，原样保留不译；YiDA Dedicated / YiDA platform / YiDA app 同理。
 B. Cool App / low-code / DingTalk 保持英文原样。
 
 【API 契约 — 保持原样】（developer-features / integration 篇目多见）

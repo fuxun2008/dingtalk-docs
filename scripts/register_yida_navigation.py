@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-在 docs.json 注册 en / ja / id 语言块的「宜搭 (Yida)」tab（帮助中心 product）。
+在 docs.json 注册 en / ja / id 语言块的「宜搭 (YiDA)」tab（帮助中心 product）。
 
 实现：把 zh 块「帮助中心 → 宜搭」tab deepcopy
 → 译 tab 名 / group 名（三语映射表，缺失名保留中文并告警）
@@ -33,7 +33,7 @@ ZH_TAB = "宜搭"
 # 各语言 Help Center product 显示名
 HELP_PRODUCT = {"en": "Help Center", "ja": "ヘルプセンター", "id": "Pusat Bantuan"}
 
-TAB_NAME = {"en": "Yida", "ja": "Yida", "id": "Yida"}
+TAB_NAME = {"en": "YiDA", "ja": "YiDA", "id": "YiDA"}
 
 PAGE_PREFIX = {"en": "yida/", "ja": "ja/yida/", "id": "id/yida/"}
 
@@ -101,12 +101,12 @@ GROUP_NAME_EN: dict[str, str] = {
     "应用分发": "App Distribution",
     "平台管理": "Platform Management",
     "基本信息": "Basic Information",
-    "宜搭角色管理": "Yida Role Management",
+    "宜搭角色管理": "YiDA Role Management",
     "连接器工厂": "Connector Factory",
     "上下级组织分发应用": "Distribute Apps Across Organizations",
     "国际化": "Internationalization",
-    "专属宜搭": "Yida Dedicated",
-    "专属宜搭简介": "About Yida Dedicated",
+    "专属宜搭": "YiDA Dedicated",
+    "专属宜搭简介": "About YiDA Dedicated",
     "空间管理": "Workspace Management",
     "管理工作空间": "Manage Workspaces",
     "空间 AI 助理": "Workspace AI Assistant",
@@ -121,7 +121,7 @@ GROUP_NAME_EN: dict[str, str] = {
     "专属集群环境": "Dedicated Cluster Environment",
     "开发者功能": "Developer Features",
     "常见问题": "FAQ",
-    "宜搭 Open API": "Yida Open API",
+    "宜搭 Open API": "YiDA Open API",
     "JS 动作面板": "JS Action Panel",
 }
 
@@ -185,12 +185,12 @@ GROUP_NAME_JA: dict[str, str] = {
     "应用分发": "アプリ配布",
     "平台管理": "プラットフォーム管理",
     "基本信息": "基本情報",
-    "宜搭角色管理": "Yida ロール管理",
+    "宜搭角色管理": "YiDA ロール管理",
     "连接器工厂": "コネクタファクトリー",
     "上下级组织分发应用": "上下組織へのアプリ配布",
     "国际化": "国際化",
-    "专属宜搭": "Yida専用版",
-    "专属宜搭简介": "Yida専用版の概要",
+    "专属宜搭": "YiDA専用版",
+    "专属宜搭简介": "YiDA専用版の概要",
     "空间管理": "ワークスペース管理",
     "管理工作空间": "ワークスペースの管理",
     "空间 AI 助理": "ワークスペース AI アシスタント",
@@ -205,7 +205,7 @@ GROUP_NAME_JA: dict[str, str] = {
     "专属集群环境": "専用クラスタ環境",
     "开发者功能": "開発者機能",
     "常见问题": "よくある質問",
-    "宜搭 Open API": "Yida Open API",
+    "宜搭 Open API": "YiDA Open API",
     "JS 动作面板": "JS アクションパネル",
 }
 
@@ -269,12 +269,12 @@ GROUP_NAME_ID: dict[str, str] = {
     "应用分发": "Distribusi Aplikasi",
     "平台管理": "Manajemen Platform",
     "基本信息": "Informasi Dasar",
-    "宜搭角色管理": "Manajemen Peran Yida",
+    "宜搭角色管理": "Manajemen Peran YiDA",
     "连接器工厂": "Connector Factory",
     "上下级组织分发应用": "Distribusi Aplikasi Antar Organisasi",
     "国际化": "Internasionalisasi",
-    "专属宜搭": "Yida Dedicated",
-    "专属宜搭简介": "Tentang Yida Dedicated",
+    "专属宜搭": "YiDA Dedicated",
+    "专属宜搭简介": "Tentang YiDA Dedicated",
     "空间管理": "Manajemen Ruang Kerja",
     "管理工作空间": "Kelola Ruang Kerja",
     "空间 AI 助理": "Asisten AI Ruang Kerja",
@@ -289,7 +289,7 @@ GROUP_NAME_ID: dict[str, str] = {
     "专属集群环境": "Lingkungan Klaster Dedicated",
     "开发者功能": "Fitur Pengembang",
     "常见问题": "FAQ",
-    "宜搭 Open API": "Yida Open API",
+    "宜搭 Open API": "YiDA Open API",
     "JS 动作面板": "Panel Aksi JS",
 }
 

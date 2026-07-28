@@ -151,13 +151,13 @@ M. 英文：Name / Type / Required / Example / Description（不写 "Required or
 N. 日文：名前 / タイプ / 必須 / 例 / 説明"""
 
 
-# 宜搭 (Yida) 专属铁律 — 仅 root=yida 注入
+# 宜搭 (YiDA) 专属铁律 — 仅 root=yida 注入
 # 低代码平台文档：品牌词 + 开放接口契约 + 域名保护
-YIDA_RULES = """宜搭 (Yida) 专属铁律 — 违反任意一条则译文无效：
+YIDA_RULES = """宜搭 (YiDA) 专属铁律 — 违反任意一条则译文无效：
 
 【品牌与产品名 — 覆盖词库以外的自由发挥】
-A. 「宜搭」一律译为 **Yida**（与 www.yidaapps.com 域名一致）；严禁 Easy Build / YiDa / yiDa / 意搭 等任何变体。
-   复合词：专属宜搭 → Yida Dedicated；宜搭平台 → Yida platform；宜搭应用 → Yida app。
+A. 「宜搭」一律译为 **YiDA**（官方英文名，全大写 DA；域名 www.yidaapps.com 保持小写不动）；严禁 Yida / YiDa / yiDa / Easy Build / 意搭 等任何变体。
+   复合词：专属宜搭 → YiDA Dedicated；宜搭平台 → YiDA platform；宜搭应用 → YiDA app。
 B. 「钉钉」→ DingTalk；「酷应用」→ Cool App（日文 クールアプリ）；「低代码」→ low-code（日文 ローコード）。
 
 【API 契约 — 严格保持原样不译】（developer-features / integration 等篇目大量出现）

@@ -535,12 +535,12 @@
 - 命令式动词偏好「〜します」/「〜してください」短句，避免「〜することができます」滥用
 - 表格列头用名词：「必須」「タイプ」「説明」「例」
 
-## 宜搭（Yida）专项术语（品牌 / 产品）
+## 宜搭（YiDA）专项术语（品牌 / 产品）
 
 | 中文 | 英文 | 日文 | 印尼语 | 备注 |
 |---|---|---|---|---|
-| 宜搭 | Yida | Yida | Yida | 品牌词不译，与 yidaapps.com 域名一致；禁止 Easy Build / YiDa |
-| 专属宜搭 | Yida Dedicated | Yida専用版 | Yida Dedicated |  |
+| 宜搭 | YiDA | YiDA | YiDA | 官方英文名 YiDA（全大写 DA）；域名 yidaapps.com 保持小写；禁止 Yida / YiDa / Easy Build |
+| 专属宜搭 | YiDA Dedicated | YiDA専用版 | YiDA Dedicated |  |
 | 酷应用 | Cool App | クールアプリ | Cool App | 钉钉官方能力名 |
 | 低代码 | low-code | ローコード | low-code |  |
 | 连接器工厂 | Connector Factory | コネクタファクトリー | Connector Factory |  |

@@ -101,11 +101,11 @@ I. API 専有語の前後に半角スペース（access token を取得する）
 J. 敬体 + 簡潔。「〜します」「〜してください」「〜を呼び出します」。"""
 
 
-# 宜搭 (Yida) 専属ルール — root=yida のみ注入
-YIDA_RULES = """宜搭 (Yida) 専属ルール — 1 つでも違反すれば訳文無効：
+# 宜搭 (YiDA) 専属ルール — root=yida のみ注入
+YIDA_RULES = """宜搭 (YiDA) 専属ルール — 1 つでも違反すれば訳文無効：
 
 【ブランド / 製品名】
-A. **Yida** はブランド名として原様保持（訳さない・カタカナ化しない）。Yida Dedicated / Yida platform / Yida app も同様。
+A. **YiDA** はブランド名として原様保持（訳さない・カタカナ化しない）。YiDA Dedicated / YiDA platform / YiDA app も同様。
 B. Cool App → クールアプリ；low-code → ローコード；DingTalk は原様。
 
 【API 契約 — 原様保持】（developer-features / integration 篇に多出）
