@@ -21,7 +21,7 @@ IGNORE_DIRS = {
 }
 VALID_TOP_DIRS = {
     "ai-minutes", "aitable", "calendar", "contacts", "docs", "drive",
-    "im", "mail", "meetings", "open", "zh", "ja", "id",
+    "im", "mail", "meetings", "open", "yida", "zh", "ja", "id",
 }
 
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
