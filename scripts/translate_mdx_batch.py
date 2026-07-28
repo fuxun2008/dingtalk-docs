@@ -278,9 +278,9 @@ def build_system_prompt(lang: str, root: str = "") -> str:
         "id": "印尼文（Bahasa Indonesia，正式商务书面语 bahasa baku）",
     }[lang]
     sections = [SYSTEM_RULES, style]
-    if root == "open":
+    if root == "open" or root.startswith("open/"):
         sections.append(OPEN_PLATFORM_RULES)
-    if root == "yida":
+    if "yida" in root.split("/"):
         sections.append(YIDA_RULES)
     sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
     return "\n\n".join(sections)

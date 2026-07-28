@@ -213,9 +213,9 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
 
 def build_system_prompt(root: str = "") -> str:
     sections = [SYSTEM_RULES, SEO_DESCRIPTION_RULE, STYLE_ID]
-    if root == "open":
+    if root == "open" or root.startswith("open/"):
         sections.append(OPEN_PLATFORM_RULES)
-    if root == "yida":
+    if "yida" in root.split("/"):
         sections.append(YIDA_RULES)
     sections.append("本次任务把英文 mdx 译为印尼文（Bahasa Indonesia，商务书面语 bahasa baku）。直接输出译文 mdx，不加任何前后缀说明。")
     return "\n\n".join(sections)
@@ -473,7 +473,7 @@ async def main_async(args: argparse.Namespace) -> int:
             print(f"[{done}/{len(tasks)}] {icon} {r.rel}  {r.status}")
 
     ended = time.time()
-    suffix = f"_{args.root}"
+    suffix = "_" + args.root.replace("/", "-")
     if args.only:
         suffix += "_" + re.sub(r"[^a-zA-Z0-9]+", "-", args.only)
     if args.bucket_id is not None and args.bucket_count:

@@ -210,7 +210,7 @@ def build_system_prompt(lang: str, root: str = "") -> str:
         "ja": "日文（敬体 です・ます）",
         "id": "印尼文（Bahasa Indonesia，bahasa baku）",
     }[lang]
-    open_block = f"\n\n{OPEN_PLATFORM_POLISH_RULES}" if root == "open" else ""
+    open_block = f"\n\n{OPEN_PLATFORM_POLISH_RULES}" if (root == "open" or root.startswith("open/")) else ""
     return (
         f"{POLISH_RULES}\n\n{REVIEW_CHECKLIST}\n\n{style}{open_block}\n\n"
         f"本次任务：对已经是 {target} 的 mdx 做语言层润色，不改语义、不改链接、不改组件。"

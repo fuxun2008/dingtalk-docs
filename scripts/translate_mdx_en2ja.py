@@ -213,9 +213,9 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
 
 def build_system_prompt(root: str = "") -> str:
     sections = [SYSTEM_RULES, SEO_DESCRIPTION_RULE, STYLE_JA]
-    if root == "open":
+    if root == "open" or root.startswith("open/"):
         sections.append(OPEN_PLATFORM_RULES)
-    if root == "yida":
+    if "yida" in root.split("/"):
         sections.append(YIDA_RULES)
     sections.append("本タスクは英語 mdx を日本語（敬体 です・ます）に翻訳します。訳文 mdx をそのまま出力し、説明の前後置きは付けないこと。")
     return "\n\n".join(sections)
@@ -247,6 +247,8 @@ class FileResult:
 
 
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
+    # user_msg 作为 positional prompt 传入（而非 stdin），规避 claude CLI 高负载下 3s stdin
+    # 握手竞争导致的 "no stdin data received" 死锁（与 en2id 一致）；prompt 体量远低于 ARG_MAX。
     proc = await asyncio.create_subprocess_exec(
         "claude", "-p", "--bare",
         "--model", model,
@@ -254,13 +256,14 @@ async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout
         "--tools", "",
         "--no-session-persistence",
         "--output-format", "json",
-        stdin=asyncio.subprocess.PIPE,
+        user_msg,
+        stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
         stdout, stderr = await asyncio.wait_for(
-            proc.communicate(input=user_msg.encode("utf-8")),
+            proc.communicate(),
             timeout=timeout_s,
         )
     except asyncio.TimeoutError:
@@ -440,7 +443,7 @@ async def main_async(args: argparse.Namespace) -> int:
             print(f"[{done}/{len(tasks)}] {icon} {r.rel}  {r.status}")
 
     ended = time.time()
-    suffix = f"_{args.root}"
+    suffix = "_" + args.root.replace("/", "-")
     if args.only:
         suffix += "_" + re.sub(r"[^a-zA-Z0-9]+", "-", args.only)
     write_report(results, OUTPUT_DIR / "ja", started, ended, suffix)
