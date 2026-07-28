@@ -1,0 +1,563 @@
+---
+title: "TodoMVC"
+description: "YiDA advanced hands-on tutorial: build a task list page from scratch based on TodoMVC by combining core custom page capabilities such as global variables, loop rendering, and event handling."
+polished: true
+---
+
+## Overview
+
+This tutorial is an advanced YiDA usage guide. We will refer to [TodoMVC](https://todomvc.com/) and build a simple TodoMVC page from scratch. The final result is shown below (you can also visit the [sample page](https://www.aliwork.com/o/demo/todoMVC-3) to view the result, or [enable the app for a trial](https://www.aliwork.com/o/coc?tplUuid=TPL_PMFQNW628OML366HTNJO&from=developers_subject)):
+
+By working through this tutorial, you will master the following YiDA skills:
+
+- Basic YiDA component usage
+- User action event handling
+- Global variable usage
+- Conditional rendering and loop rendering
+- Custom styles
+- Remote API usage
+- YiDA OpenAPI usage
+
+This article does not cover the detailed process of creating and deploying a custom page in YiDA. If you are unfamiliar with the creation process, refer to the [Quickstart](/open/yida/guide/start) document. Now, let's implement the result step by step.
+
+## Basic UI — Building the Skeleton of TodoMVC
+
+First, let's break down the structure of the official TodoMVC page. It roughly contains the following elements:
+
+Based on the TodoMVC UI, we can identify the corresponding components available in YiDA (for detailed usage of each component, see the [component documentation](/open/yida/components/layout/tabsLayout)):
+
+- **Large logo** — A static text; use the `Text` component.
+- **Task input box** — Used to enter the content of a new task; use the `Input` component.
+- **Task status controller** — Used to toggle the completion status of a task; use the `Select` component.
+- **Task content display** — Used to display the content of a task; use the `Text` component.
+- **Task action** — Used to delete a task; use the `Button` component (the original uses an icon; we choose a button for clearer semantics).
+- **To-do task count display** — Used to display the total number of incomplete tasks; use the `Text` component.
+- **Task status filter** — Used to filter task lists by status; use the `Select` component.
+- **Clear all completed tasks** — Used to clear all completed tasks; use the `Button` component.
+- **Tool description** — Introduces basic information about Todos as static text; use the `Text` component.
+
+Once we have determined the components needed for each part, we can build a simple page by dragging and dropping components and configuring their basic properties. The result is shown below. You can view the display effect on the [demo page](https://www.aliwork.com/o/demo/todoMVC-1), or check the detailed configuration in the [designer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-1):
+
+## Logic Implementation — Bringing TodoMVC to Life
+
+In the previous step, we completed the basic UI of TodoMVC — the skeleton. Now, let's bring it to life. This is the most important step. Before diving in, let's analyze the features TodoMVC should have:
+
+- **Create a to-do task** — The user enters the task content in the input box and presses Enter to create a to-do task in the task list.
+- **Update status** — The user clicks the task controller to change the completion status of the current task (if completed, the task text is struck through).
+- **Edit task content** — The user clicks the `Edit` button of a task to bring up the task content input box, edits the content, and presses Enter to submit (the official TodoMVC uses double-click to toggle the editing state, but since YiDA does not currently support double-click events, we use a button instead).
+- **Delete a to-do task** — The user clicks the `Delete` button to remove the specified to-do task.
+- **Count incomplete tasks** — Show the count of current incomplete tasks at the bottom-left of the page.
+- **Filter by status** — The user switches the filter at the bottom of the page to show different task lists:
+  - All — Show all tasks.
+  - Active — Show incomplete tasks.
+  - Completed — Show completed tasks.
+- **Clear completed to-do tasks** — The user clicks the `Clear completed` button at the bottom-right of the page to batch-delete all completed tasks.
+
+The basic features have been sorted out. Now, let's implement TodoMVC's core features step by step. For the final result, see the [demo page](https://www.aliwork.com/o/demo/todoMVC-2), and view the specific implementation in the [designer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-2). The result is shown below:
+
+### Step 1: Create Page-Level Global Variables
+
+YiDA's design philosophy is similar to React — it follows the MVVM pattern. Therefore, before developing features, we need to define the data models used on the page, that is, global states (see the [page state documentation](/open/yida/guide/concept/state) for details). Define the following global variables:
+
+- todoList (array type) — Records all to-do task information in the list. The structure is as follows:
+
+```js
+{
+  todoList: [
+    {
+      id: 1, // Unique ID of the to-do task
+      content: 'XXXX', // Content of the to-do task
+      done: false, // Completion status of the to-do task
+    },
+  ];
+}
+```
+
+- editRowId (number type) — Marks the ID of the task currently in the editing state (when in the editing state, the task content area becomes an input box for the user to modify the content). Can be left empty by default.
+- mode (string type) — The current filter value for the task list. Valid values: All, Active, and Completed. Default: `"All"`. Note: Quotes required.
+- newId (number type) — A new-ID generator. Every time a new task is created, `newId` is used as its ID, and `newId` is automatically incremented by 1 to ensure the uniqueness of every task ID.
+
+### Step 2: Implement the Create To-Do Task Feature
+
+Now we can implement the first feature. In this step, we want the user to enter task content in the input box and press Enter to create a to-do task (see the [event handling documentation](/open/yida/guide/concept/event) for details on event binding).
+
+As shown in the figure above, this step consists of three main actions:
+
+- Assign a unique identifier ("input") to the input box so we can easily retrieve the entered content.
+- Bind an onKeyDown event ("onRowAdd") to the input box that fires when the user presses a key.
+- Implement the `onRowAdd` method: if the user pressed Enter, insert a new to-do task at the top of the todoList.
+
+The specific implementation is as follows:
+
+```js
+export function onRowAdd(e) {
+  // Only handle the Enter key; return directly if it is not Enter
+  if (e.keyCode !== 13) return;
+  const { todoList, newId } = this.state; // Get the current task list data and the newId marker from the global state
+  this.setState({
+    todoList: [
+      {
+        id: newId,
+        done: false,
+        content: this.$('input').getValue(), // Get the content entered by the user in the input box
+      },
+      ...todoList,
+    ], // Update the todoList data by adding a record whose id is newId, status is incomplete, and content is what the user entered
+    newId: newId + 1, // Update newId for the next task creation
+  });
+  this.$('input').setValue(''); // Clear the user input in the input box
+}
+```
+
+### Step 3: Render the Task List in a Loop
+
+In the previous step, the user's input can now be turned into a to-do task and added to the global variable todoList. Next, we need to display the to-do list below the input box. This step uses knowledge related to [loop rendering](/open/yida/guide/concept/loop).
+
+- First, select the container component that wraps the task information, and in the advanced attributes, bind state.todoList to the container's **loop data** via variable binding.
+
+- Next, we need to bind the completion status and content of each task to the corresponding fields in the loop data. In loop rendering, developers can use `item` to access the current row's data:
+
+  - Set the default value of the Select component to bind to the task status.
+  - Set the content attribute of the Text component to bind to the task content.
+
+After completing this step, the preview will look like this:
+
+### Step 4: Implement Task Update and Delete
+
+In the previous step, we implemented the add and display functionality of the todoList. Next, we need to implement task update and delete.
+
+#### Implement Polymorphic Display of Task Content
+
+By analyzing the TodoMVC features, we find that the task content in the task list has three different display states:
+
+We decide to use three components (two Text components and one Input component) to implement the different display effects, and use [conditional rendering](/open/yida/guide/concept/condition) to bind the render-or-not attribute for display switching:
+
+Here are the render-or-not variable binding values for the three components:
+
+- **Editing state** — Displayed when the global variable editRowId equals the current row's ID: `state.editRowId === this.item.id`
+- **Incomplete state** — Displayed when the current task is not in the editing state and its status is incomplete: `state.editRowId !== this.item.id && !this.item.done`
+- **Completed state** — Displayed when the current task is not in the editing state and its status is completed: `state.editRowId !== this.item.id && this.item.done`
+
+#### Implement Task Content Editing
+
+In this step, we want the following: when the user clicks the `Edit` button in the task action bar, the task switches to the editing state; the user can further edit the existing content and press Enter to submit, and the task returns to its previous display state.
+To implement this feature, we take two steps:
+
+- Bind the onClick event ("onEdit") to the Edit button. When the user clicks the `Edit` button, we set the current task's id to the global variable RowEditId and trigger a re-render so that the task switches to the editing state, as shown below:
+
+The onEdit code is as follows:
+
+```js
+export function onEdit() {
+  this.setState({
+    editRowId: this.item.id,
+  });
+}
+```
+
+- Assign a unique identifier ("rowInput") to the input box component of the task-editing state, and reference the create-task implementation to bind the onKeyDown event ("onRowEdit"), updating the current task's content in the todoList, as shown below:
+
+The onRowEdit code is as follows:
+
+```js
+export function onRowEdit(e) {
+  // Only handle the Enter key; return directly if it is not Enter
+  if (e.keyCode !== 13) return;
+  this.setState({
+    todoList: this.state.todoList.map((item) => {
+      if (item.id === this.item.id) {
+        // Find the currently edited task in todoList and update its content
+        return {
+          ...item,
+          content: this.$('rowInput').getValue(),
+        };
+      }
+      return item;
+    }),
+    editRowId: 0, // Reset editRowId so the current task returns to its previous display state
+  });
+}
+```
+
+Note: Because task content editing is based on the existing content, you need to set the default value of the input box to `item.content` via variable binding.
+
+#### Implement Task Completion Status Toggling
+
+When the user clicks the radio button in front of the task, the task completion status needs to be toggled. Therefore, we listen for the `onChange` event ("onTodoCheck") of the Select component. When the radio state changes, update the task status in `todoList` in real time:
+
+The onTodoCheck code is as follows:
+
+```js
+export function onTodoCheck({ value }) {
+  this.setState({
+    todoList: this.state.todoList.map((item) => {
+      if (item.id === this.item.id) {
+        // Find the currently edited task in todoList and update its status
+        return {
+          ...item,
+          done: value === 'done',
+        };
+      }
+      return item;
+    }),
+    editRowId: 0,
+  });
+}
+```
+
+#### Implement Task Deletion
+
+When the user clicks the `Delete` button in the task action area, the task needs to be removed from the task list. This step is relatively simple: bind the onClicks event ("onDelete") of the Delete button to remove this task from the todoList:
+
+The onDelete code is as follows:
+
+```js
+export function onDelete() {
+  this.setState({
+    todoList: this.state.todoList.filter((item) => {
+      // Remove the current task from todoList
+      return item.id !== this.item.id;
+    }),
+  });
+}
+```
+
+### Step 5: Display the To-Do Task Count
+
+On the TodoMVC page, the bottom-left corner shows a stat that counts the number of incomplete tasks in the current task list. This feature is relatively simple: bind a variable to the Text component that, on every render, computes and displays the number of items in todoList whose done status is false, as shown below:
+
+The getleftCount code is as follows:
+
+```js
+export function getleftCount() {
+  const { todoList } = this.state;
+  return todoList.filter((item) => !item.done).length;
+}
+```
+
+### Step 6: Filter To-Do Tasks by Status
+
+In this step, we implement the task list filter feature. When the user clicks the status filter at the bottom, the task list is filtered by status. This feature is implemented in two steps:
+
+- Listen for the onChange event ("onModeChange") of the Select component. When the user changes the filter, update the value of the global variable mode:
+
+The onModeChange code is as follows:
+
+```js
+export function onModeChange({ value }) {
+  this.setState({
+    mode: value,
+  });
+}
+```
+
+- Remember the loop data we bound to the task list in Step 3? In this step, we need to rebind the loop data of the task list, replacing the previous `state.todoList` with `getShowList()` to return a task list that matches the current filter value:
+
+The getShowList code is as follows:
+
+```js
+export function getShowList() {
+  const { mode, todoList = [] } = this.state;
+  if (mode === 'Active') {
+    // If the filter is Active, return all incomplete tasks
+    return todoList.filter((item) => !item.done);
+  } else if (mode === 'Completed') {
+    // If the filter is Completed, return all completed tasks
+    return todoList.filter((item) => item.done);
+  }
+  return todoList; // By default, return all tasks
+}
+```
+
+### Step 7: Clear Completed To-Do Tasks
+
+This step is relatively simple. It is essentially a batch version of the delete operation in Step 4. When the user clicks the `Clear Completed` button, all completed tasks are removed from the task list. We just need to listen for the onClick event ("onClearCompleted") of the Clear Completed button and, when clicked, clear all completed tasks from todoList:
+
+The onClearCompleted code is as follows:
+
+```js
+export function onClearCompleted() {
+  this.setState({
+    todoList: this.state.todoList.filter((item) => !item.done), // Filter out all completed tasks
+  });
+}
+```
+
+### Step 8: Implement Local Storage
+
+Through the steps above, we have implemented the core functionality of TodoMVC. However, our data currently lives in state and is cleared on every refresh. Therefore, we need to save the user's todoList somewhere so it can be shown again next time. We choose localStorage for local storage, and we implement the following two methods:
+
+- saveTodoData — Save the todoList and newId in state to localStorage.
+
+```js
+export function saveTodoData() {
+  const { todoList, newId } = this.state;
+  // Check whether localStorage is supported; if so, store the current data in state
+  if (window.localStorage) {
+    // Store the data via localStorage
+    window.localStorage.setItem('todoMVC', JSON.stringify({ todoList, newId }));
+  }
+}
+```
+
+- getTodoData — Read data from localStorage.
+
+```js
+export function getTodoData() {
+  if (window.localStorage) {
+    // Get the stored data from localStorage
+    const data = window.localStorage.getItem('todoMVC');
+    // Check whether local data exists
+    if (data) {
+      return JSON.parse(data);
+    }
+  }
+  return {};
+}
+```
+
+With these two base methods in place, we now only need to do two things:
+
+- In the didMount lifecycle, call the getTodoData API to read local data and update the state.
+- Add a `this.saveTodoData()` call below **every** `setState` statement above that modifies todoList.
+
+The result is shown below:
+
+## Style Polishing — Giving TodoMVC a Beautiful Look
+
+In the previous step, we completed the basic functionality of TodoMVC. However, its first impression is that it looks ugly. Good looks are not the most important thing for a product, but a product without them is unlikely to be considered great. YiDA provides custom styling capabilities (see the [style customization documentation](/open/yida/guide/concept/style)). By customizing the styles, we can achieve the following result (you can also visit the [sample page](https://www.aliwork.com/o/demo/todoMVC-3) to try it out and check the specific implementation in the [designer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-1)):
+
+This section does not walk through every style customization detail, but only lists a few representative style customization cases:
+
+- Customize component styles via the style panel — For example, for the large TodoList logo, you can configure font styles in the style panel, as shown below:
+
+- Customize component styles via CSS — The style panel has limited coverage. YiDA allows you to write CSS to customize component styles. For example, the layered effect below the panel is implemented using the `::before` pseudo-element:
+
+## Data Source Integration — Equipping TodoMVC with Powerful Gear
+
+At this point, the basic capabilities of the official TodoMVC have been implemented. However, careful developers will notice that although the current product is functional, if you switch to a different browser to access it, the to-do task data will be lost. This is not a deliverable TodoList feature. In addition to providing basic UI and front-end logic customization, YiDA also offers powerful data capabilities. Now, let's equip TodoMVC with powerful gear to persist the data. The final result is as follows:
+
+<Warning>
+Because calling the YiDA OpenAPI requires authentication, this page cannot be set as a silent-login page for a trial. However, developers can visit the [designer](https://www.aliwork.com/developer/designer?formUuid=todoMVC-4) to view the specific implementation of the page.
+
+</Warning>
+
+### Step 1: Create a Regular Form to Build the Task Data Storage Structure
+
+First, we create a regular form under the current app to store to-do task information. For the specific process of creating a regular form, see the [YiDA user documentation](/yida/form/ybuoxl). We will not expand on it here. The result is shown below:
+
+After the form is created, we get a FormUuid — the unique identifier of the form — as shown in the red box above.
+
+### Step 2: Use Remote APIs to Implement CRUD for Tasks
+
+With a place to store task data, we need to create asynchronous APIs in TodoMVC to implement task CRUD. The YiDA designer provides remote API configuration for requesting remote HTTP interfaces (see the [remote API documentation](/open/yida/guide/concept/datasource)), and YiDA also provides common OpenAPI interfaces to implement basic data operations (see the [OpenAPI documentation](/open/yida/api/openAPI)). We create the following remote API configurations in the page:
+
+#### todoList
+
+Retrieves the task list data. The specific configuration is as follows:
+
+- Turn on the auto-load switch — that is, this interface is automatically called when the page loads, and YiDA automatically mounts the returned content to `state.todoList`.
+- Configure the request URL and HTTP method according to the format in the OpenAPI documentation.
+- Configure the request parameters:
+  - **formUuid** — The unique identifier of the form used to store task information, that is, the formUuid of the form created in the previous step.
+  - **currentPage** — The current page number. YiDA's Open API supports pagination. Since this is just a demo, we won't paginate; we fix this parameter to 1 to fetch the first page.
+  - **pageSize** — The number of items per page. The default page size for YiDA Open API is 10. For a better demo experience, we fix this parameter to 50 to fetch the most recent 50 records.
+- Configure the didFetch handler to transform the Open API's data structure into the structure recognized by the logic in the sections above. The specific implementation is as follows:
+
+```js
+function didFetch(content) {
+  return (content.data || []).map((item) => {
+    return {
+      id: item.formInstId, // The form instance ID, that is, the unique identifier of each record
+      content: item.formData.textField_kymq5pdi, // The task content; textField_kymq5pdi is the unique identifier of the task-content control in the task form
+      done: item.formData.radioField_kymq5pdj === '已完成', // Task status; a new task defaults to incomplete. radioField_kymq5pdj is the unique identifier of the task-status control in the task form
+    };
+  });
+}
+```
+
+#### add
+
+Used to create a to-do task. The specific configuration is as follows:
+
+- Configure the request URL and HTTP method according to the format in the OpenAPI documentation.
+- Configure the request parameters:
+  - **formUuid** — Same as above.
+  - **appType** — The App ID of the current app (starts with APP\_; can be obtained from the URL of the current page).
+- Configure the willFetch handler. We need to transform the task information into a format that YiDA can recognize based on the parameter format in the OpenAPI. The specific implementation is as follows:
+
+```js
+function willFetch(vars, config) {
+  const { content } = vars.data; // Get the content information of the new task
+  vars.data.formDataJson = JSON.stringify({
+    // Creating a form instance requires stringifying the parameters and placing them in the formDataJson field
+    textField_kymq5pdi: content, // Task content; textField_kymq5pdi is the unique identifier of the task-content control in the task form
+    radioField_kymq5pdj: '未完成', // Task status; a new task defaults to incomplete. radioField_kymq5pdj is the unique identifier of the task-status control in the task form
+  });
+}
+```
+
+- Configure the didFetch handler to show a toast on successful creation and refresh the task list. The specific implementation is as follows:
+
+```js
+function didFetch(content) {
+  this.utils.toast({
+    // Show success toast
+    title: 'Add Success!',
+  });
+  this.reloadDataSource(); // Rerun the initial request (that is, the todoList API) to refresh the task list
+  return content; // Important: return content
+}
+```
+
+#### del
+
+Used to delete a to-do task. This is relatively simple. The specific configuration is as follows:
+
+However, note the following two points:
+
+- The task ID to be deleted is not fixed, so you need to pass the specific task ID when calling `dataSourceMap.del.load`.
+- didFetch is not implemented for delete because when implementing Clear Completed, this async API needs to be called in batch. Therefore, the logic in didFetch should be implemented in the `.then` callback of the manual async request.
+
+#### update
+
+Used to update a to-do task. The specific configuration is as follows:
+
+- Configure the request URL and HTTP method according to the format in the OpenAPI documentation.
+- Configure the willFetch handler. As with add, we need to transform the task content into a data structure that YiDA can recognize. The specific implementation is as follows:
+
+```js
+function willFetch(vars, config) {
+  const { id, content, done } = vars.data;
+  vars.data.formInstId = id; // Task ID, the unique identifier of the task
+  const data = {};
+  if (content) {
+    // If content needs to be modified, include this parameter
+    data.textField_kymq5pdi = content;
+  }
+  if (typeof done === 'boolean') {
+    // If the status needs to be modified, include this parameter
+    data.radioField_kymq5pdj = done ? '已完成' : '未完成';
+  }
+  vars.data.updateFormDataJson = JSON.stringify(data);
+}
+```
+
+- Configure the didFetch handler. The logic is similar to add — show a success toast and refresh the list. The specific implementation is as follows:
+
+```js
+function didFetch(content) {
+  this.utils.toast({
+    title: 'Update Success!',
+  });
+  this.reloadDataSource();
+  return content; // Important: return content
+}
+```
+
+<Warning>
+While adding the remote API configurations, we also removed several global variables set earlier:
+
+- **todoList** — Since the list is now retrieved via a remote API, there is no need to store todoList information in state.
+- **newId** — Since YiDA automatically generates a unique formInstId whenever a to-do task is created, there is no need to generate a task ID ourselves.
+
+</Warning>
+
+### Step 3: Replace the Original Data Management Logic with Remote API Calls
+
+After completing the remote API setup above, we only need to modify the logic in the previous section by replacing the operations on the global variables with remote API calls. The specific changes are as follows:
+
+- Modify the **onRowAdd** implementation to call the add remote API to create the task. The specific implementation is as follows:
+
+```js
+export function onRowAdd(e) {
+  // Only handle the Enter key
+  if (e.keyCode !== 13) return;
+  this.dataSourceMap.add.load({
+    // Call the remote API
+    content: this.$('input').getValue(),
+  });
+}
+```
+
+- Modify the **onDelete** implementation to call the del remote API to delete the task. The specific implementation is as follows:
+
+```js
+export function onDelete() {
+  this.dataSourceMap.del
+    .load({
+      // Call the remote API
+      formInstId: this.item.id, // Pass in the dynamic parameter
+    })
+    .then((res) => {
+      // Remote API callback, similar to didFetch in the configuration
+      this.utils.toast({
+        // Success toast
+        title: 'Delete Success!',
+      });
+      this.reloadDataSource(); // Refresh the task list
+    });
+}
+```
+
+- Modify the **onRuleEdit** implementation to call the update remote API to update the task content. The specific implementation is as follows:
+
+```js
+export function onRowEdit(e) {
+  // Only handle the Enter key
+  if (e.keyCode !== 13) return;
+
+  this.dataSourceMap.update.load({
+    id: this.item.id,
+    content: this.$('rowInput').getValue(),
+  });
+  this.setState({
+    editRowId: 0,
+  });
+}
+```
+
+- Modify the **onTodoCheck** implementation to call the update remote API to update the task status. The specific implementation is as follows:
+
+```js
+export function onTodoCheck({ value }) {
+  this.dataSourceMap.update.load({
+    id: this.item.id,
+    done: value === 'done',
+  });
+  this.setState({
+    editRowId: 0,
+  });
+}
+```
+
+- Modify the **onClearCompleted** implementation to batch-call the del remote API to clear completed tasks. The specific implementation is as follows:
+
+```js
+export function onClearCompleted() {
+  const deleteItems = this.state.todoList.filter((item) => item.done); // Filter the list of tasks to be deleted
+  Promise.all(
+    deleteItems.map((item) =>
+      this.dataSourceMap.del.load({
+        // Batch-call the del remote API via Promise.all to delete the tasks
+        formInstId: item.id,
+      })
+    )
+  ).then((res) => {
+    // Promise.all callback
+    this.utils.toast({
+      // Success toast
+      title: 'Clear Success!',
+    });
+    this.reloadDataSource(); // Refresh the task list
+  });
+}
+```
+
+## Try It Online
+
+[Sample Experience Center | TodoMVC](https://www.aliwork.com/o/coc?tplUuid=TPL_PMFQNW628OML366HTNJO&from=developers_subject)
+
+## Conclusion
+
+This tutorial has walked developers step by step through building a TodoMVC custom page from scratch, covering nearly all the common knowledge needed for YiDA custom pages. We hope this example takes your YiDA skills to the next level and enables you to support more complex business scenarios. If you have any questions, feel free to share your feedback.

@@ -1,0 +1,201 @@
+---
+title: "Remote API"
+description: "Learn about the configuration options and workflow of YiDA remote APIs, including request URLs, parameters, data processing functions, and manual invocation, to enable asynchronous data interaction with the server."
+polished: true
+---
+
+System development inevitably involves sending HTTP requests to retrieve data from the server or to perform asynchronous operations. YiDA provides the remote API feature for asynchronous interface calls.
+
+## Create a Remote Data Source
+
+Add a remote API configuration through the Data Source panel.
+
+A remote Data Source contains the following configuration items:
+
+* **Name** — The unique identifier of the remote API. Follow JavaScript variable naming rules.
+* **Description** — Describes the remote API. This description appears during variable binding.
+* **Auto-load** — Data Sources with **Auto-load** enabled call the remote interface before the Page renders, and the returned data is assigned directly to a global variable named after the remote API. The Page begins rendering only after all auto-loaded Data Sources have finished loading.
+* **Loading Mode** — YiDA provides the following two loading modes (parallel loading by default):
+  * Serial — All serial Data Sources run from top to bottom. If dependencies exist, place the depended-on Data Source above the one that relies on it.
+  * Parallel — All parallel Data Sources run simultaneously.
+* **Request URL** — The access URL of the remote API. For OpenAPIs provided by YiDA, use a relative path. Interfaces from third-party services must support cross-origin access.
+* **HTTP method** — YiDA supports the following general asynchronous request methods: JSONP, GET, POST, PUT, and DELETE.
+* **Request parameter** — Sets the request parameters for the asynchronous request. Static configuration and variable binding are both supported.
+* **Send Request** — Accepts a boolean that determines whether to send the request. You can also enter a variable expression to control this behavior.
+* **Data Processing** — YiDA provides four categories of data processing functions for different stages:
+  * **willFetch** — The pre-request handler. Use willFetch to modify request parameters before the request is sent. Example:
+  ```js
+  function willFetch(vars, config) {
+    // Modify query parameters via vars.data
+    // Modify headers via config.header
+    // Modify the URL via config.url
+    vars.data.a = 1; // Set parameter "a" in the request to 1
+    config.url = 'https://www.taobao.com'; // Change the request URL to Taobao
+    config.header['Content-Type'] = 'application/json'; // Modify Content-Type
+    console.log(vars, config); // View other parameters that can be modified.
+  }
+  ```
+
+  * **fit** — Adapts the returned data. Use fit to reshape the original response into the expected data format. Example:
+  ```js
+  // By default, YiDA only handles responses in the following format. If the async interface returns a different structure, use fit to convert it.
+  //{
+  //    content: [], // The "content" field carries the data; no restrictions on its data structure.
+  //    success: true, // "success" indicates whether the request succeeded.
+  //}
+  function fit(response) {
+    const content = (response.content !== undefined) ? response.content : response;
+    const error = {
+      message: response.errorMsg ||
+        (response.errors && response.errors[0] && response.errors[0].msg) ||
+        response.content || 'Remote Data Source request failed, success is false',
+    };
+    let success = true;
+    if (response.success !== undefined) {
+      success = response.success;
+    } else if (response.hasError !== undefined) {
+      success = !response.hasError;
+    }
+    return {
+      content,
+      success,
+      error,
+    };
+  }
+  ```
+
+  * **didFetch** — The post-request callback. Use didFetch to modify the received data. Unlike fit, it runs only when the returned success value is true. Example:
+  ```js
+  function didFetch(content) {
+      content.b = 1; // Set field "b" in the returned data to 1
+      return content; // Important: content must be returned
+  }
+  ```
+
+  * **onError** — The error handler. onError captures errors from the remote Data Source and runs when the returned success value is false. Example:
+  ```js
+  function onError(error) {
+    console.log(error);
+  }
+  ```
+
+* **Default Data** — Specifies default data for the interface. If the interface returns nothing or the request fails, the default data is returned instead.
+
+## API
+
+The YiDA remote API provides the following two methods:
+
+### this.dataSourceMap.xxx.load()
+
+Manually invokes the specified remote API, where xxx is the Data Source name set in the Data Source panel. You can also pass in request parameters; they are merged with the parameters configured in the Data Source and sent together with the request. The load method returns a Promise.
+
+Example:
+
+```js
+export function fetchData() {
+  // Call the getDataList remote API configured in the Data Source, passing in pageSize and page.
+  // On success, print the result to the console. On failure, show a toast alert.
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10,
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error',
+      title: 'Request failed!'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+
+Reissues requests for all remote APIs whose auto-load setting is true.
+
+Example:
+
+```js
+export function reload() {
+  // Re-request all initial Data Source requests
+  this.reloadDataSource();
+}
+
+```
+
+## Use Cases
+
+Remote Data Sources are widely used in system development, acting as a bridge between the front-end Page and the back-end service. On the YiDA platform, the two most common use cases are as follows.
+
+### Auto-loaded Data Source
+
+Some data must be loaded automatically when a user opens a Page and displayed on the Page — for example, in the "My To-Do Tasks" scenario.
+
+* Configure an auto-loaded Data Source to load To-Do tasks. (Auto-loaded Data Sources mount the returned result to a global variable whose name matches the Data Source name.) See below:
+
+  A didFetch data processing function is also configured to convert the returned data into a more semantic structure:
+
+  ```js
+  function didFetch(content) {
+    return (content.data || []).map(item => {
+      return {
+        id: item.formInstId,
+        content: item.formData.textField_kymq5pdi,
+        done: item.formData.radioField_kymq5pdj
+      }
+    });
+  }
+  ```
+
+* Next, use a Spreadsheet Component to display the auto-loaded To-Do data, as shown below:
+  * Bind the Spreadsheet's Data Source variable to state.todoList.
+
+  * Set the Spreadsheet's Field mappings and their corresponding Types.
+
+* Finally, click the **Preview** button in the designer to see the To-Do tasks displayed in the Spreadsheet.
+
+### Manually Loaded Data Source
+
+Sometimes a Data Source must be invoked manually through event handling in response to user interaction — for example, calling a remote API to Delete a To-Do task when the user clicks the Delete Button.
+
+* First, configure a remote API for deleting tasks, as shown below:
+
+  A didFetch data processing function is also configured for this interface. When the request succeeds, a Message notification informs the User that the deletion succeeded, and the reloadDataSource API is called to refresh the task List by re-triggering the auto-load request:
+
+  ```js
+  function didFetch(content) {
+    // Notify the user that the deletion was successful
+    this.utils.toast({
+      title: 'delete Success!',
+    });
+    // Re-trigger auto-load requests to refresh the task list
+    this.reloadDataSource();
+    return content; // Important: content must be returned
+  }
+  ```
+
+* Next, add a Delete Action item to the Spreadsheet. When the User clicks the Delete item, the remote API is invoked manually to perform the deletion, as shown below:
+  * Set the Spreadsheet's Action column Attribute.
+
+  * Add an Action item.
+
+  * Set the Action item Title and bind an Action to it in the callback function.
+
+  * Implement the onDelete function to load the Data Source manually and perform the deletion:
+
+  ```js
+  export function onDelete(rowData) {
+    this.dataSourceMap.del.load({
+      formInstId: rowData.id
+    });
+  }
+  ```
+
+* Finally, click the **Preview** button in the designer. A Delete Action item appears in the Spreadsheet's Action column. Clicking the Delete Button executes the deletion and refreshes the List.
+
+<Tip>
+The examples above use several open interfaces provided by the YiDA platform for querying and deleting data. For more YiDA open interfaces, see the [OpenAPI documentation](/open/yida/api/openAPI).
+
+</Tip>

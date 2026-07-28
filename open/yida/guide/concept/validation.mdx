@@ -1,0 +1,97 @@
+---
+title: "Form Validation"
+description: "An overview of YiDA's form validation capabilities, including built-in validation rules for each form component and instructions for writing custom validation functions to ensure the integrity of submitted data."
+polished: true
+---
+
+Forms are the most common scenario in YiDA. When working with Forms, you often need to validate Fields. In addition to built-in validation rules for various form components, the YiDA platform also provides custom field validation capabilities, helping you manage Form data and prevent dirty data from being submitted.
+
+When submitted data fails validation, an error message appears below the Field and the submission is blocked, as shown below:
+
+## Validation Settings
+
+The YiDA platform provides two form validation approaches:
+
+### Built-in Validation Rules
+
+YiDA offers commonly used built-in validation rules for each form component. Simply configure and enable the rule to use it. For example, the minimum age setting shown above can be easily implemented with the following configuration:
+
+### Custom Validation Rules
+
+Built-in field validation methods may not cover every scenario. To address this, YiDA provides a Custom rule setting for each form component, letting you control validation results with a function. The custom validation rule function is defined as follows:
+
+```ts
+// value is the current value of the Field; returns a boolean indicating whether validation passes
+function validateRule(value: any): boolean;
+```
+
+For example, to validate whether the content of a text input Field starts with "Hangzhou", use the following:
+
+```js
+// Whether the value starts with "Hangzhou"
+function validateRule(value) {
+  if (/^Hangzhou/.test(value)) {
+    return true;
+  }
+  return false;
+```
+
+## API
+Besides being triggered on Form submission, form validation can also be triggered manually via the [frontend API](/open/yida/api/yidaAPI#thisfieldidvalidate), as shown below:
+
+```js
+export function validate() {
+  // Validate the text input Field component; print errors and values to the console if validation fails
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+
+## Common Custom Validations
+### Bank Card Number Validation
+#### Card Number Length Validation
+The card number must be 16 or 19 digits.
+
+```js
+function validateRule(value) {
+  return value && /^([0-9]{16}|[0-9]{19})$/.test(value);
+}
+```
+
+#### Card Number Validation
+Uses the [**Luhn algorithm**](https://baike.baidu.com/item/Luhn%E7%AE%97%E6%B3%95/22799984) for validation.
+
+```js
+function validateRule(value) {
+  if (value && /^([0-9]{16}|[0-9]{19})$/.test(value)) {
+    let total = 0;
+    value.split('').reverse().forEach((item, idx) => {
+      const num = parseInt(item, 10);
+      total += idx % 2 ? 2 * num - (num > 4 ? 9 : 0) : num;
+    });
+    if (total === 0) {
+      return false;
+    }
+    return total % 10 === 0;
+  }
+  return false;
+}
+```
+
+### ID Card Number Validation
+
+```js
+function validateRule(value) {
+  if (value && value.length === 18) {
+    const coeff = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    const laststr = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+    let total = 0;
+    for(let i = 0; i < 17; ++ i) {
+      total+= parseInt(value[i], 10) * coeff[i];
+    }
+    return value[17] === laststr[total % 11];
+  }
+  return false;
+}
+```
