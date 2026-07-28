@@ -1,0 +1,100 @@
+---
+title: "Persiapan sumber daya perangkat keras dan perangkat lunak"
+description: "Pelajari persyaratan sumber daya perangkat keras dan perangkat lunak untuk mengonfigurasi database dan penyimpanan objek Yida Edisi Dedicated, termasuk versi dan spesifikasi PostgreSQL serta dukungan Alibaba Cloud OSS, Huawei Cloud OBS, dan Inspur Cloud OSS."
+polished: true
+---
+
+Secara default, Yida Edisi Dedicated tidak memerlukan konfigurasi khusus untuk persistensi data. Jika Anda memiliki kebutuhan konfigurasi tambahan, Yida Edisi Dedicated mendukung konfigurasi khusus untuk database dan penyimpanan objek file. Artikel ini menjelaskan sumber daya perangkat keras dan perangkat lunak yang diperlukan saat mengonfigurasi penyimpanan khusus.
+
+## Database
+
+Saat ini, hanya database **PostgreSQL** yang didukung. PostgreSQL v14 atau versi yang lebih baru direkomendasikan. Persyaratan konfigurasi spesifiknya adalah sebagai berikut:
+
+| **Item** | **Konfigurasi** | **Deskripsi** |
+|---|---|---|
+| **Lokasi database** | Alibaba Cloud PostgreSQL direkomendasikan (mendukung versi RDS dan ADB) | Database Alibaba Cloud direkomendasikan karena operasinya andal, jaringannya stabil, dan performanya terjamin. |
+| **Versi database** | PostgreSQL 14 atau versi yang lebih baru | Versi sebelum 14 tidak dapat memberikan performa optimal. |
+| **Spesifikasi database** | 8C 16G SSD 200G atau lebih tinggi | Berdasarkan volume data 1.000.000 catatan, spesifikasi host "8C 16G memori 200G SSD" atau lebih tinggi direkomendasikan. |
+| **Alamat database** | Sediakan alamat berbasis domain, bukan alamat IP | Penggunaan nama domain memudahkan penskalaan serta meningkatkan fleksibilitas konfigurasi dan ketersediaan layanan. |
+| **Uji koneksi database** | Gunakan fitur uji koneksi pada konfigurasi khusus Yida untuk memverifikasi konektivitas jaringan. Aktifkan akses jaringan publik dan konfigurasikan daftar izin IP egress jaringan. | Jika tidak ingin mengekspos jaringan publik, Anda harus membeli dan mengintegrasikan gateway keamanan DingTalk khusus secara terpisah.<br />Digunakan untuk memverifikasi konektivitas jaringan dan memastikan Sumber Data dapat diinisialisasi. |
+| **Pool koneksi database** | Minimum 1.000 koneksi tersedia | Yida menggunakan deployment cluster. Untuk memastikan jumlah koneksi setiap mesin, koneksi tersedia di sisi server harus ditingkatkan. |
+| **Konfigurasi keep-alive koneksi** | tcp_keepalives_idle=30<br />tcp_keepalives_interval=5 | Tingkatkan frekuensi keep-alive koneksi database untuk mencegah koneksi menjadi tidak valid akibat masalah jaringan. |
+| **Pemantauan database** | Memudahkan pemecahan masalah oleh DBA atau DevOps | Menyederhanakan pemecahan masalah sehari-hari. Tanpa ini, masalah performa tidak dapat ditemukan dengan cepat. |
+| **Bandwidth database** | Minimum 10M khusus untuk Yida direkomendasikan | Jika trafik bisnis sangat tinggi dengan unggah dan unduh yang sering, pertimbangkan untuk meningkatkan bandwidth secara wajar. |
+
+| **Konfigurasi** | **Kapasitas database (tabel tunggal)** | **Kapasitas database (catatan instance data)** |
+|---|---|---|
+| 4-core / memori 8G / 50G SSD | 50.000 | 1.000.000 |
+| 8-core / memori 16G / 100+ SSD | 100.000 | 2.000.000 |
+| 16-core / 32G / 100+ SSD | 300.000 | 5.000.000 |
+| 32-core / 64G / 200+ SSD | 500.000 | 10.000.000 |
+| 64-core / memori 128G / 200G+ SSD | 1.000.000 | 20.000.000 |
+
+## Penyimpanan objek
+
+Penyimpanan objek mendukung tiga pilihan: [Alibaba Cloud OSS](https://help.aliyun.com/zh/oss/?spm=a2c4g.11186623.0.0.5b4ede53HBHn6O), Huawei Cloud OBS, dan [Inspur Cloud OSS](https://console1.cloud.inspur.com/document/oss/index.html).
+
+Persyaratan lingkungan penyimpanan objek adalah sebagai berikut:
+
+| **Item** | **Konfigurasi** | **Deskripsi** |
+|---|---|---|
+| **Tipe OSS** | Pilih Alibaba Cloud OSS, Huawei Cloud OBS, atau Inspur Cloud OSS. | Saat ini didukung tiga tipe penyimpanan objek: [Alibaba Cloud OSS](https://help.aliyun.com/zh/oss/?spm=a2c4g.11186623.0.0.5b4ede53HBHn6O), Huawei Cloud OBS, dan [Inspur Cloud OSS](https://console1.cloud.inspur.com/document/oss/index.html). |
+| **Konfigurasi jaringan** | Aktifkan akses jaringan publik untuk OSS. |  |
+| **Uji konektivitas** | Gunakan fitur uji koneksi pada konfigurasi khusus Yida untuk memverifikasi konektivitas jaringan. | Digunakan untuk memverifikasi konektivitas jaringan. |
+| **Pengaturan CORS** | Konfigurasikan CORS untuk mengizinkan Domain organisasi di Yida. Atur `Header` ke `*`. | Yida terhubung langsung ke OSS untuk unggah dan unduh file. CORS harus diizinkan agar dapat berfungsi. |
+| **Pemeriksaan proteksi hotlink** | Periksa apakah proteksi hotlink diaktifkan. Jika Aktif, konfigurasikan daftar izin Domain Yida.<br />IP egress Yida adalah:<br />• 106.11.0.0/16<br />• 203.119.128.0/17<br />• 59.82.0.0/16<br />• 140.205.0.0/16 | Proteksi hotlink memblokir Permintaan yang tidak ada di daftar izin.<br /><br /> |
+| **Pemeriksaan server waktu** | Jika organisasi memiliki server waktu, verifikasi bahwa waktunya akurat. | Permintaan OSS memiliki masa berlaku. Yida mengaturnya ke 30 detik, dan Permintaan yang kedaluwarsa dianggap tidak valid. |
+
+## Sumber daya IT: persiapan penyimpanan
+
+Database lokal
+
+- Database PostgreSQL v14 atau versi yang lebih baru.
+- Domain database yang dapat diakses publik, nama database, akun, dan kata sandi.
+- Server yang direkomendasikan: 8-core 16G, disk 2T.
+
+Penyimpanan OSS file lokal
+
+- Domain bucket OSS yang dapat diakses publik, access key (AK), dan secret key (SK).
+
+<table>
+  <tr>
+    <td></td>
+    <td>**Ringkasan solusi**</td>
+    <td>**Keunggulan**</td>
+    <td>**Skenario yang berlaku**</td>
+  </tr>
+  <tr>
+    <td rowSpan={2}>**Database**</td>
+    <td>Solusi 1: Database cloud khusus</td>
+    <td>Menyediakan ketersediaan tinggi database cloud dengan redundansi multi-region dan mendukung penskalaan otomatis elastis. Platform Yida bertanggung jawab menjaga keandalan penuh komputasi cloud dan penyimpanan cloud.</td>
+    <td>Memungkinkan pelanggan melihat dan memelihara database secara mandiri untuk audit operasional.<br />Cocok untuk menyimpan data bisnis pada server penyimpanan cloud independen, terpisah dari penyimpanan bisnis cloud publik Yida.</td>
+  </tr>
+  <tr>
+    <td>Solusi 2: Pusat data IDC on-premises</td>
+    <td>Memenuhi persyaratan organisasi tertentu dengan mendukung deployment dan penyimpanan di pusat data lokal.</td>
+    <td>Cocok untuk organisasi dengan persyaratan penyimpanan data tertentu yang field data bisnisnya tidak dapat disimpan di cloud.<br />Membutuhkan tim DBA internal yang mampu memelihara lingkungan, dengan failover primary-standby database dan pemulihan bencana fisik yang tersedia.</td>
+  </tr>
+  <tr>
+    <td rowSpan={2}>**Penyimpanan objek**<br />**OSS**</td>
+    <td>Solusi 1: Layanan cloud OSS</td>
+    <td>Menyediakan layanan penyimpanan file lengkap dengan redundansi multi-region untuk ketersediaan tinggi dan mendukung penskalaan otomatis elastis.</td>
+    <td>Cocok untuk menyimpan data bisnis pada server penyimpanan cloud independen, terpisah dari penyimpanan bisnis cloud publik Yida.</td>
+  </tr>
+  <tr>
+    <td>Solusi 2: Solusi OSS on-premises</td>
+    <td>Dikombinasikan dengan deployment privat cluster Yida untuk memenuhi persyaratan keamanan organisasi tertentu, memungkinkan deployment dan penyimpanan di pusat data lokal.</td>
+    <td>Cocok untuk organisasi dengan persyaratan penyimpanan data tertentu yang field data bisnisnya tidak dapat disimpan di cloud.<br />Membutuhkan tim DBA internal yang mampu memelihara lingkungan, dengan failover primary-standby database dan pemulihan bencana fisik yang tersedia.</td>
+  </tr>
+  <tr>
+    <td rowSpan={2}>**Analitik data**</td>
+    <td>Solusi 1: Analitik big data berbasis cloud</td>
+    <td>Mendukung analitik data cluster besar. Data intermediate memerlukan penyimpanan cloud untuk staging sementara.</td>
+    <td>Cocok untuk menggunakan kemampuan big data visual berbasis cloud seperti asosiasi tabel, pemfilteran tabel, dan visualisasi data.</td>
+  </tr>
+  <tr>
+    <td>Solusi 2: Database on-premises dan data lake dengan analitik BI lokal</td>
+    <td>Menyediakan semua field database bisnis mentah dan model data di seluruh dimensi.</td>
+    <td>Cocok untuk organisasi dengan tim BI profesional yang dapat melakukan analitik data langsung terhadap IDC lokal menggunakan alat seperti Tableau atau Typhoon.</td>
+  </tr>
+</table>

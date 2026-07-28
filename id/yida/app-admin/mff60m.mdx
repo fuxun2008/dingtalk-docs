@@ -1,0 +1,115 @@
+---
+title: "Formulir biasa"
+description: "Buat formulir biasa di Yida untuk mengumpulkan data operasional, survei, pendaftaran online, hingga check-in kode QR — atur tampilan PC, validasi formulir, tombol Kirim, dan Sumber Data secara fleksibel."
+polished: true
+---
+
+Formulir biasa mengumpulkan semua data yang dihasilkan selama operasi bisnis dan dapat pula dipublikasikan ke pengguna eksternal untuk mengumpulkan data dari luar. Manfaatkan data yang terkumpul sesuai kebutuhan Anda.
+
+Formulir biasa tidak memiliki proses persetujuan. Gunakan formulir biasa untuk skenario seperti survei, pendaftaran online, laporan penjualan, pemesanan rapat, catatan penerimaan barang pengadaan, entri pesanan, dan check-in kode QR.
+
+## Pengaturan atribut dasar
+
+- Pengaturan tampilan PC: jumlah kolom menentukan apakah komponen pada formulir ditampilkan dalam 1 kolom atau 2 kolom.
+
+- Validasi formulir: mencakup validasi Formula, validasi layanan, dan validasi layanan kode kustom. Lihat Validasi formulir untuk detailnya.
+
+- Peristiwa formulir: lihat Aturan bisnis formulir untuk detailnya.
+
+## Pengaturan atribut Premium
+
+### Tombol Kirim
+
+Ubah teks yang ditampilkan pada tombol Kirim. Mendukung internasionalisasi dan pengikatan variabel.
+
+### Sebelum formulir dikirim
+
+Secara default, setelah data formulir lolos validasi dan pengaturan selesai, data dikirim ke API backend Yida dan disimpan.
+
+Opsi Sebelum formulir dikirim memungkinkan Anda memblokir perilaku pengiriman default. Kembalikan `false` di dalam tindakan untuk menghentikan pengiriman dan menyesuaikan perilaku selanjutnya.
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // Catatan: Mengubah data yang dikirim di sini tidak didukung.
+
+  console.log('beforeSubmit', formDataMap);
+
+  // Kembalikan false untuk memblokir pengiriman bila perlu. Promise didukung.
+  // return false;
+}
+```
+
+Anda juga dapat mengembalikan `Promise` untuk menjalankan pemeriksaan asinkron:
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // Catatan: Mengubah data yang dikirim di sini tidak didukung.
+  return new Promise((resolve) => {
+  	// Contoh, meminta sumber data
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // Blokir pengiriman dengan mengembalikan false
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+Tips: jika `Promise` dikembalikan, status memuat tombol akan menunggu hingga `Promise` selesai.
+
+<Note>
+Mengubah data yang dikirim di sini tidak didukung.
+</Note>
+
+### Setelah formulir dikirim
+
+Secara default, formulir Yida melakukan pengalihan setelah pengiriman. Target pengalihan dapat berupa halaman prompt berhasil (PC), halaman detail (seluler), atau halaman yang ditentukan pengguna ([Pengaturan formulir](https://docs.aliwork.com/docs/yida_support/yida_qalist/uop0b0ndpgc0gevb/ovg9ul)).
+
+Opsi Setelah formulir dikirim memungkinkan Anda memblokir perilaku pengalihan default. Kembalikan `false` di dalam tindakan untuk menghentikan pengalihan dan menyesuaikan perilaku selanjutnya.
+
+```javascript
+export function afterSubmit({ submitResult }){
+  console.log('afterSubmit', submitResult);
+
+  // Kembalikan false untuk memblokir tindakan selanjutnya bila perlu. Promise didukung.
+  // return false;
+}
+```
+
+Anda juga dapat mengembalikan `Promise` untuk menjalankan pemeriksaan asinkron:
+
+```javascript
+export function afterSubmit({ submitResult }){
+  return new Promise((resolve) => {
+  	// Contoh, meminta sumber data
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // Blokir tindakan selanjutnya dengan mengembalikan false
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+Tips: jika `Promise` dikembalikan, status memuat tombol akan menunggu hingga `Promise` selesai.
+
+### Sumber Data Formulir
+
+Sumber Data Formulir menyediakan cara terpadu untuk mengontrol nilai formulir. Saat ini Sumber Data Formulir memiliki dua fungsi:
+
+- Menyediakan nilai awal, yaitu nilai default setiap bidang pada formulir.
+- Ketika Sumber Data Formulir berubah, nilai bidang formulir terkait ikut diperbarui.
+
+Contoh: tentukan nilai bidang di Sumber Data Formulir (salin dan gunakan langsung):
+
+```json
+{
+  "textField_km1nnpxu": "Contoh nilai teks satu baris"
+}
+```

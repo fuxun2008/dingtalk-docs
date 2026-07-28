@@ -1,0 +1,148 @@
+---
+title: "Kontrol Pohon"
+description: "Halaman ini menjelaskan cara menggunakan kontrol pohon untuk menampilkan informasi kategori dan subkategori, meliputi pembuatan formulir biasa, pengaturan halaman kustom, konfigurasi API jarak jauh, serta pengikatan variabel dan langkah-langkah lainnya. Sesuai untuk skenario yang memerlukan tampilan data secara hierarkis."
+polished: true
+---
+
+| **Fitur** | **Paket Luang** | **Edisi Basic** | **Edisi Professional** | **Edisi Dedicated** |
+|---|---|---|---|---|
+| Komponen tree | Tidak didukung | Tidak didukung | Didukung | Didukung |
+
+## 1. Kasus penggunaan
+
+Ketika Anda ingin melihat subkategori di bawah suatu kategori, gunakan komponen tree pada halaman kustom.
+
+<Note>
+Untuk atribut, penggunaan, dan contoh komponen, [**klik di sini**](/zh/open/yida/components/advanced/tree).
+</Note>
+
+## 2. Demo video
+
+## 3. Prosedur
+
+### 3.1 Buat formulir biasa
+
+Buat formulir biasa dan tambahkan beberapa komponen Teks satu baris. Edit judul di panel Atribut di sebelah kanan, lalu klik Simpan.
+
+### 3.2 Buat halaman kustom
+
+Pada halaman pemilihan templat, klik Lewati untuk masuk ke editor halaman kustom. Seret komponen tree dan komponen tombol ke kanvas.
+
+### 3.3 Buat API jarak jauh
+
+Pada halaman kustom, klik Sumber Data di sebelah kiri dan buat API jarak jauh baru. Konfigurasikan nama, URL Permintaan, parameter Permintaan, dan pemrosesan datanya.
+
+URL Permintaan: [API platform Yida (dapat dipanggil langsung dari Sumber Data halaman)](/id/yida/developer-features/aql605)
+
+Contoh: [https://www.yidaapps.com/dingtalk/web/](https://www.yidaapps.com/dingtalk/web/)APP-XXXXXX/v1/form/searchFormDatas.json
+
+formUuid dalam parameter Permintaan tersedia di pengaturan aplikasi di sudut kanan atas halaman Beranda. Setiap formulir memiliki ID Unik — salin dan tempelkan ke parameter Permintaan.
+
+Di bagian pemrosesan data, temukan kode di bawah fungsi Callback penyelesaian Permintaan dan perbarui pengenal setelah dataMap. Pengenal berasal dari komponen Teks satu baris pada formulir. Tempelkan, lalu klik Simpan.
+
+```javascript
+function didFetch(content) {
+  const data = content.data.map(item => {
+    let dataMap = item.formData;
+    return {
+      label: dataMap['textField_kplzoi0z'],
+      key: dataMap['textField_kplzoi0z'],
+      children: [{
+        label: dataMap['textField_kplzoi10'],
+        key: dataMap['textField_kplzoi10'],
+        children: [{
+          label: dataMap['textField_kplzoi11'],
+          key: dataMap['textField_kplzoi11']
+        }]
+      }]
+
+    }
+  })
+  content = data;
+  console.log("item=====>", data)
+
+  function findItem(item, arr) {
+    console.log("item........", item)
+    console.log("arr........", arr)
+    return arr.findIndex(value => value.key === item.key);
+  }
+
+  function recursion(arr) {
+    console.log("Menghapus duplikat entri", arr)
+    const newArr = [];
+    arr.forEach((item) => {
+      let index = findItem(item, newArr);
+      if (index !== -1) {
+
+      } else {
+        newArr.push(item);
+      }
+    })
+    return newArr;
+  }
+
+  let newArr = recursion(content);
+  console.log("newArr========>", newArr)
+  content = newArr;
+
+  console.log("content========>", content)
+  // return item;
+
+  // console.log('data:', data)
+  // this.setState({
+  //   tree: data
+  // })
+  return content; // Penting: content harus dikembalikan
+}
+```
+
+Klik panel aksi JS di sebelah kiri dan salin kode berikut.
+
+```javascript
+export function onEditFinish(key, label, node) {
+  console.log('key: ', key, ' label: ', label, ' node: ', node);
+}
+/**
+* Tree onSelect
+* @param selectedKeys array kunci node yang dipilih
+* @param extra parameter tambahan
+*/
+export function onSelect(selectedKeys, extra) {
+
+  console.log('Array kunci node yang dipilih: ', selectedKeys, ' Parameter tambahan: ', extra);
+}
+
+/**
+ * menu onItemClick
+ * Untuk konfigurasi parameter, lihat: https://fusion.design/pc/component/menu
+ */
+export function onItemClick(key, item, event) {
+  console.log(key, item, event);
+}
+
+/**
+* button onClick
+*/
+export function onClic() {
+  console.log(this.$('tree_kne7wdg0').get('dataSource'));
+}
+
+/**
+* button onClick
+*/
+export function onClick(){
+  console.log('onClick');
+}
+```
+
+### 3.4 Ikat variabel
+
+Klik Data Node di sebelah kanan, pilih variabel dari API jarak jauh yang baru saja Anda buat, dan klik Konfirmasi.
+
+Di panel Buat tindakan di sudut kanan bawah, konfigurasikan tindakannya. Di sini, pilih tindakan yang akan dijalankan saat pengeditan node selesai.
+
+### 3.5 Seret komponen tombol baru
+
+Pilih komponen tombol. Di panel Buat tindakan di sudut kanan bawah, pilih tindakan bawaan Buka URL. Setel URL ke halaman untuk formulir Teks satu baris yang Anda konfigurasikan sebelumnya (harus berupa halaman untuk melihat atau menambahkan data).
+
+Klik Simpan dan kembali ke halaman Beranda. Anda sekarang dapat menguji konfigurasi — komponen tree Siap digunakan.
