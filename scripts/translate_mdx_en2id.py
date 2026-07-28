@@ -98,7 +98,7 @@ G. 错误码字符串（InvalidParameter.AccessToken 等）保持；仅错误消
 H. 代码示例按铁律 3 的 4 类处理。注释翻译，方法名 / 变量名保持。
 
 【Heading / 语气】
-I. 英文 Heading 用 Sentence case + 专有名词大写；动作导向祈使句（Klik / Panggil / Konfigurasikan）。"""
+I. 印尼文 Heading 用 Sentence case（仅首字母 + 专有名词大写，不模仿英文源文的 Title Case）；动作导向祈使句（Klik / Panggil / Konfigurasikan）。"""
 
 
 # 宜搭 (YiDA) 专属规则 — 仅 root=yida 注入

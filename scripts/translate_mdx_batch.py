@@ -70,7 +70,7 @@ STYLE_EN = """风格指南（英文）：
 - 目标读者：钉钉国际版企业用户与 IT 管理员
 - 语气：清晰、专业、动作导向（imperative voice：Click X，不写 You can click X）
 - 句式：短句优先；避免被动语态；避免长定语；一句话讲一件事
-- Heading：Sentence case（仅首字母大写 + 专有名词大写）；避免 Title Case
+- Heading：Title Case（实词首字母大写；a/an/the/and/or/of/on/in/to/with/at/by/from/as 等短虚词小写，首末词一律大写）；与 Drive/Mail 产品线一致
 - 用词：避免 Chinglish；避免口语俚语；优先朴素商务英文
 - 数字 / 日期：1,000；24-hour；日期 Month DD, YYYY
 - 标点：全英文 + 直引号 ""
@@ -132,10 +132,10 @@ H. 代码示例 ```code``` 块按铁律 3 的 4 类区分处理；开放平台�
    - 表格 example 列出现中文时按 3b 翻译，不要因为「在表格里」就保留原值
 
 【Heading 大小写 — 体现专业性】
-I. 英文 Heading（# / ## / ### 等）一律 **Sentence case + 专有名词大写**：
-   ✅ "Get the access token of an internal app"
-   ❌ "Get The Access Token Of An Internal App"  （Title Case 错）
-   ❌ "get the access token of an internal app"  （首字母必须大写）
+I. 英文 Heading（# / ## / ### 等）与 frontmatter title 一律 **Title Case**（实词首字母大写，a/an/the/and/or/of/on/in/to/with/at/by/from/as 等短虚词小写，首末词一律大写）：
+   ✅ "Get the Access Token of an Internal App"
+   ❌ "Get the access token of an internal app"  （Sentence case 错）
+   ❌ "Get The Access Token Of An Internal App"  （虚词不该大写）
    专有名词强制大写：DingTalk / API / SDK / URL / HTTP / OAuth / JSON / Webhook / JSAPI / H5 / SaaS / SSO / QR
    品牌词强制大小写：DingTalk / DingTalk Bot / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind
 J. 日文标题：体言止め或动词原形结句；API 类专有词前后留半角空格（access token を取得する）
