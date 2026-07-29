@@ -195,7 +195,6 @@ git push origin main
 ### 链接
 - 内部链接用**相对路径**：`/guides/messaging`，不写 `https://help.dingtalk.io/guides/messaging`
 - 跨语言不互链（让用户用顶部语言切换器）
-- **跨产品不互链**：尊重产品边界，让用户用顶部 tab 切换；产品间共用概念抽到 Overview tab
 - 外链加 `target="_blank"`：MDX 默认 `[label](url)` 即可
 
 ### 死链
