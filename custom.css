@@ -253,4 +253,174 @@ img[src*="/logo/icons/yida.svg"]    { -webkit-mask-image: url(/logo/icons/yida-g
   display: block !important;
   white-space: nowrap !important;
 }
+
+/* ==========================================================================
+   navbar 顶栏 & tab 行拥挤治理（子产品持续增多 + 长本地化名）
+   - 低于 1024px（lg）Mintlify 切换汉堡菜单，本段只作用于桌面行。
+   - tab 行溢出由 nav-overflow.js 的「更多 ▾」菜单接管（放不下的 tab 收进下拉）；
+     本段只负责：① 产品切换器箭头不被裁 ② tab 不换行/不收缩（供 JS 精确测宽）
+     ③ 顶栏三栏配平（操作栏收缩到内容宽，把富余空间让给品牌栏，修 logo 被挤小 +
+     「下载」左侧大片留白）④「更多 ▾」按钮与下拉面板样式。
+   ========================================================================== */
+
+/* ① 产品切换器：自带 overflow-hidden，拥挤时会裁掉箭头（chevron）。放开裁剪即可；
+   不锁 flex-shrink（锁死会反过来挤压同栏 logo）——留白由下方③的顶栏配平供给。 */
+[data-component-part="products-selector-trigger"] {
+  overflow: visible !important;
+}
+
+/* ② tab 项：label 是裸文本节点、默认可收缩 + white-space:normal，拥挤时会折两行。
+   nowrap 禁止换行、flex-shrink:0 保持自然宽——既避免折行，也让 JS 测得稳定真实宽度。 */
+.nav-tabs-item {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* ②-bis 防「先展开再收缩」闪现（FOUC）：Mintlify 把本站根目录 nav-overflow.js 延迟
+   注入，实测 tab 行 ~29ms 就绘制、脚本 ~376ms 才建「更多」→ 中间 ~350ms 会先看到
+   溢出的整行 tab。故默认先给 tab 行「单行裁切」：nowrap 不折行 + overflow:hidden 把放
+   不下的 tab 直接裁在行右缘（不出现横向滚动条、不换行），视觉上就是「刚好一行」。
+   脚本完成首次收纳后给 <html> 打 dt-nav-ready，恢复 overflow:visible，让「更多」下拉
+   面板能溢出显示。脚本若始终没跑，也只是右缘少显示一两个 tab，无破碎布局。 */
+.nav-tabs {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+html.dt-nav-ready .nav-tabs {
+  overflow: visible;
+}
+
+/* ③ 顶栏三栏配平：Mintlify 顶栏是三等分 flex-1（品牌 | 搜索 | 操作），
+   操作栏 justify-end 右对齐 → 「下载」左侧空出一大片；同时品牌栏被压得 logo 变小、
+   产品名将被截断。让操作栏改为收缩到内容宽（不再 grow），富余空间回流给品牌/搜索栏，
+   logo 与产品名恢复自然尺寸，留白也消失。选择器命中唯一的 flex-1+justify-end 操作栏。 */
+#navbar div.flex-1.justify-end {
+  flex-grow: 0 !important;
+}
+
+/* ④ 「更多 ▾」溢出按钮 —— 复用 .nav-tabs-item 的字号/高度/hover，追加下拉箭头与激活态。
+   注意：Mintlify tab 的 `flex items-center gap-2` 是独立 Tailwind 原子类，克隆按钮没带，
+   必须自己声明 flex 行布局；否则全局 `svg{display:block}` 会把箭头挤到标签下一行。 */
+.dt-more-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: nowrap;   /* 标签 + 箭头恒单行 */
+  flex-shrink: 0;
+}
+.dt-more-tab .dt-more-caret {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s ease;
+}
+/* 面板展开时箭头联动翻转向上（hover / 键盘 focus / 点击展开三种触发都覆盖）；
+   面板是按钮的后代，鼠标移到面板上时 .dt-more-tab:hover 仍为真 → 箭头保持翻转，
+   移开按钮+面板后随过渡平滑恢复向下。 */
+.dt-more-tab:hover .dt-more-caret,
+.dt-more-tab:focus-within .dt-more-caret,
+.dt-more-tab[aria-expanded="true"] .dt-more-caret {
+  transform: rotate(180deg);
+}
+/* 当前页所属 tab 被收进「更多」时，高亮按钮（对齐 Mintlify 选中态品牌色） */
+.dt-more-tab.dt-more-active {
+  color: var(--primary, #0066ff) !important;
+}
+html.dark .dt-more-tab.dt-more-active {
+  color: var(--primary-light, #4d94ff) !important;
+}
+
+/* 下拉面板：卡片式，hover/focus 展开；对齐 Mintlify 弹层观感（圆角 + 阴影 + 描边）。
+   背景必须用「实心」颜色：Mintlify 的 --background-light 是空格分隔 RGB 通道（如 255 255 255），
+   直接当颜色用会解析为 transparent → 面板透明、正文文字透出（既显得「太淡」又像被压在标题下）。
+   故这里硬编码不透明色，并用较重的阴影 + 描边把面板从渐变背景中抬起。 */
+.dt-more-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 208px;
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  background: #ffffff;
+  border: 1px solid rgba(23, 26, 29, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(23, 26, 29, 0.16), 0 2px 8px rgba(23, 26, 29, 0.08);
+}
+html.dark .dt-more-panel {
+  background: #1b1e24;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+/* 透明「悬停桥」——填平按钮底与面板顶之间的 6px 间隙：
+   ::before 属于 .dt-more-panel，鼠标从按钮下移经过间隙时仍命中 .dt-more-panel:hover，
+   面板不会因跨越空隙而收起（修「鼠标 hover 不上去/无法选中」）。 */
+.dt-more-panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10px;
+  height: 10px;
+}
+.dt-more-tab:hover .dt-more-panel,
+.dt-more-tab:focus-within .dt-more-panel,
+.dt-more-panel:hover,
+.dt-more-tab[aria-expanded="true"] .dt-more-panel {
+  display: flex;
+}
+/* 面板项：图标 + 文字，横向排布；hover 底色 + 选中品牌色 */
+.dt-more-panel .dt-more-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-700, #374151);
+  white-space: nowrap;
+  text-decoration: none;
+}
+html.dark .dt-more-panel .dt-more-item {
+  color: rgba(255, 255, 255, 0.75);
+}
+.dt-more-panel .dt-more-item:hover {
+  background: rgba(0, 102, 255, 0.08);
+}
+.dt-more-panel .dt-more-item.dt-more-item-active {
+  color: var(--primary, #0066ff);
+  background: rgba(0, 102, 255, 0.1);
+}
+.dt-more-panel .dt-more-item img {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
 img[src*="/logo/icons/dev.svg"]     { -webkit-mask-image: url(/logo/icons/dev-glyph.svg);     mask-image: url(/logo/icons/dev-glyph.svg); }
+img[src*="/logo/icons/oa.svg"]      { -webkit-mask-image: url(/logo/icons/oa-glyph.svg);      mask-image: url(/logo/icons/oa-glyph.svg); }
+
+/* ============================================================
+   Embed / share mode — 无框架分享视图（?embed / ?share）
+   embed-mode.js 在 URL 带 ?embed（或 ?share）时给 <html> 打 dt-embed，
+   隐藏整个 chrome，让单篇文档可作为干净的独立页分享给客户。
+   #navbar / #sidebar / #table-of-contents / footer 均为稳定 id。
+   ============================================================ */
+html.dt-embed #navbar,
+html.dt-embed #sidebar,
+html.dt-embed #table-of-contents,
+html.dt-embed footer {
+  display: none !important;
+}
+
+/* navbar 隐藏后，把它预留的顶部空间换成一个舒适的留白（而非贴顶） */
+html.dt-embed :where(div):has(> #content-area) {
+  padding-top: 2.5rem !important;
+}
