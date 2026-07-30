@@ -37,11 +37,13 @@
   var HEADING = { zh: "页面未找到", ja: "ページが見つかりません", id: "Halaman tidak ditemukan" };
 
   // Navbar label overrides, keyed by the English text Mintlify renders.
-  // Covers the 9 Help Center product tabs + the product menu + the
-  // language selector's current value + the Download CTA. Order-
+  // Covers the 11 Help Docs product tabs + the 3 Developer Docs tabs +
+  // both product-menu names + the language selector's current value +
+  // the Download CTA. Keys must match the EN labels docs.json renders
+  // (Mintlify draws the 404 chrome in the default en locale). Order-
   // independent (matched by text).
   var NAV_LABELS = {
-    Messages: { zh: "消息", ja: "メッセージ", id: "Pesan" },
+    Chats: { zh: "消息", ja: "メッセージ", id: "Pesan" },
     Calendar: { zh: "日历", ja: "カレンダー", id: "Kalender" },
     Meetings: { zh: "会议", ja: "会議", id: "Rapat" },
     Contacts: { zh: "通讯录", ja: "連絡先", id: "Kontak" },
@@ -50,16 +52,23 @@
     Drive: { zh: "钉盘", ja: "ドライブ", id: "Drive" },
     "AI Table": { zh: "AI 表格", ja: "AI テーブル", id: "AI Table" },
     "AI Minutes": { zh: "AI 听记", ja: "AI 議事録", id: "AI Minutes" },
-    "Help Center": { zh: "帮助中心", ja: "ヘルプセンター", id: "Pusat Bantuan" },
+    YiDA: { zh: "宜搭", ja: "YiDA", id: "YiDA" },
+    Admin: { zh: "管理后台", ja: "管理コンソール", id: "Konsol Admin" },
+    "Developer Guide": { zh: "开发指南", ja: "開発ガイド", id: "Panduan pengembang" },
+    "Server API": { zh: "服务端 API", ja: "サーバー API", id: "Server API" },
+    "YiDA API": { zh: "宜搭 API", ja: "YiDA API", id: "YiDA API" },
+    "Help Docs": { zh: "帮助文档", ja: "ヘルプドキュメント", id: "Pusat Bantuan" },
+    "Developer Docs": { zh: "开发文档", ja: "開発ドキュメント", id: "Platform Terbuka" },
     English: { zh: "中文", ja: "日本語", id: "Bahasa Indonesia" },
     Download: { zh: "下载", ja: "ダウンロード", id: "Unduh" },
   };
 
-  // First path segment of every Help Center product tab — used to spot a
-  // navbar-tab click that must be re-pointed at the localized page.
+  // First path segment of every product tab — used to spot a navbar-tab
+  // click that must be re-pointed at the localized page.
   var TAB_ROOTS = {
     im: 1, calendar: 1, meetings: 1, contacts: 1, mail: 1,
-    docs: 1, drive: 1, aitable: 1, "ai-minutes": 1,
+    docs: 1, drive: 1, aitable: 1, "ai-minutes": 1, yida: 1,
+    oa: 1, open: 1,
   };
 
   function detectLang() {
