@@ -606,13 +606,15 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   // redirects to the first nav doc, so point at the custom home page directly.
   const homeHref = lang === "en" ? "/" : "/" + lang + "/index";
 
-  // Feedback form differs by language; zh and ja each have their own form,
+  // Feedback form differs by language; zh, ja and id each have their own form,
   // remaining locales (en) share the international form.
   const feedbackHref =
     lang === "zh"
       ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_wSHNmzo_d2mVaXS?source=link"
       : lang === "ja"
       ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_beLDpf0_etWlgA3?source=link"
+      : lang === "id"
+      ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_BkZNaGR_mUnBXsD?source=link"
       : "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link";
 
   // Marketing site differs by region: ja points at the localized .co.jp site
