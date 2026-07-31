@@ -20,8 +20,9 @@ IGNORE_DIRS = {
     "public", "assets",
 }
 VALID_TOP_DIRS = {
-    "ai-minutes", "aitable", "calendar", "contacts", "docs", "drive",
-    "im", "mail", "meetings", "oa", "open", "yida", "zh", "ja", "id",
+    "ai-minutes", "aitable", "approval", "attendance", "calendar", "contacts",
+    "docs", "drive", "im", "mail", "meetings", "oa", "open", "yida",
+    "zh", "ja", "id",
 }
 
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
