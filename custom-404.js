@@ -52,6 +52,8 @@
     Drive: { zh: "钉盘", ja: "ドライブ", id: "Drive" },
     "AI Table": { zh: "AI 表格", ja: "AI テーブル", id: "AI Table" },
     "AI Minutes": { zh: "AI 听记", ja: "AI 議事録", id: "AI Minutes" },
+    Attendance: { zh: "考勤", ja: "勤怠", id: "Absensi" },
+    Approval: { zh: "审批", ja: "承認", id: "Persetujuan" },
     YiDA: { zh: "宜搭", ja: "YiDA", id: "YiDA" },
     Admin: { zh: "管理后台", ja: "管理コンソール", id: "Konsol Admin" },
     "Developer Guide": { zh: "开发指南", ja: "開発ガイド", id: "Panduan pengembang" },
@@ -67,7 +69,8 @@
   // click that must be re-pointed at the localized page.
   var TAB_ROOTS = {
     im: 1, calendar: 1, meetings: 1, contacts: 1, mail: 1,
-    docs: 1, drive: 1, aitable: 1, "ai-minutes": 1, yida: 1,
+    docs: 1, drive: 1, aitable: 1, "ai-minutes": 1,
+    attendance: 1, approval: 1, yida: 1,
     oa: 1, open: 1,
   };
 

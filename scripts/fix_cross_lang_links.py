@@ -49,6 +49,15 @@ SITE_HOST = "help.dingtalk.io"
 # path 内不能含 ) 或 空格（除非进入 title 段）
 RE_LINK = re.compile(r'\]\((?P<path>[^)\s]+)(?:\s+"(?P<title>[^"]*)")?\)')
 
+# JSX 属性形态：href="path" / href='path'（Card / CardGroup 等组件）
+RE_HREF = re.compile(r'href=(?P<q>["\'])(?P<path>[^"\']+)(?P=q)')
+
+# EN 站点顶层内容目录：ja/zh/id 文件中出现这些裸前缀即视为误指 EN
+EN_CONTENT_DIRS = (
+    "ai-minutes", "aitable", "approval", "attendance", "calendar", "contacts",
+    "docs", "drive", "guides", "im", "mail", "meetings", "open", "quickstart",
+)
+
 
 @dataclass
 class Issue:
@@ -65,9 +74,9 @@ class Issue:
 
 
 def file_lang(rel: Path) -> str:
-    """返回 'en' / 'zh' / 'ja'。"""
+    """返回 'en' / 'zh' / 'ja' / 'id'。"""
     first = rel.parts[0] if rel.parts else ""
-    if first in ("zh", "ja"):
+    if first in ("zh", "ja", "id"):
         return first
     return "en"
 
@@ -108,28 +117,34 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
     is_full = url != norm  # 原本是完整 URL
 
     if lang == "en":
-        # EN 文件：剥 /zh/ /ja/
+        # EN 文件：剥 /zh/ /ja/ /id/
         if norm.startswith("/zh/"):
             new = "/" + norm[len("/zh/"):]
             return new, "zh_in_en"
         if norm.startswith("/ja/"):
             new = "/" + norm[len("/ja/"):]
             return new, "ja_in_en"
+        if norm.startswith("/id/"):
+            new = "/" + norm[len("/id/"):]
+            return new, "id_in_en"
         # 完整 URL 但路径正确：仍然把 https:// 形式改为相对
         if is_full and norm.startswith("/"):
             return norm, "full_to_relative_en"
         return None, ""
 
     if lang == "zh":
-        # ZH 文件：/ja/ → /zh/；裸 /docs/ /aitable/ → /zh/docs/ /zh/aitable/
+        # ZH 文件：/ja/ /id/ → /zh/；裸 /docs/ /aitable/ → /zh/docs/ /zh/aitable/
         if norm.startswith("/ja/"):
             new = "/zh/" + norm[len("/ja/"):]
             return new, "ja_in_zh"
+        if norm.startswith("/id/"):
+            new = "/zh/" + norm[len("/id/"):]
+            return new, "id_in_zh"
         # 仅当裸 /docs/* /aitable/* 等（未带语言前缀）且目标在 zh/ 下存在
-        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/")):
+        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
-            if first_seg in ("docs", "aitable", "guides", "quickstart"):
+            if first_seg in EN_CONTENT_DIRS:
                 new = "/zh" + norm
                 return new, "bare_in_zh"
         if is_full and norm.startswith("/zh/"):
@@ -140,14 +155,34 @@ def fix_url_for_lang(url: str, lang: str) -> tuple[str | None, str]:
         if norm.startswith("/zh/"):
             new = "/ja/" + norm[len("/zh/"):]
             return new, "zh_in_ja"
-        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/")):
+        if norm.startswith("/id/"):
+            new = "/ja/" + norm[len("/id/"):]
+            return new, "id_in_ja"
+        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
             stripped = norm.lstrip("/")
             first_seg = stripped.split("/", 1)[0]
-            if first_seg in ("docs", "aitable", "guides", "quickstart"):
+            if first_seg in EN_CONTENT_DIRS:
                 new = "/ja" + norm
                 return new, "bare_in_ja"
         if is_full and norm.startswith("/ja/"):
             return norm, "full_to_relative_ja"
+        return None, ""
+
+    if lang == "id":
+        if norm.startswith("/zh/"):
+            new = "/id/" + norm[len("/zh/"):]
+            return new, "zh_in_id"
+        if norm.startswith("/ja/"):
+            new = "/id/" + norm[len("/ja/"):]
+            return new, "ja_in_id"
+        if norm.startswith("/") and not norm.startswith(("/zh/", "/ja/", "/id/")):
+            stripped = norm.lstrip("/")
+            first_seg = stripped.split("/", 1)[0]
+            if first_seg in EN_CONTENT_DIRS:
+                new = "/id" + norm
+                return new, "bare_in_id"
+        if is_full and norm.startswith("/id/"):
+            return norm, "full_to_relative_id"
         return None, ""
 
     return None, ""
@@ -198,12 +233,37 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
         if exists:
             replacements.append((m.start(), m.end(), new_link))
 
+    # JSX href 属性形态（Card / CardGroup 等）
+    for m in RE_HREF.finditer(src):
+        url = m.group("path")
+        fixed_url, kind = fix_url_for_lang(url, lang)
+        if not fixed_url or fixed_url == url:
+            continue
+
+        target = target_mdx_path(fixed_url)
+        exists = target is not None
+
+        q = m.group("q")
+        new_link = f'href={q}{fixed_url}{q}'
+
+        issues.append(Issue(
+            file=str(rel),
+            line=find_line(src, m.start()),
+            before=m.group(0),
+            after=new_link,
+            kind=kind + "_href",
+            target_exists=exists,
+            note="" if exists else "目标 mdx 不存在，跳过自动修复",
+        ))
+        if exists:
+            replacements.append((m.start(), m.end(), new_link))
+
     if not replacements:
         return issues, None
 
-    # 从后往前替换
+    # 按位置从后往前替换（两类正则命中区间互不重叠）
     fixed = src
-    for start, end, new in reversed(replacements):
+    for start, end, new in sorted(replacements, reverse=True):
         fixed = fixed[:start] + new + fixed[end:]
     return issues, fixed
 
@@ -304,7 +364,7 @@ def write_reports(issues: list[Issue], applied: dict[str, int], scanned: int, mo
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="跨语言链接污染清理")
-    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja"])
+    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id"])
     p.add_argument("--apply", action="store_true", help="实际写盘修复（默认 dry-run）")
     p.add_argument("--limit", type=int, default=0)
     return p.parse_args()

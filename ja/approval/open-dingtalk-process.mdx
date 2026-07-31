@@ -1,0 +1,581 @@
+---
+title: "DingTalk フローとページの統合"
+description: "組織管理者と開発者向けに、DingTalk OA 承認フローとページを ERP、CRM、財務システムなどのサードパーティ業務システムと統合する方法をガイドし、統一入口、データ連携、フロー連携を実現します。"
+polished: true
+---
+
+## 一、機能概要
+
+本マニュアルは、組織管理者または開発者を対象に、**DingTalk OA システムの承認フローとページ** を **サードパーティ業務システム（ERP、CRM、財務システムなど）と統合** し、統一入口での操作、データ連携、フロー連携などの機能を実現する方法をご案内します。統合により、企業のオフィス自動化レベルを向上させ、重複入力を回避し、システム横断のコラボレーション効率を強化できます。
+
+## 二、適用シナリオ
+
+業務システムから承認を起票し、DingTalk 公式 OA 承認関連 API を呼び出して DingTalk OA 承認フローを作成し、DingTalk クライアントで承認詳細ページを開いてフローを処理できます。
+
+## 三、業務フロー
+
+業務システムと DingTalk クライアント間の全体的なインタラクションフローは以下のとおりです。
+
+<Frame>
+
+![DingTalk OA 承認フローとページ統合の業務フロー図。業務システムから承認を起票し、DingTalk クライアントで公式詳細ページを開いて処理し、ステータスを取得する流れ](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/a/RO3JEwZ99sgLe5y2/72de4afa8ae34e199a4e9dfccf661f660794.png)
+</Frame>
+
+## 四、実現効果
+
+### 1、業務システムから起票して OA 承認フローを作成
+
+業務システムが DingTalk OA 承認 API を呼び出して承認を起票し、DingTalk OA 承認フローを自動作成します。
+
+<Frame>
+
+![業務システムの起票ページから OA 承認 API を通じて経費精算承認フォームを作成する画面](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/WgZOZA8z2LpvPqLX/img/9f990d32-5181-44a2-b00b-65a73ed557cc.png)
+</Frame>
+
+### 2、DingTalk OA 承認リストから公式承認詳細ページを開いて承認
+
+DingTalk OA 承認リストで承認フォームをクリックし、公式詳細ページを開いて処理します。
+
+<Frame>
+
+![DingTalk OA 承認リストから公式承認詳細ページを開き、フォーム内容とフローレコードを表示する画面](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/WgZOZA8z2LpvPqLX/img/45732050-326b-4fe5-a06d-4e6a627fe85c.png)
+</Frame>
+
+### 3、DingTalk タスクから公式承認詳細ページを開いて承認
+
+DingTalk タスクセンターでタスクをクリックし、同様に公式詳細ページを開いて処理します。
+
+<Frame>
+
+![DingTalk タスクセンターから公式 OA 承認詳細ページを開き、承認操作を実行する画面](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/WgZOZA8z2LpvPqLX/img/5b9b000b-93ec-4488-9161-036ce198a2ae.png)
+</Frame>
+
+## 五、開発フロー
+
+社内アプリと DingTalk OA 承認間の API インタラクションフローは以下のとおりです。
+
+<Frame>
+
+![社内アプリと DingTalk OA 承認間の API インタラクションのシーケンス図。テンプレート作成、インスタンス起票、承認操作、コールバック通知を含む](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/WgZOZA8z2LpvPqLX/img/1ee3302e-f8d1-45d3-a9e7-82b13bef046b.png)
+</Frame>
+
+### 統合フロー概要
+
+<Note>
+本ドキュメントでは、社内アプリを作成し、公式 OA 承認関連 API（公式承認テンプレートの作成 / 更新、承認インスタンスの起票 / 元に戻す / コメント、承認タスクの承認 / 拒否 / 転送、承認添付のアップロード / ダウンロードなど）と、公式 OA 承認インスタンス / 承認タスクのコールバックイベントを利用して、業務システムから起票し、DingTalk クライアントで公式 OA 承認詳細ページを開いて統合するシナリオ事例を示します。
+</Note>
+
+前提条件：**アプリ作成** のフローを完了していること。
+
+ステップ 1：アプリ詳細ページに移動し、クライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限を申請し、「OA承認」に対応する権限を申請します。
+
+ステップ 3：アプリのアクセス認証情報として、**社内アプリのアクセストークンを取得** します。API を呼び出す際は、アクセストークンで呼び出し元の身元を認証します。
+
+ステップ 4：OA承認関連 API を呼び出します。
+
+1.  **公式 OA 承認テンプレートを作成：** 管理者は OA 管理コンソールで手動作成できます。または業務システムから新版サーバー API - **承認フォームテンプレートの作成または更新** を呼び出し、テンプレートの一意コード `processCode` を取得します。テンプレートコード `processCode` を保存していない場合は、DingTalk 管理コンソールにログインして確認・取得できます。
+
+承認テンプレートのコードは、管理コンソールのテンプレート設定画面で確認できます。
+
+<Frame>
+
+![OA 管理コンソールの承認テンプレート設定ページで、テンプレートの一意コード processCode を確認できる画面](https://alidocs.oss-cn-zhangjiakou.aliyuncs.com/res/WgZOZA8z2LpvPqLX/img/1c664e3d-1bb7-4a32-b630-34c0a368651f.png)
+</Frame>
+
+    ```json
+    {
+        "name": "DingTalk OA承認フローとページ統合を使用",
+        "description": "業務システムから承認を起票し、DingTalk 公式 OA 承認関連 API を呼び出して DingTalk OA 承認フローを作成し、DingTalk クライアントで承認詳細ページを開いてフローを処理できます。",
+        "templateConfig": {
+            "disableStopProcessButton": false,
+            "disableFormEdit": false,
+            "disableHomepage": false,
+            "hidden": false
+        },
+        "formComponents": [
+            {
+                "componentType": "TextField",
+                "props": {
+                    "label": "単一行入力ボックス", // コントロールの見出し
+                    "placeholder": "入力してください", // 入力のお知らせ
+                    "componentId": "TextField_17EZKEGSOCTC0", // コントロール ID、フォーム内で一意、業務的な意味を持たない
+                    "required": false, // 必須かどうか、デフォルトは任意
+                    "bizAlias": "staffId" // コントロールの業務識別子、フォーム内で一意、componentId と二者択一
+                }
+            },
+            {
+                "componentType": "TextareaField",
+                "props": {
+                    "label": "複数行入力ボックス",
+                    "placeholder": "複数行テキストの内容を入力してください。改行が必要な場合は \r\n を入力", // 入力のお知らせ
+                    "componentId": "TextareaField_17EZKEGSOCTC0",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "NumberField",
+                "props": {
+                    "label": "数値入力ボックス",
+                    "placeholder": "数値を入力してください",
+                    "componentId": "NumberField_108PIFZM21F40",
+                    "required": false,
+                    "unit": "元", // 数値の単位
+                    "defaultValue": "10" // デフォルト
+                }
+            },
+            {
+                "componentType": "DDSelectField",
+                "props": {
+                    "options": [ // 選択可能なオプションリスト
+                        {
+                            "value": "オプション1", // オプションの表示名
+                            "key": "option_0" // コントロール内で一意な key、任意、システムがデフォルトで生成
+                        },
+                        {
+                            "value": "オプション2",
+                            "key": "option_1"
+                        },
+                        {
+                            "value": "オプション3",
+                            "key": "option_2"
+                        },
+                        {
+                            "key": "other", // その他項目の特殊 key
+                            "value": "その他"
+                        }
+                    ],
+                    "label": "単一選択ボックス",
+                    "placeholder": "選択してください",
+                    "componentId": "DDSelectField_14T8M4EKXAV40",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDMultiSelectField",
+                "props": {
+                    "options": [
+                        {
+                            "value": "オプション1",
+                            "key": "option_0"
+                        },
+                        {
+                            "value": "オプション2",
+                            "key": "option_1"
+                        },
+                        {
+                            "value": "オプション3",
+                            "key": "option_2"
+                        },
+                        {
+                            "key": "other", // その他項目の特殊 key
+                            "value": "その他"
+                        }
+                    ],
+                    "label": "複数選択ボックス",
+                    "placeholder": "選択してください",
+                    "componentId": "DDMultiSelectField_1XJ7NG1GSD6O0",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDDateField",
+                "props": {
+                    "unit": "時間", // 日付形式、列挙値（時間、日）
+                    "format": "yyyy-MM-dd HH:mm", // 日付形式、任意、時間は yyyy-MM-dd HH:mm に対応、日は yyyy-MM-dd HH:mm に対応
+                    "bizAlias": "",
+                    "label": "日付",
+                    "placeholder": "選択してください",
+                    "componentId": "DDDateField_SQL0DF3MS9C0",
+                    "required": false,
+                    "defaultValue": "2021-12-21 17:46" // デフォルト
+                }
+            },
+            {
+                "componentType": "DDDateRangeField",
+                "props": {
+                    "unit": "時間",
+                    "format": "yyyy-MM-dd HH:mm",
+                    "bizAlias": "",
+                    "label": "[\"開始時間\",\"終了時間\"]",
+                    "placeholder": "選択してください",
+                    "componentId": "DDDateRangeField_7MPG14N3OOO0",
+                    "duration": true, // 期間を自動計算するかどうか
+                    "required": false
+                }
+            },
+            {
+                "componentType": "TextNote",
+                "props": {
+                    "link": "https://www.dingtalk.io/", // ハイパーリンク
+                    "notPrint": "0",
+                    "bizAlias": "",
+                    "componentId": "TextNote_13RP7230RAF40",
+                    "content": "説明テキスト" // 説明テキスト
+                }
+            },
+            {
+                "componentType": "PhoneField",
+                "props": {
+                    "mode": "phone", // 列挙値：phone_tel：携帯電話と固定電話、phone：携帯電話、tel：固定電話
+                    "label": "電話番号",
+                    "placeholder": "入力してください",
+                    "componentId": "PhoneField_Y0XWOX6ZP6O0",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDPhotoField",
+                "props": {
+                    "label": "画像",
+                    "componentId": "DDPhotoField_P50A0HMHB280",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "MoneyField",
+                "props": {
+                    "upper": "0", // 金額を大文字にする必要があるか（0 は大文字にしない、1 は大文字にする必要あり）、デフォルトは大文字にする必要あり
+                    "label": "金額（元）",
+                    "placeholder": "金額を入力してください",
+                    "componentId": "MoneyField_L1PP26ZDV400",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "DDAttachment",
+                "props": {
+                    "label": "添付",
+                    "componentId": "DDAttachment_18U4QTOWLMPS0",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "InnerContactField",
+                "props": {
+                    "label": "連絡先",
+                    "placeholder": "選択してください",
+                    "componentId": "InnerContactField_162USP4V1BC00",
+                    "choice": "1", // 列挙値：1 は複数選択をサポート、0 は単一選択、デフォルトは 0
+                    "required": false,
+                    "bizAlias": ""
+                }
+            },
+            {
+                "componentType": "DepartmentField",
+                "props": {
+                    "multiple": false, // 複数選択をサポートするか、true は複数選択、false は単一選択
+                    "label": "部門",
+                    "placeholder": "選択してください",
+                    "componentId": "DepartmentField_1GY5JSPOCY000",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "RelateField",
+                "props": {
+                    "label": "関連承認フォーム",
+                    "placeholder": "選択してください",
+                    "componentId": "RelateField_5X1DL4KMKUW0",
+                    "required": false,
+                    "bizAlias": "",
+                    "availableTemplates": [ // 関連可能な承認テンプレートのリスト、空の場合はすべての承認テンプレートのインスタンスデータを関連可能
+                        {
+                            "name": "公式 OA 承認-POP-0328-日付範囲7", // 関連可能な承認フォーム名
+                            "processCode": "PROC-AF45DE4C-7520-4842-9128-EB7BD0A4EA85" // 関連可能な承認フォームの formCode
+                        }
+                    ]
+                }
+            },
+            {
+                "componentType": "AddressField",
+                "props": {
+                    "addressModel": "district", // 列挙値、city は省市、district は省市区、street は省市区-街道
+                    "bizAlias": "",
+                    "label": "省市区",
+                    "componentId": "AddressField_1P9H21H8R2LC0",
+                    "required": false
+                }
+            },
+            {
+                "componentType": "StarRatingField",
+                "props": {
+                    "limit": 5, // 列挙値：5点満点、10点満点
+                    "label": "評価点",
+                    "placeholder": "入力してください",
+                    "componentId": "StarRatingField_10E5NHTA2W0G0",
+                    "required": false,
+                    "bizAlias": ""
+                }
+            },
+            {
+                "children": [ // 明細内の子コントロールリスト、子コントロールリストは各コントロールの属性標準に従う
+                    {
+                        "componentType": "TextField",
+                        "props": {
+                            "label": "単一行入力ボックス",
+                            "placeholder": "入力してください",
+                            "componentId": "TextField_1UE1ZY1A28AO0",
+                            "required": false
+                        }
+                    },
+                    {
+                        "componentType": "MoneyField",
+                        "props": {
+                            "payEnable": false,
+                            "upper": "0",
+                            "bizAlias": "",
+                            "label": "金額（元）",
+                            "placeholder": "金額を入力してください",
+                            "componentId": "MoneyField_1S85G4YLMM5C0",
+                            "required": false
+                        }
+                    },
+                    {
+                        "componentType": "NumberField",
+                        "props": {
+                            "unit": "元",
+                            "payEnable": false,
+                            "bizAlias": "",
+                            "label": "数値入力ボックス",
+                            "placeholder": "数値を入力してください",
+                            "componentId": "NumberField_1XP6AWG50SE80",
+                            "required": false
+                        }
+                    }
+                ],
+                "componentType": "TableField",
+                "props": {
+                    "tableViewMode": "table", // 明細の入力方式、列挙値：list：リスト、table：スプレッドシート
+                    "verticalPrint": true, // 明細の印刷方式、true：縦向き false：横向き
+                    "statField": [ // 数値、金額系コントロールの合計統計を設定
+                        {
+                            "componentId": "MoneyField_1S85G4YLMM5C0",
+                            "label": "金額（元）"
+                        },
+                        {
+                            "componentId": "NumberField_1XP6AWG50SE80",
+                            "label": "数値入力ボックス"
+                        }
+                    ],
+                    "bizAlias": "",
+                    "label": "スプレッドシート",
+                    "componentId": "TableField_1MLEPEAQSXHC0"
+                }
+            }
+        ]
+    }
+    ```
+
+2.  承認テンプレートの作成に成功した後、ユーザーは DingTalk OA 承認管理コンソールで、公式 OA 承認フォームテンプレートの確認 / 編集、テンプレートデータの確認 / 検索、テンプレートデータのエクスポート / 削除などを実行できます。
+
+3.  **公式 OA 承認インスタンスを起票：** ユーザーは OA 承認公式アプリから手動で承認を起票できます。または業務システムがテンプレートコード `processCode` に基づき、新版サーバー API - **承認インスタンスを起票** を呼び出して承認インスタンスを起票し、承認インスタンス `instanceId` を取得します。
+
+    ```json
+    {
+        "processCode": "PROC-C512D64A-60F6-4F83-B708-xxx",
+        "originatorUserId": "manager98xx",
+        "deptId": -1,
+        "microappAgentId": 348925476,
+        "formComponentValues": [
+            {
+                "name": "日付",
+                "value": "2021-08-17"
+            },
+            {
+                "name": "[\"開始時間\",\"終了時間\"]",
+                "value": "[\"2019-02-19\",\"2019-02-25\"]"
+            },
+            {
+                "name": "身分証",
+                "value": "xxxx"
+            },
+            {
+                "name": "画像",
+                "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+            },
+            {
+                "name": "スプレッドシート",
+                "value": "[[{\"name\":\"単一行入力ボックス\",\"value\":\"[百度](https://www.baidu.com/)\"},{\"name\":\"数値入力ボックス\",\"value\":\"100\"}]]"
+            },
+            {
+                "name": "金額（元）",
+                "value": "100"
+            },
+            {
+                "name": "添付",
+                "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": \"643xxxx140\"}]"
+            },
+            {
+                "name": "省市区",
+                "value": "北京,北京市,河東区"
+            },
+            {
+                "name": "評価点",
+                "value": "5"
+            },
+            {
+                "name": "テキストボックス",
+                "value": "テキストボックスの例"
+            }
+        ],
+        "approvers": [
+            {
+                "actionType": "NONE",
+                "userIds": [
+                    "manager98xx"
+                ]
+            },
+            {
+                "actionType": "OR",
+                "userIds": [
+                    "manager98xx"
+                ]
+            }
+        ]
+    }
+    ```
+
+4.  承認インスタンスの起票に成功した後、ユーザーは DingTalk 承認センターに移動し、承認の 4 大リスト（未処理、処理済み、起票済み、受信済み）の確認、承認インスタンスデータの検索、承認の実行などの操作ができます。
+
+5.  **承認コメントに添付を追加：** 承認コメントに添付を追加する場合は、まずファイルを承認ドライブスペースにアップロードしてから、新版サーバー API - **承認コメントを追加** を呼び出す必要があります。詳しい使用方法は **承認フローのコメントと元に戻す** を参照してください。
+
+    1.  まず新版サーバー API - **承認ドライブスペース情報を取得** を呼び出し、ドライブスペースのアップロード権限を取得し、承認ドライブスペースの spaceId を取得します。
+
+    2.  クライアントサイド JSAPI - **ドライブへの添付アップロード / ドライブからファイルを選択** を呼び出し、ファイルの基本情報を取得します。本フロー例では **JSAPI Explorer** を使用して実装します。
+
+    3.  承認ドライブスペースの spaceId を取得後、承認インスタンス `instanceId` に基づき、新版サーバー API - **承認コメントを追加** を呼び出すことで、承認フォームへのコメント追加操作を実現できます。
+
+```json
+{
+    "commentUserId": "manager98xx",
+    "processInstanceId": "DQ7-X2EESQunrozGEe_xxx",
+    "text": "承認コメント追加のテスト",
+    "file": {
+        "attachments": [
+            {
+                "spaceId": "817447xxx",
+                "fileSize": "173404",
+                "fileId": "6660150xxx",
+                "fileName": "コメント添付.jpg",
+                "fileType": "jpg"
+            }
+        ],
+        "photos": [
+            "https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9227796361/p352432.png"
+        ]
+    }
+}
+```
+
+6.  **承認添付のプレビュー・ダウンロード：** 添付をプレビュー・ダウンロードする場合は、サーバー API - **承認ドライブファイルのダウンロードを権限付与**、**承認添付のプレビューを権限付与** を呼び出して承認ドライブファイルへの権限付与を実行し、続けてサーバー API - **添付ファイルをダウンロード** を呼び出してファイルのリンク `downloadUri` を取得し、ダウンロードを実現します。詳しい使用方法は **承認添付の操作フロー** を参照してください。
+
+7.  **承認タスクを承認 / 拒否：** 承認者は DingTalk 承認センターまたは DingTalk タスクセンターから承認タスクを手動で承認 / 拒否できます。または業務システムが承認インスタンス `instanceId` に基づき、新版サーバー API - **単一の承認インスタンス詳細を取得** を呼び出し、承認インスタンス詳細を取得して各タスクノードの情報 `taskId` を取得します。
+
+8.  承認インスタンス `instanceId` および対応するタスクノード `taskId` の情報に基づき、新版サーバー API - **承認タスクを承認または拒否** を呼び出すことで、承認タスクの操作を実現します。すべての承認ノードが承認すると、承認フォームは通過します。
+
+    ```json
+    {
+        "actionerUserId": "manager98xx",
+        "processInstanceId": "fsTunaLIRyeRMrddA1YwZQ0964170020xxxx",
+        "remark": "承認",
+        "taskId": 8333450,
+        "result": "agree",
+        "file": {
+            "attachments": [
+                {
+                    "space_id": "817447xxxx",
+                    "file_size": "173404",
+                    "file_id": "6660150xxxx",
+                    "file_name": "コメント添付.jpg",
+                    "file_type": "jpg"
+                }
+            ],
+            "photos": [
+                "https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9227796361/p352432.png"
+            ]
+        }
+    }
+    ```
+
+9.  公式 OA 承認インスタンスを元に戻す：承認確認後に、送信済みの承認フォームに誤りがあり、その承認インスタンスを元に戻す必要がある場合は、承認インスタンス `instanceId` に基づき、新版サーバー API - **承認インスタンスを元に戻す** を呼び出し、承認フォームを元に戻す操作を実現できます。
+
+    ```json
+    {
+        "isSystem": true,
+        "processInstanceId": "oKPAxjtgSP-AqeVTk-xxxx",
+        "operatingUserId": "manager98xx",
+        "remark": "承認インスタンスを元に戻す"
+    }
+    ```
+
+10.  承認フォームのステータスが変化した後、OA 承認は **承認タスクのステータス変化** と **承認インスタンスのステータス変化** などのコールバックイベントを業務システム側にプッシュできます。これにより、企業アプリと DingTalk プラットフォームをより深く統合し、情報共有と業務連携を実現できます。詳しい使用方法は **イベントサブスクリプション操作ガイド** を参照してください。
+
+## 六、使用 API
+
+### 1、承認フォーム
+
+| API | 説明 | 新版規格（新版サーバー API） |
+| --- | --- | --- |
+| 承認テンプレートの作成または更新 | OA 承認のフローフォームテンプレートを作成または更新します。フォームコントロールリストを指定してデフォルトの承認フローを生成できます。 | **承認フォームテンプレートの作成または更新** |
+| フォーム schema を取得 | processCode を通じて対応するフォームの schema 情報を取得します。 | **フォーム schema を取得** |
+| 承認フォームフロー内のノード情報を取得 | 承認フォームフロー内のノード情報を取得します。 | **承認フォームフロー内のノード情報を取得** |
+| 指定ユーザーに表示可能な承認フォームリストを取得 | 社員のユーザー ID に基づき、そのユーザーが表示可能な承認フォームリストをページ単位で取得します。 | **指定ユーザーに表示可能な承認フォームリストを取得** |
+| 現在の企業が管理可能なすべてのフォームを取得 | 現在の企業が管理可能なすべての承認フォームを取得します。 | **現在の企業が管理可能なすべてのフォームを取得** |
+
+### 2、承認インスタンス
+
+| API | 説明 | 新版規格（新版サーバー API） |
+| --- | --- | --- |
+| 承認インスタンスを起票 | OA 承認インスタンスを起票します。 | **承認インスタンスを起票** |
+| 単一の承認インスタンス詳細を取得 | 承認インスタンス ID に基づき、承認インスタンス詳細を取得します。 | **単一の承認インスタンス詳細を取得** |
+| 承認インスタンスを元に戻す | 起票済みの承認インスタンスを元に戻します。 | **承認インスタンスを元に戻す** |
+| 承認コメントを追加 | 承認インスタンスにコメントを追加します。 | **承認コメントを追加** |
+| 承認インスタンス ID リストを取得 | 権限スコープ内の関連部門の承認インスタンス ID リストを取得します。 | **承認インスタンス ID リストを取得** |
+
+### 3、承認ドライブスペースと添付
+
+| API | 説明 | 新版規格（新版サーバー API） |
+| --- | --- | --- |
+| 承認ドライブスペース情報を取得 | 承認ドライブスペースの ID を取得し、現在のユーザーに添付アップロード権限を付与します。 | **承認ドライブスペース情報を取得** |
+| 承認添付のプレビューを権限付与 | 承認添付のプレビューを権限付与します。 | **承認添付のプレビューを権限付与** |
+| 承認ドライブファイルのダウンロードを権限付与 | ドライブスペースの spaceId とファイルの fileId に基づき、ドライブファイルに承認ドライブスペースのダウンロード権限を付与します。 | **承認ドライブファイルのダウンロードを権限付与** |
+| 添付ファイルをダウンロード | 承認ファイルのダウンロード権限付与を取得し、ダウンロードリンクを生成します。 | **添付ファイルをダウンロード** |
+
+### 4、承認タスク
+
+| API | 説明 | 新版規格（新版サーバー API） |
+| --- | --- | --- |
+| 承認タスクを承認または拒否 | 指定されたテンプレート ID、インスタンス ID、承認ノード ID、および承認者に基づき、単一の承認タスクを処理します。 | **承認タスクを承認または拒否** |
+| ユーザーの未承認数を取得 | ユーザーのユーザー ID に基づき、そのユーザーの未処理の承認数を取得します。 | **ユーザーの未承認数を取得** |
+| OA 承認タスクを転送 | OA 承認タスクを転送します。 | **OA 承認タスクを転送** |
+
+### 5、承認コールバックイベント
+
+#### 5.1 社内アプリタイプのコールバックイベント
+
+| コールバックイベント | 説明 | 新版規格（新版サーバー API） |
+| --- | --- | --- |
+| 承認インスタンスの開始、終了、中止、削除 | 承認インスタンスが開始、終了、中止、または削除されたとき、DingTalk サーバーが開発者のコールバック URL に承認インスタンスイベントをプッシュします。 | **承認インスタンスの開始、終了、中止、削除** |
+| 承認タスクの開始、終了、キャンセル | 承認イベントで承認タスクの開始、終了、またはキャンセルが発生したときに、サブスクライバーへプッシュされる内容です。 | **承認タスクの開始、終了、キャンセル** |
+
+#### 5.2 サードパーティ社内アプリのコールバックイベント
+
+| コールバックイベント | 説明 | 新版規格（新版サーバー API） |
+| --- | --- | --- |
+| 承認インスタンスステータス変更（ブロードキャスト） | 承認ブロードキャストイベントのシナリオです。ある ISV または公式 OA 承認アプリに所属する承認フォームテンプレートを、別の ISV に権限付与してシステム統合を行う必要がある場合があります。権限付与により承認インスタンスデータを取得する jsapi を通じて企業の権限付与を取得後、権限付与済みの承認テンプレートについて、その承認フォームに対応するインスタンス、タスクのステータス変更をトリガーすると、権限付与済みの ISV にコールバックがプッシュされます。 | **承認インスタンスステータス変更（ブロードキャスト）** |
+| 承認タスクステータス変更（ブロードキャスト） | 承認ブロードキャストイベントのシナリオです。ある ISV または公式 OA 承認アプリに所属する承認フォームテンプレートを、別の ISV に権限付与してシステム統合を行う必要がある場合があります。権限付与により承認インスタンスデータを取得する jsapi を通じて企業の権限付与を取得後、権限付与済みの承認テンプレートについて、その承認フォームに対応するインスタンス、タスクのステータス変更をトリガーすると、権限付与済みの ISV にコールバックがプッシュされます。 | **承認タスクステータス変更（ブロードキャスト）** |
+| 承認インスタンスステータス変更（ダイレクト） | 承認ダイレクトイベントのシナリオです。ISV がオープン API を通じて作成した公式 OA 承認、またはユーザーが OA 管理コンソールで作成した「ISV スイート」テンプレートは、このようなシナリオでは承認テンプレートが ISV に所属するため、ユーザーが DingTalk 側またはサードパーティを通じて API で対応するインスタンス、タスクのステータス変更をトリガーすると、所属先の ISV アプリにダイレクトでコールバックがプッシュされます。 | **承認インスタンスステータス変更（ダイレクト）** |
+| 承認タスクステータス変更（ダイレクト） | 承認ダイレクトイベントのシナリオです。ISV がオープン API を通じて作成した公式 OA 承認、またはユーザーが OA 管理コンソールで作成した「ISV スイート」テンプレートは、このようなシナリオでは承認テンプレートが ISV に所属するため、ユーザーが DingTalk 側またはサードパーティを通じて API で対応するインスタンス、タスクのステータス変更をトリガーすると、所属先の ISV アプリにダイレクトでコールバックがプッシュされます。 | **承認タスクステータス変更（ダイレクト）** |
+
+## 七、関連ドキュメント
+
+<CardGroup cols={2}>
+  <Card title="フローセンターオープンソリューション" icon="sitemap" href="/ja/approval/open-solution-overview">
+    企業業務システムを DingTalk OA 承認に接続する 4 つのソリューションの総覧
+  </Card>
+  <Card title="サードパーティフローページ統合" icon="plug" href="/ja/approval/open-third-party-process">
+    業務システムから起票し、DingTalk クライアントで業務システム詳細ページを開いて承認
+  </Card>
+</CardGroup>
