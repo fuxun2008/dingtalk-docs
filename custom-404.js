@@ -55,7 +55,7 @@
     Attendance: { zh: "考勤", ja: "勤怠", id: "Absensi" },
     Approval: { zh: "审批", ja: "承認", id: "Persetujuan" },
     YiDA: { zh: "宜搭", ja: "YiDA", id: "YiDA" },
-    Admin: { zh: "管理后台", ja: "管理コンソール", id: "Konsol Admin" },
+    "Admin Console": { zh: "管理控制台", ja: "管理コンソール", id: "Konsol Admin" },
     "Developer Guide": { zh: "开发指南", ja: "開発ガイド", id: "Panduan pengembang" },
     "Server API": { zh: "服务端 API", ja: "サーバー API", id: "Server API" },
     "YiDA API": { zh: "宜搭 API", ja: "YiDA API", id: "YiDA API" },
