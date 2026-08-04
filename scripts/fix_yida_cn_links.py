@@ -51,19 +51,24 @@ LANG_ROOTS = {"en": "yida", "ja": "ja/yida", "id": "id/yida"}
 # dingtalk.com / dingtalk.io 家族用精确匹配——避免 suffix 规则误伤已在
 # check_external_links.py 白名单里的 docs.dingtalk.io / alidocs.dingtalk.com /
 # alidocs.dingtalk.io（那三个域名的死链判定交给现有工具，不在本脚本重复处理）。
+#
+# 2026-08-04 人审结论（用户对 review-needed.md 第一轮结果的裁决）：
+# - yidaapps.com（宜搭国际版域名本身）、oa.dingtalk.io（国际版 OA 后台）
+#   加白放行，不再判定为"中文专属"——移出下方两个域名集合
+# - w3school.com.cn / sohu.com / csdn.net / baidu.com / taobao.com /
+#   ruanyifeng.com / runoob.com / w3cschool.cn / miit.gov.cn / inspur.com /
+#   aliyun.com 等"延伸阅读"域名一律保留不处理——同样移出检测范围，不再扫描
+# - 只剩 aliwork.com（docs.aliwork.com 等）+ dingtalk 开放平台家族 需要强制
+#   转内链或去链留文（见 --apply-strip-domain）；yuque.com 需要强制整体去链
 EXACT_CN_HOSTS = {
-    "open.dingtalk.com", "developers.dingtalk.com", "oa.dingtalk.io",
+    "open.dingtalk.com", "developers.dingtalk.com",
     "notes.dingtalk.com", "standard.dingtalk.com", "page.dingtalk.com",
     "static.dingtalk.com", "api.dingtalk.com", "open-dev.dingtalk.com",
-    "dingtalk.io",
 }
 
 # 其余域名用 suffix 匹配（无竞争白名单子域需要排除）
 SUFFIX_CN_DOMAINS = {
-    "aliwork.com", "yuque.com", "yidaapps.com", "aliyun.com", "alicdn.com",
-    "w3school.com.cn", "sohu.com", "itc.cn", "csdn.net", "baidu.com",
-    "taobao.com", "ruanyifeng.com", "runoob.com", "w3cschool.cn",
-    "miit.gov.cn", "inspur.com",
+    "aliwork.com", "yuque.com",
 }
 
 # 资产类域名：图片/视频/CDN，不算"跳转链接"
@@ -578,16 +583,10 @@ def write_review_needed_report(occurrences: list[LinkOccurrence], by_url: dict,
 # 应用：死链 strip
 # ---------------------------------------------------------------------------
 
-def apply_dead(occurrences: list[LinkOccurrence], results: dict[str, ProbeResult]) -> tuple[dict[str, int], dict[str, int]]:
-    trusted_dead = {u for u, r in results.items() if r.status in TRUSTED_DEAD_STATUSES}
-    if not trusted_dead:
-        return {}, {}
-
-    by_file: dict[str, list[LinkOccurrence]] = {}
-    for o in occurrences:
-        if o.url in trusted_dead:
-            by_file.setdefault(o.file, []).append(o)
-
+def strip_links_by_file(by_file: dict[str, list[LinkOccurrence]]) -> tuple[dict[str, int], dict[str, int]]:
+    """把给定 {file: [occurrence,...]} 里的链接全部去链留文：
+    `[label](url)` -> `label`；`<Card ... href="url" .../>` 整标签删除。
+    调用方负责决定"哪些 occurrence 该被 strip"（可信死链 / 强制转纯文字域名等）。"""
     applied: dict[str, int] = {}
     card_removed: dict[str, int] = {}
     for rel, occs in by_file.items():
@@ -626,6 +625,31 @@ def apply_dead(occurrences: list[LinkOccurrence], results: dict[str, ProbeResult
             applied[rel] = count
 
     return applied, card_removed
+
+
+def apply_dead(occurrences: list[LinkOccurrence], results: dict[str, ProbeResult]) -> tuple[dict[str, int], dict[str, int]]:
+    trusted_dead = {u for u, r in results.items() if r.status in TRUSTED_DEAD_STATUSES}
+    if not trusted_dead:
+        return {}, {}
+
+    by_file: dict[str, list[LinkOccurrence]] = {}
+    for o in occurrences:
+        if o.url in trusted_dead:
+            by_file.setdefault(o.file, []).append(o)
+
+    return strip_links_by_file(by_file)
+
+
+def apply_strip_domains(occurrences: list[LinkOccurrence], domains: set[str]) -> tuple[dict[str, int], dict[str, int]]:
+    """无视存活状态，强制把命中指定域名（match_cn_domain 返回值）的链接全部去链留文。
+    用于业务规则明确要求"找不到内链就转纯文字"（aliwork/dingtalk 兜底）或
+    "整体删除"（yuque.com）的场景，而不是靠 HTTP 探针判死活。"""
+    by_file: dict[str, list[LinkOccurrence]] = {}
+    for o in occurrences:
+        if o.domain in domains:
+            by_file.setdefault(o.file, []).append(o)
+
+    return strip_links_by_file(by_file)
 
 
 # ---------------------------------------------------------------------------
@@ -704,6 +728,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-cache", action="store_true", help="跳过 24h 探针缓存")
     p.add_argument("--apply-dead", action="store_true", help="落盘：strip 可信死链（HTTP 404/410）")
     p.add_argument("--apply-internal", metavar="PATH", help="落盘：应用 internal-candidates.json 里 approved=true 的内链改写")
+    p.add_argument(
+        "--apply-strip-domain", metavar="DOMAIN[,DOMAIN...]",
+        help="落盘：无视存活状态，强制把命中这些域名（match_cn_domain 返回值，如 aliwork.com,yuque.com）的链接全部去链留文",
+    )
     return p.parse_args()
 
 
@@ -723,6 +751,12 @@ def main() -> int:
     if args.apply_internal:
         result = apply_internal(Path(args.apply_internal), by_url)
         print(f"[done] 内链改写：已应用 {len(result['applied'])} 处 / 跳过 {len(result['mismatches'])} 处（见 apply-internal-result.json）")
+        return 0
+
+    if args.apply_strip_domain:
+        domains = {d.strip() for d in args.apply_strip_domain.split(",") if d.strip()}
+        applied, card_removed = apply_strip_domains(all_occurrences, domains)
+        print(f"[done] 强制去链留文（域名={sorted(domains)}）：已改 {len(applied)} 文件 / {sum(applied.values())} 处占位（其中整块删除 Card {sum(card_removed.values())} 处）")
         return 0
 
     cache = load_cache()
