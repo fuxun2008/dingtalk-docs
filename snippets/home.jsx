@@ -1,5 +1,3 @@
-import React, { useEffect, useRef, useState } from "react";
-
 /* ============================================================
    DingTalk Help Center — Landing components
    - Used by /index.mdx, /zh/index.mdx, /ja/index.mdx
@@ -731,7 +729,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
           </a>
         </div>
         <div className="dt-home-nav-right">
-          {React.createElement(LangMenu)}
+          <LangMenu />
           <a
             href={mkt("/contact-sales/?type=support")}
             target="_blank"
@@ -740,7 +738,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
           >
             {t.contact}
           </a>
-          {React.createElement(NavMenu)}
+          <NavMenu />
         </div>
       </nav>
     </header>
@@ -749,7 +747,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   /* ---- Section render helpers ---- */
   const renderHero = () => (
     <div className="dt-home-hero">
-      <div className="dt-home-hero-bg">{React.createElement(ParticleCanvas)}</div>
+      <div className="dt-home-hero-bg"><ParticleCanvas /></div>
       <div className="dt-home-hero-scrim" />
       <div className="dt-home-hero-inner">
         <span className="dt-home-eyebrow">
@@ -758,7 +756,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
         </span>
         <h1 className="dt-home-hero-title">{t.title}</h1>
         <p className="dt-home-hero-sub">{t.subtitle}</p>
-        {React.createElement(SearchBar)}
+        <SearchBar />
         {renderHotTags()}
       </div>
     </div>
