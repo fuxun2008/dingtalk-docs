@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
-"""Generate sitemap.xml for help.dingtalk.io from all .mdx files.
+"""Generate sitemap files for help.dingtalk.io from all .mdx files.
+
+Outputs:
+  - sitemap.xml        : legacy combined sitemap (all languages in one file)
+  - sitemap-en.xml     : English-only URLs with hreflang alternates
+  - sitemap-zh.xml     : Simplified Chinese URLs with hreflang alternates
+  - sitemap-ja.xml     : Japanese URLs with hreflang alternates
+  - sitemap-id.xml     : Indonesian URLs with hreflang alternates
+  - sitemapindex.xml   : index pointing to each per-language sitemap
 
 Each <url> block carries <xhtml:link rel="alternate" hreflang="..."> siblings
-that point to its peers in the trilingual mirror (en / zh-CN / ja-JP), plus
-x-default to the en version. Pages that lack a localization are still listed,
+that point to its peers. Pages that lack a localization are still listed,
 but only with hreflang entries for languages whose .mdx actually exists.
+
+Run manually:  python3 scripts/generate_sitemap.py
+Or via hook:  the pre-commit hook runs this automatically when .mdx files change.
 """
 
 import os
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -32,6 +44,7 @@ XHTML_NS = "http://www.w3.org/1999/xhtml"
 # ja maps to ja-JP. en and id stay plain (no regional qualifier).
 LANG_TAGS = {"en": "en", "zh": "zh-CN", "ja": "ja-JP", "id": "id"}
 DEFAULT_LANG = "en"  # what x-default points to
+SUPPORTED_LANGS = ("en", "zh", "ja", "id")
 
 # Register namespaces so ElementTree emits the expected prefixes.
 ET.register_namespace("", SITEMAP_NS)
@@ -99,7 +112,7 @@ def emit(urlset: ET.Element, lang: str, base_parts: list,
     loc.text = url_for(lang, base_parts)
 
     # hreflang siblings — only for languages whose .mdx actually exists.
-    for alt_lang in ("en", "zh", "ja", "id"):
+    for alt_lang in SUPPORTED_LANGS:
         if alt_lang not in langs_present:
             continue
         _make(
@@ -123,18 +136,22 @@ def emit(urlset: ET.Element, lang: str, base_parts: list,
     pr.text = "1.0" if is_home else "0.7"
 
 
-def main():
+def build_urlset():
+    """Build the legacy combined urlset and per-language urlsets."""
     mdx_paths = collect_mdx_paths()
-    print(f"Found {len(mdx_paths)} .mdx files")
 
-    # Build base_key -> {lang: True} so emit() knows which alternates exist.
+    # base_key -> {lang: True}
     base_lang_map: dict = {}
     for rel in mdx_paths:
         lang, base_parts = classify(rel)
         base_key = "/".join(base_parts)
         base_lang_map.setdefault(base_key, {})[lang] = True
 
-    urlset = ET.Element(f"{{{SITEMAP_NS}}}urlset")
+    # Combined sitemap (legacy)
+    combined = ET.Element(f"{{{SITEMAP_NS}}}urlset")
+
+    # Per-language sitemaps
+    per_lang = {lang: ET.Element(f"{{{SITEMAP_NS}}}urlset") for lang in SUPPORTED_LANGS}
 
     # Note: lastmod is intentionally omitted to keep sitemap.xml deterministic.
     # The pre-push hook re-runs this script and compares output; date-based
@@ -144,10 +161,15 @@ def main():
     # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja/id.
     home_langs = base_lang_map.get("", {})
     if "en" in home_langs:
-        emit(urlset, "en", [], home_langs, is_home=True)
+        emit(combined, "en", [], home_langs, is_home=True)
     for lang in ("zh", "ja", "id"):
         if lang in home_langs:
-            emit(urlset, lang, [], home_langs, is_home=False)
+            emit(combined, lang, [], home_langs, is_home=False)
+
+    # Same homepages in per-language sitemaps
+    for lang in SUPPORTED_LANGS:
+        if lang in home_langs:
+            emit(per_lang[lang], lang, [], home_langs, is_home=(lang == "en"))
 
     # 2) Other pages in deterministic mdx_paths order.
     for rel in mdx_paths:
@@ -155,12 +177,47 @@ def main():
         base_key = "/".join(base_parts)
         if base_key == "":
             continue  # homepages already emitted
-        emit(urlset, lang, base_parts, base_lang_map[base_key], is_home=False)
+        emit(combined, lang, base_parts, base_lang_map[base_key], is_home=False)
+        emit(per_lang[lang], lang, base_parts, base_lang_map[base_key], is_home=False)
 
-    tree = ET.ElementTree(urlset)
-    out = DOCS_ROOT / "sitemap.xml"
+    return mdx_paths, base_lang_map, combined, per_lang
+
+
+def write_xml(tree: ET.ElementTree, path: Path) -> None:
     ET.indent(tree, space="  ")
-    tree.write(str(out), encoding="utf-8", xml_declaration=True)
+    tree.write(str(path), encoding="utf-8", xml_declaration=True)
+
+
+def build_sitemapindex() -> ET.ElementTree:
+    """Build sitemapindex.xml referencing each per-language sitemap."""
+    root = ET.Element(f"{{{SITEMAP_NS}}}sitemapindex")
+    for lang in SUPPORTED_LANGS:
+        sitemap_el = _make(root, SITEMAP_NS, "sitemap")
+        loc = _make(sitemap_el, SITEMAP_NS, "loc")
+        loc.text = f"{BASE_URL}/sitemap-{lang}.xml"
+    return ET.ElementTree(root)
+
+
+def main():
+    mdx_paths, base_lang_map, combined, per_lang = build_urlset()
+    print(f"Found {len(mdx_paths)} .mdx files")
+
+    # Write legacy combined sitemap
+    write_xml(ET.ElementTree(combined), DOCS_ROOT / "sitemap.xml")
+
+    # Write per-language sitemaps
+    for lang in SUPPORTED_LANGS:
+        out_path = DOCS_ROOT / f"sitemap-{lang}.xml"
+        write_xml(ET.ElementTree(per_lang[lang]), out_path)
+        url_count = sum(
+            1 for p in mdx_paths if classify(p)[0] == lang
+        ) + (1 if "" in base_lang_map and lang in base_lang_map[""] else 0)
+        print(f"  Written {out_path.name}: {url_count} URLs")
+
+    # Write sitemap index
+    index_tree = build_sitemapindex()
+    write_xml(index_tree, DOCS_ROOT / "sitemapindex.xml")
+    print(f"  Written sitemapindex.xml")
 
     en = sum(1 for p in mdx_paths if classify(p)[0] == "en")
     zh = sum(1 for p in mdx_paths if classify(p)[0] == "zh")
@@ -168,8 +225,43 @@ def main():
     idn = sum(1 for p in mdx_paths if classify(p)[0] == "id")
     print(f"  EN: {en}, ZH: {zh}, JA: {ja}, ID: {idn}")
     print(f"  Unique base paths: {len(base_lang_map)}")
-    print(f"Written to {out} ({out.stat().st_size / 1024:.1f} KB)")
+
+    combined_size = (DOCS_ROOT / "sitemap.xml").stat().st_size / 1024
+    print(f"  sitemap.xml: {combined_size:.1f} KB")
+
+
+def mdx_changed() -> bool:
+    """Check whether any staged .mdx files are about to be committed.
+
+    Used by the pre-commit hook. Returns True if the sitemap should be regenerated.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM", "--", "*.mdx"],
+        capture_output=True, text=True, check=False,
+    )
+    return bool(result.stdout.strip())
+
+
+def run_as_hook():
+    """Entry point for git pre-commit hook."""
+    if not mdx_changed():
+        print("[sitemap-hook] no .mdx changes; skipping sitemap regeneration")
+        sys.exit(0)
+
+    print("[sitemap-hook] .mdx files changed; regenerating sitemaps...")
+    main()
+
+    # Stage regenerated sitemaps so they are included in the current commit.
+    subprocess.run(
+        ["git", "add", "sitemap.xml", "sitemap-en.xml", "sitemap-zh.xml",
+         "sitemap-ja.xml", "sitemap-id.xml", "sitemapindex.xml"],
+        check=False,
+    )
+    print("[sitemap-hook] sitemaps regenerated and staged.")
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--hook":
+        run_as_hook()
+    else:
+        main()
