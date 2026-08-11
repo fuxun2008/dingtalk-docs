@@ -198,6 +198,23 @@ def build_sitemapindex() -> ET.ElementTree:
     return ET.ElementTree(root)
 
 
+def build_robots_txt() -> str:
+    """Build robots.txt content pointing search engines to sitemapindex.xml.
+
+    We only list sitemapindex.xml here because it already references every
+    per-language sitemap. Listing all files would be redundant and can waste
+    crawl budget.
+    """
+    lines = [
+        "User-agent: *",
+        "Disallow:",
+        "",
+        f"Sitemap: {BASE_URL}/sitemapindex.xml",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def main():
     mdx_paths, base_lang_map, combined, per_lang = build_urlset()
     print(f"Found {len(mdx_paths)} .mdx files")
@@ -218,6 +235,11 @@ def main():
     index_tree = build_sitemapindex()
     write_xml(index_tree, DOCS_ROOT / "sitemapindex.xml")
     print(f"  Written sitemapindex.xml")
+
+    # Write robots.txt
+    robots_path = DOCS_ROOT / "robots.txt"
+    robots_path.write_text(build_robots_txt(), encoding="utf-8")
+    print(f"  Written robots.txt")
 
     en = sum(1 for p in mdx_paths if classify(p)[0] == "en")
     zh = sum(1 for p in mdx_paths if classify(p)[0] == "zh")
@@ -251,13 +273,14 @@ def run_as_hook():
     print("[sitemap-hook] .mdx files changed; regenerating sitemaps...")
     main()
 
-    # Stage regenerated sitemaps so they are included in the current commit.
+    # Stage regenerated sitemaps and robots.txt so they are included in the
+    # current commit.
     subprocess.run(
         ["git", "add", "sitemap.xml", "sitemap-en.xml", "sitemap-zh.xml",
-         "sitemap-ja.xml", "sitemap-id.xml", "sitemapindex.xml"],
+         "sitemap-ja.xml", "sitemap-id.xml", "sitemapindex.xml", "robots.txt"],
         check=False,
     )
-    print("[sitemap-hook] sitemaps regenerated and staged.")
+    print("[sitemap-hook] sitemaps and robots.txt regenerated and staged.")
 
 
 if __name__ == "__main__":
