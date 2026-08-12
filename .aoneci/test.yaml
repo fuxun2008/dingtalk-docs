@@ -1,0 +1,41 @@
+name: 文档基础校验 (Aone CI)
+params:
+triggers:
+  merge_request:
+    target-branches:
+      - "**"
+  push:
+    branches:
+      - main
+strategy:
+  fast-fail: false
+  concurrency:
+    group: "${{git.merge_request.sourceBranch ? git.merge_request.sourceBranch : git.branch}}"
+jobs:
+  docs-json-check:
+    image: alios-8u
+    runs-on: ["2-4Gi"]
+    steps:
+      - uses: checkout
+      - run: |
+          set -e
+          python3 -c "import json; json.load(open('docs.json')); print('docs.json OK')"
+  sitemap-generation-check:
+    image: alios-8u
+    runs-on: ["2-4Gi"]
+    steps:
+      - uses: checkout
+      - run: |
+          set -e
+          python3 scripts/generate_sitemap.py
+          echo "sitemap generation OK"
+  robots-txt-check:
+    image: alios-8u
+    runs-on: ["2-4Gi"]
+    steps:
+      - uses: checkout
+      - run: |
+          set -e
+          test -f robots.txt
+          grep -q "Sitemap: https://help.dingtalk.io/sitemapindex.xml" robots.txt
+          echo "robots.txt OK"
