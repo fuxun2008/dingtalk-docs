@@ -1,0 +1,78 @@
+---
+title: "Mengonfigurasi Push HTTP (Tidak Direkomendasikan)"
+description: "Konfigurasikan push peristiwa mode HTTP untuk aplikasi internal di Konsol Pengembang DingTalk, termasuk aes_key enkripsi, token tanda tangan, dan URL permintaan callback, serta atasi kegagalan verifikasi."
+---
+
+Jika Anda perlu mengonfigurasi push peristiwa mode HTTP, ikuti langkah-langkah dalam dokumen ini untuk menyelesaikan integrasi.
+
+## Prasyarat
+
+- Anda memiliki URL permintaan yang dapat diakses secara publik.
+- Anda memiliki <a href="https://open.dingtalk.com/document/orgapp/obtain-developer-permissions" target="_blank">izin pengembang</a> di Konsol Pengembang DingTalk organisasi Anda.
+- Anda memiliki <a href="https://open.dingtalk.com/document/orgapp/create-an-application" target="_blank">aplikasi internal</a> di organisasi DingTalk Anda.
+
+## Prosedur
+
+<Steps>
+<Step title="Buka halaman detail aplikasi">
+Masuk ke <a href="https://open-dev.dingtalk.com/" target="_blank">Konsol Pengembang</a>, klik aplikasi target, lalu buka halaman detail aplikasi.
+</Step>
+<Step title="Pilih push HTTP">
+Klik **Konfigurasi Pengembangan > Langganan Peristiwa**, lalu pilih **Push HTTP**.
+</Step>
+<Step title="Konfigurasikan informasi HTTP">
+| Item | Deskripsi |
+| --- | --- |
+| aes_key enkripsi | Parameter enkripsi dan dekripsi untuk konten pesan callback. Ini adalah pengodean Base64 dari kunci AES. |
+| token tanda tangan | DingTalk menyertakan `token` dalam setiap push peristiwa yang dikirim ke URL Anda. Token digunakan untuk membuat tanda tangan dan memverifikasi keabsahan permintaan callback. Harus berisi hanya huruf atau angka dan panjangnya 3 hingga 32 karakter. |
+| URL permintaan | URL yang digunakan untuk menerima permintaan langganan peristiwa. Ketika peristiwa yang dilanggan aplikasi terpicu, DingTalk mengirim permintaan HTTP POST yang sesuai ke URL ini. |
+</Step>
+<Step title="Kembangkan server langganan peristiwa">
+Setelah konfigurasi selesai, Anda perlu mengembangkan server langganan peristiwa. Untuk informasi selengkapnya, lihat <a href="https://open.dingtalk.com/document/orgapp/develop-http-push-server" target="_blank">Mengembangkan server push HTTP</a>.
+</Step>
+<Step title="Simpan">
+Setelah pengembangan sisi server selesai dan server push HTTP dijalankan, klik **Simpan**. Daftar langganan peristiwa hanya muncul setelah Anda menyimpan.
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p737446.png" alt="Mengonfigurasi push HTTP" />
+</Frame>
+</Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+<Accordion title="Halaman melaporkan “Verifikasi nilai field yang dikembalikan pada hasil permintaan HTTP gagal”">
+**Penyebab:**
+
+- Salah satu nilai field dalam JSON yang dikembalikan ke server DingTalk tidak benar.
+- Informasi yang dikembalikan ke server DingTalk bukan dalam format JSON.
+
+**Solusi:**
+
+<Note>Verifikasi bahwa konten pada <a href="https://open.dingtalk.com/document/orgapp/develop-http-push-server" target="_blank">Mengembangkan server push HTTP</a> sudah benar.</Note>
+
+Buat metode main, gunakan empat nilai field yang dikembalikan oleh URL callback, panggil API enkripsi, dan verifikasi apakah nilai yang dikembalikan adalah string `success`. Contoh:
+
+```java
+//Buat kelas enkripsi/dekripsi. Parameter tetap tidak berubah.
+DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+//Teruskan empat parameter yang dikembalikan URL callback Anda ke server DingTalk ke dalam metode enkripsi.
+String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+System.out.println(result);
+```
+
+- Jika Anda mendapatkan string `success`, nilai yang dikembalikan sudah benar. Masalahnya terletak pada format parameter nilai yang dikembalikan API callback ke server DingTalk yang tidak benar. Konfirmasikan kembali.
+- Jika terjadi error saat dijalankan, error runtime umum dan penyebabnya adalah sebagai berikut:
+
+| Error | Penyebab | Perbaikan |
+| --- | --- | --- |
+| corpid hasil dekripsi tidak cocok | Parameter `OWNER_KEY` di DingTalkEncryptor tidak benar. | Untuk langganan peristiwa aplikasi saat ini di Konsol Pengembang, `owner_key` harus berupa nilai appkey aplikasi saat ini. |
+| aes key tidak valid | Parameter `ENCODING_AES_KEY` di DingTalkEncryptor tidak benar. | `ENCODING_AES_KEY` adalah string tetap 43 karakter kustom yang hanya mendukung huruf besar dan kecil serta angka. |
+| Perhitungan tanda tangan gagal | Parameter dalam metode dekripsi digunakan secara tidak benar. | Keempat parameter dalam metode dekripsi getEncryptedMap semuanya berasal dari nilai yang dibawa dalam permintaan server DingTalk. |
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p741380.png" alt="Hasil eksekusi" />
+</Frame>
+</Accordion>
+</AccordionGroup>
