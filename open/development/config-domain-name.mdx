@@ -1,0 +1,108 @@
+---
+title: "DingTalk Security Domain"
+description: "A third-party enterprise app must bind a private Server Load Balancer (SLB) service to a DingTalk security domain, and use the bound security domain as the server-side domain of a mini program or micro app."
+---
+
+A third-party enterprise app must bind a private Server Load Balancer (SLB) service to a DingTalk security domain, and use the bound security domain as the server-side domain of a mini program or micro app.
+
+**Important** 
+
+- Due to the architecture upgrade of the domain gateway, DingTalk security domains will no longer support private SLB access from DingTalk Cloud or Jushita.
+- Before creating the association, ensure that a private SLB has been purchased under the Alibaba Cloud account (Compute Nest deployment) associated in the developer console, that the private SLB has an HTTP listener port configured, and that HTTP-to-HTTPS redirection is not configured. Currently, only CLB is supported; ALB is not supported.
+- Select a valid SLB and domain to bind. We recommend using "app" + appId as the domain to avoid duplication.
+- After you bind a security domain, a PrivateLink endpoint service node is created by default under the cloud account to establish a private channel from the DingTalk security domain gateway to the associated SLB under the cloud account. The PrivateLink endpoint service node is free on the ISV side.
+- If the push type is SyncHttp, you must use a DingTalk security domain in the push address of the callback URL.
+- The app's server-side API domain must use a DingTalk security domain.
+- The regions and zones supported by private SLB for the Compute Nest deployment method are as follows:
+
+  |  |  |
+  | --- | --- |
+  | **Region** | **Zone** |
+  | China East 1 (Hangzhou) | Zone B, Zone E, Zone F, Zone G, Zone H, Zone I, Zone J, Zone K |
+  | China East 2 (Shanghai) | Zone B, Zone E, Zone F, Zone G, Zone L, Zone M, Zone N, Zone I, Zone H |
+  | China North 2 (Beijing) | Zone B, Zone C, Zone D, Zone E, Zone F, Zone G, Zone H, Zone I, Zone K, Zone L |
+  | China North 3 (Zhangjiakou) | Zone A, Zone B, Zone C |
+  | China South 1 (Shenzhen) | Zone D, Zone E, Zone F |
+
+## Procedure
+
+1. Sign in to the [Developer Console](https://open-dev.dingtalk.com/).
+2. Find the app you created. On the app details page, click **DingTalk Security Domain**.
+3. Select the private SLB to associate and the domain to use, select the authorization agreement, and then click **Associate**.
+
+   **Note** 
+
+   After you submit the security domain binding request, wait for the DingTalk security review, which usually takes 1 to 2 business days. Once approved, the process automatically binds the private SLB to the security domain, which takes effect within 1 to 2 business days. Monitor the status updates. If the request is declined, modify and resubmit it.
+
+   - Private SLB: A private SLB has been purchased under the Alibaba Cloud account bound to Jushita, DingTalk Cloud, or Compute Nest.
+
+     **Note** 
+
+     The SLB must have an HTTP listener port configured. Do not use common HTTPS ports such as 443 or 8443.
+   - Security domain: We recommend using "app" + appId as the domain to avoid duplication.
+
+## Verification Criteria for DingTalk Security Domain Activation
+
+- If the push type of a third-party enterprise app is **HTTP** or **syncHTTP**, the push address domain must be a DingTalk security domain.
+- If a third-party enterprise app is a mini program, the server-side API requested by the mini program must use a DingTalk security domain.
+- If a third-party enterprise app is an H5 micro app with a decoupled front-end and back-end architecture, the server-side API must use a security domain. If it is an integrated front-end and back-end app, the app home page address must use a DingTalk security domain.
+
+## FAQ
+
+### 1. The SLB Has Been Purchased, but the SLB Information Is Not Displayed at the "1 Associate SLB" Stage
+
+**Answer:** First, perform the following self-checks:
+
+- Confirm that a cloud account has been associated in the developer console.
+- Confirm that the purchased private SLB is within the supported region range. Compute Nest deployment supports China East 1 (Hangzhou), China North 3 (Zhangjiakou), China North 2 (Beijing), China East 2 (Shanghai), and China South (Shenzhen). Jushita deployment supports only China North 3 (Zhangjiakou), and DingTalk Cloud deployment supports only China East 1 (Hangzhou).
+- Confirm that you purchased CLB rather than ALB.
+- Confirm that the SLB listener port is configured with the HTTP protocol rather than the TCP protocol.
+
+If the SLB information is still not displayed after all the above checks, submit a ticket for feedback.
+
+### 2. At the "2 Domain Configuration" Stage, the Current Status Shows "Domain Under Review, Please Wait"
+
+**Answer:** In this case, the security domain is under review and configuration. Normally, the configuration takes 1 business day to complete. Wait 1 business day before checking again.
+
+**Note** 
+
+Security domain requests for non-production apps will be rejected. For cost reasons on the DingTalk side, security domains are no longer provided for non-production apps such as test apps and staging apps. If you need to test a security domain, first request a security domain for a production app and bind it to the test or staging environment (switch the binding by replacing the ECS group to which the SLB forwards traffic). After verification, switch the binding to the production app.
+
+### 3. At the "3 Use in App" Stage, the Current Status of the Security Domain Is "Domain Binding Failed, DingTalk Admin Processing"
+
+**Answer:** In this case, the security domain configuration failed. You can submit a ticket to contact DingTalk technical support for manual intervention. After manual intervention, the processing usually takes 1 business day to complete.
+
+### 4. At the "3 Use in App" Stage, the Current Status of the Security Domain Is "Domain Binding Succeeded", but the Domain Activation Status Is "Security Domain Not Activated"
+
+**Answer:** In this case, DingTalk has completed the review and configuration of the security domain. You need to complete the security domain configuration on the developer side according to the **Verification Criteria for Activation**. After the configuration is complete, it can be detected as effective within 1 business day.
+
+### 5. The Originally Bound SLB Is No Longer Used and a New SLB Needs to Be Bound
+
+**Answer: Click Modify** and select a new SLB to bind:
+
+- If you cannot see the SLB information that needs to be rebound, handle it by referring to the first FAQ.
+- If you can see the SLB information to be rebound, you can modify it. Normally, the SLB change operation supports lossless switching, but slight service jitter may occur during the rebinding process. The security domain address does not change after the change operation.
+
+### 6. After the Security Domain Is Configured, Will User Traffic to the App Immediately Route to the Security Domain?
+
+**Answer:** No. After the security domain configuration takes effect, access traffic is not switched to the security domain by default. You need to configure traffic routing to the security domain on the app side as required, and activate the domain according to the activation criteria in FAQ 7, 8, and 9.
+
+### 7. Security Domain Activation Verification: Use a Security Domain for the Push Address
+
+**Answer:** Use a security domain for the domain in **Events and Callbacks > Callback Request Address** of the app features.
+
+### 8. Security Domain Activation Verification: Use a Security Domain for the App Home Page
+
+**Answer:** Configure the security domain in the **App Home Page Address** and **PC Home Page Address** on the **Development Management** page of the basic information.
+
+### 9. Security Domain Activation Verification: Use a Security Domain for the Server-Side API of a Mini Program or a Decoupled Front-End and Back-End App
+
+**Answer:** Configure traffic distribution for the security domain in the app's nginx or tomcat web service. For specific configuration methods, search for related documentation online. The Open Platform detects and verifies the server-side API domain address, which usually takes effect on a T+1 basis.
+
+### 10. How to Configure the HTTPS Certificate for a Security Domain
+
+**Answer:** The security domain provides HTTPS access by default. You do not need to obtain the security domain certificate or configure it on the developer side. Just configure HTTP on the cloud SLB; you do not need to configure HTTPS. The security domain gateway forwards HTTP traffic through a dedicated channel to the developer's private SLB.
+
+### 11. Continuous Redirection When Accessing the Security Domain
+
+**Answer:** Check the private SLB configuration. Cancel the **Redirect to HTTPS:443** configuration on port 80 (or another HTTP port) of the SLB, forward traffic to the web port of the backend server, and configure the web server of the backend service in the server group. To cancel the redirection configuration, refer to [HTTP Redirect to HTTPS](https://help.aliyun.com/document_detail/89151.html).

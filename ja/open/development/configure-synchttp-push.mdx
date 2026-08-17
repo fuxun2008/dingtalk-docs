@@ -1,0 +1,261 @@
+---
+title: "SyncHTTP プッシュの設定（推奨）"
+description: "SyncHTTP プッシュはオンプレミス環境向けのコールバック方式です。DingTalk のイベントサブスクリプションで業務データの最終状態を受信し、開発者がそのまま利用できる設定手順を解説します。"
+---
+
+SyncHTTP プッシュ方式はオンプレミス環境に適しています。HTTP プッシュと比較して、SyncHTTP は業務データの最終状態を配信するため、開発者はプッシュされたデータをそのまま利用できます。
+
+## コールバックの概要
+
+DingTalk は、アプリの有効化、アプリ認可の変更、部門の変更など、サブスクリプション済みのコールバックイベントをサードパーティ社内アプリにプッシュします。これらのイベントをサブスクライブすることで、開発者は DingTalk とより効果的に連携できます。
+
+サードパーティ社内アプリを開発する際は、企業アプリの有効化イベントを受信するためにコールバックを登録する**必要があります**。このイベントは、どの組織がアプリを有効化したかをサードパーティアプリに通知します。サードパーティアプリのバックエンドがこのイベントを受信した後、組織情報を初期化してください。
+
+DingTalk は現在、次のプッシュ方式をサポートしています。
+
+- RDS プッシュ
+- HTTP プッシュ
+- SyncHTTP プッシュ
+
+SyncHTTP は HTTP コールバックを通じて ISV サービスへデータをプッシュし、**RDS プッシュと同じフィールドおよびフォーマットを使用します**。サービスプロバイダーは、RDS プッシュの方式とタイプに従い、HTTP で受信したデータを自前のデータベースまたは RDS に保存できます。
+
+**注意**
+
+SyncHTTP がコールバックを受信したら、すぐにデータベースに保存してから成功レスポンスを返してください。その他の業務ロジックを処理する場合は、非同期処理を使用してください。
+
+SyncHTTP を使用すると、アプリ有効化 API を手動で呼び出す必要はありません。プッシュされた ticket を受信した後、それを使用してサーバー API を直接呼び出してください。
+
+**注意**
+
+SyncHTTP プッシュおよび HTTP プッシュの送信元 IP は次のとおりです。
+
+- 203.119.0.0/16
+- 203.119.128.0/17
+- 140.205.0.0/16
+- 106.11.0.0/16
+- 198.11.0.0/16
+- 59.82.0.0/16
+
+## コールバックイベントの登録フロー
+
+コールバックイベントのサブスクリプションフローを次の図に示します。
+
+まず、DingTalk Open Platform でプッシュされるサブスクリプションイベントを受信するための HTTP リクエストエンドポイントを設定し、次にサブスクライブしたいイベントを設定します。リクエストエンドポイントを設定すると、DingTalk Open Platform はそのエンドポイントに POST リクエストを送信します。指定された時間内に「**success**」を含む暗号化文字列を正しく返した場合にのみ、イベントサブスクリプションが完了します。
+
+## リクエストエンドポイントの設定とコールバックイベントのサブスクライブ
+
+SyncHTTP を通じて DingTalk がプッシュするコールバックイベントを受信するには、まず HTTP コールバック URL を設定します。サブスクライブしたイベントがトリガーされると、DingTalk はこの URL に対応する HTTP POST リクエストを送信します。
+
+1. [Developer Console](https://open-dev.dingtalk.com/) にログインします。作成したアプリを検索し、その詳細ページを開きます。
+2. **Development Management** をクリックし、次に **Edit** をクリックして、プッシュタイプとして **SyncHTTP Push** を選択します。
+3. リクエストを受信するための HTTP エンドポイントを設定します。
+
+   - **token**: DingTalk がエンドポイントにイベントデータをプッシュするたびに、Signature を生成しコールバックリクエストの正当性を検証するために使用する `token` が含まれます。英字または数字で構成し、3〜32 文字の長さである必要があります。
+   - **Encryption AES Key**: **Generate Automatically** をクリックして AES キーを生成します。これはコールバックメッセージのコンテンツを暗号化・復号するために使用するパラメータです。AES キーの Base64 エンコードです。詳細は後述の[メッセージの暗号化と復号](#section-vhz-t5l-4kf)を参照してください。
+   - **Callback URL**: サブスクライブしたイベントのリクエストを受信するために使用する URL です。サブスクライブしたイベントがトリガーされると、DingTalk はこの URL に対応する HTTP POST リクエストを送信します。
+
+     **注意**
+
+     各アプリには 1 つのコールバック URL しか設定できません。アプリのサブスクリプションに対するすべてのイベント通知は、このリクエスト URL に送信されます。
+4. 設定が完了した後、**Verify Validity** ボタンをクリックすると、Open Platform は設定した URL に `application/json` の POST リクエストをプッシュして、その正当性を検証します。以下に示します。
+
+   ```
+   {
+       "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // 暗号化文字列。後述の暗号化・復号の説明を参照してください。
+   }
+   ```
+
+   Open Platform から POST 検証リクエストを受信したら、それを復号し、**1,200 ms** 以内に **success** を含む暗号化文字列を DingTalk に返してください。時間内に応答しない場合、リクエストがレート制限される可能性があります。
+5. リクエストエンドポイントの設定が正常に完了した後、**Callback Events** リストエリアで、サブスクライブしたいコールバックイベントを選択し、右上の **Save** をクリックします。
+
+   **注意**
+
+   コールバックイベントを選択できない場合は、Developer Console の **Manage Permissions** ページで対応する API 権限を申請してください。
+
+## プッシュデータの説明
+
+Callback URL を設定した後、**Verify Validity** ボタンをクリックすると、Open Platform は設定した URL に `application/json` の POST リクエストをプッシュして、その正当性を検証します。以下に示します。
+
+```
+{
+    "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // 暗号化文字列。後述の暗号化・復号の説明を参照してください。
+}
+```
+
+受信したメッセージのコンテンツを復号します。詳細は後述の[メッセージの暗号化と復号](#section-vhz-t5l-4kf)を参照してください。復号後のイベントタイプは次のとおりです。
+
+- check\_url: テストコールバックイベント
+
+  復号後のデータ:
+
+  ```
+  {
+      "EventType" : "check_url"
+  }
+  ```
+- check\_create\_suite\_url: 検証コールバックイベント
+
+  復号後のデータ:
+
+  ```
+  {
+    "EventType":"check_create_suite_url",
+    "Random":"brdkKLMW"
+  }
+  ```
+- check\_update\_suite\_url: コールバック URL 更新イベント
+
+  復号後のデータ:
+
+  ```
+  {
+    "EventType":"check_update_suite_url",
+    "Random":"xxxxxx",
+    "TestSuiteKey":"suited6db0pze8yao1b1y"
+  }
+  ```
+- SYNC\_HTTP\_PUSH\_HIGH: アプリ有効化などの高優先度データ
+
+  ```
+  {
+   "EventType": "SYNC_HTTP_PUSH_HIGH",
+   "bizData": [{
+    "gmt_create": 1608639648000,
+    "biz_type": 4,
+    "open_cursor": 0,
+    "subscribe_id": "14999999001_0",
+    "id": 7001,
+    "gmt_modified": 1608639648000,
+    "biz_id": "1489999001",
+    "biz_data": "{\"auth_user_info\":{\"userId\":\"manager4xxx\"},\"auth_corp_info\":{\"corp_type\":0,\"corpid\":\"dingffea2a0dcc37d0xxxxxxx25e91351\",\"auth_level\":0,\"auth_channel\":\"\",\"industry\":\"\",\"full_corp_name\":\"XX テスト組織\",\"corp_name\":\"XX テスト組織\",\"invite_url\":\"https://pre-wx.dingtalk.com/xxxxx/index.html?bizSource=____source____&corpId=dingffea2a0dcc3xxxxx25e91351&inviterUid=71E7E5B48C2DDB2xxxxxxF52346D\",\"auth_channel_type\":\"\",\"invite_code\":\"\",\"is_authenticated\":false,\"license_code\":\"\",\"corp_logo_url\":\"\"},\"syncAction\":\"org_suite_auth\",\"auth_scope\":{\"errcode\":0,\"condition_field\":[],\"auth_user_field\":[\"jobnumber\",\"isLeader\",\"name\",\"position\",\"isAdmin\",\"avatar\",\"department\",\"userid\",\"deviceId\",\"isHide\"],\"auth_org_scopes\":{\"authed_user\":[],\"authed_dept\":[1]},\"errmsg\":\"ok\"},\"auth_info\":{\"agent\":[{\"agentid\":1038226450,\"agent_name\":\"Tuhao Push Test 1217\",\"logo_url\":\"https://static-legacy.dingtalk.com/media/lADPDfmVQafoVxxxxxx0_200.jpg\",\"appid\":62282,\"admin_list\":[\"manager492\"]}]},\"permanent_code\":\"MFcbac-7zg0Mhcl-_dGmY2_f4NZPzLUf813xxxxxrjyEoGmKjqZwfi-5mh\"}",
+    "corp_id": "dingffea2axxxxxx0dcb25e91351",
+    "status": 0
+   }]
+  }
+  ```
+- SYNC\_HTTP\_PUSH\_MEDIUM: 連絡先の変更などの通常優先度データ
+
+  ```
+  {
+   "EventType": "SYNC_HTTP_PUSH_MEDIUM",
+   "bizData": [{
+    "gmt_create": 1608639751000,
+    "biz_type": 14,
+    "open_cursor": 0,
+    "subscribe_id": "14778001_0",
+    "id": 68,
+    "gmt_modified": 1608639751000,
+    "biz_id": "433877002",
+    "biz_data": "{\"errcode\":0,\"userPermits\":\"\",\"userPerimits\":\"\",\"syncAction\":\"org_dept_create\",\"outerDept\":false,\"errmsg\":\"ok\",\"deptManagerUseridList\":\"\",\"parentid\":1,\"groupContainSubDept\":false,\"outerPermitUsers\":\"\",\"outerPermitDepts\":\"\",\"deptPerimits\":\"\",\"createDeptGroup\":true,\"name\":\"f'f'f\",\"id\":433885002,\"autoAddUser\":true,\"deptHiding\":false,\"deptPermits\":\"\",\"order\":43388775002}",
+    "corp_id": "ding7629a25dxxxxxxxxf7214b6d69",
+    "status": 0
+   }]
+  }
+  ```
+
+SYNC\_HTTP\_PUSH\_HIGH および SYNC\_HTTP\_PUSH\_MEDIUM タイプの `bizData` は、RDS プッシュの `open_sync_biz_data` テーブルおよび `open_sync_biz_data_medium` テーブル内のデータそのものです。具体的なフォーマットについては、[データフォーマット](https://open.dingtalk.com/document/isvapp/data-formats#)を参照してください。
+
+## コールバックイベントの受信と応答
+
+HTTP サービスを起動します（以下に示します）。サービスの応答ロジックで、コールバック（プッシュ）データを復号して保存します。
+
+完全なコード例: &lt;https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java>
+
+```
+package com.controller;
+import com.dingtalk.oapi.lib.aes.DingTalkEncryptor;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * ISV ミニプログラムのコールバック処理
+ */
+@RestController
+@RequestMapping("/")
+public class CallbackController {
+
+    private final Logger log = LoggerFactory.getLogger(getClass());
+
+    @PostMapping(value = "dingCallback")
+    public Object dingCallback(
+            @RequestParam(value = "signature") String signature,
+            @RequestParam(value = "timestamp") Long timestamp,
+            @RequestParam(value = "nonce") String nonce,
+            @RequestBody(required = false) JSONObject body
+    ) {
+        String[] config = CommonUtil.readConfig();
+        String params = "signature:" + signature + " timestamp:" + timestamp + " nonce:" + nonce + " body:" + body;
+        DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor(config[CommonUtil.TOKEN], config[CommonUtil.ENCODING_AES_KEY], config[CommonUtil.SUITE_KEY]);
+
+        // POST リクエストボディから暗号化されたコールバックデータを取得して復号します。後述のメッセージ暗号化・復号の説明を参照してください。
+        String encrypt = body.getString("encrypt");
+        String plainText = dingTalkEncryptor.getDecryptMsg(signature, timestamp.toString(), nonce, encrypt);
+        JSONObject callBackContent = JSON.parseObject(plainText);
+
+        // コールバックイベントタイプに応じて異なる業務処理を実行します
+        String eventType = callBackContent.getString("EventType");
+        //TODO データを永続化します
+        return plainText;
+    }
+}
+```
+
+## メッセージの暗号化と復号
+
+安全なデータ伝送を確保するため、DingTalk がサブスクライブされたコールバックイベントを Callback URL にプッシュする際、イベントのソースを検証するために設定した token を含めます。また、キーを使用してメッセージのコンテンツを対称暗号化します。
+
+コールバックの暗号化・復号ライブラリとそのデモは[こちら](https://github.com/open-dingtalk/dingtalk-callback-Crypto)から取得できます。
+
+DingTalk サーバーは、`msg` メッセージ本文のプレーンテキストを `encrypt` にエンコードします。`encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` は、暗号化されたプレーンテキストメッセージ `msg` の Base64 エンコードです。ここで、
+
+- **random** は 16 バイトのランダム文字列です。
+- **msg\_len** は `msg` の 4 バイトの長さで、ネットワークバイトオーダーです。
+- **msg** はメッセージ本文のプレーンテキストです。
+- **key** はアプリの suiteKey です。
+
+返された JSON から `encrypt` フィールドを抽出します。
+
+- 暗号文を Base64 デコードします: `aes_msg = Base64_Decode(encrypt)`。
+- AESKey を使用して AES 復号を実行します: `rand_msg = AES_Decrypt(aes_msg)`。
+
+暗号化・復号のコード例を以下に示します。完全な例については、[DingTalk サードパーティ社内アプリ - ミニプログラム - クイックスタート（Java）](https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java)を参照してください。
+
+**注意**
+
+このコード例における暗号化・復号処理は、**DingCallbackCrypto** ユーティリティクラスに依存します。[dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto) を参照してください。
+
+```
+public Map<String, String> callBack(HttpServletRequest request,
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. HTTP リクエストから暗号化・復号パラメータを取得します
+
+        // 2. 暗号化・復号タイプを使用します
+        // Constant.OWNER_KEY に関する注意事項:
+        // 1. Developer Console で設定したサブスクリプションイベントがアプリレベルのイベントプッシュの場合、
+        //      OWNER_KEY はアプリの APP_KEY（社内アプリ）または SUITE_KEY（サードパーティアプリ）です。
+        // 2. イベントサブスクリプション API を通じてサブスクライブしたイベントが企業レベルのイベントプッシュの場合、
+        //      OWNER_KEY は企業の CORP_ID（社内アプリ）または SUITE_KEY（サードパーティアプリ）です。
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. コールバックイベントの JSON データをデシリアライズします
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. EventType に応じて処理します
+        bizLogger.info("Event occurred: " + eventType);
+
+        // 5. 暗号化された "success" データを返します
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```

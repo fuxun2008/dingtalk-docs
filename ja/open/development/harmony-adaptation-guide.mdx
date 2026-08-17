@@ -1,0 +1,163 @@
+---
+title: "HarmonyOS 対応ガイド"
+description: "HarmonyOS 上で DingTalk JSAPI を呼び出す方法を解説。SDK のアップグレード、互換性確認、実機検証から HarmonyOS 対応スイッチの有効化まで、開発者向けの対応手順を紹介します。"
+---
+
+このドキュメントでは、HarmonyOS 上で DingTalk JSAPI を呼び出す方法を解説します。
+
+## **フローノード 1：** SDK を最新バージョンにアップグレードする
+
+HarmonyOS 上の Web ページから JSAPI を呼び出すには、[dingtalk-jsapi](https://www.npmjs.com/package/dingtalk-jsapi) を最新バージョン（3.0.45 以上）にアップグレードしてください。
+
+### **npm**
+
+```
+npm install dingtalk-jsapi@latest --save
+```
+
+### **yarn**
+
+```
+yarn upgrade dingtalk-jsapi --latest
+```
+
+### **pnpm**
+
+```
+pnpm update dingtalk-jsapi --latest
+```
+
+プロジェクトが依存している npm パッケージが古いバージョンの [dingtalk-jsapi](https://www.npmjs.com/package/dingtalk-jsapi) に依存している場合は、最新バージョンにアップグレードしてください。`package.json` の `overrides` や `resolutions` などの設定を使用して、dingtalk-jsapi のバージョンを強制してください。
+
+### **npm**
+
+```
+{
+  "overrides": {
+    "dingtalk-jsapi": "^3.0.45"
+  }
+}
+```
+
+### **yarn**
+
+```
+{
+  "resolutions": {
+    "dingtalk-jsapi": "^3.0.45"
+  }
+}
+```
+
+### **pnpm**
+
+```
+{
+  "pnpm": {
+    "overrides": {
+      "dingtalk-jsapi": "^3.0.45"
+    }
+  }
+}
+```
+
+## **フローノード 2：JSAPI の互換性を確認する**
+
+プロジェクトが依存している JSAPI が HarmonyOS でサポートされているかを確認してください。サポートの詳細については、Open Platform の JSAPI ドキュメントの「**サポートに関する注記**」セクションをご覧ください。クライアントサイド JSAPI については、[JSAPI 概要](https://open.dingtalk.com/document/orgapp/jsapi-overview-client-org) を参照してください。
+
+## **フローノード 3：クライアント固有のロジックを対応させる**
+
+ユーザーのオペレーティングシステムが HarmonyOS かどうかを判定する必要があります。方法は 3 つあります。
+
+### **方法 1**
+
+dingtalk-jsapi SDK を使用して、システムが HarmonyOS かどうかを判定します。
+
+```
+import { env } from 'dingtalk-jsapi/core';
+import { ENV_ENUM } from 'dingtalk-jsapi/lib/env';
+
+const isHarmony = env.platform === ENV_ENUM.harmony;
+```
+
+### **方法 2**
+
+Web ページ上で、`navigator.userAgent` を使用してシステムが HarmonyOS かどうかを判定します。
+
+```
+// Web ページ上で navigator.userAgent を使ってシステムが HarmonyOS かどうかを判定する
+
+const isHarmony = /OpenHarmony/i.test(navigator.userAgent)
+```
+
+### **方法 3**
+
+ミニプログラムでは、`getSystemInfo` の `platform` フィールドを読み取って、システムが HarmonyOS かどうかを判定します。
+
+```
+// ミニプログラムでは getSystemInfo の platform フィールドを読み取ってシステムが HarmonyOS かどうかを判定する
+const systemInfo = dd.getSystemInfoSync();
+const isHarmony = systemInfo.platform === 'OpenHarmony';
+```
+
+ビジネスロジックに特定のプラットフォーム向けの特別な処理が含まれている場合は、そのロジックが HarmonyOS と互換性があるかを確認してください。
+
+以下のクライアント固有のロジックを例に挙げます。同様のクライアント固有のロジックが出現した場合は、HarmonyOS との互換性を確認してください。
+
+```
+import { env } from 'dingtalk-jsapi/core';
+import { ENV_ENUM } from 'dingtalk-jsapi/lib/env';
+
+switch (env.platform) {
+  case ENV_ENUM.android: {
+    // Android クライアント向けの特別なロジック
+    // ...
+    break;
+  }
+  case ENV_ENUM.ios: {
+    // iOS クライアント向けの特別なロジック
+    // ...
+    break;
+  }
+  default: {
+    // その他のタイプのクライアント向けの特定のロジック
+
+    // 注意！注意！注意！！！
+    // ここで HarmonyOS クライアントがサポートされているかを確認する。
+
+    
+    // ...
+    
+    break;
+  }
+}
+```
+
+## **フローノード 4：** 実機で検証する
+
+コードを適切に対応させた後、HarmonyOS デバイスで実行し、期待どおりに動作することを確認してください。
+
+1. 最新バージョンの [DingTalk HarmonyOS クライアント](https://www.dingtalk.com/download#/) をダウンロードしてインストールします。
+2. 対応するコードロジックを以下の手順でデバッグします。
+
+   |  |  |
+   | --- | --- |
+   | **アプリタイプ** | **説明** |
+   | Web アプリ（マイクロアプリ） | [マイクロアプリ 4 端末デバッグツール](https://open.dingtalk.com/document/resourcedownload/micro-application-four-terminal-debugging-tool-web-edition) を使用して HarmonyOS クライアント上でデバッグします。 |
+   | ミニプログラム | **実機プレビュー**  [ミニプログラム開発者ツール](https://open.dingtalk.com/document/resourcedownload/miniapp-tool) の「プレビュー」を使用してデバッグします。      **実機デバッグ**  - フローノード 1：DingTalk クライアントをバージョン **7.6.30** 以上にアップグレードします。 - フローノード 2：ミニプログラム開発者ツールの「メニュー」で HarmonyOS ミニプログラムの「実機デバッグ」機能を有効化します。   1. 「ヘルプ」＞「ローカル設定」を開き、以下の設定を入力して保存し、再起動します。      ```    &#123;      "DD_PROJECT_100": [        &#123;          "keyPath": "enableRemoteX",          "priority": 1000,          "value": true        &#125;,        &#123;          "keyPath": "supportsAppxNG",          "priority": 1000,          "value": true        &#125;      ]    &#125;    ```      2. 「実機デバッグ」をクリックし、ミニプログラムのコンパイルが完了してデバッグ用の QRコードが生成されるのを待ちます。DingTalk の「スキャン」でコードをスキャンし、デバッグを開始します。 3. 実機で結果を確認します。 |
+   |  |  |
+
+## **フローノード 5：HarmonyOS 対応スイッチを有効化して再公開する**
+
+1. アプリの対応が完了したら、該当するアプリをクリックして詳細ページを開きます。
+
+   > まだアプリを作成していない場合は、[アプリの作成](https://open.dingtalk.com/document/orgapp/create-an-application) ドキュメントを参照してください。
+2. **基本情報** ＞ **認証情報と基本情報** をクリックします。**オペレーティングシステム** モジュールで、「HarmonyOS」スイッチをオンにします。
+
+3. 「HarmonyOS」スイッチをオンにした後、**アプリ公開** ＞ **バージョン管理と公開** をクリックします。公開ページで新しいバージョンを作成し、公開を完了します。
+
+## **よくある質問（Q&A）**
+
+### **エラー：[DINGTALK-JSAPI] ERROR 4040: Do not support the current environment: 'notinDingTalk'**
+
+回答：これは dingtalk-jsapi が最新バージョンにアップグレードされておらず、古いバージョンが HarmonyOS クライアントを認識できないために発生します。dingtalk-jsapi を最新バージョンにアップグレードすることで解決します。

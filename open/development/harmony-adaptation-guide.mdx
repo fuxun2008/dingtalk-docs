@@ -1,0 +1,163 @@
+---
+title: "HarmonyOS Adaptation Guide"
+description: "This document guides you through calling DingTalk JSAPI on HarmonyOS."
+---
+
+This document guides you through calling DingTalk JSAPI on HarmonyOS.
+
+## **Step 1:** Upgrade the SDK to the Latest Version
+
+To call JSAPI from a web page on HarmonyOS, upgrade [dingtalk-jsapi](https://www.npmjs.com/package/dingtalk-jsapi) to the latest version (3.0.45+).
+
+### **npm**
+
+```
+npm install dingtalk-jsapi@latest --save
+```
+
+### **yarn**
+
+```
+yarn upgrade dingtalk-jsapi --latest
+```
+
+### **pnpm**
+
+```
+pnpm update dingtalk-jsapi --latest
+```
+
+When an npm package your project depends on relies on an older version of [dingtalk-jsapi](https://www.npmjs.com/package/dingtalk-jsapi), upgrade it to the latest version. Use configurations such as `overrides` or `resolutions` in `package.json` to force the version of dingtalk-jsapi.
+
+### **npm**
+
+```
+{
+  "overrides": {
+    "dingtalk-jsapi": "^3.0.45"
+  }
+}
+```
+
+### **yarn**
+
+```
+{
+  "resolutions": {
+    "dingtalk-jsapi": "^3.0.45"
+  }
+}
+```
+
+### **pnpm**
+
+```
+{
+  "pnpm": {
+    "overrides": {
+      "dingtalk-jsapi": "^3.0.45"
+    }
+  }
+}
+```
+
+## **Step 2: Check JSAPI Compatibility**
+
+Confirm that the JSAPI your project depends on is supported on HarmonyOS. For support details, see the "**Support Notes**" section in the JSAPI documentation on the Open Platform. For the Client-side JSAPI, refer to [JSAPI Overview](https://open.dingtalk.com/document/orgapp/jsapi-overview-client-org).
+
+## **Step 3: Adapt Client-Specific Logic**
+
+You need to determine whether the user's operating system is HarmonyOS. There are three methods:
+
+### **Method 1**
+
+Use the dingtalk-jsapi SDK to determine whether the system is HarmonyOS.
+
+```
+import { env } from 'dingtalk-jsapi/core';
+import { ENV_ENUM } from 'dingtalk-jsapi/lib/env';
+
+const isHarmony = env.platform === ENV_ENUM.harmony;
+```
+
+### **Method 2**
+
+On a web page, use `navigator.userAgent` to determine whether the system is HarmonyOS.
+
+```
+// Determine whether the system is HarmonyOS via navigator.userAgent on a web page
+
+const isHarmony = /OpenHarmony/i.test(navigator.userAgent)
+```
+
+### **Method 3**
+
+In a mini program, read the `platform` field from `getSystemInfo` to determine whether the system is HarmonyOS.
+
+```
+// In a mini program, read the platform field from getSystemInfo to determine whether the system is HarmonyOS.
+const systemInfo = dd.getSystemInfoSync();
+const isHarmony = systemInfo.platform === 'OpenHarmony';
+```
+
+When your business logic includes special handling for specific platforms, confirm whether that logic is compatible with HarmonyOS.
+
+Take the following client-specific logic as an example. When similar client-specific logic appears, confirm its compatibility with HarmonyOS.
+
+```
+import { env } from 'dingtalk-jsapi/core';
+import { ENV_ENUM } from 'dingtalk-jsapi/lib/env';
+
+switch (env.platform) {
+  case ENV_ENUM.android: {
+    // Special logic for the Android client
+    // ...
+    break;
+  }
+  case ENV_ENUM.ios: {
+    // Special logic for the iOS client
+    // ...
+    break;
+  }
+  default: {
+    // Specific logic for other types of clients
+
+    // NOTE! NOTE! NOTE!!!
+    // Confirm here whether the HarmonyOS client is supported.
+
+    
+    // ...
+    
+    break;
+  }
+}
+```
+
+## **Step 4:** Verify on a Physical Device
+
+After adapting the code accordingly, run it on a HarmonyOS device to confirm that it works as expected.
+
+1. Download and install the latest version of the [DingTalk HarmonyOS Client](https://www.dingtalk.com/download#/).
+2. Debug the corresponding code logic as follows:
+
+   |  |  |
+   | --- | --- |
+   | **App type** | **Description** |
+   | Web app (Micro app) | Debug it on the HarmonyOS client using the [Micro App Four-Terminal Debugging Tool](https://open.dingtalk.com/document/resourcedownload/micro-application-four-terminal-debugging-tool-web-edition). |
+   | Mini program | **Physical Device Preview**  Debug it using "Preview" in the [Mini Program Developer Tools](https://open.dingtalk.com/document/resourcedownload/miniapp-tool).      **Physical Device Debugging**  - Step 1: Upgrade the DingTalk client to version **7.6.30**+. - Step 2: Enable the "Physical Device Debugging" capability for HarmonyOS mini programs in the "Menu" of the Mini Program Developer Tools.   1. Open "Help" > "Local Configuration", enter the following configuration, save, and restart:      ```    &#123;      "DD_PROJECT_100": [        &#123;          "keyPath": "enableRemoteX",          "priority": 1000,          "value": true        &#125;,        &#123;          "keyPath": "supportsAppxNG",          "priority": 1000,          "value": true        &#125;      ]    &#125;    ```      2. Click "Physical Device Debugging" and wait for the mini program to finish compiling and generate a debugging QR Code. Use DingTalk "Scan" to scan the code and start debugging. 3. View the result on the physical device. |
+   |  |  |
+
+## **Step 5: Enable the HarmonyOS Adaptation Toggle and Republish**
+
+1. After the app adaptation is complete, click the corresponding app to open its details page.
+
+   > If you have not created an app yet, refer to the [Create an App](https://open.dingtalk.com/document/orgapp/create-an-application) document for details.
+2. Click **Basic Information** > **Credentials and Basic Information**. In the **Operating System** module, turn on the "HarmonyOS" toggle.
+
+3. After turning on the "HarmonyOS" toggle, click **App Release** > **Version Management and Release**. On the release page, create a new version and complete the release.
+
+## **FAQ (Q&A)**
+
+### **Error: [DINGTALK-JSAPI] ERROR 4040: Do not support the current environment: 'notinDingTalk'**
+
+Answer: This occurs because dingtalk-jsapi has not been upgraded to the latest version, and the older version does not recognize the HarmonyOS client. Upgrade dingtalk-jsapi to the latest version to resolve it.

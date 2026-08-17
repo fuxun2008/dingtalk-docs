@@ -1,0 +1,108 @@
+---
+title: "DingTalk Security Domain"
+description: "Pelajari cara mengikat private SLB ke DingTalk security domain untuk aplikasi perusahaan pihak ketiga di DingTalk — panduan konfigurasi domain server mini program dan aplikasi mikro bagi developer."
+---
+
+Aplikasi perusahaan pihak ketiga harus mengikat layanan private Server Load Balancer (SLB) ke DingTalk security domain, dan menggunakan security domain yang terikat sebagai domain sisi server dari mini program atau aplikasi mikro.
+
+**Penting** 
+
+- Karena peningkatan arsitektur domain gateway, DingTalk security domain tidak lagi mendukung akses private SLB dari DingTalk Cloud atau Jushita.
+- Sebelum membuat asosiasi, pastikan private SLB telah dibeli di bawah akun Alibaba Cloud (deployment Compute Nest) yang terasosiasi di developer console, bahwa private SLB memiliki port listener HTTP yang dikonfigurasi, dan bahwa pengalihan HTTP-ke-HTTPS tidak dikonfigurasi. Saat ini, hanya CLB yang didukung; ALB tidak didukung.
+- Pilih SLB dan domain yang valid untuk diikat. Kami menyarankan penggunaan "app" + appId sebagai domain untuk menghindari duplikasi.
+- Setelah Anda mengikat security domain, sebuah node PrivateLink endpoint service dibuat secara default di bawah akun cloud untuk membangun saluran privat dari DingTalk security domain gateway ke SLB terasosiasi di bawah akun cloud. Node PrivateLink endpoint service gratis di sisi ISV.
+- Jika tipe push adalah SyncHttp, Anda harus menggunakan DingTalk security domain pada alamat push dari URL callback.
+- Domain API sisi server aplikasi harus menggunakan DingTalk security domain.
+- Wilayah dan zona yang didukung oleh private SLB untuk metode deployment Compute Nest adalah sebagai berikut:
+
+  |  |  |
+  | --- | --- |
+  | **Wilayah** | **Zona** |
+  | China East 1 (Hangzhou) | Zone B, Zone E, Zone F, Zone G, Zone H, Zone I, Zone J, Zone K |
+  | China East 2 (Shanghai) | Zone B, Zone E, Zone F, Zone G, Zone L, Zone M, Zone N, Zone I, Zone H |
+  | China North 2 (Beijing) | Zone B, Zone C, Zone D, Zone E, Zone F, Zone G, Zone H, Zone I, Zone K, Zone L |
+  | China North 3 (Zhangjiakou) | Zone A, Zone B, Zone C |
+  | China South 1 (Shenzhen) | Zone D, Zone E, Zone F |
+
+## Prosedur
+
+1. Masuk ke [Developer Console](https://open-dev.dingtalk.com/).
+2. Cari aplikasi yang Anda buat. Pada halaman detail aplikasi, klik **DingTalk Security Domain**.
+3. Pilih private SLB yang akan diasosiasikan dan domain yang akan digunakan, pilih perjanjian otorisasi, lalu klik **Associate**.
+
+   **Catatan** 
+
+   Setelah Anda mengirim permintaan pengikatan security domain, tunggu peninjauan keamanan DingTalk, yang biasanya membutuhkan 1 hingga 2 hari kerja. Setelah disetujui, proses secara otomatis mengikat private SLB ke security domain, yang berlaku dalam 1 hingga 2 hari kerja. Pantau pembaruan status. Jika permintaan ditolak, modifikasi dan kirim ulang.
+
+   - Private SLB: Sebuah private SLB telah dibeli di bawah akun Alibaba Cloud yang terikat ke Jushita, DingTalk Cloud, atau Compute Nest.
+
+     **Catatan** 
+
+     SLB harus memiliki port listener HTTP yang dikonfigurasi. Jangan gunakan port HTTPS umum seperti 443 atau 8443.
+   - Security domain: Kami menyarankan penggunaan "app" + appId sebagai domain untuk menghindari duplikasi.
+
+## Kriteria verifikasi untuk aktivasi DingTalk security domain
+
+- Jika tipe push aplikasi perusahaan pihak ketiga adalah **HTTP** atau **syncHTTP**, domain alamat push harus berupa DingTalk security domain.
+- Jika aplikasi perusahaan pihak ketiga adalah mini program, API sisi server yang diminta oleh mini program harus menggunakan DingTalk security domain.
+- Jika aplikasi perusahaan pihak ketiga adalah aplikasi mikro H5 dengan arsitektur front-end dan back-end yang terpisah, API sisi server harus menggunakan security domain. Jika aplikasinya terintegrasi antara front-end dan back-end, alamat halaman beranda aplikasi harus menggunakan DingTalk security domain.
+
+## FAQ
+
+### 1. SLB telah dibeli, tetapi informasi SLB tidak ditampilkan pada tahap "1 Associate SLB"
+
+**Jawaban:** Pertama, lakukan pemeriksaan mandiri berikut:
+
+- Konfirmasi bahwa akun cloud telah diasosiasikan di developer console.
+- Konfirmasi bahwa private SLB yang dibeli berada dalam rentang wilayah yang didukung. Deployment Compute Nest mendukung China East 1 (Hangzhou), China North 3 (Zhangjiakou), China North 2 (Beijing), China East 2 (Shanghai), dan China South (Shenzhen). Deployment Jushita hanya mendukung China North 3 (Zhangjiakou), dan deployment DingTalk Cloud hanya mendukung China East 1 (Hangzhou).
+- Konfirmasi bahwa Anda membeli CLB, bukan ALB.
+- Konfirmasi bahwa port listener SLB dikonfigurasi dengan protokol HTTP, bukan protokol TCP.
+
+Jika informasi SLB masih tidak ditampilkan setelah semua pemeriksaan di atas, kirim tiket untuk masukan.
+
+### 2. Pada tahap "2 Domain Configuration", status saat ini menunjukkan "Domain Under Review, Please Wait"
+
+**Jawaban:** Dalam kasus ini, security domain sedang ditinjau dan dikonfigurasi. Biasanya, konfigurasi membutuhkan 1 hari kerja untuk selesai. Tunggu 1 hari kerja sebelum memeriksa kembali.
+
+**Catatan** 
+
+Permintaan security domain untuk aplikasi non-produksi akan ditolak. Karena alasan biaya di sisi DingTalk, security domain tidak lagi disediakan untuk aplikasi non-produksi seperti aplikasi uji dan aplikasi staging. Jika Anda perlu menguji security domain, pertama-tama minta security domain untuk aplikasi produksi dan ikat ke lingkungan uji atau staging (alihkan pengikatan dengan mengganti grup ECS yang menjadi tujuan penerusan traffic oleh SLB). Setelah verifikasi, alihkan pengikatan ke aplikasi produksi.
+
+### 3. Pada tahap "3 Use in App", status security domain saat ini adalah "Domain Binding Failed, DingTalk Admin Processing"
+
+**Jawaban:** Dalam kasus ini, konfigurasi security domain gagal. Anda dapat mengirim tiket untuk menghubungi dukungan teknis DingTalk agar dilakukan intervensi manual. Setelah intervensi manual, pemrosesan biasanya membutuhkan 1 hari kerja untuk selesai.
+
+### 4. Pada tahap "3 Use in App", status security domain saat ini adalah "Domain Binding Succeeded", tetapi status aktivasi domain adalah "Security Domain Not Activated"
+
+**Jawaban:** Dalam kasus ini, DingTalk telah menyelesaikan peninjauan dan konfigurasi security domain. Anda perlu menyelesaikan konfigurasi security domain di sisi developer sesuai dengan **Kriteria Verifikasi untuk Aktivasi**. Setelah konfigurasi selesai, aktivasi dapat terdeteksi berlaku dalam 1 hari kerja.
+
+### 5. SLB yang semula terikat tidak lagi digunakan dan SLB baru perlu diikat
+
+**Jawaban: Klik Modify** dan pilih SLB baru untuk diikat:
+
+- Jika Anda tidak dapat melihat informasi SLB yang perlu diikat ulang, tangani dengan merujuk pada FAQ pertama.
+- Jika Anda dapat melihat informasi SLB yang akan diikat ulang, Anda dapat memodifikasinya. Biasanya, operasi perubahan SLB mendukung peralihan tanpa gangguan, tetapi sedikit jitter layanan dapat terjadi selama proses pengikatan ulang. Alamat security domain tidak berubah setelah operasi perubahan.
+
+### 6. Setelah security domain dikonfigurasi, apakah traffic pengguna ke aplikasi akan langsung dialihkan ke security domain?
+
+**Jawaban:** Tidak. Setelah konfigurasi security domain berlaku, traffic akses tidak dialihkan ke security domain secara default. Anda perlu mengonfigurasi perutean traffic ke security domain di sisi aplikasi sesuai kebutuhan, dan mengaktifkan domain sesuai kriteria aktivasi pada FAQ 7, 8, dan 9.
+
+### 7. Verifikasi aktivasi security domain: Gunakan security domain untuk alamat push
+
+**Jawaban:** Gunakan security domain untuk domain di **Events and Callbacks > Callback Request Address** pada fitur aplikasi.
+
+### 8. Verifikasi aktivasi security domain: Gunakan security domain untuk halaman beranda aplikasi
+
+**Jawaban:** Konfigurasikan security domain di **App Home Page Address** dan **PC Home Page Address** pada halaman **Development Management** dari informasi dasar.
+
+### 9. Verifikasi aktivasi security domain: Gunakan security domain untuk API sisi server dari mini program atau aplikasi dengan front-end dan back-end yang terpisah
+
+**Jawaban:** Konfigurasikan distribusi traffic untuk security domain di layanan web nginx atau tomcat aplikasi. Untuk metode konfigurasi spesifik, cari dokumentasi terkait secara online. Open Platform mendeteksi dan memverifikasi alamat domain API sisi server, yang biasanya berlaku berdasarkan T+1.
+
+### 10. Cara mengonfigurasi sertifikat HTTPS untuk security domain
+
+**Jawaban:** Security domain menyediakan akses HTTPS secara default. Anda tidak perlu memperoleh sertifikat security domain atau mengonfigurasinya di sisi developer. Cukup konfigurasikan HTTP pada SLB cloud; Anda tidak perlu mengonfigurasi HTTPS. Security domain gateway meneruskan traffic HTTP melalui saluran khusus ke private SLB developer.
+
+### 11. Pengalihan terus-menerus saat mengakses security domain
+
+**Jawaban:** Periksa konfigurasi private SLB. Batalkan konfigurasi **Redirect to HTTPS:443** pada port 80 (atau port HTTP lain) dari SLB, teruskan traffic ke port web dari backend server, dan konfigurasikan web server dari layanan backend di server group. Untuk membatalkan konfigurasi pengalihan, rujuk [HTTP Redirect to HTTPS](https://help.aliyun.com/document_detail/89151.html).

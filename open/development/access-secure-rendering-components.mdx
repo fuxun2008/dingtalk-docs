@@ -1,0 +1,166 @@
+---
+title: "Method 2: Integrate the DingTalk Secure Rendering Component"
+description: "This document describes how to integrate the DingTalk secure rendering component to encrypt Contacts."
+---
+
+This document describes how to integrate the DingTalk secure rendering component to encrypt Contacts.
+
+## **Background Information**
+
+Contacts data (user names, user job titles, and department names) is important sensitive data of an organization. Requirements vary depending on the app deployment method used by the service provider. Some deployment methods require Contacts encryption; otherwise, the app cannot be listed on the App Market.
+
+To meet the requirement of "obtaining sensitive fields on the user side while preventing developers from accessing them," DingTalk provides the secure rendering component (open-data) solution for a safer and better experience.
+
+## **Procedure**
+
+1. Concatenate the user sign-in state URL on the front-end page.
+
+   **Note** 
+
+   The **sign-in state URL** is primarily constructed based on the **callback URL** (the ISV's own front-end page link, such as the app Home URL or the URL of a page that uses the H5 rendering component). When the user redirects to the **sign-in state URL** on the client, they are ultimately redirected to the **callback URL**.
+
+   1. Encode the callback URL.
+
+      **Note** 
+
+      *https://open.dingtalk.com/document* is used as an example in all steps.
+
+      ```
+      https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   2. Add the **fixed prefix** `http://auth.dingtalk.com/login?redirectUri=`.
+
+      ```
+      http://auth.dingtalk.com/login?redirectUri=https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   3. Encode the URL again.
+
+      ```
+      http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   4. Add the **fixed prefix** `https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=` and concatenate it to obtain the **sign-in state URL**.
+
+      ```
+      https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   5. Import the open-data SDK on the front-end page.
+
+      ```
+      <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+      ```
+
+      **Note** 
+      - Place the SDK script within the &lt;head> tag and before all other &lt;script> tags; otherwise, the SDK does not take effect.
+      - The SDK content is returned dynamically. Import it strictly as shown in the demo. Do not save it locally in the project and then bundle it.
+   6. Load the data from open-data on the front-end page.
+
+      1. Call the DTOpenData.init method to initialize.
+
+         |  |  |
+         | --- | --- |
+         | **Configuration Item** | **Description** |
+         | `CorpId` | The CorpId value of the organization that has enabled the app. |
+         | `Sign-in state URL` | The sign-in state URL obtained by adding the final fixed prefix. |
+
+         **Note** 
+
+         This method returns a Boolean value indicating whether initialization succeeds or fails. If initialization fails, it is usually because Step 1 was performed incorrectly or the sign-in state has expired. In that case, reconstruct the "sign-in state URL" and redirect to it again.
+
+         ```
+         <script>
+           if (window.DTOpenData.init('$CorpId$')) {
+             // The input parameter is the corpId value of the organization that has enabled the app
+             // SDK initialization succeeded, continue executing the page logic
+           } else {
+             // The current user is not signed in, redirect to DingTalk unified sign-in
+             window.location.href = '$Sign-in state URL$';
+           }
+         </script>
+         ```
+      2. When there is data on the page that needs secure rendering, construct a dt-open-data element on the page and correctly set its open-type and open-id attributes. After the DOM element is set, call the DTOpenData.update method and pass in the DOM element objects to be rendered to complete rendering automatically.
+
+         **Note** 
+
+         The number of DOM nodes passed into the DTOpenData.update method at one time cannot exceed 200; otherwise, rendering fails.
+
+         ```
+         <div>
+           <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+           <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+           <dt-open-data open-type="departmentName" open-id="2202079361"></dt-open-data>
+         </div>
+
+         <script>
+           window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+         </script>
+         ```
+
+         |  |  |  |  |
+         | --- | --- | --- | --- |
+         | **Attribute** | **Type** | **Required** | **Description** |
+         | open-type | String | Yes | The type of open data:  - userName: user name - userTitle: user job title - deptName: department name |
+         | open-id | String | Yes | When the openType value is:  - userName: user userId - userTitle: user userId - deptName: department name |
+
+## **SDK Usage Example**
+
+```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+  </head>
+  <body>
+    <div>
+      <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+      <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+      <dt-open-data open-type="deptName" open-id="2202079361"></dt-open-data>
+    </div>
+    <div id="load">Click to load data</div>
+    <script>
+      if (window.DTOpenData.init('ding1d4b5fc9223daa8e35c2f4657eb6378f')) {
+        document.getElementById('load').addEventListener('click', () => {
+          window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+        });
+      } else {
+        // The current user is not signed in, redirect to DingTalk unified sign-in
+        window.location.href = '$Sign-in state URL$';
+      }
+    </script>
+  </body>
+</html>
+```
+
+## **(Optional) Content Translation**
+
+#### **Message Notification Template Content Translation**
+
+When sending a notification message, you can include IDs in the content using template parameter syntax. DingTalk replaces them with user names or department names. The following Server API is involved:
+
+- [Send Work Notifications](https://open.dingtalk.com/document/isvapp/send-job-notification)
+
+Add the `enable_id_trans` field to the original API parameters and set it to true to enable translation. This is required only for Third-party apps; Internal apps can ignore it.
+
+**Contacts ID Translation Template Syntax**
+
+```
+$departmentName=DEPARTMENT_ID$
+$userName=USER_ID$
+```
+
+Here, DEPARTMENT\_ID is a numeric department ID, and USER\_ID is a user ID. For example:
+
+- $departmentName=1$ is replaced with the department name corresponding to department ID "1", such as "DingTalk User Experience Department."
+- $userName=00001$ is replaced with the user name corresponding to userid "lisi007", such as "John."
+
+#### **Contacts Translation**
+
+- [Asynchronously Translate Contacts IDs](https://open.dingtalk.com/document/isvapp/asynchronous-address-book-file-content-translation)
+- [Obtain the Result of an Asynchronous Translation Task](https://open.dingtalk.com/document/isvapp/obtains-the-results-of-an-asynchronous-translation-task)
+
+## **Next Steps**
+
+After integrating the secure rendering component, you need to [import resources to Compute Nest](https://open.dingtalk.com/document/isvapp/import-resources-compute-nest).

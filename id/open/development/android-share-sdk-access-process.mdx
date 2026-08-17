@@ -1,0 +1,133 @@
+---
+title: "Alur integrasi Android Share SDK"
+description: "Pelajari cara mengintegrasikan fitur berbagi DingTalk pada aplikasi Android menggunakan DingTalk Android Share SDK — mulai dari konfigurasi, dependensi, hingga implementasi kode."
+---
+
+Artikel ini menjelaskan cara mengintegrasikan fitur berbagi DingTalk menggunakan DingTalk Android Share SDK.
+
+## Persiapan
+
+Sebelum mengintegrasikan fitur berbagi DingTalk di Android, selesaikan persiapan berikut:
+
+- Siapkan lingkungan pengembangan Android.
+- Unduh [Android SDK](https://files.alicdn.com/tpsservice/e76b61f0c65ddda660bb07f265c35b19.zip).
+- Instal klien DingTalk versi 2.7.0 atau yang lebih baru.
+
+## Langkah 1: **Integrasikan fitur berbagi DingTalk**
+
+1. Masuk ke [Developer Console](https://open-dev.dingtalk.com/#/shareMan), lalu buka halaman detail aplikasi.
+2. Pada halaman detail aplikasi, klik **DingTalk Sign-in and Sharing** untuk membuka halaman masuk dan berbagi.
+
+3. Di bagian **Integrate Sharing**, klik **Edit** di sebelah kanan.
+4. Aktifkan **Android Sharing**, masukkan **Android Package Name** dan **Android Signature** secara berurutan, lalu klik Save.
+
+   **Catatan**
+
+   Untuk cara memperoleh tanda tangan, lihat [Metode Tanda Tangan](https://open.dingtalk.com/document/isvapp-client/share-sdk-download#topic-1949255).
+
+## Langkah 2: Siapkan lingkungan pengembangan
+
+Siapkan lingkungan pengembangan menggunakan salah satu metode berikut.
+
+- Metode 1: Dependensi Gradle
+
+  Tambahkan `compile 'com.alibaba.android:ddsharesdk:1.1.0'` ke `dependencies` pada `build.gradle` modul.
+- Metode 2: Impor file JAR secara langsung
+
+  1. Buat proyek Android bernama DDShareDemo, buat direktori libs di dalam proyek, lalu salin file JAR yang telah diunduh ke direktori tersebut, seperti yang ditunjukkan di bawah ini:
+
+  2. Tambahkan file JAR di direktori libs ke dependensi proyek.
+
+## Langkah 3: **Gunakan SDK di dalam kode Anda**
+
+Jika aplikasi Anda perlu menerima permintaan yang dikirim oleh DingTalk, atau menerima respons atas permintaan yang dikirim ke DingTalk, lakukan langkah-langkah berikut:
+
+1. Buat direktori `ddshare` di bawah direktori yang sesuai dengan nama paket Anda.
+
+   Kemudian tambahkan atribut **exported** pada file `AndroidManifest` dan atur ke **true.**
+
+2. Implementasikan antarmuka **IDDAPIEventHandler**. Respons dari DingTalk dikembalikan ke metode onResp melalui callback.
+
+   Berikut ini adalah contoh kode untuk metode onResp:
+
+   ```
+   public void onResp(BaseResp baseResp) {
+       int errCode = baseResp.mErrCode;
+       Log.d("lzc" , "errorCode==========>"+errCode);
+       String errMsg = baseResp.mErrStr;
+       Log.d("lzc" , "errMsg==========>"+errMsg);
+       if(baseResp.getType() == ShareConstant.COMMAND_SENDAUTH_V2 && (baseResp instanceof SendAuth.Resp)){
+           SendAuth.Resp authResp = (SendAuth.Resp) baseResp;
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "Otorisasi berhasil. Kode otorisasi: "+authResp.code, Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "Otorisasi dibatalkan", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "Kesalahan otorisasi"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }else{
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "Berbagi berhasil", Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "Berbagi dibatalkan", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "Berbagi gagal"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }
+       finish();
+   }
+   ```
+3. Pada kelas **DDShareActivity**, teruskan intent yang diterima dan objek yang mengimplementasikan antarmuka **IDDAPIEventHandler** ke metode handleIntent dari antarmuka **IDDShareApi**. Kemudian, ketika aplikasi Anda meminta respons dari DingTalk, DingTalk mengembalikannya dengan memanggil metode onResp.
+
+   ```
+   private IDDShareApi mIDDShareApi;
+
+   @Override
+   protected void onCreate(Bundle savedInstanceState) {
+       super.onCreate(savedInstanceState);
+       Log.d("lzc" ,"onCreate==========>");
+       try {
+           // Export activity diatur ke true, jadi bungkus dalam blok try untuk mencegah serangan denial-of-service dari pihak ketiga
+           mIDDShareApi = DDShareApiFactory.createDDShareApi(this, Constant.APP_ID, false);
+           mIDDShareApi.handleIntent(getIntent(), this);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Log.d("lzc" , "e===========>"+e.toString());
+       }
+   }
+   ```
+4. Tentukan apakah perangkat saat ini mendukung fitur berbagi.
+
+   - Tentukan apakah DingTalk telah terinstal pada perangkat saat ini.
+
+     ```
+     findViewById(R.id.ding_install_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isInstalled = iddShareApi.isDDAppInstalled();
+             Toast.makeText(MainActivity.this, "Terinstal===>" + isInstalled, Toast.LENGTH_SHORT).show();
+         }
+     });
+     ```
+   - Tentukan apakah perangkat saat ini mendukung berbagi ke DingTalk (DingTalk telah terinstal dan versi DingTalk mendukung fitur berbagi).
+
+     ```
+     findViewById(R.id.share_support_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isSupport = iddShareApi.isDDSupportAPI();
+             Toast.makeText(MainActivity.this ,"Mendukung berbagi ke Kontak===>"+isSupport ,Toast.LENGTH_SHORT ).show();
+         }
+     });
+     ```
+5. Tipe berbagi yang didukung.
+
+   Tipe Teks, Gambar, Tautan, dan tipe khusus amplop merah Alipay didukung. Untuk penggunaan spesifik, lihat contoh **Android SDK** yang telah diunduh.

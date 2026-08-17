@@ -1,0 +1,100 @@
+---
+title: "DingTalk H5アプリ オフラインパッケージ"
+description: "DingTalk H5アプリのオフラインパッケージ機能を解説。オフラインパッケージの概要、有効化・パッケージ化・アップロード・リリースの手順から利用方法まで、ネットワーク環境の影響を抑える導入手順を紹介します。"
+---
+
+このドキュメントでは、オフラインパッケージ管理の概要と、オフラインパッケージの利用方法について説明します。
+
+## オフラインパッケージとは
+
+オフラインパッケージは、HTML、JavaScript、CSS などのページ内静的リソースを 1 つの圧縮アーカイブにまとめたものです。ユーザーがアプリを開くと、クライアントサイドがオフラインパッケージをローカルにダウンロードし、DingTalk クライアントサイドを通じてローカルストレージから直接読み込みます。これにより、ネットワーク環境が DingTalk H5マイクロアプリに与える影響を最小限に抑えます。
+
+## 導入の制限事項
+
+- モバイルでのみ利用可能で、クライアントサイドのバージョンは 6.5.20 以降である必要があります。
+- アップロードするオフラインリソースの合計サイズは 10 MB を超えてはなりません。
+
+## 導入手順
+
+### フローノード 1：マイクロアプリのオフラインパッケージ機能を有効化する
+
+1. [DingTalk Developer Console](https://open-dev.dingtalk.com/) にログインします。
+2. オフラインパッケージを有効化したいアプリを選択します。
+3. ナビゲーションバーで **Version Management and Release** をクリックします。**Version Management and Release** ページで **Offline Package Management** ボタンをクリックし、続いて **Confirm** をクリックします。
+
+### フローノード 2：オフラインパッケージをパッケージ化する
+
+1. プロジェクトで、npm を使って [dingtalk-h5package-opensdk](https://www.npmjs.com/package/dingtalk-h5package-opensdk) をインストールします。
+
+   ```
+   npm install dingtalk-h5package-opensdk --save-dev
+   ```
+2. プロジェクトで、オフラインパッケージの設定ファイル `localresource.json` を作成します。以下は例です。
+
+   ```
+   {
+     "miniAppId": "バンドルするオフラインパッケージの ID",
+     // オンラインリソースの URL とローカルのファイルまたはディレクトリのマッピング。キーはローカルリソースに対応するオンラインリソースの URL パス、値はローカルリソースのディレクトリです。
+     "assets": {
+       // 値はディレクトリです。この設定により、./dist ディレクトリ配下のリソースが https://www.example.com/myapp パスに追加されます。
+       "https://www.example.com/myapp": "./dist"
+     },
+     // 依存する外部 URL のリスト。
+     "externalAssets": [
+       "https://unpkg.com/react@16.7.0/umd/react.production.min.js",
+       "https://unpkg.com/vue@3.2.45/dist/vue.global.js",
+       "https://unpkg.com/jquery@3.6.1/dist/jquery.js"
+     ]
+   }
+   ```
+3. プロジェクトでパッケージ化コマンドを実行し、`${offlinePackageId}.zip` という名前のリソースファイルをローカルに出力します。
+
+   ```
+   npx h5package pack
+   ```
+
+### フローノード 3：オフラインパッケージをアップロードする
+
+**Version Management and Release** ページで **Please upload the H5 resource package (.zip, .tar, .tar.gz)** をクリックし、フローノード 2 で作成したアーカイブリソースを選択して、オフラインパッケージの解析が完了するまで待ちます。
+
+### フローノード 4：オフラインパッケージをリリースする
+
+対象バージョンのオフラインパッケージを選択し、**Release** ボタンをクリックして、続いて **Confirm Release** をクリックします。
+
+## 利用方法
+
+業務 URL のクエリパラメータに `dd_mini_app_id` フィールドを追加します。その値は **Offline Package Management** ページの **Offline Package ID** から取得します。
+
+例：
+
+通常の URL：https://www.example.com/myapp/index.html
+
+オフラインパッケージの URL：https://www.example.com/myapp/index.html?dd_mini_app_id=500000000xxxxx
+
+## デバッグツール
+
+DingTalk はオフラインパッケージ用のデバッグツールを提供しています。主な機能は、**スマートフォン上のローカルオフラインパッケージ情報の確認** と **H5オフラインパッケージページ向けの DevTools** です。
+
+デバッグツールを利用するためのクライアントサイドのバージョン要件：Android 6.5.35 以降、iOS 6.5.35 以降。
+
+ツールの利用方法：DingTalk クライアントサイドで次の QRコードをスキャンします。
+
+QRコードをスキャンすると、デバッグツールのホームページに入ります。
+
+### H5ページ診断
+
+ページ診断の仕組み：H5オフラインパッケージページが開くと、コンテナがページに DevTools を注入し、ページの動作を監視します。
+
+手順：
+
+1. **H5 Page Diagnosis** をクリックします。
+2. 有効化する H5オフラインパッケージの URL を入力します。
+3. **Start Diagnosis** をクリックして診断ページに入ります。
+
+### ローカルオフラインパッケージの確認
+
+手順：
+
+1. **Local Offline Package Query** をクリックします。
+2. オフラインパッケージの ID である `miniAppId` を入力します。
+3. **View Offline Package Information** をクリックします。

@@ -1,0 +1,222 @@
+---
+title: "配置事件订阅"
+description: "钉钉会向应用推送订阅的事件，例如部门变更、签到通知、打卡通知等。通过订阅这些事件，可以更好地与钉钉集成。你只需告诉钉钉当某个事件发生时，钉钉需要推送消息到哪个URL，钉钉会以HTTP POST请求的方式将事件内容以JSON格式推送给你。"
+---
+
+钉钉会向应用推送订阅的事件，例如部门变更、签到通知、打卡通知等。通过订阅这些事件，可以更好地与钉钉集成。你只需告诉钉钉当某个事件发生时，钉钉需要推送消息到哪个URL，钉钉会以HTTP POST请求的方式将事件内容以JSON格式推送给你。
+
+## 使用场景
+
+- 在你的业务对数据的实时性要求较高时。例如：在新员工入职或者离职时，应用需要第一时间变更用户数据，此时就可以订阅[通讯录事件](https://open.dingtalk.com/document/app/address-book-events#topic-1950634)。
+- 你的应用需要及时响应用户的操作时。例如：某用户加入某群聊时，应用可以订阅[群会话事件](https://open.dingtalk.com/document/app/group-session-events#topic-1950637)，在用户进入群聊的时候，向用户发送欢迎等信息。
+
+以上只是几个非常简单的使用场景，开发者可以根据不同的事件，进行不同的处理。
+
+## 事件订阅流程
+
+事件订阅的流程如下图所示。
+
+首先，开发者需要在钉钉开放平台配置HTTP请求接收地址用于接收推送的订阅事件，然后设置要订阅的事件。在配置完请求地址后，钉钉开放平台会向该地址发送POST请求，只有在规定时间内正确返回了包含"**success**"的加密字符串才完成事件订阅。
+
+![事件订阅 ](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/4167497061/p200499.png)
+
+## 配置请求地址和事件订阅
+
+1. 登录[开发者后台](https://open-dev.dingtalk.com/)，找到已创建的企业内部应用。
+2. 单击**事件订阅**，然后单击编辑配置用于接收请求的HTTP地址。
+
+   **注意** 
+
+   确保该地址公网可以访问。
+
+   ![p201853](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/6568017161/p255294.png)
+
+   编辑完请求地址，单击**保存**按钮时，开放平台会向你配置的网址推送一个 application/json 格式的 POST 请求, 用于验证你配置的网址的合法性。请求如下：
+
+   ```
+   {
+       "encrypt": "ajls384kdjx98XX" // 加密字符串，解密方法请看下方的消息加解密
+   }
+   ```
+
+   当你收到开放平台的POST验证请求时，你需要做解密处理，并在**1500ms**内返回包含**success**的加密字符串（**JSON格式**）。钉钉开放平台收到返回的JSON信息后会做解密处理，如果可以得到正常的success字符串，则验证回调信息推送正常，否则会判定为失败的回调信息。
+3. 成功配置请求地址后，在**事件****订阅**列表区域，开启要订阅的事件。
+
+   ![事件列表](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/4195828061/p201854.png)
+
+## 接收并响应事件
+
+- **接收事件信息**
+
+  当事件发生时，钉钉会主动向配置的HTTP地址发送POST请求，推送对应的事件信息。例如订阅通讯录事件后，当通讯录发生变更时，会向注册的HTTP地址推送事件信息，其格式如下。
+
+  **说明** 
+
+  钉钉服务器推送信息是即时推送，如果企业的回调地址没有在1500毫秒内返回正确的加密信息给钉钉服务器，钉钉服务器会判断为推送失败。
+
+  请求的URL格式如下：
+
+  ```
+  http://你注册的HTTP地址?signature=111108bb8e6dbc2xxxx&timestamp=1783610513&nonce=380320111
+  ```
+
+  包含的JSON数据如下：
+
+  ```
+  {
+      "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIBNbWetRg7IP0vdhVgkVwSoZBJeQwY2zhROsJq/HJ+q6tp1qhl9L1+ccC9ZjKs1wV5bmA9NoAWQiZ+7MpzQVq+j74rJQljdVyBdI/dGOvsnBSCxCVW0ISWX0vn9lYTuuHSoaxwCGylH9xRhYHL9bRDskBc7bO0FseHQQasdfghjkl"
+  }
+  ```
+
+  其中：
+
+  - signature为消息体签名。
+  - timestamp为时间戳。
+  - nonce为随机字符串。
+  - encrypt为加密的推送事件信息。
+
+- **响应事件信息**
+
+  当你收到开放平台的POST验证请求时，你需要做解密处理，并在**1500ms**内返回包含**success**的加密字符串（**JSON格式**）。钉钉开放平台收到返回的JSON信息后会做解密处理，如果可以得到正常的success字符串，则验证回调信息推送正常，否则会判定为失败的回调信息。
+
+  具体返回给钉钉的数据格式如下：
+
+  **注意** 
+
+  返回的数据格式必须是JSON格式。
+
+  ```
+  {
+    "msg_signature":"111108bb8e6dbce3c9671d6fdb69d1506xxxx",
+    "timeStamp":"1783610513",
+    "nonce":"123456",
+    "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIxxxx"
+   }
+  ```
+
+  其中：
+
+  - msg\_signature为消息体签名。
+  - timeStamp为时间戳。
+  - nonce为随机字符串。
+  - encrypt为success加密字符串。
+
+## 消息加解密
+
+为了保证数据传输的安全，钉钉在推送订阅事件时，会携带配置的token用来验证事件来源。同时使用该密钥对消息内容做对称加密。
+
+单击[这里](https://github.com/open-dingtalk/dingtalk-callback-Crypto)获取回调加解密类库和对应demo。
+
+钉钉服务器会把msg消息体明文编码成`encrypt`。`encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])`是对明文消息msg加密处理后的Base64编码。其中：
+
+- **random**为16字节的随机字符串。
+- **msg\_len**为4字节的msg长度，网络字节序。
+- **msg**为消息体明文。
+- **key**为应用的appKey。
+
+取出返回的JSON中的encrypt字段：
+
+- 对密文BASE64解码：aes\_msg=Base64\_Decode(encrypt)；
+- 使用AESKey做AES解密：rand\_msg=AES\_Decrypt(aes\_msg)；
+
+加解密代码示例如下：
+
+**注意** 
+
+- 此代码示例的加解密过程依赖**DingCallbackCrypto**工具类，参见[dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto)。
+- 示例中的Constant.OWNER\_KEY说明如下：
+
+  - 当使用本文档中的方式接收钉钉推送的订阅事件时，是以应用为维度推送的，OWNER\_KEY为应用的AppKey，可在开发者后台的应用详情页面中获取。
+  - 当使用HTTP回调注册接口方式接收钉钉推送的订阅事件时，是以企业为维度推送的，OWNER\_KEY为CorpId。
+
+```
+public Map<String, String> callBack(
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. 从http请求中获取加解密参数
+
+        // 2. 使用加解密类型
+        // Constant.OWNER_KEY 说明：
+        // 1、开发者后台配置的订阅事件为应用级事件推送，此时OWNER_KEY为应用的APP_KEY。
+        // 2、调用订阅事件接口订阅的事件为企业级事件推送，
+        //      此时OWNER_KEY为：企业的appkey（企业内部应用）或SUITE_KEY（三方应用）
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. 反序列化回调事件json数据
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. 根据EventType分类处理
+        if ("check_url".equals(eventType)) {
+            // 测试回调url的正确性
+            bizLogger.info("测试回调url的正确性");
+        } else if ("user_add_org".equals(eventType)) {
+            // 处理通讯录用户增加事件
+            bizLogger.info("发生了：" + eventType + "事件");
+        } else {
+            // 添加其他已注册的
+            bizLogger.info("发生了：" + eventType + "事件");
+        }
+
+        // 5. 返回success的加密数据
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
+
+如下是通讯录变更事件解密后的数据格式：
+
+```
+{
+    "EventType": "user_add_org",
+    "TimeStamp": 43535463645,
+    "UserId": ["user1" , "user2"],
+    "CorpId": "dinge8a56572f80b02a8ffexxxx"
+}
+```
+
+## 常见问题
+
+- **问题描述**
+
+  点击保存，页面报错“HTTP请求结果校验返回字段值失败”，如下图所示。
+
+  ![配置事件订阅](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/4417815161/p246475.png)
+- **原因**
+
+  - 返回给钉钉服务器的json信息中有其中一个字段值不正确。
+  - 返回给钉钉服务器的信息不是json格式。
+- **解决方案**
+
+  构造main方法，使用回调地址返回的四个字段值，调用加密接口，验证得到的值是否为success字符串。
+
+  例如：
+
+  ```
+  //构造加解密类，使用的参数不变
+  DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+  //加密方法内传你的回调地址返回给钉钉服务器的四个参数
+  String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+  System.out.println(result);
+  ```
+
+  此时的运行结果如下：
+
+  - 如果得到了success字符串，说明返回的值没有问题，问题出现在回调接口返回给钉钉服务器的值参数格式不对，需要再次确认。
+  - 如果运行出现报错，常见运行报错和原因如下：
+
+    | 错误 | 原因 | 调整方式 |
+    | --- | --- | --- |
+    | 计算解密文字corpid不匹配 | DingTalkEncryptor中`OWNER_KEY`参数错误。 | 当前开发者后台应用上的事件订阅，`owner_key`需要传当前应用的appkey值。 |
+    | 不合法的aes key | DingTalkEncryptor中`ENCODING_AES_KEY`参数错误。 | `ENCODING_AES_KEY`自定义的固定43位字符串，只支持大小写字母和数字。 |
+    | 签名计算失败 | 解密方法中的参数使用有问题。 | 解密方法getEncryptedMap内的四个参数都来自钉钉服务器请求时带来的值。 |

@@ -1,0 +1,178 @@
+---
+title: "Unified Authorization Suite Front-End SDK"
+description: "This article explains how to use the DingTalk Unified Authorization Suite SDK."
+---
+
+This article explains how to use the DingTalk Unified Authorization Suite SDK.
+
+## **Expected Results**
+
+### **Personal Authorization**
+
+### **Organization Authorization**
+
+#### **Admin Authorization**
+
+#### **Non-Admin Authorization**
+
+## **Version Requirements**
+
+The DingTalk Unified Authorization Suite SDK requires DingTalk version **6.3.35 or later**. For earlier versions, prompt users to upgrade the client. Use the following method to check the DingTalk version.
+
+```
+import { getENV, } from 'dingtalk-jsapi/lib/env';
+import { compareVersion, } from 'dingtalk-jsapi/lib/sdk/sdkLib';
+
+const { platform, version, appType, } = getENV();
+/**
+ * Check whether the current app version supports the SDK
+ * @return {boolean}
+ */
+function isAuthSDKSupport() {
+  return compareVersion(version, '6.3.35');
+}
+```
+
+## **1. Install the Authorization Suite SDK**
+
+1. Run the following command to download and install the SDK (dingtalk-design-libs must be version 0.1.0 or later).
+
+   ```
+   npm install dingtalk-design-libs --save
+   ```
+2. After the download completes, import the SDK directly into your code.
+
+   ```
+   import { openAuth } from 'dingtalk-design-libs/biz/openAuth';
+   ```
+
+## **2. Integrate App Authorization**
+
+Follow these steps to use the DingTalk Unified Authorization Suite to guide users through authorizing the relevant information.
+
+1. Import the DingTalk Unified Authorization Suite SDK.
+
+   ```
+   import { openAuth } from 'dingtalk-design-libs/biz/openAuth';
+   ```
+2. When user authorization is required, call **openAuth** directly. The request example is as follows:
+
+   ```
+   openAuth({
+     clientId:'dingwlanwxxx', // App ID (unique identifier)
+     corpId:'', // The organization ID of the current organization
+     rpcScope:'Calendar.Event.Write,Calendar.Event.Read,Contact.User.Read', 
+     fieldScope:'Contact.User.mobile',
+     type:0 // 0 indicates authorizing the profile; 1 indicates authorizing organization information
+   }).then((res)=>{
+   // Process the returned data
+   })
+   ```
+
+### **Request Parameters**
+
+|  |  |  |  |  |
+| --- | --- | --- | --- | --- |
+| **Parameter** | **Type** | **Required** | **Example** | **Description** |
+| client | string | Yes | f1dLkxxx | App ID:   - An internal app uses **Appkey** - A third-party enterprise app uses **SuiteKey** - A third-party personal app uses **AppId** - A custom app uses **CustomKey** |
+| corpId | string | Yes | ding123xxxx | The organization ID of the current organization. |
+| rpcScope | string | No | Contact.User.Read | The interface scope list.  **Note**   - Separate multiple scopes with commas. - Provide at least one of rpcScope and fieldScope. |
+| fieldScope | string | No | Contact.User.mobile | The field scope list.  **Note**  Separate multiple scopes with commas.  Provide at least one of rpcScope and fieldScope. |
+| type | string | Yes | 0 | The grant type:   - **0**: Request personal authorization - **1**: Request organization authorization |
+| from | string | No | alicloud | The request source.  **Note**  A location identifier set by the caller. |
+
+## **3. Response Information**
+
+#### **The Response Example Is as Follows:**
+
+- Authorization completed
+
+  ```
+  {
+   status: 'ok',
+   result: {
+   authCode:'xxxxxxx' // This value is not returned for organization authorization (type=1)
+   }
+  }
+  ```
+- Authorization declined
+
+  ```
+  {
+      status: 'cancel',
+      result: null
+  }
+  ```
+- An authorization request was sent to the admin, awaiting authorization (occurs only in organization authorization scenarios)
+
+  ```
+  {
+      status: 'toAdmin',
+      result: null
+  }
+  ```
+- Authorization error
+
+  ```
+  {
+      status: 'failed',
+      result: null
+  }
+  ```
+
+### **Response Parameters**
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| **Field name** | **Type** | **Example** | **Description** |
+| status | string | ok | The authorization result:   - **ok:** Authorization succeeded - **toAdmin:** An authorization request was sent to the admin, awaiting authorization - **failed:** Authorization error - **cancel:** Authorization actively canceled |
+| result | Object |  | The returned result. |
+| result.authCode | string | mrtjjwdmxxx | A temporary personal authorization code.  **Note**  Returned when type=0 and authorization succeeds. |
+
+## **Error Codes**
+
+### **Parameter Errors**
+
+|  |  |
+| --- | --- |
+| **Error code** | **Cause** |
+| 400001 | Empty request. |
+| 400006 | The clientId parameter is required. |
+| 400007 | The corpId parameter is required. |
+| 400008 | uid is empty. Contact DingTalk. |
+
+### **Permission Scope Errors**
+
+|  |  |
+| --- | --- |
+| **Error code** | **Cause** |
+| 500201 | Invalid permission scope code. |
+| 500202 | The rpcScope parameter must contain an rpc-type permission scope. |
+| 500203 | The fieldScope parameter must contain a field-type permission scope. |
+| 500204 | Organization authorization must contain an organization-type permission scope. |
+| 500205 | Personal authorization must contain a personal-type permission scope. |
+
+### **App Errors**
+
+|  |  |
+| --- | --- |
+| **Error code** | **Cause** |
+| 500101 | The app does not exist. |
+| 500102 | The app has no permission scopes added. |
+| 500103 | Failed to retrieve app information. |
+| 500104 | The app does not have this permission scope. Add it in the Developer Console. |
+| 500105 | Failed to retrieve the app provider's organization information. |
+
+### **Authorization Errors**
+
+|  |  |
+| --- | --- |
+| **Error code** | **Cause** |
+| 500401 | Failed to retrieve the authorizer's role. |
+| 500402 | Not an admin of the current organization. |
+| 500403 | The organization has not enabled authorization for this app. |
+| 500404 | Failed to update the authorization record. |
+
+## **Authorization Validity Period**
+
+Once a user explicitly grants authorization, the authorization relationship is recorded in the backend until the user actively cancels it.

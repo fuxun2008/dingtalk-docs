@@ -1,0 +1,236 @@
+---
+title: "Server-Side Stream Mode"
+description: "This article introduces the basic capabilities, design principles, and server-side integration methods of Stream mode on the Open Platform."
+---
+
+This article introduces the basic capabilities, design principles, and server-side integration methods of Stream mode on the Open Platform.
+
+## **What Is Stream Mode**
+
+Stream mode is an integration method provided by the DingTalk Open Platform. It can listen for Bot callbacks, event subscription callbacks, and registered Card callbacks. When you integrate using Stream mode, the DingTalk Open Platform communicates with your app through a WebSocket connection. Stream mode greatly lowers the integration barrier and resource dependency. You do not need public network resources such as a server, IP address, or domain. Simply integrate the DingTalk Open Platform SDK.
+
+## Stream Mode Principles
+
+In Stream mode, your app integrates the SDK to establish a WebSocket connection with the DingTalk Open Platform. During the connection process, the Open Platform authenticates the connection. When a Card callback occurs, the Open Platform pushes the data to your app through the WebSocket connection. Your app can receive this data and process it accordingly, enabling real-time communication with the DingTalk Open Platform, as shown in the figure below.
+
+## **Advantages of Stream Mode**
+
+In scenarios where the DingTalk Open Platform sends requests to an app, most use the Webhook method (registering a public HTTPS service), including Card callbacks. Developing with the Webhook method involves many challenges, including:
+
+- Applying for a public domain and TLS certificate
+- Applying for a public IP address and deploying an access gateway
+- Deploying an application firewall and configuring an allowlist
+- Handling request authentication as well as encryption and decryption on your own
+- Setting up an intranet penetration environment for local development and debugging
+
+To address these issues, Stream mode provides developers with a "five-zero" integration experience, reducing the integration development cycle from 1 to 2 weeks to 5 minutes, including:
+
+- **Zero Public IP**
+
+  You do not need to rely on or expose a public IP address or domain. This reduces the security risks of exposing services to the public network and lowers the development barrier.
+- **Zero Encryption/Decryption, Signature, or TLS Certificate Management**
+
+  Use the app identity to authenticate the connection and establish a TLS-encrypted connection with the DingTalk Open Platform through a reverse connection, providing a fast and secure communication experience.
+- **Zero Firewall Allowlist**
+
+  In Stream mode, you do not need to open any server ports to the public network, deploy a firewall, or configure an allowlist.
+- **Zero Gateway Deployment**
+
+  The channel is established through a reverse connection. You only need to ensure that the runtime environment has public network access. No gateway deployment is required.
+- **Zero Intranet Penetration**
+
+  You do not need to set up intranet penetration tools locally. With Stream mode, you can receive Card callbacks directly in your local development environment.
+
+## **Integration Methods**
+
+**Important**
+
+The Client-side receives callbacks for the corresponding Card as soon as it starts. When deploying test and development environments, avoid affecting the production environment.
+
+### **Integration Limits**
+
+1. The environment where your app is deployed must have public network access.
+2. Applicable only to internal apps and third-party enterprise apps.
+3. Each client instance enables one WebSocket connection by default, and an app can establish up to 50 connections by default.
+
+### **Java**
+
+- #### **Runtime Environment**
+
+  JDK 1.8 or later.
+- #### **Install the Java SDK**
+
+  Add the dependency to your project's `pom.xml` file or download the corresponding JAR package. You can view and download the latest SDK version [here](https://s01.oss.sonatype.org/?spm=ding_open_doc.document.0.0.27fc4169or3Sre#nexus-search;quick~dingtalk-stream).
+
+  ```
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>dingtalk-stream</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+- #### **Sample Code**
+
+  **Bot Callback**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // Register the bot listener
+                  .registerCallbackListener("${topic}", robotMessage -> {
+                      log.info("receive robotMessage, {}", robotMessage);
+                      // Handle the bot callback based on your business needs
+                      return new JSONObject();
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  For details, see the [Bot development documentation](https://opensource.dingtalk.com/developerpedia/docs/category/%E8%81%8A%E5%A4%A9%E6%9C%BA%E5%99%A8%E4%BA%BA).
+
+  **Parameter Description**
+
+  |  |  |
+  | --- | --- |
+  | **Name** | **Description** |
+  | clientId | AppKey for internal apps / SuiteKey for third-party enterprise apps. |
+  | clientSecret | AppSecret for internal apps / SuiteSecret for third-party enterprise apps. |
+  | topic | Bot callback name. Fixed value: `/v1.0/im/bot/messages/get`. |
+
+  **Event Subscription Callback**
+
+  ```
+  public static void main(String[] args) {
+    OpenDingTalkStreamClientBuilder
+      .custom()
+      .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+      // Register the event listener
+      .registerAllEventListener(new GenericEventListener() {
+        public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+          try {
+            // Unique event ID
+            String eventId = event.getEventId();
+            // Event type
+            String eventType = event.getEventType();
+            // Event creation time
+            Long bornTime = event.getEventBornTime();
+            // Get the event body
+            JSONObject bizData = event.getData();
+            // Process the event
+            process(bizData);
+            // Consumption succeeded
+            return EventAckStatus.SUCCESS;
+          } catch (Exception e) {
+            // Consumption failed
+            return EventAckStatus.LATER;
+          }
+        }
+      })
+      .build().start();
+  }
+  ```
+
+  For details, see [Configure Stream Push](https://open.dingtalk.com/document/orgapp/stream).
+
+  **Parameter Description**
+
+  |  |  |
+  | --- | --- |
+  | **Name** | **Description** |
+  | clientId | AppKey for internal apps / SuiteKey for third-party enterprise apps. |
+  | clientSecret | AppSecret for internal apps / SuiteSecret for third-party enterprise apps. |
+
+  **Card Callback**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // Register the card callback listener
+                  .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                      log.info("receive call back request, {}", callbackData);
+                      // your code is here
+
+                      // Update the card content based on your business needs and return the response
+                      CardCallbackResponse resp = new CardCallbackResponse();
+                      return resp;
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  For details, see [Interactive Card Stream](https://open.dingtalk.com/document/orgapp/event-callback-card#a0cb7b50dfnlu).
+
+  **Parameter Description**
+
+  |  |  |
+  | --- | --- |
+  | **Name** | **Description** |
+  | clientId | AppKey for internal apps / SuiteKey for third-party enterprise apps. |
+  | clientSecret | AppSecret for internal apps / SuiteSecret for third-party enterprise apps. |
+  | topic | Registered Card callback name. Fixed value: `/v1.0/card/instances/callback`. |
+
+### **Golang**
+
+- #### **Runtime Environment**
+
+  1.16 or later.
+- #### **Install the SDK**
+
+  ```
+  go get github.com/open-dingtalk/dingtalk-stream-sdk-go
+  ```
+- #### **Sample Code**
+
+  **Bot Callback**
+
+  ```
+  func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+  	return nil
+  }
+
+  func StartRobot() {
+  	logger.SetLogger(logger.NewStdTestLogger())
+  	cli := client.NewStreamClient(
+      client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+  		client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+      client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+  	)
+
+  	err := cli.Start(context.Background())
+  	if err != nil {
+  		panic(err)
+  	}
+
+  	defer cli.Close()
+
+  	select {}
+  }
+  ```
+
+  **Parameter Description**
+
+  |  |  |
+  | --- | --- |
+  | **Name** | **Description** |
+  | clientId | AppKey for internal apps / SuiteKey for third-party enterprise apps. |
+  | clientSecret | AppSecret for internal apps / SuiteSecret for third-party enterprise apps. |
+  | topic | Bot callback name. Fixed value: `/v1.0/im/bot/messages/get`. |
+
+### **Integration Methods in Other Languages**
+
+- [Java SDK Sample Project](https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start)
+- [Golang SDK and Sample Code](https://github.com/open-dingtalk/dingtalk-stream-sdk-go)
+- [Python SDK and Sample Code](https://github.com/open-dingtalk/dingtalk-stream-sdk-python)
+- [Node.js SDK and Sample Code](https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs)
+
+If you encounter any issues during the process, you can submit feedback and discuss questions through [Technical Support](https://open-dingtalk.github.io/developerpedia/docs/explore/support).
+
+## **Technical Support**
+
+If you have any questions during development, join the DingTalk Stream Mode Co-Creation Group for consultation and answers: [Stream Mode Co-Creation Group](https://open-dingtalk.github.io/developerpedia/docs/explore/support?via=moon-group).

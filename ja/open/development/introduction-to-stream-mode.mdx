@@ -1,0 +1,236 @@
+---
+title: "サーバーサイド Stream モード"
+description: "DingTalk Open Platform の Stream モードについて、基本機能・設計原理・サーバーサイド連携方法を解説。WebSocket 接続でボットやイベントサブスクリプション、カードコールバックを受信する統合手法を紹介します。"
+---
+
+本記事では、Open Platform における Stream モードの基本機能、設計原理、サーバーサイドの連携方法について紹介します。
+
+## **Stream モードとは**
+
+Stream モードは、DingTalk Open Platform が提供する連携方式です。ボットコールバック、イベントサブスクリプションのコールバック、および登録済みのカードコールバックをリッスンできます。Stream モードで連携すると、DingTalk Open Platform は WebSocket 接続を通じてアプリと通信します。Stream モードは連携のハードルとリソース依存を大幅に低減します。サーバー、IP アドレス、ドメインといったパブリックネットワークリソースは不要で、DingTalk Open Platform SDK を組み込むだけで利用できます。
+
+## Stream モードの原理
+
+Stream モードでは、アプリが SDK を組み込むことで、DingTalk Open Platform との間に WebSocket 接続を確立します。接続の過程で、Open Platform は接続を認証します。カードコールバックが発生すると、Open Platform は WebSocket 接続を通じてデータをアプリにプッシュします。アプリはこのデータを受信して適切に処理でき、下図のように DingTalk Open Platform とのリアルタイム通信を実現します。
+
+## **Stream モードのメリット**
+
+DingTalk Open Platform がアプリにリクエストを送信するシナリオでは、カードコールバックを含め、多くの場合 Webhook 方式（パブリック HTTPS サービスの登録）が用いられます。Webhook 方式での開発には、次のような多くの課題があります。
+
+- パブリックドメインと TLS 証明書の申請
+- パブリック IP アドレスの申請とアクセスゲートウェイの構築
+- アプリケーションファイアウォールの構築とホワイトリストの設定
+- リクエスト認証および暗号化・復号の自前対応
+- ローカル開発・デバッグ用のイントラネット貫通環境の構築
+
+これらの課題を解決するため、Stream モードは開発者に「ゼロ 5 項目」の連携体験を提供し、連携開発のサイクルを 1〜2 週間から 5 分に短縮します。具体的には次のとおりです。
+
+- **パブリック IP 不要**
+
+  パブリック IP アドレスやドメインに依存したり公開したりする必要がありません。これにより、サービスをパブリックネットワークに公開することによるセキュリティリスクを低減し、開発のハードルを下げます。
+- **暗号化・復号、署名、TLS 証明書管理が不要**
+
+  アプリの identity を使って接続を認証し、リバース接続を通じて DingTalk Open Platform との間に TLS 暗号化接続を確立することで、高速かつ安全な通信体験を提供します。
+- **ファイアウォールのホワイトリスト不要**
+
+  Stream モードでは、サーバーのポートをパブリックネットワークに開放したり、ファイアウォールを構築したり、ホワイトリストを設定したりする必要はありません。
+- **ゲートウェイのデプロイ不要**
+
+  チャンネルはリバース接続を通じて確立されます。実行環境がパブリックネットワークにアクセスできることを確保するだけでよく、ゲートウェイのデプロイは不要です。
+- **イントラネット貫通不要**
+
+  ローカルにイントラネット貫通ツールを構築する必要はありません。Stream モードなら、ローカルの開発環境で直接カードコールバックを受信できます。
+
+## **連携方法**
+
+**重要**
+
+クライアントサイドは、起動するとすぐに対応するカードのコールバックを受信します。テスト環境や開発環境をデプロイする際は、本番環境に影響を与えないようご注意ください。
+
+### **連携の制限**
+
+1. アプリをデプロイする環境は、パブリックネットワークにアクセスできる必要があります。
+2. 内部アプリおよびサードパーティ企業アプリにのみ適用されます。
+3. 各クライアントインスタンスはデフォルトで 1 つの WebSocket 接続を有効にし、1 つのアプリはデフォルトで最大 50 の接続を確立できます。
+
+### **Java**
+
+- #### **実行環境**
+
+  JDK 1.8 以降。
+- #### **Java SDK のインストール**
+
+  プロジェクトの `pom.xml` ファイルに依存関係を追加するか、対応する JAR パッケージをダウンロードします。最新の SDK バージョンは[こちら](https://s01.oss.sonatype.org/?spm=ding_open_doc.document.0.0.27fc4169or3Sre#nexus-search;quick~dingtalk-stream)で確認・ダウンロードできます。
+
+  ```
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>dingtalk-stream</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+- #### **サンプルコード**
+
+  **ボットコールバック**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // ボットのリスナーを登録
+                  .registerCallbackListener("${topic}", robotMessage -> {
+                      log.info("receive robotMessage, {}", robotMessage);
+                      // ビジネスニーズに応じてボットコールバックを処理
+                      return new JSONObject();
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  詳細は[ボット開発ドキュメント](https://opensource.dingtalk.com/developerpedia/docs/category/%E8%81%8A%E5%A4%A9%E6%9C%BA%E5%99%A8%E4%BA%BA)をご覧ください。
+
+  **パラメータ説明**
+
+  |  |  |
+  | --- | --- |
+  | **名前** | **説明** |
+  | clientId | 内部アプリの場合は AppKey / サードパーティ企業アプリの場合は SuiteKey。 |
+  | clientSecret | 内部アプリの場合は AppSecret / サードパーティ企業アプリの場合は SuiteSecret。 |
+  | topic | ボットコールバック名。固定値：`/v1.0/im/bot/messages/get`。 |
+
+  **イベントサブスクリプションのコールバック**
+
+  ```
+  public static void main(String[] args) {
+    OpenDingTalkStreamClientBuilder
+      .custom()
+      .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+      // イベントリスナーを登録
+      .registerAllEventListener(new GenericEventListener() {
+        public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+          try {
+            // イベントの固定 ID
+            String eventId = event.getEventId();
+            // イベントタイプ
+            String eventType = event.getEventType();
+            // イベント作成時刻
+            Long bornTime = event.getEventBornTime();
+            // イベント本体を取得
+            JSONObject bizData = event.getData();
+            // イベントを処理
+            process(bizData);
+            // 消費成功
+            return EventAckStatus.SUCCESS;
+          } catch (Exception e) {
+            // 消費失敗
+            return EventAckStatus.LATER;
+          }
+        }
+      })
+      .build().start();
+  }
+  ```
+
+  詳細は [Stream プッシュの設定](https://open.dingtalk.com/document/orgapp/stream)をご覧ください。
+
+  **パラメータ説明**
+
+  |  |  |
+  | --- | --- |
+  | **名前** | **説明** |
+  | clientId | 内部アプリの場合は AppKey / サードパーティ企業アプリの場合は SuiteKey。 |
+  | clientSecret | 内部アプリの場合は AppSecret / サードパーティ企業アプリの場合は SuiteSecret。 |
+
+  **カードコールバック**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // カードコールバックのリスナーを登録
+                  .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                      log.info("receive call back request, {}", callbackData);
+                      // your code is here
+
+                      // ビジネスニーズに応じてカードコンテンツを更新し、レスポンスを返す
+                      CardCallbackResponse resp = new CardCallbackResponse();
+                      return resp;
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  詳細は[インタラクティブカード Stream](https://open.dingtalk.com/document/orgapp/event-callback-card#a0cb7b50dfnlu)をご覧ください。
+
+  **パラメータ説明**
+
+  |  |  |
+  | --- | --- |
+  | **名前** | **説明** |
+  | clientId | 内部アプリの場合は AppKey / サードパーティ企業アプリの場合は SuiteKey。 |
+  | clientSecret | 内部アプリの場合は AppSecret / サードパーティ企業アプリの場合は SuiteSecret。 |
+  | topic | 登録済みのカードコールバック名。固定値：`/v1.0/card/instances/callback`。 |
+
+### **Golang**
+
+- #### **実行環境**
+
+  1.16 以降。
+- #### **SDK のインストール**
+
+  ```
+  go get github.com/open-dingtalk/dingtalk-stream-sdk-go
+  ```
+- #### **サンプルコード**
+
+  **ボットコールバック**
+
+  ```
+  func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+  	return nil
+  }
+
+  func StartRobot() {
+  	logger.SetLogger(logger.NewStdTestLogger())
+  	cli := client.NewStreamClient(
+      client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+  		client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+      client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+  	)
+
+  	err := cli.Start(context.Background())
+  	if err != nil {
+  		panic(err)
+  	}
+
+  	defer cli.Close()
+
+  	select {}
+  }
+  ```
+
+  **パラメータ説明**
+
+  |  |  |
+  | --- | --- |
+  | **名前** | **説明** |
+  | clientId | 内部アプリの場合は AppKey / サードパーティ企業アプリの場合は SuiteKey。 |
+  | clientSecret | 内部アプリの場合は AppSecret / サードパーティ企業アプリの場合は SuiteSecret。 |
+  | topic | ボットコールバック名。固定値：`/v1.0/im/bot/messages/get`。 |
+
+### **他言語での連携方法**
+
+- [Java SDK サンプルプロジェクト](https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start)
+- [Golang SDK およびサンプルコード](https://github.com/open-dingtalk/dingtalk-stream-sdk-go)
+- [Python SDK およびサンプルコード](https://github.com/open-dingtalk/dingtalk-stream-sdk-python)
+- [Node.js SDK およびサンプルコード](https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs)
+
+作業中に問題が発生した場合は、[テクニカルサポート](https://open-dingtalk.github.io/developerpedia/docs/explore/support)からフィードバックを送信し、質問について議論できます。
+
+## **テクニカルサポート**
+
+開発中にご不明な点がある場合は、DingTalk Stream モード共創グループに参加してご相談・回答を得られます：[Stream モード共創グループ](https://open-dingtalk.github.io/developerpedia/docs/explore/support?via=moon-group)。

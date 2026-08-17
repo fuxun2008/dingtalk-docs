@@ -1,0 +1,133 @@
+---
+title: "Android Share SDK Integration Flow"
+description: "This article explains how to integrate DingTalk sharing using the DingTalk Android Share SDK."
+---
+
+This article explains how to integrate DingTalk sharing using the DingTalk Android Share SDK.
+
+## Preparations
+
+Before integrating DingTalk sharing on Android, complete the following preparations:
+
+- Set up the Android development environment.
+- Download the [Android SDK](https://files.alicdn.com/tpsservice/e76b61f0c65ddda660bb07f265c35b19.zip).
+- Install DingTalk client version 2.7.0 or later.
+
+## Step 1: **Integrate DingTalk Sharing**
+
+1. Sign in to the [Developer Console](https://open-dev.dingtalk.com/#/shareMan), and then go to the app details page.
+2. On the app details page, click **DingTalk Sign-in and Sharing** to open the sign-in and sharing page.
+
+3. In the **Integrate Sharing** section, click **Edit** on the right.
+4. Turn on **Android Sharing**, enter the **Android Package Name** and **Android Signature** in order, and then click Save.
+
+   **Note**
+
+   For how to obtain the signature, see [Signature Method](https://open.dingtalk.com/document/isvapp-client/share-sdk-download#topic-1949255).
+
+## Step 2: Set Up the Development Environment
+
+Set up the development environment using either of the following methods.
+
+- Method 1: Gradle dependency
+
+  Add `compile 'com.alibaba.android:ddsharesdk:1.1.0'` to the `dependencies` in the module's `build.gradle`.
+- Method 2: Import the JAR file directly
+
+  1. Create an Android project named DDShareDemo, create a libs directory in the project, and copy the downloaded JAR file to that directory, as shown below:
+
+  2. Add the JAR file in the libs directory to the project dependencies.
+
+## Step 3: **Use the SDK in Your Code**
+
+If your app needs to receive requests sent by DingTalk, or receive responses to requests sent to DingTalk, perform the following steps:
+
+1. Create a `ddshare` directory under the corresponding directory of your package name.
+
+   Then add the **exported** attribute in the `AndroidManifest` file and set it to **true.**
+
+2. Implement the **IDDAPIEventHandler** interface. DingTalk's response is returned to the onResp method through a callback.
+
+   The following is sample code for the onResp method:
+
+   ```
+   public void onResp(BaseResp baseResp) {
+       int errCode = baseResp.mErrCode;
+       Log.d("lzc" , "errorCode==========>"+errCode);
+       String errMsg = baseResp.mErrStr;
+       Log.d("lzc" , "errMsg==========>"+errMsg);
+       if(baseResp.getType() == ShareConstant.COMMAND_SENDAUTH_V2 && (baseResp instanceof SendAuth.Resp)){
+           SendAuth.Resp authResp = (SendAuth.Resp) baseResp;
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "Authorization succeeded. The authorization code is: "+authResp.code, Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "Authorization canceled", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "Authorization error"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }else{
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "Share succeeded", Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "Share canceled", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "Share failed"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }
+       finish();
+   }
+   ```
+3. In the **DDShareActivity** class, pass the received intent and the object that implements the **IDDAPIEventHandler** interface to the handleIntent method of the **IDDShareApi** interface. Then, when your app requests DingTalk's response, DingTalk returns it by calling the onResp method.
+
+   ```
+   private IDDShareApi mIDDShareApi;
+
+   @Override
+   protected void onCreate(Bundle savedInstanceState) {
+       super.onCreate(savedInstanceState);
+       Log.d("lzc" ,"onCreate==========>");
+       try {
+           // The activity's export is set to true, so wrap it in a try block to prevent third-party denial-of-service attacks
+           mIDDShareApi = DDShareApiFactory.createDDShareApi(this, Constant.APP_ID, false);
+           mIDDShareApi.handleIntent(getIntent(), this);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Log.d("lzc" , "e===========>"+e.toString());
+       }
+   }
+   ```
+4. Determine whether the current device supports sharing.
+
+   - Determine whether DingTalk is installed on the current device.
+
+     ```
+     findViewById(R.id.ding_install_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isInstalled = iddShareApi.isDDAppInstalled();
+             Toast.makeText(MainActivity.this, "Installed===>" + isInstalled, Toast.LENGTH_SHORT).show();
+         }
+     });
+     ```
+   - Determine whether the current device supports sharing to DingTalk (DingTalk is installed and the DingTalk version supports sharing).
+
+     ```
+     findViewById(R.id.share_support_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isSupport = iddShareApi.isDDSupportAPI();
+             Toast.makeText(MainActivity.this ,"Supports sharing to Contacts===>"+isSupport ,Toast.LENGTH_SHORT ).show();
+         }
+     });
+     ```
+5. Supported share types.
+
+   Text, Image, Link, and the special Alipay red packet type are supported. For specific usage, see the downloaded **Android SDK** samples.

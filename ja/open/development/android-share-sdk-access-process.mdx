@@ -1,0 +1,133 @@
+---
+title: "Android 共有 SDK 統合フロー"
+description: "DingTalk Android 共有 SDK を使って、アプリに DingTalk 共有機能を組み込む方法を解説します。開発環境の準備から SDK の実装、共有タイプの利用までの統合フローを紹介します。"
+---
+
+この記事では、DingTalk Android 共有 SDK を使って DingTalk 共有機能を統合する方法を説明します。
+
+## 事前準備
+
+Android で DingTalk 共有を統合する前に、次の事前準備を完了してください。
+
+- Android 開発環境をセットアップします。
+- [Android SDK](https://files.alicdn.com/tpsservice/e76b61f0c65ddda660bb07f265c35b19.zip) をダウンロードします。
+- DingTalk クライアント バージョン 2.7.0 以降をインストールします。
+
+## ステップ 1: **DingTalk 共有を統合する**
+
+1. [Developer Console](https://open-dev.dingtalk.com/#/shareMan) にログインし、アプリ詳細ページに移動します。
+2. アプリ詳細ページで **DingTalk Sign-in and Sharing** をクリックし、ログイン・共有ページを開きます。
+
+3. **Integrate Sharing** セクションで、右側の **Edit** をクリックします。
+4. **Android Sharing** をオンにし、**Android Package Name** と **Android Signature** を順に入力してから、Save をクリックします。
+
+   **注意**
+
+   署名の取得方法については、[Signature Method](https://open.dingtalk.com/document/isvapp-client/share-sdk-download#topic-1949255) を参照してください。
+
+## ステップ 2: 開発環境をセットアップする
+
+次のいずれかの方法で開発環境をセットアップします。
+
+- 方法 1: Gradle 依存関係
+
+  モジュールの `build.gradle` の `dependencies` に `compile 'com.alibaba.android:ddsharesdk:1.1.0'` を追加します。
+- 方法 2: JAR ファイルを直接インポートする
+
+  1. DDShareDemo という名前の Android プロジェクトを作成し、プロジェクト内に libs ディレクトリを作成して、ダウンロードした JAR ファイルをそのディレクトリにコピーします。次のようになります。
+
+  2. libs ディレクトリ内の JAR ファイルをプロジェクトの依存関係に追加します。
+
+## ステップ 3: **コード内で SDK を使用する**
+
+アプリで DingTalk から送信されたリクエストを受信する必要がある場合、または DingTalk に送信したリクエストへのレスポンスを受信する必要がある場合は、次の手順を実行してください。
+
+1. パッケージ名に対応するディレクトリの下に `ddshare` ディレクトリを作成します。
+
+   次に、`AndroidManifest` ファイルに **exported** 属性を追加し、**true** に設定します。
+
+2. **IDDAPIEventHandler** インターフェースを実装します。DingTalk のレスポンスは、コールバックを通じて onResp メソッドに返されます。
+
+   以下は onResp メソッドのサンプルコードです。
+
+   ```
+   public void onResp(BaseResp baseResp) {
+       int errCode = baseResp.mErrCode;
+       Log.d("lzc" , "errorCode==========>"+errCode);
+       String errMsg = baseResp.mErrStr;
+       Log.d("lzc" , "errMsg==========>"+errMsg);
+       if(baseResp.getType() == ShareConstant.COMMAND_SENDAUTH_V2 && (baseResp instanceof SendAuth.Resp)){
+           SendAuth.Resp authResp = (SendAuth.Resp) baseResp;
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "権限付与に成功しました。認可コードは次のとおりです: "+authResp.code, Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "権限付与がキャンセルされました", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "権限付与エラー"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }else{
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "共有に成功しました", Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "共有がキャンセルされました", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "共有に失敗しました"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }
+       finish();
+   }
+   ```
+3. **DDShareActivity** クラスで、受信した intent と **IDDAPIEventHandler** インターフェースを実装したオブジェクトを、**IDDShareApi** インターフェースの handleIntent メソッドに渡します。これにより、アプリが DingTalk のレスポンスを要求すると、DingTalk は onResp メソッドを呼び出してレスポンスを返します。
+
+   ```
+   private IDDShareApi mIDDShareApi;
+
+   @Override
+   protected void onCreate(Bundle savedInstanceState) {
+       super.onCreate(savedInstanceState);
+       Log.d("lzc" ,"onCreate==========>");
+       try {
+           // activity の export が true に設定されているため、サードパーティによるサービス拒否攻撃を防ぐために try ブロックで囲みます
+           mIDDShareApi = DDShareApiFactory.createDDShareApi(this, Constant.APP_ID, false);
+           mIDDShareApi.handleIntent(getIntent(), this);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Log.d("lzc" , "e===========>"+e.toString());
+       }
+   }
+   ```
+4. 現在のデバイスが共有をサポートしているかどうかを判定します。
+
+   - 現在のデバイスに DingTalk がインストールされているかどうかを判定します。
+
+     ```
+     findViewById(R.id.ding_install_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isInstalled = iddShareApi.isDDAppInstalled();
+             Toast.makeText(MainActivity.this, "インストール済み===>" + isInstalled, Toast.LENGTH_SHORT).show();
+         }
+     });
+     ```
+   - 現在のデバイスが DingTalk への共有をサポートしているかどうか（DingTalk がインストールされており、DingTalk のバージョンが共有をサポートしている）を判定します。
+
+     ```
+     findViewById(R.id.share_support_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isSupport = iddShareApi.isDDSupportAPI();
+             Toast.makeText(MainActivity.this ,"連絡先への共有をサポート===>"+isSupport ,Toast.LENGTH_SHORT ).show();
+         }
+     });
+     ```
+5. サポートされている共有タイプ。
+
+   テキスト、画像、リンク、および特別な Alipay レッドパケットタイプがサポートされています。具体的な使い方については、ダウンロードした **Android SDK** のサンプルを参照してください。

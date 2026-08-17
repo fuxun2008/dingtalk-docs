@@ -1,0 +1,166 @@
+---
+title: "方法 2：DingTalk セキュアレンダリングコンポーネントの統合"
+description: "DingTalk セキュアレンダリングコンポーネントを統合して連絡先を暗号化する方法を解説。App Market 出品に必要な暗号化要件を満たし、機密データを安全に扱う手順を紹介します。"
+---
+
+このドキュメントでは、DingTalk セキュアレンダリングコンポーネントを統合して連絡先を暗号化する方法を説明します。
+
+## **背景情報**
+
+連絡先データ（ユーザー名、ユーザーの職位、部門名）は、組織にとって重要な機密データです。要件はサービスプロバイダーが使用するアプリのデプロイ方法によって異なります。一部のデプロイ方法では連絡先の暗号化が必須であり、そうでない場合はアプリを App Market に出品できません。
+
+「機密フィールドをユーザー側で取得しつつ、開発者がアクセスできないようにする」という要件を満たすため、DingTalk はより安全で優れた体験を実現するセキュアレンダリングコンポーネント（open-data）ソリューションを提供しています。
+
+## **手順**
+
+1. フロントエンドページでユーザーのサインイン状態 URL を連結します。
+
+   **注意** 
+
+   **サインイン状態 URL** は主に **コールバック URL**（ISV 自身のフロントエンドページのリンク。アプリのホーム URL や H5 レンダリングコンポーネントを使用するページの URL など）に基づいて構築されます。ユーザーがクライアント上で **サインイン状態 URL** にリダイレクトすると、最終的に **コールバック URL** にリダイレクトされます。
+
+   1. コールバック URL をエンコードします。
+
+      **注意** 
+
+      すべての手順で *https://open.dingtalk.com/document* を例として使用します。
+
+      ```
+      https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   2. **固定プレフィックス** `http://auth.dingtalk.com/login?redirectUri=` を追加します。
+
+      ```
+      http://auth.dingtalk.com/login?redirectUri=https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   3. URL を再度エンコードします。
+
+      ```
+      http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   4. **固定プレフィックス** `https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=` を追加して連結し、**サインイン状態 URL** を取得します。
+
+      ```
+      https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   5. フロントエンドページで open-data SDK をインポートします。
+
+      ```
+      <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+      ```
+
+      **注意** 
+      - SDK スクリプトは &lt;head> タグ内、かつ他のすべての &lt;script> タグより前に配置してください。そうしないと SDK は有効になりません。
+      - SDK の内容は動的に返されます。デモに示すとおり厳密にインポートしてください。プロジェクト内にローカル保存してからバンドルしないでください。
+   6. フロントエンドページで open-data からデータを読み込みます。
+
+      1. DTOpenData.init メソッドを呼び出して初期化します。
+
+         |  |  |
+         | --- | --- |
+         | **設定項目** | **説明** |
+         | `CorpId` | アプリを有効化した組織の CorpId 値。 |
+         | `Sign-in state URL` | 最終の固定プレフィックスを追加して取得したサインイン状態 URL。 |
+
+         **注意** 
+
+         このメソッドは初期化の成否を示す真偽値を返します。初期化に失敗する場合、通常はステップ 1 が誤って実行されたか、サインイン状態が期限切れになったことが原因です。その場合は「サインイン状態 URL」を再構築し、再度リダイレクトしてください。
+
+         ```
+         <script>
+           if (window.DTOpenData.init('$CorpId$')) {
+             // 入力パラメータはアプリを有効化した組織の corpId 値です
+             // SDK の初期化に成功しました。ページのロジックを続行してください
+           } else {
+             // 現在のユーザーはサインインしていません。DingTalk 統一サインインにリダイレクトします
+             window.location.href = '$Sign-in state URL$';
+           }
+         </script>
+         ```
+      2. セキュアレンダリングが必要なデータがページにある場合は、ページに dt-open-data 要素を構築し、その open-type 属性と open-id 属性を正しく設定します。DOM 要素の設定後、DTOpenData.update メソッドを呼び出し、レンダリング対象の DOM 要素オブジェクトを渡すと、自動的にレンダリングが完了します。
+
+         **注意** 
+
+         DTOpenData.update メソッドに一度に渡す DOM ノードの数は 200 を超えることはできません。超えるとレンダリングに失敗します。
+
+         ```
+         <div>
+           <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+           <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+           <dt-open-data open-type="departmentName" open-id="2202079361"></dt-open-data>
+         </div>
+
+         <script>
+           window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+         </script>
+         ```
+
+         |  |  |  |  |
+         | --- | --- | --- | --- |
+         | **属性** | **タイプ** | **必須** | **説明** |
+         | open-type | String | はい | オープンデータのタイプ：  - userName：ユーザー名 - userTitle：ユーザーの職位 - deptName：部門名 |
+         | open-id | String | はい | openType の値が次の場合：  - userName：ユーザーの userId - userTitle：ユーザーの userId - deptName：部門名 |
+
+## **SDK 使用例**
+
+```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+  </head>
+  <body>
+    <div>
+      <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+      <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+      <dt-open-data open-type="deptName" open-id="2202079361"></dt-open-data>
+    </div>
+    <div id="load">クリックしてデータを読み込む</div>
+    <script>
+      if (window.DTOpenData.init('ding1d4b5fc9223daa8e35c2f4657eb6378f')) {
+        document.getElementById('load').addEventListener('click', () => {
+          window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+        });
+      } else {
+        // 現在のユーザーはサインインしていません。DingTalk 統一サインインにリダイレクトします
+        window.location.href = '$Sign-in state URL$';
+      }
+    </script>
+  </body>
+</html>
+```
+
+## **（任意）コンテンツ翻訳**
+
+#### **メッセージ通知テンプレートのコンテンツ翻訳**
+
+通知メッセージを送信する際、テンプレートパラメータ構文を使用してコンテンツに ID を含めることができます。DingTalk はそれらをユーザー名または部門名に置き換えます。次のサーバー API が関係します。
+
+- [業務通知の送信](https://open.dingtalk.com/document/isvapp/send-job-notification)
+
+元の API パラメータに `enable_id_trans` フィールドを追加し、true に設定すると翻訳が有効になります。これはサードパーティアプリのみ必要で、内部アプリでは無視できます。
+
+**連絡先 ID 翻訳テンプレート構文**
+
+```
+$departmentName=DEPARTMENT_ID$
+$userName=USER_ID$
+```
+
+ここで、DEPARTMENT\_ID は数値の部門 ID、USER\_ID はユーザー ID です。例：
+
+- $departmentName=1$ は、部門 ID「1」に対応する部門名（例：「DingTalk ユーザーエクスペリエンス部門」）に置き換えられます。
+- $userName=00001$ は、userid「lisi007」に対応するユーザー名（例：「山田太郎」）に置き換えられます。
+
+#### **連絡先の翻訳**
+
+- [連絡先 ID の非同期翻訳](https://open.dingtalk.com/document/isvapp/asynchronous-address-book-file-content-translation)
+- [非同期翻訳タスクの結果を取得する](https://open.dingtalk.com/document/isvapp/obtains-the-results-of-an-asynchronous-translation-task)
+
+## **次のステップ**
+
+セキュアレンダリングコンポーネントを統合した後、[リソースを Compute Nest にインポートする](https://open.dingtalk.com/document/isvapp/import-resources-compute-nest)必要があります。

@@ -1,0 +1,190 @@
+---
+title: "Ikhtisar HTTP Callback"
+description: "Pelajari cara mendaftarkan peristiwa callback DingTalk melalui HTTP untuk menerima push data seperti otorisasi aplikasi dan perubahan Kontak, demi integrasi yang lebih baik dengan DingTalk."
+---
+
+Developer dapat mendaftarkan peristiwa callback DingTalk melalui HTTP untuk menerima pesan yang di-push oleh DingTalk—seperti peristiwa otorisasi aplikasi perusahaan dan peristiwa perubahan Kontak—demi integrasi yang lebih baik dengan DingTalk.
+
+**Catatan**
+
+- Untuk Aplikasi internal, kami menyarankan berlangganan Callback peristiwa langsung dari Developer Console. Untuk detailnya, lihat [Konfigurasikan Langganan peristiwa](https://open.dingtalk.com/document/app/configure-event-subcription#topic-2024355).
+- Untuk Aplikasi perusahaan pihak ketiga, kami menyarankan berlangganan Callback peristiwa melalui push SyncHTTP atau push RDS. Kedua metode ini memungkinkan Anda menggunakan data yang di-push secara langsung dan lebih mudah dikonfigurasi. Untuk detailnya, lihat [Ikhtisar Callback](https://open.dingtalk.com/document/app/callback-events-overview#topic-2024377).
+- Alamat IP keluar untuk push HTTP adalah 203.119.0.0/16, 140.205.0.0/16, 106.11.0.0/16, dan 198.11.0.0/16.
+
+## Kasus penggunaan
+
+- Ketika bisnis Anda membutuhkan ketepatan waktu data yang tinggi. Misalnya, ketika seorang Karyawan bergabung atau keluar, Aplikasi harus segera memperbarui data pengguna. Dalam kasus ini, berlanggananlah [peristiwa Kontak](https://open.dingtalk.com/document/app/tvgq1n#topic-1950634).
+- Ketika Aplikasi Anda perlu merespons tindakan pengguna dengan cepat. Misalnya, ketika seorang pengguna bergabung ke Obrolan Grup, Aplikasi dapat berlangganan [peristiwa obrolan grup](https://open.dingtalk.com/document/app/group-session-events#topic-1950637) dan mengirim pesan sambutan saat pengguna masuk ke Obrolan Grup.
+- Ketika seorang Admin mengaktifkan Aplikasi perusahaan pihak ketiga, DingTalk mem-push [peristiwa aktivasi aplikasi terotorisasi perusahaan](https://open.dingtalk.com/document/app/enterprise-authorized-application-activation-event#topic-2021949). Developer dapat mengaktifkan Organisasi dan mengaktifkan Aplikasi berdasarkan corpid yang di-push.
+
+Ini hanya beberapa contoh sederhana. Developer dapat menangani berbagai peristiwa dengan cara yang berbeda.
+
+## Alur HTTP event callback
+
+Alur HTTP event callback ditunjukkan di bawah ini:
+
+1. Konfigurasikan endpoint permintaan HTTP di DingTalk Open Platform untuk menerima Callback peristiwa yang di-push.
+2. DingTalk mem-push paket data Callback peristiwa ke endpoint HTTP yang dikonfigurasi untuk Aplikasi. Data dienkripsi dengan kunci enkripsi/dekripsi yang dimasukkan di Developer Console saat Aplikasi dibuat, dan ditandatangani dengan Token Aplikasi yang Anda berikan. Untuk detailnya, lihat [Uji Peristiwa URL callback](https://open.dingtalk.com/document/app/test-callback-url#topic-2001893).
+3. Setelah menerima push, Aplikasi harus memverifikasi Tanda tangan, mendekripsi data, dan mengembalikan data JSON yang berisi string terenkripsi.
+4. Panggil API [Register Event Callback](https://open.dingtalk.com/document/app/registers-event-callback-interfaces#topic-1936765) untuk menerima Callback peristiwa.
+
+## Konfigurasikan endpoint permintaan dan peristiwa
+
+Untuk menerima peristiwa langganan yang di-push oleh DingTalk melalui HTTP callback, pertama-tama konfigurasikan URL callback HTTP. Ketika peristiwa yang dilanggani terpicu, DingTalk mengirim permintaan HTTP POST yang sesuai ke URL ini.
+
+1. Masuk ke [Developer Console](https://open-dev.dingtalk.com/). Cari Aplikasi yang Anda buat dan buka halaman detailnya.
+2. Klik **Development Management**, lalu klik **Edit**, dan atur tipe push menjadi **HTTP Push**.
+3. Konfigurasikan endpoint HTTP yang digunakan untuk menerima permintaan.
+
+   - **token**: Setiap kali DingTalk mem-push data peristiwa ke endpoint Anda, ia menyertakan `token` yang digunakan untuk menghasilkan Tanda tangan dan memverifikasi keabsahan permintaan callback. Token hanya boleh berisi huruf Latin atau angka dan panjangnya 3 hingga 32 karakter.
+   - **Data Encryption Key**: Klik **Auto Generate** untuk menghasilkan kunci AES. Ini adalah parameter yang digunakan untuk mengenkripsi dan mendekripsi konten pesan callback, dan merupakan kunci AES yang di-encode Base64. Untuk penggunaannya, lihat [Enkripsi dan Dekripsi Pesan](#section-zis-gsf-dlt).
+   - **Callback URL**: URL yang digunakan untuk menerima permintaan peristiwa langganan. Ketika peristiwa yang dilanggani terpicu, DingTalk mengirim permintaan HTTP POST yang sesuai ke URL ini.
+
+     **Catatan**
+
+     Setiap Aplikasi hanya dapat mengonfigurasi satu URL callback. Semua Notifikasi untuk peristiwa yang dilanggani Aplikasi dikirim ke URL permintaan ini.
+4. Setelah menyelesaikan konfigurasi, ketika Anda mengeklik tombol **Validate**, Open Platform mem-push permintaan POST `application/json` ke URL yang Anda konfigurasi untuk memverifikasi keabsahannya. Permintaannya adalah sebagai berikut:
+
+   ```
+   {
+       "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // String terenkripsi. Lihat bagian enkripsi dan dekripsi di bawah ini.
+   }
+   ```
+
+   Ketika Anda menerima permintaan validasi POST dari Open Platform, dekripsi lalu kembalikan string terenkripsi yang berisi **success** (dalam **format JSON**) dalam waktu **1500 ms**. Setelah DingTalk Open Platform menerima JSON yang dikembalikan, ia mendekripsinya. Jika berhasil memperoleh string success yang diharapkan, push callback diverifikasi normal; jika tidak, callback dinilai gagal.
+5. Setelah berhasil mengonfigurasi endpoint permintaan, klik **Save** di sudut kanan atas.
+
+## Menerima dan merespons peristiwa
+
+- **Menerima informasi peristiwa**
+
+  Ketika suatu peristiwa terjadi, DingTalk secara proaktif mengirim permintaan POST ke endpoint HTTP yang dikonfigurasi, mem-push informasi peristiwa yang sesuai. Misalnya, setelah Anda berlangganan peristiwa Kontak, ketika Kontak berubah, DingTalk mem-push informasi peristiwa ke endpoint HTTP yang terdaftar dalam format berikut.
+
+  - Format URL permintaan adalah sebagai berikut:
+
+    ```
+    http://your-registered-HTTP-endpoint?signature=111108bb8e6dbc2xxxx&timestamp=1783610513&nonce=380320111
+    ```
+  - Data JSON yang disertakan adalah sebagai berikut:
+
+    ```
+    {
+        "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIBNbWetRg7IP0vdhVgkVwSoZBJeQwY2zhROsJq/HJ+q6tp1qhl9L1+ccC9ZjKs1wV5bmA9NoAWQiZ+7MpzQVq+j74rJQljdVyBdI/dGOvsnBSCxCVW0ISWX0vn9lYTuuHSoaxwCGylH9xRhYHL9bRDskBc7bO0FseHQQasdfghjkl"
+    }
+    ```
+
+  Di mana:
+
+  - signature adalah Tanda tangan isi pesan.
+  - timestamp adalah Stempel waktu.
+  - nonce adalah string acak.
+  - encrypt adalah informasi peristiwa terenkripsi yang di-push.
+- **Merespons informasi peristiwa**
+
+  Untuk semua Callback peristiwa, setelah menerima push peristiwa, Anda harus mengembalikan string terenkripsi yang berisi **success** ke DingTalk. Hanya ketika data ini dikembalikan, DingTalk menganggap push peristiwa berhasil.
+
+  Format data spesifik yang dikembalikan ke DingTalk adalah sebagai berikut:
+
+  ```
+  {
+    "msg_signature":"111108bb8e6dbce3c9671d6fdb69d1506xxxx",
+    "timeStamp":"1783610513",
+    "nonce":"123456",
+    "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIxxxx"
+   }
+  ```
+
+  Di mana:
+
+  - msg\_signature adalah Tanda tangan isi pesan.
+  - timeStamp adalah Stempel waktu.
+  - nonce adalah string acak.
+  - encrypt adalah string success terenkripsi.
+
+## Enkripsi dan dekripsi pesan
+
+Untuk memastikan keamanan transmisi data, ketika DingTalk mem-push peristiwa langganan ke URL callback, ia menyertakan token yang dikonfigurasi untuk memverifikasi sumber peristiwa. Ia juga menggunakan kunci untuk mengenkripsi konten pesan secara simetris.
+
+Klik [di sini](https://github.com/open-dingtalk/dingtalk-callback-Crypto) untuk mendapatkan library enkripsi/dekripsi callback dan demo terkait.
+
+Server DingTalk meng-encode isi pesan plaintext (msg) menjadi `encrypt`. `encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` adalah encoding Base64 setelah mengenkripsi pesan plaintext msg. Di mana:
+
+- **random** adalah string acak 16 byte.
+- **msg\_len** adalah panjang msg sebesar 4 byte, dalam urutan byte jaringan.
+- **msg** adalah isi pesan plaintext.
+- **key** adalah suiteKey Aplikasi.
+
+Ambil bidang encrypt dari JSON yang dikembalikan:
+
+- Base64-decode ciphertext: aes\_msg=Base64\_Decode(encrypt);
+- Gunakan AESKey untuk melakukan dekripsi AES: rand\_msg=AES\_Decrypt(aes\_msg);
+
+Contoh kode enkripsi/dekripsi adalah sebagai berikut. Untuk contoh lengkapnya, lihat [DingTalk Third-Party Enterprise App - Mini Program - Quickstart (Java)](https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java):
+
+**Catatan**
+
+Proses enkripsi/dekripsi dalam contoh kode ini bergantung pada utility class **DingCallbackCrypto**. Lihat [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto).
+
+```
+public Map<String, String> callBack(HttpServletRequest request,
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. Ambil parameter enkripsi/dekripsi dari permintaan HTTP
+
+        // 2. Gunakan tipe enkripsi/dekripsi
+        // Catatan tentang Constant.OWNER_KEY:
+        // 1. Peristiwa yang dilanggani dari Developer Console adalah push peristiwa tingkat aplikasi.
+        //      Dalam kasus ini, OWNER_KEY adalah APP_KEY aplikasi (Aplikasi internal) atau SUITE_KEY (Aplikasi pihak ketiga).
+        // 2. Peristiwa yang dilanggani dengan memanggil API langganan peristiwa adalah push peristiwa tingkat perusahaan.
+        //      Dalam kasus ini, OWNER_KEY adalah CORP_ID organisasi (Aplikasi internal) atau SUITE_KEY (Aplikasi pihak ketiga).
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. Deserialisasi data JSON Callback peristiwa
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. Tangani berdasarkan EventType
+        if ("check_url".equals(eventType)) {
+            // Uji kebenaran URL callback
+            bizLogger.info("Test the correctness of the callback URL");
+        } else if ("user_add_org".equals(eventType)) {
+            // Tangani peristiwa penambahan pengguna Kontak
+            bizLogger.info("The event occurred: " + eventType);
+        } else {
+            // Tambahkan peristiwa terdaftar lainnya
+            bizLogger.info("The event occurred: " + eventType);
+        }
+
+        // 5. Kembalikan data success terenkripsi
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
+
+Berikut adalah format data peristiwa perubahan Kontak setelah didekripsi:
+
+```
+{
+    "EventType": "user_add_org",
+    "TimeStamp": 43535463645,
+    "UserId": [
+        "user1",
+        "user2"
+    ],
+    "CorpId": "dinge8a56572f80b02a8ffexxxx"
+}
+```
+
+## Tautan terkait
+
+- [Daftar Peristiwa](https://open.dingtalk.com/document/app/test-callback-url-events-1#topic-2001893)

@@ -1,0 +1,190 @@
+---
+title: "HTTP Callback Overview"
+description: "Developers can register DingTalk callback events over HTTP to receive messages pushed by DingTalk—such as enterprise app authorization events and Contacts change events—for better integration with DingTalk."
+---
+
+Developers can register DingTalk callback events over HTTP to receive messages pushed by DingTalk—such as enterprise app authorization events and Contacts change events—for better integration with DingTalk.
+
+**Note**
+
+- For an internal app, we recommend subscribing to callback events directly from the Developer Console. For details, see [Configure Event Subscription](https://open.dingtalk.com/document/app/configure-event-subcription#topic-2024355).
+- For a third-party enterprise app, we recommend subscribing to callback events through SyncHTTP push or RDS push. Both methods let you use the pushed data directly and are simpler to configure. For details, see [Callback Overview](https://open.dingtalk.com/document/app/callback-events-overview#topic-2024377).
+- The outbound IP addresses for HTTP push are 203.119.0.0/16, 140.205.0.0/16, 106.11.0.0/16, and 198.11.0.0/16.
+
+## Use Cases
+
+- When your business requires high data timeliness. For example, when an employee joins or leaves, the app must update user data immediately. In this case, subscribe to [Contacts events](https://open.dingtalk.com/document/app/tvgq1n#topic-1950634).
+- When your app needs to respond promptly to user actions. For example, when a user joins a group chat, the app can subscribe to [group chat events](https://open.dingtalk.com/document/app/group-session-events#topic-1950637) and send a welcome message when the user enters the group chat.
+- When an Admin activates a third-party enterprise app, DingTalk pushes the [enterprise authorized app activation event](https://open.dingtalk.com/document/app/enterprise-authorized-application-activation-event#topic-2021949). Developers can activate the organization and enable the app based on the pushed corpid.
+
+These are just a few simple examples. Developers can handle different events in different ways.
+
+## HTTP Event Callback Process
+
+The HTTP event callback process is shown below:
+
+1. Configure an HTTP request endpoint on the DingTalk Open Platform to receive pushed callback events.
+2. DingTalk pushes callback event data packages to the HTTP endpoint configured for the app. The data is encrypted with the encryption/decryption key entered in the Developer Console when the app was created, and signed with the app Token you provided. For details, see [Test the Callback URL Event](https://open.dingtalk.com/document/app/test-callback-url#topic-2001893).
+3. After receiving the push, the app must verify the signature, decrypt the data, and return JSON data that contains the encrypted string.
+4. Call the [Register Event Callback](https://open.dingtalk.com/document/app/registers-event-callback-interfaces#topic-1936765) API to receive callback events.
+
+## Configure the Request Endpoint and Events
+
+To receive DingTalk's pushed subscription events over HTTP callbacks, first configure the HTTP callback URL. When a subscribed event is triggered, DingTalk sends a corresponding HTTP POST request to this URL.
+
+1. Sign in to the [Developer Console](https://open-dev.dingtalk.com/). Find the app you created and open its details page.
+2. Click **Development Management**, then click **Edit**, and set the push type to **HTTP Push**.
+3. Configure the HTTP endpoint used to receive requests.
+
+   - **token**: Each time DingTalk pushes event data to your endpoint, it includes a `token` that is used to generate the signature and verify the legitimacy of the callback request. It must contain only English letters or digits and be 3 to 32 characters long.
+   - **Data Encryption Key**: Click **Auto Generate** to generate an AES key. This is the parameter used to encrypt and decrypt callback message content, and it is the Base64-encoded AES key. For usage, see [Message Encryption and Decryption](#section-zis-gsf-dlt).
+   - **Callback URL**: The URL used to receive subscription event requests. When a subscribed event is triggered, DingTalk sends a corresponding HTTP POST request to this URL.
+
+     **Note**
+
+     Each app can configure only one callback URL. All event notifications for the app's subscribed events are sent to this request URL.
+4. After completing the configuration, when you click the **Validate** button, the Open Platform pushes an `application/json` POST request to the URL you configured to verify its legitimacy. The request is as follows:
+
+   ```
+   {
+       "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // Encrypted string. See the encryption and decryption section below.
+   }
+   ```
+
+   When you receive the POST validation request from the Open Platform, decrypt it and return an encrypted string containing **success** (in **JSON format**) within **1500 ms**. After the DingTalk Open Platform receives the returned JSON, it decrypts it. If it obtains the expected success string, the callback push is verified as normal; otherwise, the callback is judged as failed.
+5. After successfully configuring the request endpoint, click **Save** in the upper-right corner.
+
+## Receive and Respond to Events
+
+- **Receiving Event Information**
+
+  When an event occurs, DingTalk proactively sends a POST request to the configured HTTP endpoint, pushing the corresponding event information. For example, after you subscribe to Contacts events, when the Contacts change, DingTalk pushes the event information to the registered HTTP endpoint in the following format.
+
+  - The request URL format is as follows:
+
+    ```
+    http://your-registered-HTTP-endpoint?signature=111108bb8e6dbc2xxxx&timestamp=1783610513&nonce=380320111
+    ```
+  - The JSON data included is as follows:
+
+    ```
+    {
+        "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIBNbWetRg7IP0vdhVgkVwSoZBJeQwY2zhROsJq/HJ+q6tp1qhl9L1+ccC9ZjKs1wV5bmA9NoAWQiZ+7MpzQVq+j74rJQljdVyBdI/dGOvsnBSCxCVW0ISWX0vn9lYTuuHSoaxwCGylH9xRhYHL9bRDskBc7bO0FseHQQasdfghjkl"
+    }
+    ```
+
+  Where:
+
+  - signature is the message body signature.
+  - timestamp is the timestamp.
+  - nonce is a random string.
+  - encrypt is the encrypted pushed event information.
+- **Responding to Event Information**
+
+  For all callback events, after you receive an event push, you must return an encrypted string containing **success** to DingTalk. Only when this data is returned does DingTalk consider the event push successful.
+
+  The specific data format returned to DingTalk is as follows:
+
+  ```
+  {
+    "msg_signature":"111108bb8e6dbce3c9671d6fdb69d1506xxxx",
+    "timeStamp":"1783610513",
+    "nonce":"123456",
+    "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIxxxx"
+   }
+  ```
+
+  Where:
+
+  - msg\_signature is the message body signature.
+  - timeStamp is the timestamp.
+  - nonce is a random string.
+  - encrypt is the encrypted success string.
+
+## Message Encryption and Decryption
+
+To ensure the security of data transmission, when DingTalk pushes subscription events to the callback URL, it includes the configured token to verify the event source. It also uses the key to symmetrically encrypt the message content.
+
+Click [here](https://github.com/open-dingtalk/dingtalk-callback-Crypto) to get the callback encryption/decryption library and the corresponding demo.
+
+The DingTalk server encodes the plaintext message body (msg) into `encrypt`. `encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` is the Base64 encoding after encrypting the plaintext message msg. Where:
+
+- **random** is a 16-byte random string.
+- **msg\_len** is the 4-byte length of msg, in network byte order.
+- **msg** is the plaintext message body.
+- **key** is the app's suiteKey.
+
+Take the encrypt field from the returned JSON:
+
+- Base64-decode the ciphertext: aes\_msg=Base64\_Decode(encrypt);
+- Use AESKey to perform AES decryption: rand\_msg=AES\_Decrypt(aes\_msg);
+
+An encryption/decryption code example is as follows. For the complete example, see [DingTalk Third-Party Enterprise App - Mini Program - Quickstart (Java)](https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java):
+
+**Note**
+
+The encryption/decryption process in this code example depends on the **DingCallbackCrypto** utility class. See [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto).
+
+```
+public Map<String, String> callBack(HttpServletRequest request,
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. Get the encryption/decryption parameters from the HTTP request
+
+        // 2. Use the encryption/decryption type
+        // Notes on Constant.OWNER_KEY:
+        // 1. Events subscribed from the Developer Console are app-level event pushes.
+        //      In this case, OWNER_KEY is the app's APP_KEY (internal app) or SUITE_KEY (third-party app).
+        // 2. Events subscribed by calling the event subscription API are enterprise-level event pushes.
+        //      In this case, OWNER_KEY is the organization's CORP_ID (internal app) or SUITE_KEY (third-party app).
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. Deserialize the callback event JSON data
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. Handle by EventType
+        if ("check_url".equals(eventType)) {
+            // Test the correctness of the callback URL
+            bizLogger.info("Test the correctness of the callback URL");
+        } else if ("user_add_org".equals(eventType)) {
+            // Handle the Contacts user added event
+            bizLogger.info("The event occurred: " + eventType);
+        } else {
+            // Add other registered events
+            bizLogger.info("The event occurred: " + eventType);
+        }
+
+        // 5. Return the encrypted success data
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
+
+The following is the data format of a Contacts change event after decryption:
+
+```
+{
+    "EventType": "user_add_org",
+    "TimeStamp": 43535463645,
+    "UserId": [
+        "user1",
+        "user2"
+    ],
+    "CorpId": "dinge8a56572f80b02a8ffexxxx"
+}
+```
+
+## Related Links
+
+- [Event List](https://open.dingtalk.com/document/app/test-callback-url-events-1#topic-2001893)

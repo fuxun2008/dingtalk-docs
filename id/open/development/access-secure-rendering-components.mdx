@@ -1,0 +1,166 @@
+---
+title: "Metode 2: Mengintegrasikan komponen secure rendering DingTalk"
+description: "Pelajari cara mengintegrasikan komponen secure rendering DingTalk untuk mengenkripsi data Kontak — panduan bagi ISV mengamankan nama pengguna, jabatan, dan nama departemen di aplikasi."
+---
+
+Dokumen ini menjelaskan cara mengintegrasikan komponen secure rendering DingTalk untuk mengenkripsi Kontak.
+
+## **Informasi latar belakang**
+
+Data Kontak (nama pengguna, jabatan pengguna, dan nama departemen) merupakan data sensitif penting milik sebuah organisasi. Persyaratannya berbeda-beda tergantung pada metode deployment aplikasi yang digunakan oleh penyedia layanan. Beberapa metode deployment memerlukan enkripsi Kontak; jika tidak, aplikasi tidak dapat dicantumkan di App Market.
+
+Untuk memenuhi persyaratan "memperoleh bidang sensitif di sisi pengguna sekaligus mencegah developer mengaksesnya," DingTalk menyediakan solusi komponen secure rendering (open-data) demi pengalaman yang lebih aman dan lebih baik.
+
+## **Prosedur**
+
+1. Gabungkan URL status sign-in pengguna pada halaman front-end.
+
+   **Catatan** 
+
+   **URL status sign-in** terutama dibangun berdasarkan **URL callback** (tautan halaman front-end milik ISV sendiri, seperti URL Beranda aplikasi atau URL halaman yang menggunakan komponen rendering H5). Ketika pengguna dialihkan ke **URL status sign-in** di klien, mereka pada akhirnya diarahkan ke **URL callback**.
+
+   1. Enkode URL callback.
+
+      **Catatan** 
+
+      *https://open.dingtalk.com/document* digunakan sebagai contoh di semua langkah.
+
+      ```
+      https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   2. Tambahkan **prefiks tetap** `http://auth.dingtalk.com/login?redirectUri=`.
+
+      ```
+      http://auth.dingtalk.com/login?redirectUri=https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   3. Enkode URL sekali lagi.
+
+      ```
+      http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   4. Tambahkan **prefiks tetap** `https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=` dan gabungkan untuk memperoleh **URL status sign-in**.
+
+      ```
+      https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   5. Impor SDK open-data pada halaman front-end.
+
+      ```
+      <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+      ```
+
+      **Catatan** 
+      - Tempatkan skrip SDK di dalam tag &lt;head> dan sebelum semua tag &lt;script> lainnya; jika tidak, SDK tidak akan berfungsi.
+      - Konten SDK dikembalikan secara dinamis. Impor persis seperti yang ditunjukkan pada demo. Jangan menyimpannya secara lokal di dalam proyek lalu mem-bundle-nya.
+   6. Muat data dari open-data pada halaman front-end.
+
+      1. Panggil metode DTOpenData.init untuk melakukan inisialisasi.
+
+         |  |  |
+         | --- | --- |
+         | **Item Konfigurasi** | **Deskripsi** |
+         | `CorpId` | Nilai CorpId dari organisasi yang telah mengaktifkan aplikasi. |
+         | `Sign-in state URL` | URL status sign-in yang diperoleh dengan menambahkan prefiks tetap terakhir. |
+
+         **Catatan** 
+
+         Metode ini mengembalikan nilai Boolean yang menunjukkan apakah inisialisasi berhasil atau gagal. Jika inisialisasi gagal, biasanya karena Langkah 1 dilakukan dengan tidak benar atau status sign-in telah kedaluwarsa. Dalam kasus tersebut, bangun kembali "URL status sign-in" dan alihkan kembali ke sana.
+
+         ```
+         <script>
+           if (window.DTOpenData.init('$CorpId$')) {
+             // Parameter input adalah nilai corpId dari organisasi yang telah mengaktifkan aplikasi
+             // Inisialisasi SDK berhasil, lanjutkan menjalankan logika halaman
+           } else {
+             // Pengguna saat ini belum sign-in, alihkan ke sign-in terpadu DingTalk
+             window.location.href = '$Sign-in state URL$';
+           }
+         </script>
+         ```
+      2. Ketika ada data pada halaman yang memerlukan secure rendering, buat elemen dt-open-data pada halaman dan atur atribut open-type serta open-id-nya dengan benar. Setelah elemen DOM disetel, panggil metode DTOpenData.update dan teruskan objek elemen DOM yang akan dirender untuk menyelesaikan rendering secara otomatis.
+
+         **Catatan** 
+
+         Jumlah node DOM yang diteruskan ke metode DTOpenData.update dalam satu kali tidak boleh melebihi 200; jika tidak, rendering akan gagal.
+
+         ```
+         <div>
+           <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+           <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+           <dt-open-data open-type="departmentName" open-id="2202079361"></dt-open-data>
+         </div>
+
+         <script>
+           window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+         </script>
+         ```
+
+         |  |  |  |  |
+         | --- | --- | --- | --- |
+         | **Atribut** | **Tipe** | **Wajib** | **Deskripsi** |
+         | open-type | String | Ya | Tipe open data:  - userName: nama pengguna - userTitle: jabatan pengguna - deptName: nama departemen |
+         | open-id | String | Ya | Ketika nilai openType adalah:  - userName: userId pengguna - userTitle: userId pengguna - deptName: nama departemen |
+
+## **Contoh penggunaan SDK**
+
+```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+  </head>
+  <body>
+    <div>
+      <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+      <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+      <dt-open-data open-type="deptName" open-id="2202079361"></dt-open-data>
+    </div>
+    <div id="load">Klik untuk memuat data</div>
+    <script>
+      if (window.DTOpenData.init('ding1d4b5fc9223daa8e35c2f4657eb6378f')) {
+        document.getElementById('load').addEventListener('click', () => {
+          window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+        });
+      } else {
+        // Pengguna saat ini belum sign-in, alihkan ke sign-in terpadu DingTalk
+        window.location.href = '$Sign-in state URL$';
+      }
+    </script>
+  </body>
+</html>
+```
+
+## **(Opsional) Terjemahan konten**
+
+#### **Terjemahan konten templat notifikasi pesan**
+
+Saat mengirim pesan notifikasi, Anda dapat menyertakan ID dalam konten menggunakan sintaks parameter templat. DingTalk akan menggantinya dengan nama pengguna atau nama departemen. Server API berikut terlibat:
+
+- [Kirim Notifikasi Kerja](https://open.dingtalk.com/document/isvapp/send-job-notification)
+
+Tambahkan bidang `enable_id_trans` ke parameter API asli dan atur ke true untuk mengaktifkan terjemahan. Ini hanya diperlukan untuk Aplikasi pihak ketiga; Aplikasi internal dapat mengabaikannya.
+
+**Sintaks templat terjemahan ID Kontak**
+
+```
+$departmentName=DEPARTMENT_ID$
+$userName=USER_ID$
+```
+
+Di sini, DEPARTMENT\_ID adalah ID departemen numerik, dan USER\_ID adalah ID pengguna. Contoh:
+
+- $departmentName=1$ diganti dengan nama departemen yang sesuai dengan ID departemen "1", seperti "Departemen Pengalaman Pengguna DingTalk."
+- $userName=00001$ diganti dengan nama pengguna yang sesuai dengan userid "lisi007", seperti "Budi."
+
+#### **Terjemahan Kontak**
+
+- [Terjemahkan ID Kontak secara asinkron](https://open.dingtalk.com/document/isvapp/asynchronous-address-book-file-content-translation)
+- [Peroleh hasil tugas terjemahan asinkron](https://open.dingtalk.com/document/isvapp/obtains-the-results-of-an-asynchronous-translation-task)
+
+## **Langkah berikutnya**
+
+Setelah mengintegrasikan komponen secure rendering, Anda perlu [mengimpor sumber daya ke Compute Nest](https://open.dingtalk.com/document/isvapp/import-resources-compute-nest).

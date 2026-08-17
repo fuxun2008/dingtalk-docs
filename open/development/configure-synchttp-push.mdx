@@ -1,0 +1,261 @@
+---
+title: "Configure SyncHTTP Push (Recommended)"
+description: "The SyncHTTP push method applies to on-premises deployments. Compared with HTTP push, SyncHTTP delivers the final state of business data, so developers can use the pushed data directly."
+---
+
+The SyncHTTP push method applies to on-premises deployments. Compared with HTTP push, SyncHTTP delivers the final state of business data, so developers can use the pushed data directly.
+
+## Callback Overview
+
+DingTalk pushes subscribed callback events to Third-party enterprise apps, including app activation, App authorization changes, and Department changes. By subscribing to these events, developers can integrate more effectively with DingTalk.
+
+When developing a Third-party enterprise app, you **must** register a callback to receive the enterprise app activation event. This event notifies your Third-party app which Organization has activated the app. After your Third-party app backend receives this event, initialize the Organization information.
+
+DingTalk currently supports the following push methods:
+
+- RDS push
+- HTTP push
+- SyncHTTP push
+
+SyncHTTP pushes data to the ISV service through HTTP callbacks, **using the same fields and format as RDS push**. Service providers can save the data received over HTTP to a self-built database or RDS, following the RDS push method and types.
+
+**Note**
+
+After SyncHTTP receives a callback, save it to the database immediately and then return a success response. To handle other business logic, use asynchronous processing.
+
+With SyncHTTP, you do not need to manually call the app activation API. After receiving the pushed ticket, use it to call the Server-side API directly.
+
+**Note**
+
+The egress IPs for SyncHTTP push and HTTP push are:
+
+- 203.119.0.0/16
+- 203.119.128.0/17
+- 140.205.0.0/16
+- 106.11.0.0/16
+- 198.11.0.0/16
+- 59.82.0.0/16
+
+## Callback Event Registration Process
+
+The callback event subscription process is shown in the following figure.
+
+First, configure an HTTP request endpoint on the DingTalk Open Platform to receive pushed subscription events, and then set the events you want to subscribe to. After you configure the request endpoint, the DingTalk Open Platform sends a POST request to it. The event subscription is completed only if you correctly return an encrypted string containing "**success**" within the specified time.
+
+## Configure the Request Endpoint and Subscribe to Callback Events
+
+To receive callback events pushed by DingTalk through SyncHTTP, first configure an HTTP callback URL. When a subscribed event is triggered, DingTalk sends a corresponding HTTP POST request to this URL.
+
+1. Sign in to the [Developer Console](https://open-dev.dingtalk.com/). Find the app you created and open its details page.
+2. Click **Development Management**, then click **Edit**, and select **SyncHTTP Push** as the push type.
+3. Configure the HTTP endpoint used to receive requests.
+
+   - **token**: Each time DingTalk pushes event data to your endpoint, it includes a `token` used to generate the Signature and verify the legitimacy of the callback request. It must consist of English letters or Numbers and be 3 to 32 characters long.
+   - **Encryption AES Key**: Click **Generate Automatically** to generate an AES key. This is the parameter used to encrypt and decrypt callback message Content. It is the Base64 encoding of the AES key. For details, see [Message Encryption and Decryption](#section-vhz-t5l-4kf) below.
+   - **Callback URL**: The URL used to receive subscribed event requests. When a subscribed event is triggered, DingTalk sends a corresponding HTTP POST request to this URL.
+
+     **Note**
+
+     Each app can configure only one Callback URL. All event Notifications for the app's subscriptions are sent to this request URL.
+4. After the configuration is complete, when you click the **Verify Validity** button, the Open Platform pushes an `application/json` POST request to the URL you configured to verify its legitimacy, as shown below:
+
+   ```
+   {
+       "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // Encrypted string. See the encryption and decryption description below.
+   }
+   ```
+
+   When you receive the POST verification request from the Open Platform, decrypt it and return an encrypted string containing **success** to DingTalk within **1,200 ms**. If you do not respond in time, requests may be rate limited.
+5. After the request endpoint is configured successfully, in the **Callback Events** list area, select the callback events you want to subscribe to, and then click **Save** in the upper-right corner.
+
+   **Note**
+
+   If a callback event cannot be selected, apply for the corresponding API permission on the **Manage Permissions** page in the Developer Console.
+
+## Pushed Data Description
+
+After you configure the Callback URL, when you click the **Verify Validity** button, the Open Platform pushes an `application/json` POST request to the URL you configured to verify its legitimacy, as shown below:
+
+```
+{
+    "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // Encrypted string. See the encryption and decryption description below.
+}
+```
+
+Decrypt the received message Content. For details, see [Message Encryption and Decryption](#section-vhz-t5l-4kf) below. The decrypted event types are as follows:
+
+- check\_url: Test callback event
+
+  Decrypted data:
+
+  ```
+  {
+      "EventType" : "check_url"
+  }
+  ```
+- check\_create\_suite\_url: Verification callback event
+
+  Decrypted data:
+
+  ```
+  {
+    "EventType":"check_create_suite_url",
+    "Random":"brdkKLMW"
+  }
+  ```
+- check\_update\_suite\_url: Callback URL update event
+
+  Decrypted data:
+
+  ```
+  {
+    "EventType":"check_update_suite_url",
+    "Random":"xxxxxx",
+    "TestSuiteKey":"suited6db0pze8yao1b1y"
+  }
+  ```
+- SYNC\_HTTP\_PUSH\_HIGH: High-priority data, such as app activation
+
+  ```
+  {
+   "EventType": "SYNC_HTTP_PUSH_HIGH",
+   "bizData": [{
+    "gmt_create": 1608639648000,
+    "biz_type": 4,
+    "open_cursor": 0,
+    "subscribe_id": "14999999001_0",
+    "id": 7001,
+    "gmt_modified": 1608639648000,
+    "biz_id": "1489999001",
+    "biz_data": "{\"auth_user_info\":{\"userId\":\"manager4xxx\"},\"auth_corp_info\":{\"corp_type\":0,\"corpid\":\"dingffea2a0dcc37d0xxxxxxx25e91351\",\"auth_level\":0,\"auth_channel\":\"\",\"industry\":\"\",\"full_corp_name\":\"XX Test Organization\",\"corp_name\":\"XX Test Organization\",\"invite_url\":\"https://pre-wx.dingtalk.com/xxxxx/index.html?bizSource=____source____&corpId=dingffea2a0dcc3xxxxx25e91351&inviterUid=71E7E5B48C2DDB2xxxxxxF52346D\",\"auth_channel_type\":\"\",\"invite_code\":\"\",\"is_authenticated\":false,\"license_code\":\"\",\"corp_logo_url\":\"\"},\"syncAction\":\"org_suite_auth\",\"auth_scope\":{\"errcode\":0,\"condition_field\":[],\"auth_user_field\":[\"jobnumber\",\"isLeader\",\"name\",\"position\",\"isAdmin\",\"avatar\",\"department\",\"userid\",\"deviceId\",\"isHide\"],\"auth_org_scopes\":{\"authed_user\":[],\"authed_dept\":[1]},\"errmsg\":\"ok\"},\"auth_info\":{\"agent\":[{\"agentid\":1038226450,\"agent_name\":\"Tuhao Push Test 1217\",\"logo_url\":\"https://static-legacy.dingtalk.com/media/lADPDfmVQafoVxxxxxx0_200.jpg\",\"appid\":62282,\"admin_list\":[\"manager492\"]}]},\"permanent_code\":\"MFcbac-7zg0Mhcl-_dGmY2_f4NZPzLUf813xxxxxrjyEoGmKjqZwfi-5mh\"}",
+    "corp_id": "dingffea2axxxxxx0dcb25e91351",
+    "status": 0
+   }]
+  }
+  ```
+- SYNC\_HTTP\_PUSH\_MEDIUM: Normal-priority data, such as Contacts changes
+
+  ```
+  {
+   "EventType": "SYNC_HTTP_PUSH_MEDIUM",
+   "bizData": [{
+    "gmt_create": 1608639751000,
+    "biz_type": 14,
+    "open_cursor": 0,
+    "subscribe_id": "14778001_0",
+    "id": 68,
+    "gmt_modified": 1608639751000,
+    "biz_id": "433877002",
+    "biz_data": "{\"errcode\":0,\"userPermits\":\"\",\"userPerimits\":\"\",\"syncAction\":\"org_dept_create\",\"outerDept\":false,\"errmsg\":\"ok\",\"deptManagerUseridList\":\"\",\"parentid\":1,\"groupContainSubDept\":false,\"outerPermitUsers\":\"\",\"outerPermitDepts\":\"\",\"deptPerimits\":\"\",\"createDeptGroup\":true,\"name\":\"f'f'f\",\"id\":433885002,\"autoAddUser\":true,\"deptHiding\":false,\"deptPermits\":\"\",\"order\":43388775002}",
+    "corp_id": "ding7629a25dxxxxxxxxf7214b6d69",
+    "status": 0
+   }]
+  }
+  ```
+
+The `bizData` of the SYNC\_HTTP\_PUSH\_HIGH and SYNC\_HTTP\_PUSH\_MEDIUM types is exactly the data in the `open_sync_biz_data` and `open_sync_biz_data_medium` tables of RDS push. For the specific format, see [Data Formats](https://open.dingtalk.com/document/isvapp/data-formats#).
+
+## Receive and Respond to Callback Events
+
+Start an HTTP service (as shown below). In the service's response logic, decrypt and store the callback (pushed) data.
+
+Complete code example: &lt;https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java>
+
+```
+package com.controller;
+import com.dingtalk.oapi.lib.aes.DingTalkEncryptor;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * ISV Mini program callback handling
+ */
+@RestController
+@RequestMapping("/")
+public class CallbackController {
+
+    private final Logger log = LoggerFactory.getLogger(getClass());
+
+    @PostMapping(value = "dingCallback")
+    public Object dingCallback(
+            @RequestParam(value = "signature") String signature,
+            @RequestParam(value = "timestamp") Long timestamp,
+            @RequestParam(value = "nonce") String nonce,
+            @RequestBody(required = false) JSONObject body
+    ) {
+        String[] config = CommonUtil.readConfig();
+        String params = "signature:" + signature + " timestamp:" + timestamp + " nonce:" + nonce + " body:" + body;
+        DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor(config[CommonUtil.TOKEN], config[CommonUtil.ENCODING_AES_KEY], config[CommonUtil.SUITE_KEY]);
+
+        // Get the encrypted callback data from the POST request body and decrypt it. See the message encryption and decryption description below.
+        String encrypt = body.getString("encrypt");
+        String plainText = dingTalkEncryptor.getDecryptMsg(signature, timestamp.toString(), nonce, encrypt);
+        JSONObject callBackContent = JSON.parseObject(plainText);
+
+        // Perform different business processing based on the callback event type
+        String eventType = callBackContent.getString("EventType");
+        //TODO Persist the data
+        return plainText;
+    }
+}
+```
+
+## Message Encryption and Decryption
+
+To ensure secure data transmission, when DingTalk pushes subscribed callback events to the Callback URL, it includes the configured token to verify the event source. It also uses the key to symmetrically encrypt the message Content.
+
+Click [here](https://github.com/open-dingtalk/dingtalk-callback-Crypto) to get the callback encryption and decryption library and its demo.
+
+The DingTalk server encodes the plaintext of the `msg` message body into `encrypt`. `encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` is the Base64 encoding of the encrypted plaintext message `msg`. Where:
+
+- **random** is a 16-byte random string.
+- **msg\_len** is the 4-byte length of `msg`, in network byte order.
+- **msg** is the plaintext of the message body.
+- **key** is the suiteKey of the app.
+
+Extract the `encrypt` field from the returned JSON:
+
+- Base64-decode the ciphertext: `aes_msg = Base64_Decode(encrypt)`.
+- Use the AESKey to perform AES decryption: `rand_msg = AES_Decrypt(aes_msg)`.
+
+An encryption and decryption code example is shown below. For the complete example, see [DingTalk Third-Party Enterprise App - Mini Program - Quickstart (Java)](https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java):
+
+**Note**
+
+The encryption and decryption process in this code example depends on the **DingCallbackCrypto** utility class. See [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto).
+
+```
+public Map<String, String> callBack(HttpServletRequest request,
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. Get the encryption and decryption parameters from the HTTP request
+
+        // 2. Use the encryption and decryption type
+        // Notes on Constant.OWNER_KEY:
+        // 1. If the subscribed event configured in the Developer Console is an app-level event push,
+        //      OWNER_KEY is the app's APP_KEY (Internal app) or SUITE_KEY (Third-party app).
+        // 2. If the event subscribed through the event subscription API is an enterprise-level event push,
+        //      OWNER_KEY is the enterprise's CORP_ID (Internal app) or SUITE_KEY (Third-party app).
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. Deserialize the callback event JSON data
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. Handle by EventType
+        bizLogger.info("Event occurred: " + eventType);
+
+        // 5. Return the encrypted "success" data
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```

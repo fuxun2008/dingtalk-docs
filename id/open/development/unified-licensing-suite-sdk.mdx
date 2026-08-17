@@ -1,0 +1,178 @@
+---
+title: "Front-End SDK Suite Otorisasi Terpadu"
+description: "Pelajari cara menggunakan DingTalk Unified Authorization Suite SDK untuk mengintegrasikan otorisasi personal dan organisasi pada aplikasi Anda dengan cepat dan aman."
+---
+
+Artikel ini menjelaskan cara menggunakan DingTalk Unified Authorization Suite SDK.
+
+## **Hasil yang Diharapkan**
+
+### **Otorisasi Personal**
+
+### **Otorisasi Organisasi**
+
+#### **Otorisasi Admin**
+
+#### **Otorisasi Non-Admin**
+
+## **Persyaratan Versi**
+
+DingTalk Unified Authorization Suite SDK memerlukan DingTalk versi **6.3.35 atau yang lebih baru**. Untuk versi yang lebih lama, minta pengguna untuk memperbarui klien. Gunakan metode berikut untuk memeriksa versi DingTalk.
+
+```
+import { getENV, } from 'dingtalk-jsapi/lib/env';
+import { compareVersion, } from 'dingtalk-jsapi/lib/sdk/sdkLib';
+
+const { platform, version, appType, } = getENV();
+/**
+ * Check whether the current app version supports the SDK
+ * @return {boolean}
+ */
+function isAuthSDKSupport() {
+  return compareVersion(version, '6.3.35');
+}
+```
+
+## **1. Instal SDK Suite Otorisasi**
+
+1. Jalankan perintah berikut untuk mengunduh dan menginstal SDK (dingtalk-design-libs harus versi 0.1.0 atau yang lebih baru).
+
+   ```
+   npm install dingtalk-design-libs --save
+   ```
+2. Setelah pengunduhan selesai, impor SDK langsung ke dalam kode Anda.
+
+   ```
+   import { openAuth } from 'dingtalk-design-libs/biz/openAuth';
+   ```
+
+## **2. Integrasikan Otorisasi App**
+
+Ikuti langkah-langkah berikut untuk menggunakan DingTalk Unified Authorization Suite guna memandu pengguna mengotorisasi informasi terkait.
+
+1. Impor DingTalk Unified Authorization Suite SDK.
+
+   ```
+   import { openAuth } from 'dingtalk-design-libs/biz/openAuth';
+   ```
+2. Ketika otorisasi pengguna diperlukan, panggil **openAuth** secara langsung. Contoh permintaannya adalah sebagai berikut:
+
+   ```
+   openAuth({
+     clientId:'dingwlanwxxx', // ID App (identifier unik)
+     corpId:'', // ID organisasi dari organisasi saat ini
+     rpcScope:'Calendar.Event.Write,Calendar.Event.Read,Contact.User.Read', 
+     fieldScope:'Contact.User.mobile',
+     type:0 // 0 menandakan mengotorisasi profil; 1 menandakan mengotorisasi informasi organisasi
+   }).then((res)=>{
+   // Proses data yang dikembalikan
+   })
+   ```
+
+### **Parameter Permintaan**
+
+|  |  |  |  |  |
+| --- | --- | --- | --- | --- |
+| **Parameter** | **Tipe** | **Wajib** | **Contoh** | **Deskripsi** |
+| client | string | Ya | f1dLkxxx | ID App:   - Aplikasi internal menggunakan **Appkey** - Aplikasi perusahaan pihak ketiga menggunakan **SuiteKey** - Aplikasi personal pihak ketiga menggunakan **AppId** - Aplikasi kustom menggunakan **CustomKey** |
+| corpId | string | Ya | ding123xxxx | ID organisasi dari organisasi saat ini. |
+| rpcScope | string | Tidak | Contact.User.Read | Daftar cakupan interface.  **Catatan**   - Pisahkan beberapa cakupan dengan koma. - Sediakan setidaknya salah satu dari rpcScope dan fieldScope. |
+| fieldScope | string | Tidak | Contact.User.mobile | Daftar cakupan field.  **Catatan**  Pisahkan beberapa cakupan dengan koma.  Sediakan setidaknya salah satu dari rpcScope dan fieldScope. |
+| type | string | Ya | 0 | grant_type:   - **0**: Meminta otorisasi personal - **1**: Meminta otorisasi organisasi |
+| from | string | Tidak | alicloud | Sumber permintaan.  **Catatan**  Identifier lokasi yang ditetapkan oleh pemanggil. |
+
+## **3. Informasi Respons**
+
+#### **Contoh Responsnya Adalah sebagai Berikut:**
+
+- Otorisasi selesai
+
+  ```
+  {
+   status: 'ok',
+   result: {
+   authCode:'xxxxxxx' // Nilai ini tidak dikembalikan untuk otorisasi organisasi (type=1)
+   }
+  }
+  ```
+- Otorisasi ditolak
+
+  ```
+  {
+      status: 'cancel',
+      result: null
+  }
+  ```
+- Permintaan otorisasi dikirim ke admin, menunggu otorisasi (hanya terjadi pada skenario otorisasi organisasi)
+
+  ```
+  {
+      status: 'toAdmin',
+      result: null
+  }
+  ```
+- Error otorisasi
+
+  ```
+  {
+      status: 'failed',
+      result: null
+  }
+  ```
+
+### **Parameter Respons**
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| **Nama field** | **Tipe** | **Contoh** | **Deskripsi** |
+| status | string | ok | Hasil otorisasi:   - **ok:** Otorisasi berhasil - **toAdmin:** Permintaan otorisasi dikirim ke admin, menunggu otorisasi - **failed:** Error otorisasi - **cancel:** Otorisasi dibatalkan secara aktif |
+| result | Object |  | Hasil yang dikembalikan. |
+| result.authCode | string | mrtjjwdmxxx | authorization_code personal sementara.  **Catatan**  Dikembalikan ketika type=0 dan otorisasi berhasil. |
+
+## **Kode Error**
+
+### **Error Parameter**
+
+|  |  |
+| --- | --- |
+| **Kode error** | **Penyebab** |
+| 400001 | Permintaan kosong. |
+| 400006 | Parameter clientId wajib diisi. |
+| 400007 | Parameter corpId wajib diisi. |
+| 400008 | uid kosong. Hubungi DingTalk. |
+
+### **Error Cakupan Izin**
+
+|  |  |
+| --- | --- |
+| **Kode error** | **Penyebab** |
+| 500201 | Kode cakupan izin tidak valid. |
+| 500202 | Parameter rpcScope harus berisi cakupan izin bertipe rpc. |
+| 500203 | Parameter fieldScope harus berisi cakupan izin bertipe field. |
+| 500204 | Otorisasi organisasi harus berisi cakupan izin bertipe organisasi. |
+| 500205 | Otorisasi personal harus berisi cakupan izin bertipe personal. |
+
+### **Error App**
+
+|  |  |
+| --- | --- |
+| **Kode error** | **Penyebab** |
+| 500101 | App tidak ada. |
+| 500102 | App tidak memiliki cakupan izin yang ditambahkan. |
+| 500103 | Gagal mengambil informasi App. |
+| 500104 | App tidak memiliki cakupan izin ini. Tambahkan di Developer Console. |
+| 500105 | Gagal mengambil informasi organisasi penyedia App. |
+
+### **Error Otorisasi**
+
+|  |  |
+| --- | --- |
+| **Kode error** | **Penyebab** |
+| 500401 | Gagal mengambil peran pemberi otorisasi. |
+| 500402 | Bukan admin dari organisasi saat ini. |
+| 500403 | Organisasi belum mengaktifkan otorisasi untuk App ini. |
+| 500404 | Gagal memperbarui rekaman otorisasi. |
+
+## **Masa Berlaku Otorisasi**
+
+Setelah pengguna secara eksplisit memberikan otorisasi, relasi otorisasi akan direkam di backend hingga pengguna membatalkannya secara aktif.

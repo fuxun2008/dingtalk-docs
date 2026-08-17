@@ -1,0 +1,190 @@
+---
+title: "HTTP コールバックの概要"
+description: "DingTalk のコールバックイベントを HTTP で登録し、アプリ認可イベントや連絡先変更イベントなど DingTalk がプッシュするメッセージを受信する方法を解説します。開発者が DingTalk との連携を強化するための設定手順を紹介します。"
+---
+
+開発者は DingTalk のコールバックイベントを HTTP 経由で登録し、社内アプリの認可イベントや連絡先変更イベントなど、DingTalk がプッシュするメッセージを受信することで、DingTalk との連携をより強化できます。
+
+**注意**
+
+- 社内アプリの場合は、Developer Console から直接コールバックイベントをサブスクライブすることをおすすめします。詳細は [イベントサブスクリプションの設定](https://open.dingtalk.com/document/app/configure-event-subcription#topic-2024355) を参照してください。
+- サードパーティ社内アプリの場合は、SyncHTTP プッシュまたは RDS プッシュを通じてコールバックイベントをサブスクライブすることをおすすめします。どちらの方法もプッシュされたデータを直接利用でき、設定も簡単です。詳細は [コールバックの概要](https://open.dingtalk.com/document/app/callback-events-overview#topic-2024377) を参照してください。
+- HTTP プッシュの送信元 IP アドレスは 203.119.0.0/16、140.205.0.0/16、106.11.0.0/16、198.11.0.0/16 です。
+
+## ユースケース
+
+- 業務でデータのリアルタイム性が高く求められる場合。たとえば社員が入社または退職した際、アプリはユーザーデータを即時に更新する必要があります。このような場合は [連絡先イベント](https://open.dingtalk.com/document/app/tvgq1n#topic-1950634) をサブスクライブします。
+- アプリがユーザーの操作に迅速に応答する必要がある場合。たとえばユーザーがグループチャットに参加した際、アプリは [グループチャットイベント](https://open.dingtalk.com/document/app/group-session-events#topic-1950637) をサブスクライブし、ユーザーがグループチャットに入ったときにウェルカムメッセージを送信できます。
+- 管理者がサードパーティ社内アプリを有効化すると、DingTalk は [企業認可アプリの有効化イベント](https://open.dingtalk.com/document/app/enterprise-authorized-application-activation-event#topic-2021949) をプッシュします。開発者はプッシュされた corpid に基づいて組織を有効化し、アプリを有効化できます。
+
+これらは簡単な例にすぎません。開発者はさまざまなイベントをさまざまな方法で処理できます。
+
+## HTTP イベントコールバックのプロセス
+
+HTTP イベントコールバックのプロセスは以下のとおりです。
+
+1. DingTalk Open Platform で HTTP リクエストのエンドポイントを設定し、プッシュされるコールバックイベントを受信します。
+2. DingTalk はコールバックイベントのデータパッケージを、アプリに設定された HTTP エンドポイントへプッシュします。データはアプリ作成時に Developer Console で入力した暗号化・復号キーで暗号化され、提供したアプリ Token で署名されます。詳細は [コールバック URL イベントのテスト](https://open.dingtalk.com/document/app/test-callback-url#topic-2001893) を参照してください。
+3. プッシュを受信したアプリは、署名を検証し、データを復号したうえで、暗号化された文字列を含む JSON データを返す必要があります。
+4. [イベントコールバックの登録](https://open.dingtalk.com/document/app/registers-event-callback-interfaces#topic-1936765) API を呼び出してコールバックイベントを受信します。
+
+## リクエストエンドポイントとイベントの設定
+
+DingTalk がプッシュするサブスクリプションイベントを HTTP コールバックで受信するには、まず HTTP コールバック URL を設定します。サブスクライブしたイベントがトリガーされると、DingTalk はこの URL に対応する HTTP POST リクエストを送信します。
+
+1. [Developer Console](https://open-dev.dingtalk.com/) にログインします。作成したアプリを検索し、その詳細ページを開きます。
+2. **開発管理** をクリックし、次に **編集** をクリックして、プッシュタイプを **HTTP プッシュ** に設定します。
+3. リクエストを受信する HTTP エンドポイントを設定します。
+
+   - **token**：DingTalk がエンドポイントにイベントデータをプッシュするたびに、署名の生成とコールバックリクエストの正当性検証に使用される `token` が含まれます。英字または数字のみで構成し、3〜32 文字の長さである必要があります。
+   - **データ暗号化キー**：**自動生成** をクリックして AES キーを生成します。これはコールバックメッセージの内容を暗号化・復号するために使用するパラメータで、Base64 でエンコードされた AES キーです。使用方法は [メッセージの暗号化と復号](#section-zis-gsf-dlt) を参照してください。
+   - **コールバック URL**：サブスクリプションイベントのリクエストを受信するための URL です。サブスクライブしたイベントがトリガーされると、DingTalk はこの URL に対応する HTTP POST リクエストを送信します。
+
+     **注意**
+
+     各アプリに設定できるコールバック URL は 1 つのみです。アプリがサブスクライブしたすべてのイベント通知は、このリクエスト URL に送信されます。
+4. 設定完了後、**検証** ボタンをクリックすると、Open Platform は設定した URL に `application/json` の POST リクエストをプッシュし、その正当性を検証します。リクエストは以下のとおりです。
+
+   ```
+   {
+       "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // 暗号化された文字列。下記の暗号化・復号セクションを参照してください。
+   }
+   ```
+
+   Open Platform からの POST 検証リクエストを受信したら、**1500 ms** 以内に復号を行い、**success** を含む暗号化された文字列を **JSON 形式** で返します。DingTalk Open Platform は返された JSON を受信すると復号します。期待される success 文字列が得られれば、コールバックプッシュは正常と検証されます。得られない場合、コールバックは失敗と判定されます。
+5. リクエストエンドポイントの設定に成功したら、右上の **保存** をクリックします。
+
+## イベントの受信と応答
+
+- **イベント情報の受信**
+
+  イベントが発生すると、DingTalk は設定された HTTP エンドポイントに対して能動的に POST リクエストを送信し、対応するイベント情報をプッシュします。たとえば連絡先イベントをサブスクライブした後、連絡先が変更されると、DingTalk は以下の形式で登録された HTTP エンドポイントにイベント情報をプッシュします。
+
+  - リクエスト URL の形式は以下のとおりです。
+
+    ```
+    http://your-registered-HTTP-endpoint?signature=111108bb8e6dbc2xxxx&timestamp=1783610513&nonce=380320111
+    ```
+  - 含まれる JSON データは以下のとおりです。
+
+    ```
+    {
+        "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIBNbWetRg7IP0vdhVgkVwSoZBJeQwY2zhROsJq/HJ+q6tp1qhl9L1+ccC9ZjKs1wV5bmA9NoAWQiZ+7MpzQVq+j74rJQljdVyBdI/dGOvsnBSCxCVW0ISWX0vn9lYTuuHSoaxwCGylH9xRhYHL9bRDskBc7bO0FseHQQasdfghjkl"
+    }
+    ```
+
+  各項目の意味は以下のとおりです。
+
+  - signature は本文の署名です。
+  - timestamp はタイムスタンプです。
+  - nonce はランダムな文字列です。
+  - encrypt は暗号化されたプッシュイベント情報です。
+- **イベント情報への応答**
+
+  すべてのコールバックイベントについて、イベントプッシュを受信した後、**success** を含む暗号化された文字列を DingTalk に返す必要があります。このデータを返した場合にのみ、DingTalk はイベントプッシュが成功したと見なします。
+
+  DingTalk に返す具体的なデータ形式は以下のとおりです。
+
+  ```
+  {
+    "msg_signature":"111108bb8e6dbce3c9671d6fdb69d1506xxxx",
+    "timeStamp":"1783610513",
+    "nonce":"123456",
+    "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIxxxx"
+   }
+  ```
+
+  各項目の意味は以下のとおりです。
+
+  - msg\_signature は本文の署名です。
+  - timeStamp はタイムスタンプです。
+  - nonce はランダムな文字列です。
+  - encrypt は暗号化された success 文字列です。
+
+## メッセージの暗号化と復号
+
+データ転送の安全性を確保するため、DingTalk はサブスクリプションイベントをコールバック URL にプッシュする際、設定された token を含めてイベントの送信元を検証します。また、キーを使用してメッセージの内容を対称暗号化します。
+
+コールバックの暗号化・復号ライブラリと対応するデモは [こちら](https://github.com/open-dingtalk/dingtalk-callback-Crypto) から取得できます。
+
+DingTalk サーバーは平文のメッセージ本文（msg）を `encrypt` にエンコードします。`encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` は、平文メッセージ msg を暗号化した後の Base64 エンコードです。各項目の意味は以下のとおりです。
+
+- **random** は 16 バイトのランダムな文字列です。
+- **msg\_len** は msg の 4 バイトの長さで、ネットワークバイトオーダーで表されます。
+- **msg** は平文のメッセージ本文です。
+- **key** はアプリの suiteKey です。
+
+返された JSON から encrypt フィールドを取り出します。
+
+- 暗号文を Base64 デコードします：aes\_msg=Base64\_Decode(encrypt);
+- AESKey を使用して AES 復号を行います：rand\_msg=AES\_Decrypt(aes\_msg);
+
+暗号化・復号のコード例は以下のとおりです。完全な例は [DingTalk サードパーティ社内アプリ - ミニプログラム - クイックスタート（Java）](https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java) を参照してください。
+
+**注意**
+
+このコード例の暗号化・復号プロセスは **DingCallbackCrypto** ユーティリティクラスに依存します。[dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto) を参照してください。
+
+```
+public Map<String, String> callBack(HttpServletRequest request,
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. HTTP リクエストから暗号化・復号のパラメータを取得します
+
+        // 2. 暗号化・復号タイプを使用します
+        // Constant.OWNER_KEY に関する注意事項：
+        // 1. Developer Console からサブスクライブしたイベントはアプリレベルのイベントプッシュです。
+        //      この場合、OWNER_KEY はアプリの APP_KEY（社内アプリ）または SUITE_KEY（サードパーティアプリ）です。
+        // 2. イベントサブスクリプション API を呼び出してサブスクライブしたイベントは企業レベルのイベントプッシュです。
+        //      この場合、OWNER_KEY は組織の CORP_ID（社内アプリ）または SUITE_KEY（サードパーティアプリ）です。
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. コールバックイベントの JSON データをデシリアライズします
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. EventType ごとに処理します
+        if ("check_url".equals(eventType)) {
+            // コールバック URL の正当性をテストします
+            bizLogger.info("Test the correctness of the callback URL");
+        } else if ("user_add_org".equals(eventType)) {
+            // 連絡先へのユーザー追加イベントを処理します
+            bizLogger.info("The event occurred: " + eventType);
+        } else {
+            // 登録済みのその他のイベントを追加します
+            bizLogger.info("The event occurred: " + eventType);
+        }
+
+        // 5. 暗号化された success データを返します
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
+
+以下は、復号後の連絡先変更イベントのデータ形式です。
+
+```
+{
+    "EventType": "user_add_org",
+    "TimeStamp": 43535463645,
+    "UserId": [
+        "user1",
+        "user2"
+    ],
+    "CorpId": "dinge8a56572f80b02a8ffexxxx"
+}
+```
+
+## 関連リンク
+
+- [イベント一覧](https://open.dingtalk.com/document/app/test-callback-url-events-1#topic-2001893)
