@@ -1,0 +1,80 @@
+---
+title: "Lampiran B: Cara Menangani Batas Laju Server API DingTalk"
+description: "Pelajari kondisi pemicu dan solusi untuk batas laju Server API DingTalk — panduan menangani error rate limit, kuota panggilan, dan optimasi call API pada aplikasi internal DingTalk."
+---
+
+Artikel ini menjelaskan kondisi pemicu dan solusi untuk Batas laju Server API DingTalk.
+
+Untuk mencegah beban abnormal pada server DingTalk yang disebabkan oleh error aplikasi, secara default, setiap panggilan Server API dari aplikasi internal—atau aplikasi internal kustom yang dikembangkan oleh penyedia layanan yang ditugaskan—memiliki Batas laju. Ketika batas pada dimensi mana pun terlampaui, memanggil API terkait akan mengembalikan Kode error yang sesuai.
+
+## **Batas Jumlah Panggilan Bulanan per API**
+
+**Note**
+
+Untuk Organisasi DingTalk pada edisi Standar, semua aplikasi internal dan aplikasi internal kustom yang dikembangkan oleh pihak ketiga yang ditugaskan—kecuali API yang tidak dihitung terhadap kuota panggilan bulanan (termasuk API Kredensial akses, API verifikasi identitas, API Kontak, dan lainnya; untuk detail, lihat [Lampiran A: Daftar API yang Tidak Dihitung Terhadap Kuota Panggilan Bulanan](https://open.dingtalk.com/document/orgapp/basic-interfaces-such-as-log-off-and-address-book#))—memiliki kuota panggilan gabungan sebesar 10.000 panggilan per bulan untuk semua API lainnya.
+
+### **Kondisi Pemicu**
+
+Untuk Organisasi DingTalk pada edisi Standar, jika batas Jumlah panggilan bulanan di atas terlampaui, Server API lama akan mengembalikan Kode error 90020, dan Server API baru akan mengembalikan Kode error Forbidden.AccessDenied.ApiCountLimitForOrg.
+
+### **Solusi**
+
+- **Umum:** Hubungi account manager DingTalk Anda, city manager DingTalk, atau penyedia layanan regional DingTalk untuk melakukan upgrade ke [DingTalk Pro](dingtalk://dingtalkclient/page/link?spm=ding_open_doc.document.0.0.2cfb309498qOzp&url=https%3A%2F%2Fn.dingtalk.com%2Fdingding%2Fweb-dd-pro%2Fmobile_microApp%2Findex.html%3FcorpId%3D%26channel%3Dopenpf_web_devdoc&web_wnd=general&width=480&height=800) atau [Edisi Dedicated DingTalk](https://partner.dingtalk.com/opportunity_web.html?channel=openpf_web_devdoc_trial&templateId=092b3722b3fd4dd08fb641a194a90691#/consultingService) dan gunakan manfaat perluasannya untuk menyelesaikan masalah tersebut.
+
+## **Batas Laju Tingkat IP per API**
+
+**Note**
+
+Karena kebijakan proteksi keamanan API DingTalk, setiap IP memiliki batas jumlah panggilan API DingTalk dalam waktu tertentu. Jika IP saat ini melampaui batas panggilan ini dalam waktu yang ditentukan, DingTalk akan mengembalikan informasi terkait dan memblokir panggilan tersebut.
+
+### **Kondisi Pemicu**
+
+Untuk setiap IP, memanggil API DingTalk apa pun lebih dari 10.000 kali dalam 20 detik akan memicu Batas laju, dan IP saat ini diblokir dari pemanggilan selama 5 menit. Memicu Batas laju ini tidak mengembalikan Kode error; sebagai gantinya, ia mengembalikan halaman HTML. Contoh informasi yang dikembalikan adalah sebagai berikut:
+
+```
+{
+   "status":1111,
+   "wait":5,
+   "source":"x5",
+   "punish":"deny",
+   "uuid":"xxx"
+}
+```
+
+### **Solusi**
+
+- **Umum:** Siapkan cukup banyak IP egress berdasarkan volume panggilan OpenAPI Anda.
+
+## **Batas Laju QPS Tingkat Aplikasi per API**
+
+**Note**
+
+Ketika Organisasi DingTalk pada edisi Standar memanggil API DingTalk, Jumlah panggilan per detik tidak boleh melebihi 20. Jika Jumlah panggilan pada detik saat ini melebihi 20, error yang sesuai akan terpicu. Pastikan laju panggilan tidak melebihi 20 per detik.
+
+### **Kondisi Pemicu**
+
+Untuk setiap aplikasi, memanggil setiap API melampaui laju maksimumnya akan memicu Batas laju. Server API lama mengembalikan Kode error 90018, dan Server API baru mengembalikan Kode error Forbidden.AccessDenied.QpsLimitForAppkeyAndApi.
+
+### **Solusi**
+
+- **Umum**
+
+  - Karena jendela Batas laju QPS adalah 1 detik, ketika Anda menemui error Batas laju, buat program Anda tidur (sleep) selama 1 detik lalu lanjutkan eksekusi.
+  - **Panggilan berantre**: Untuk Batas laju QPS pada API satu aplikasi, selesaikan dengan melakukan panggilan melalui antrean.
+- **Batas laju proaktif mesin tunggal**: Ini adalah cara mendasar untuk menyelesaikan Batas laju. Jika satu server memanggil Server API DingTalk, gunakan SDK Batas laju seperti **Guava RateLimiter** untuk mengontrol laju panggilan secara bebas.
+- **Batas laju terdistribusi proaktif**: Jika beberapa server memanggil Server API DingTalk, gunakan cache terdistribusi di mana kunci cache adalah Stempel waktu tingkat detik saat ini dan nilainya adalah Jumlah panggilan.
+
+## **Batas Laju QPS Tingkat Global per API**
+
+**Note**
+
+Karena kebijakan proteksi keamanan API DingTalk, jumlah panggilan per detik dibatasi. Ketika semua aplikasi Organisasi DingTalk memanggil suatu API secara bersamaan dan melampaui batas panggilan per detik untuk API tersebut, error yang sesuai akan terpicu.
+
+### **Kondisi Pemicu**
+
+Ketika semua aplikasi dari semua Organisasi DingTalk memanggil API yang sama melampaui laju maksimumnya, Batas laju akan terpicu. Server API lama mengembalikan Kode error 90002, dan Server API baru mengembalikan Kode error Forbidden.AccessDenied.QpsLimitForApi.
+
+### **Solusi**
+
+- **Umum**: Karena jendela Batas laju QPS adalah 1 detik, ketika Anda menemui error Batas laju, buat program Anda tidur (sleep) selama 1 detik lalu lanjutkan eksekusi.
+- **Strategi di luar jam sibuk**: Untuk program yang memanggil API DingTalk secara terjadwal, hindari waktu puncak DingTalk pada awal jam—misalnya, jadwalkan eksekusi pada menit ke-10 setelah jam berganti.

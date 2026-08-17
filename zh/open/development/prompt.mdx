@@ -1,0 +1,85 @@
+---
+title: "提示词"
+description: "提示词是用于大语言模型（LLM）的输入文本，帮助引导 LLM 生成相应的输出。提示词通常不仅仅是一个硬编码的字符串，而是一个模板、一些示例和用户输入的组合。为了方便管理和使用，通常使用提示词模板（PromptTemplate）来创建和维护提示词。"
+---
+
+## 什么是提示词（Prompt）
+
+提示词是用于大语言模型（LLM）的输入文本，帮助引导 LLM 生成相应的输出。提示词通常不仅仅是一个硬编码的字符串，而是一个模板、一些示例和用户输入的组合。为了方便管理和使用，通常使用提示词模板（PromptTemplate）来创建和维护提示词。
+
+## 什么是提示词模板（PromptTemplate）
+
+提示词模板是一个可重复使用的文本字符串，通过从终端用户获取一组参数来生成提示词。通过替换模板中的参数值，你可以轻松构建和使用提示词，类似于使用钉钉文档中的文档模板构建文档。
+
+为了方便开发者编写和调试提示词模板，钉钉 AI 应用提供了提示词构建器（Prompt Builder），借助 Prompt Builder，开发者可以将 Prompt 作为实体，进行持久管理、单元调优、版本迭代，进而构建自己的 PromptTemplate 元件，在不同应用、不同技能下复用。后续 Prompt Builder 还将支持数据评测、自动优化、用量估算等功能。详情参考[如何使用提示词构建器](https://open.dingtalk.com/document/ai-dev/how-to-use-the-prompt-word-builder#)。
+
+![image](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/2881874071/fa82672772dxh.svg)
+
+### **参数配置说明**
+
+|  |  |  |
+| --- | --- | --- |
+| **参数** | **说明** | **示例** |
+| 内容 | Content | （必填）  构建提示词模板。一个提示词模板通常包含以下内容：   - 发送给 LLM 的指令。 - 一组简单示例，帮助 LLM 了解生成响应的格式。 - 发送给 LLM 的问题。   用户输入用`@&#123;input&#125;`表示，其它变量用 `@&#123;变量名&#125;` 表示。 | ``` 你是一个有奖猜题助手，可以根据用户题目需求，生成猜题信息。 举个例子，用户输入：AI 助理可以帮你做什么 1.智能摘要 2.智能问答 3.拍照智能搭应用 4.全部  AI生成以下结构化数据：  ``` &#123; "title":"AI 助理可以帮你做什么", "options":"智能摘要,智能问答,拍照智能搭应用,全部" &#125; ``` 用户输入: @&#123;input&#125; AI生成以下结构化数据： ``` |
+| 模板引擎 | TemplateEngine | 使用默认配置。 | / |
+
+## **如何在提示词模板中使用变量**
+
+AI 能力运行时，会产生大量的数据，比如 AI 助理运行所处的群聊会话 openConversationId，用户所处的企业 corpId，用户的昵称和 userId 等。为了方便开发者获取这些值，AI 应用开发平台提供了一种方便的获取方式。
+
+#### **示例**
+
+- 在提示词中获取用户输入，在提示词模板中输入变量`@{input}`
+- 获取用户昵称，在提示词模板中输入变量`@{user.name}`
+- 获取当前时间，在提示词模板中输入变量`@{time}`
+
+#### **用法**
+
+- 取值语句
+
+  ```
+  @{user.name}
+  ```
+- 遍历语句
+
+  ```
+  @foreach{message : aiMessages} 
+    @{message.sender.nick}: @{message.summary}
+  @end{}
+  ```
+- 条件语句
+
+  ```
+  @if{groupConversation != null}
+    群聊标题: @{groupConversation.title}
+  @else{singleConversation != null}
+    单聊对象: @{singleConversation.targetUser.name}
+  @else{}
+    当前不在IM对话中
+  @end{}
+  ```
+
+#### **系统变量**
+
+```
+<!-- 用户输入 -->
+@{input} 
+
+<!-- 当前时间 -->
+@{time} 
+
+<!-- 当前用户信息，包括用户组织名称、用户组织corpId、用户名称和用户userId -->
+@{user} 
+
+<!-- 当前用户在组织内的名称 -->
+@{user.name}
+
+<!-- 当前用户在组织内的userId -->
+@{user.staffId}
+
+<!-- 当前所处群聊会话的openConversationId， 仅在IM场域中使用且为群聊时存在-->
+@{groupConversation.openConversationId} 
+
+<!-- 当前所处单聊会话的openConversationId， 仅在IM场域中使用且为单聊时存在-->
+@{singleConversation.openConversationId}
+```
