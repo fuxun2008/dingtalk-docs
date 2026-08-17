@@ -25,6 +25,7 @@ from pathlib import Path
 
 BASE_URL = "https://help.dingtalk.io"
 DOCS_ROOT = Path(__file__).resolve().parent.parent
+PUBLIC_DIR = DOCS_ROOT / "public"
 IGNORE_DIRS = {
     "node_modules", ".git", ".claude", ".mintlify", "scripts",
     "tools", ".cursor", ".codex", ".qoder", ".agent", ".agents",
@@ -219,12 +220,15 @@ def main():
     mdx_paths, base_lang_map, combined, per_lang = build_urlset()
     print(f"Found {len(mdx_paths)} .mdx files")
 
+    # Ensure public/ directory exists for static assets served at site root.
+    PUBLIC_DIR.mkdir(exist_ok=True)
+
     # Write legacy combined sitemap
-    write_xml(ET.ElementTree(combined), DOCS_ROOT / "sitemap.xml")
+    write_xml(ET.ElementTree(combined), PUBLIC_DIR / "sitemap.xml")
 
     # Write per-language sitemaps
     for lang in SUPPORTED_LANGS:
-        out_path = DOCS_ROOT / f"sitemap-{lang}.xml"
+        out_path = PUBLIC_DIR / f"sitemap-{lang}.xml"
         write_xml(ET.ElementTree(per_lang[lang]), out_path)
         url_count = sum(
             1 for p in mdx_paths if classify(p)[0] == lang
@@ -233,10 +237,10 @@ def main():
 
     # Write sitemap index
     index_tree = build_sitemapindex()
-    write_xml(index_tree, DOCS_ROOT / "sitemapindex.xml")
+    write_xml(index_tree, PUBLIC_DIR / "sitemapindex.xml")
     print(f"  Written sitemapindex.xml")
 
-    # Write robots.txt
+    # Write robots.txt at repository root (Mintlify serves it from the site root).
     robots_path = DOCS_ROOT / "robots.txt"
     robots_path.write_text(build_robots_txt(), encoding="utf-8")
     print(f"  Written robots.txt")
@@ -248,7 +252,7 @@ def main():
     print(f"  EN: {en}, ZH: {zh}, JA: {ja}, ID: {idn}")
     print(f"  Unique base paths: {len(base_lang_map)}")
 
-    combined_size = (DOCS_ROOT / "sitemap.xml").stat().st_size / 1024
+    combined_size = (PUBLIC_DIR / "sitemap.xml").stat().st_size / 1024
     print(f"  sitemap.xml: {combined_size:.1f} KB")
 
 
@@ -273,11 +277,12 @@ def run_as_hook():
     print("[sitemap-hook] .mdx files changed; regenerating sitemaps...")
     main()
 
-    # Stage regenerated sitemaps and robots.txt so they are included in the
-    # current commit.
+    # Stage regenerated sitemaps (in public/) and robots.txt so they are
+    # included in the current commit.
     subprocess.run(
-        ["git", "add", "sitemap.xml", "sitemap-en.xml", "sitemap-zh.xml",
-         "sitemap-ja.xml", "sitemap-id.xml", "sitemapindex.xml", "robots.txt"],
+        ["git", "add", "public/sitemap.xml", "public/sitemap-en.xml",
+         "public/sitemap-zh.xml", "public/sitemap-ja.xml",
+         "public/sitemap-id.xml", "public/sitemapindex.xml", "robots.txt"],
         check=False,
     )
     print("[sitemap-hook] sitemaps and robots.txt regenerated and staged.")
