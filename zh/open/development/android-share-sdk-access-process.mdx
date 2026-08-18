@@ -1,0 +1,140 @@
+---
+title: "Android分享SDK接入流程"
+description: "本文介绍如何使用钉钉Android分享SDK接入钉钉分享。"
+---
+
+本文介绍如何使用钉钉Android分享SDK接入钉钉分享。
+
+## 准备工作
+
+在使用Android接入钉钉分享之前，你需要完成以下准备工作：
+
+- 搭建Android开发环境。
+- 下载[Android SDK](https://files.alicdn.com/tpsservice/e76b61f0c65ddda660bb07f265c35b19.zip) 。
+- 安装钉钉客户端2.7.0及以上的版本。
+
+## 步骤一：**接入钉钉分享**
+
+1. 登录[开发者后台](https://open-dev.dingtalk.com/#/shareMan)，然后进入应用详情页。
+2. 在应用详情页，单击**钉钉登录与分享**，进入登录与分享页面。
+
+   ![进入分享](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/5499666161/p255019.png)
+3. 在**接入分享**栏，单击右侧**编辑**。![编辑](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/5499666161/p255020.png)
+4. 单击开启**Android 分享**，然后依次填写**Android包名称**和**Android签名**，最后单击保存。
+
+   **说明** 
+
+   签名获取方式请参考签名方法。
+
+   ![保存](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/2699666161/p255021.png)
+
+## 步骤二：搭建开发环境
+
+使用以下任意一种方式搭建开发环境。
+
+- 方式一：Gradle依赖
+
+  在模块的`build.gradle`的`dependencies`中添加`compile 'com.alibaba.android:ddsharesdk:1.1.0'`
+- 方式二：jar包直接引入
+
+  1. 新建一个名为DDShareDemo的Android工程，在工程中创建一个libs工程，将下载的jar包复制到该目录中，如下图所示：
+
+     ![jar包](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/1496077161/p260452.png)
+  2. 将libs目录下的JAR包文件添加到工程依赖中。
+
+## 步骤三：**在代码中使用开发工具包**
+
+如果您的程序需要接收钉钉发送的请求，或者接收发送到钉钉的请求的响应结果，需要执行以下操作：
+
+1. 在您的包名相应目录下新建一个`ddshare`。
+
+   ![DDShareActivity](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/1496077161/p260647.png)
+
+   然后在`AndroidManifest`文件中添加**exported**属性，设置为**true。**
+
+   ![添加属性](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/1216368061/p204486.png)
+2. 实现**IDDAPIEventHandler**接口，钉钉的响应结果将回调到onResp方法中。
+
+   onResp方法示例代码如下：
+
+   ```
+   public void onResp(BaseResp baseResp) {
+       int errCode = baseResp.mErrCode;
+       Log.d("lzc" , "errorCode==========>"+errCode);
+       String errMsg = baseResp.mErrStr;
+       Log.d("lzc" , "errMsg==========>"+errMsg);
+       if(baseResp.getType() == ShareConstant.COMMAND_SENDAUTH_V2 && (baseResp instanceof SendAuth.Resp)){
+           SendAuth.Resp authResp = (SendAuth.Resp) baseResp;
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "授权成功，授权码为:"+authResp.code, Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "授权取消", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "授权异常"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }else{
+           switch (errCode){
+               case BaseResp.ErrCode.ERR_OK:
+                   Toast.makeText(this, "分享成功", Toast.LENGTH_SHORT).show();
+                   break;
+               case BaseResp.ErrCode.ERR_USER_CANCEL:
+                   Toast.makeText(this, "分享取消", Toast.LENGTH_SHORT).show();
+                   break;
+               default:
+                   Toast.makeText(this, "分享失败"+baseResp.mErrStr, Toast.LENGTH_SHORT).show();
+                   break;
+           }
+       }
+       finish();
+   }
+   ```
+3. 在**DDShareActivity**类中，将接收到的intent和实现了**IDDAPIEventHandler**接口的对象传递给**IDDShareApi**接口的handleIntent方法。然后应用请求钉钉的响应结果，钉钉将会通过调用onResp方法的形式返回。
+
+   ```
+   private IDDShareApi mIDDShareApi;
+
+   @Override
+   protected void onCreate(Bundle savedInstanceState) {
+       super.onCreate(savedInstanceState);
+       Log.d("lzc" ,"onCreate==========>");
+       try {
+           //activity的export为true，try起来，防止第三方拒绝服务攻击
+           mIDDShareApi = DDShareApiFactory.createDDShareApi(this, Constant.APP_ID, false);
+           mIDDShareApi.handleIntent(getIntent(), this);
+       } catch (Exception e) {
+           e.printStackTrace();
+           Log.d("lzc" , "e===========>"+e.toString());
+       }
+   }
+   ```
+4. 判断当前设备是否支持分享。
+
+   - 判断当前设备是否已经安装钉钉。
+
+     ```
+     findViewById(R.id.ding_install_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isInstalled = iddShareApi.isDDAppInstalled();
+             Toast.makeText(MainActivity.this, "是否安装===》" + isInstalled, Toast.LENGTH_SHORT).show();
+         }
+     });
+     ```
+   - 判断当前设备是否支持分享到钉钉（已经安装钉钉并且钉钉版本支持分享）。
+
+     ```
+     findViewById(R.id.share_support_check).setOnClickListener(new View.OnClickListener() {
+         @Override
+         public void onClick(View view) {
+             boolean isSupport = iddShareApi.isDDSupportAPI();
+             Toast.makeText(MainActivity.this ,"是否支持分享到好友===》"+isSupport ,Toast.LENGTH_SHORT ).show();
+         }
+     });
+     ```
+5. 支持的分享类型。
+
+   支持文本、图片、链接以及特殊的支付宝红包类型。具体使用请参考已下载的**Android SDK**示例。

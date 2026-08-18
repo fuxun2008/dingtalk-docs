@@ -1,0 +1,78 @@
+---
+title: "配置 HTTP 推送（不推荐）"
+description: "在钉钉开发者后台为企业内部应用配置 HTTP 模式事件推送，设置加密 aes_key、签名 token 与回调请求网址，并排查校验失败问题。"
+---
+
+如果你需要配置 HTTP 事件推送，可以参考本文档操作步骤完成接入。
+
+## 前提条件
+
+- 拥有公网可访问的请求网址。
+- 拥有所在钉钉组织开发者后台的开发者权限。
+- 拥有所在钉钉组织的[企业内部应用](/zh/open/dingstart/create-application)。
+
+## 操作步骤
+
+<Steps>
+<Step title="进入应用详情页">
+登录<a href="https://open-dev.dingtalk.com/" target="_blank">开发者后台</a>，单击目标应用，进入应用详情页。
+</Step>
+<Step title="选择 HTTP 推送">
+单击 **开发配置 > 事件订阅**，选择 **HTTP 推送**。
+</Step>
+<Step title="配置 HTTP 信息">
+| 配置项 | 描述 |
+| --- | --- |
+| 加密 aes_key | 回调消息内容的加解密参数，是 AES 密钥的 Base64 编码。 |
+| 签名 token | 钉钉每次向你的地址推送事件数据时都会携带 `token`，用于生成签名、校验回调请求的合法性。必须为英文或数字，长度为 3~32 个字符。 |
+| 请求网址 | 用于接收事件订阅请求的 URL。当应用订阅的事件触发时，钉钉会向该网址发送相应的 HTTP POST 请求。 |
+</Step>
+<Step title="开发事件订阅服务端">
+配置完成后，你需要开发事件订阅服务端。详情参考开发 HTTP 推送服务端。
+</Step>
+<Step title="保存">
+服务端开发完成并启动后，单击 **保存**。保存完成后，事件订阅列表才会展示。
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p737446.png" alt="配置 HTTP 推送" />
+</Frame>
+</Step>
+</Steps>
+
+## 常见问题
+
+<AccordionGroup>
+<Accordion title="页面报错“HTTP 请求结果校验返回字段值失败”">
+**原因：**
+
+- 返回给钉钉服务器的 JSON 信息中有其中一个字段值不正确。
+- 返回给钉钉服务器的信息不是 JSON 格式。
+
+**解决方案：**
+
+<Note>需校验开发 HTTP 推送服务端内容是否正确。</Note>
+
+构造 main 方法，使用回调地址返回的四个字段值，调用加密接口，验证得到的值是否为 `success` 字符串，例如：
+
+```java
+//构造加解密类，使用的参数不变
+DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+//加密方法内传你的回调地址返回给钉钉服务器的四个参数
+String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+System.out.println(result);
+```
+
+- 如果得到了 `success` 字符串，说明返回的值没有问题，问题出现在回调接口返回给钉钉服务器的值参数格式不对，需要再次确认。
+- 如果运行出现报错，常见运行报错和原因如下：
+
+| 错误 | 原因 | 调整方式 |
+| --- | --- | --- |
+| 计算解密文字 corpid 不匹配 | DingTalkEncryptor 中 `OWNER_KEY` 参数错误。 | 当前开发者后台应用上的事件订阅，`owner_key` 需要传当前应用的 appkey 值。 |
+| 不合法的 aes key | DingTalkEncryptor 中 `ENCODING_AES_KEY` 参数错误。 | `ENCODING_AES_KEY` 自定义的固定 43 位字符串，只支持大小写字母和数字。 |
+| 签名计算失败 | 解密方法中的参数使用有问题。 | 解密方法 getEncryptedMap 内的四个参数都来自钉钉服务器请求时带来的值。 |
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p741380.png" alt="运行结果" />
+</Frame>
+</Accordion>
+</AccordionGroup>

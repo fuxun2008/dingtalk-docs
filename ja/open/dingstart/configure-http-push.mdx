@@ -1,0 +1,78 @@
+---
+title: "HTTP プッシュの設定（非推奨）"
+description: "DingTalk 開発者コンソールで社内アプリの HTTP モードイベントプッシュを設定し、暗号化 aes_key、署名 token、コールバックのリクエスト URL を指定して、検証失敗のトラブルシューティングを行います。"
+---
+
+HTTP モードのイベントプッシュを設定する必要がある場合は、本ドキュメントの手順に従って接続を完了できます。
+
+## 前提条件
+
+- パブリックにアクセス可能なリクエスト URL を持っていること。
+- 所属する DingTalk 組織の開発者コンソールで開発者権限を持っていること。
+- 所属する DingTalk 組織に[社内アプリ](/ja/open/dingstart/create-application)があること。
+
+## 操作手順
+
+<Steps>
+<Step title="アプリ詳細ページを開く">
+<a href="https://open-dev.dingtalk.com/" target="_blank">開発者コンソール</a>にログインし、対象のアプリをクリックしてアプリ詳細ページに移動します。
+</Step>
+<Step title="HTTP プッシュを選択する">
+**開発設定 > イベントサブスクリプション** をクリックし、**HTTP プッシュ** を選択します。
+</Step>
+<Step title="HTTP 情報を設定する">
+| 設定項目 | 説明 |
+| --- | --- |
+| 暗号化 aes_key | コールバックメッセージ本文の暗号化・復号パラメーター。AES 鍵の Base64 エンコードです。 |
+| 署名 token | DingTalk があなたの URL にイベントデータをプッシュするたびに `token` が付与され、署名の生成とコールバックリクエストの正当性の検証に使用されます。半角英数字のみで、長さは 3〜32 文字である必要があります。 |
+| リクエスト URL | イベントサブスクリプションのリクエストを受信するための URL。アプリがサブスクライブしているイベントがトリガーされると、DingTalk は対応する HTTP POST リクエストをこの URL に送信します。 |
+</Step>
+<Step title="イベントサブスクリプションのサーバーを開発する">
+設定が完了したら、イベントサブスクリプションのサーバーを開発する必要があります。詳しくはHTTP プッシュのサーバー開発を参照してください。
+</Step>
+<Step title="保存する">
+サーバー側の開発が完了し、HTTP プッシュサーバーを起動したら、**保存** をクリックします。保存が完了すると、イベントサブスクリプションの一覧が表示されます。
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p737446.png" alt="HTTP プッシュの設定" />
+</Frame>
+</Step>
+</Steps>
+
+## よくある質問
+
+<AccordionGroup>
+<Accordion title="ページに「HTTP リクエスト結果の返却フィールド値の検証に失敗しました」というエラーが表示される">
+**原因:**
+
+- DingTalk サーバーに返す JSON 情報の中に、いずれかのフィールド値が正しくないものがある。
+- DingTalk サーバーに返す情報が JSON 形式ではない。
+
+**解決方法:**
+
+<Note>「HTTP プッシュのサーバー開発」の内容が正しいかどうかを検証する必要があります。</Note>
+
+main メソッドを構築し、コールバック URL が返す 4 つのフィールド値を使って暗号化 API を呼び出し、得られた値が `success` 文字列かどうかを検証します。例:
+
+```java
+//暗号化・復号クラスを構築します。使用するパラメーターは変更しません。
+DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+//コールバック URL が DingTalk サーバーに返す 4 つのパラメーターを暗号化メソッドに渡します。
+String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+System.out.println(result);
+```
+
+- `success` 文字列が得られた場合は、返却値に問題はありません。問題はコールバック API が DingTalk サーバーに返す値のパラメーター形式が正しくないことにあるため、再度確認してください。
+- 実行時にエラーが発生する場合、よくある実行時エラーと原因は次のとおりです:
+
+| エラー | 原因 | 対処方法 |
+| --- | --- | --- |
+| 復号した corpid が一致しない | DingTalkEncryptor の `OWNER_KEY` パラメーターが誤っている。 | 開発者コンソールの現在のアプリのイベントサブスクリプションでは、`owner_key` に現在のアプリの appkey 値を渡す必要があります。 |
+| 不正な aes key | DingTalkEncryptor の `ENCODING_AES_KEY` パラメーターが誤っている。 | `ENCODING_AES_KEY` は固定 43 文字のカスタム文字列で、半角英大文字・小文字と数字のみをサポートします。 |
+| 署名の計算に失敗した | 復号メソッドのパラメーターの使い方に問題がある。 | 復号メソッド getEncryptedMap の 4 つのパラメーターは、いずれも DingTalk サーバーのリクエスト時に渡される値です。 |
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p741380.png" alt="実行結果" />
+</Frame>
+</Accordion>
+</AccordionGroup>

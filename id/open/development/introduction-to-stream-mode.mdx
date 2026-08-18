@@ -1,0 +1,236 @@
+---
+title: "Mode Stream Sisi Server"
+description: "Pelajari mode Stream di DingTalk Open Platform: cara kerja WebSocket, prinsip desain, serta integrasi sisi server dengan SDK tanpa IP publik, gateway, atau sertifikat TLS."
+---
+
+Artikel ini memperkenalkan kemampuan dasar, prinsip desain, dan metode integrasi sisi server dari mode Stream pada Open Platform.
+
+## **Apa Itu Mode Stream**
+
+Mode Stream adalah metode integrasi yang disediakan oleh DingTalk Open Platform. Mode ini dapat mendengarkan callback Bot, callback langganan peristiwa, dan Callback kartu yang terdaftar. Saat Anda berintegrasi menggunakan mode Stream, DingTalk Open Platform berkomunikasi dengan aplikasi Anda melalui koneksi WebSocket. Mode Stream sangat menurunkan hambatan integrasi dan ketergantungan sumber daya. Anda tidak memerlukan sumber daya jaringan publik seperti server, alamat IP, atau domain. Cukup integrasikan SDK DingTalk Open Platform.
+
+## Prinsip Mode Stream
+
+Dalam mode Stream, aplikasi Anda mengintegrasikan SDK untuk membangun koneksi WebSocket dengan DingTalk Open Platform. Selama proses koneksi, Open Platform mengautentikasi koneksi tersebut. Ketika terjadi Callback kartu, Open Platform mengirimkan data ke aplikasi Anda melalui koneksi WebSocket. Aplikasi Anda dapat menerima data ini dan memprosesnya sesuai kebutuhan, sehingga memungkinkan komunikasi real-time dengan DingTalk Open Platform, seperti ditunjukkan pada gambar di bawah ini.
+
+## **Keunggulan Mode Stream**
+
+Dalam skenario ketika DingTalk Open Platform mengirimkan permintaan ke sebuah aplikasi, sebagian besar menggunakan metode Webhook (mendaftarkan layanan HTTPS publik), termasuk Callback kartu. Pengembangan dengan metode Webhook melibatkan banyak tantangan, di antaranya:
+
+- Mengajukan domain publik dan sertifikat TLS
+- Mengajukan alamat IP publik dan menyebarkan gateway akses
+- Menyebarkan firewall aplikasi dan mengonfigurasi daftar izin
+- Menangani autentikasi permintaan serta enkripsi dan dekripsi secara mandiri
+- Menyiapkan lingkungan penetrasi intranet untuk pengembangan dan debugging lokal
+
+Untuk mengatasi masalah ini, mode Stream memberikan pengalaman integrasi "lima nol" bagi pengembang, mengurangi siklus pengembangan integrasi dari 1 hingga 2 minggu menjadi 5 menit, termasuk:
+
+- **Nol IP Publik**
+
+  Anda tidak perlu bergantung pada atau mengekspos alamat IP publik atau domain. Ini mengurangi risiko keamanan akibat mengekspos layanan ke jaringan publik dan menurunkan hambatan pengembangan.
+- **Nol Enkripsi/Dekripsi, Tanda tangan, atau Pengelolaan Sertifikat TLS**
+
+  Gunakan identitas aplikasi untuk mengautentikasi koneksi dan membangun koneksi terenkripsi TLS dengan DingTalk Open Platform melalui koneksi terbalik, memberikan pengalaman komunikasi yang cepat dan aman.
+- **Nol Daftar Izin Firewall**
+
+  Dalam mode Stream, Anda tidak perlu membuka port server apa pun ke jaringan publik, menyebarkan firewall, atau mengonfigurasi daftar izin.
+- **Nol Penyebaran Gateway**
+
+  Saluran dibangun melalui koneksi terbalik. Anda hanya perlu memastikan lingkungan runtime memiliki akses jaringan publik. Tidak diperlukan penyebaran gateway.
+- **Nol Penetrasi Intranet**
+
+  Anda tidak perlu menyiapkan alat penetrasi intranet secara lokal. Dengan mode Stream, Anda dapat menerima Callback kartu langsung di lingkungan pengembangan lokal Anda.
+
+## **Metode Integrasi**
+
+**Penting**
+
+Sisi klien menerima callback untuk Kartu yang bersangkutan segera setelah dimulai. Saat menyebarkan lingkungan pengujian dan pengembangan, hindari memengaruhi lingkungan produksi.
+
+### **Batasan Integrasi**
+
+1. Lingkungan tempat aplikasi Anda disebarkan harus memiliki akses jaringan publik.
+2. Hanya berlaku untuk aplikasi internal dan aplikasi perusahaan pihak ketiga.
+3. Setiap instance klien secara default mengaktifkan satu koneksi WebSocket, dan sebuah aplikasi secara default dapat membangun hingga 50 koneksi.
+
+### **Java**
+
+- #### **Lingkungan Runtime**
+
+  JDK 1.8 atau versi lebih baru.
+- #### **Instal Java SDK**
+
+  Tambahkan dependensi ke file `pom.xml` proyek Anda atau unduh paket JAR yang bersangkutan. Anda dapat melihat dan mengunduh versi SDK terbaru [di sini](https://s01.oss.sonatype.org/?spm=ding_open_doc.document.0.0.27fc4169or3Sre#nexus-search;quick~dingtalk-stream).
+
+  ```
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>dingtalk-stream</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+- #### **Contoh Kode**
+
+  **Callback Bot**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // Daftarkan listener bot
+                  .registerCallbackListener("${topic}", robotMessage -> {
+                      log.info("receive robotMessage, {}", robotMessage);
+                      // Tangani callback bot sesuai kebutuhan bisnis Anda
+                      return new JSONObject();
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  Untuk detailnya, lihat [dokumentasi pengembangan Bot](https://opensource.dingtalk.com/developerpedia/docs/category/%E8%81%8A%E5%A4%A9%E6%9C%BA%E5%99%A8%E4%BA%BA).
+
+  **Deskripsi Parameter**
+
+  |  |  |
+  | --- | --- |
+  | **Nama** | **Deskripsi** |
+  | clientId | AppKey untuk aplikasi internal / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi internal / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+  | topic | Nama callback bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+
+  **Callback Langganan Peristiwa**
+
+  ```
+  public static void main(String[] args) {
+    OpenDingTalkStreamClientBuilder
+      .custom()
+      .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+      // Daftarkan listener peristiwa
+      .registerAllEventListener(new GenericEventListener() {
+        public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+          try {
+            // ID peristiwa yang unik
+            String eventId = event.getEventId();
+            // Tipe peristiwa
+            String eventType = event.getEventType();
+            // Waktu pembuatan peristiwa
+            Long bornTime = event.getEventBornTime();
+            // Ambil body peristiwa
+            JSONObject bizData = event.getData();
+            // Proses peristiwa
+            process(bizData);
+            // Konsumsi berhasil
+            return EventAckStatus.SUCCESS;
+          } catch (Exception e) {
+            // Konsumsi gagal
+            return EventAckStatus.LATER;
+          }
+        }
+      })
+      .build().start();
+  }
+  ```
+
+  Untuk detailnya, lihat Konfigurasikan Push Stream.
+
+  **Deskripsi Parameter**
+
+  |  |  |
+  | --- | --- |
+  | **Nama** | **Deskripsi** |
+  | clientId | AppKey untuk aplikasi internal / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi internal / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+
+  **Callback kartu**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // Daftarkan listener callback kartu
+                  .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                      log.info("receive call back request, {}", callbackData);
+                      // your code is here
+
+                      // Perbarui konten kartu sesuai kebutuhan bisnis Anda dan kembalikan respons
+                      CardCallbackResponse resp = new CardCallbackResponse();
+                      return resp;
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  Untuk detailnya, lihat Stream Kartu Interaktif.
+
+  **Deskripsi Parameter**
+
+  |  |  |
+  | --- | --- |
+  | **Nama** | **Deskripsi** |
+  | clientId | AppKey untuk aplikasi internal / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi internal / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+  | topic | Nama Callback kartu yang terdaftar. Nilai tetap: `/v1.0/card/instances/callback`. |
+
+### **Golang**
+
+- #### **Lingkungan Runtime**
+
+  1.16 atau versi lebih baru.
+- #### **Instal SDK**
+
+  ```
+  go get github.com/open-dingtalk/dingtalk-stream-sdk-go
+  ```
+- #### **Contoh Kode**
+
+  **Callback Bot**
+
+  ```
+  func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+  	return nil
+  }
+
+  func StartRobot() {
+  	logger.SetLogger(logger.NewStdTestLogger())
+  	cli := client.NewStreamClient(
+      client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+  		client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+      client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+  	)
+
+  	err := cli.Start(context.Background())
+  	if err != nil {
+  		panic(err)
+  	}
+
+  	defer cli.Close()
+
+  	select {}
+  }
+  ```
+
+  **Deskripsi Parameter**
+
+  |  |  |
+  | --- | --- |
+  | **Nama** | **Deskripsi** |
+  | clientId | AppKey untuk aplikasi internal / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi internal / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+  | topic | Nama callback bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+
+### **Metode Integrasi dalam Bahasa Lain**
+
+- [Contoh Proyek Java SDK](https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start)
+- [SDK Golang dan Contoh Kode](https://github.com/open-dingtalk/dingtalk-stream-sdk-go)
+- [SDK Python dan Contoh Kode](https://github.com/open-dingtalk/dingtalk-stream-sdk-python)
+- [SDK Node.js dan Contoh Kode](https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs)
+
+Jika Anda menemui masalah apa pun selama proses ini, Anda dapat mengirimkan masukan dan mendiskusikan pertanyaan melalui [Dukungan Teknis](https://open-dingtalk.github.io/developerpedia/docs/explore/support).
+
+## **Dukungan Teknis**
+
+Jika Anda memiliki pertanyaan selama pengembangan, gabung ke DingTalk Stream Mode Co-Creation Group untuk konsultasi dan jawaban: [Stream Mode Co-Creation Group](https://open-dingtalk.github.io/developerpedia/docs/explore/support?via=moon-group).

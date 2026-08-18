@@ -1,0 +1,214 @@
+---
+title: "イベントサブスクリプションの設定"
+description: "DingTalkのイベントサブスクリプション設定方法を解説。部門変更・ログイン通知・打刻通知などのイベントをコールバックURLへHTTP POSTで受信し、アプリと連携する手順やメッセージの暗号化・復号方法を紹介します。"
+---
+
+DingTalk は、部門変更、ログイン通知、打刻通知など、サブスクライブしたイベントをアプリにプッシュします。これらのイベントをサブスクライブすることで、DingTalk とより緊密に連携できます。特定のイベントが発生したときにメッセージをプッシュする URL を DingTalk に指定するだけで、DingTalk がイベント内容を JSON 形式で HTTP POST リクエストによって送信します。
+
+## ユースケース
+
+- 業務でデータのリアルタイム性が高く求められる場合。たとえば、新しい社員の入社や退社が発生したとき、アプリはユーザーデータを即座に更新する必要があります。この場合は、連絡先イベントをサブスクライブします。
+- アプリがユーザーの操作に迅速に応答する必要がある場合。たとえば、ユーザーがグループチャットに参加したとき、アプリはグループチャットイベントをサブスクライブして、ユーザーがグループチャットに入ったときにウェルカムメッセージを送信できます。
+
+これらはほんの一例です。開発者はさまざまなイベントをさまざまな方法で処理できます。
+
+## イベントサブスクリプションのプロセス
+
+イベントサブスクリプションのプロセスは以下の図のとおりです。
+
+まず、DingTalk オープンプラットフォームで HTTP リクエストの受信 URL を設定し、プッシュされるサブスクライブ済みイベントを受信できるようにします。その後、サブスクライブするイベントを設定します。リクエスト URL を設定すると、DingTalk オープンプラットフォームはその URL に POST リクエストを送信します。指定された時間内に「**success**」を含む暗号化文字列が正しく返された場合にのみ、イベントサブスクリプションが完了します。
+
+## リクエスト URL とイベントサブスクリプションの設定
+
+1. [開発者コンソール](https://open-dev.dingtalk.com/)にログインし、作成した内部アプリを見つけます。
+2. **イベントサブスクリプション** をクリックし、続いて編集をクリックして、リクエストの受信に使用する HTTP URL を設定します。
+
+   **注意**
+
+   この URL がパブリックネットワーク経由でアクセス可能であることを確認してください。
+
+   リクエスト URL を編集して **保存** ボタンをクリックすると、オープンプラットフォームは設定した URL に application/json の POST リクエストをプッシュして、その有効性を検証します。リクエストは以下のとおりです。
+
+   ```
+   {
+       "encrypt": "ajls384kdjx98XX" // 暗号化文字列。復号方法については、後述のメッセージ暗号化・復号セクションを参照してください。
+   }
+   ```
+
+   オープンプラットフォームから POST 検証リクエストを受信したら、それを復号し、**1,500 ms** 以内に **success** を含む暗号化文字列を（**JSON 形式**で）返します。DingTalk オープンプラットフォームは、返された JSON 情報を受信すると復号します。正しい success 文字列を取得できた場合、コールバックプッシュは正常と検証されます。それ以外の場合は、コールバックの失敗と判定されます。
+3. リクエスト URL の設定に成功したら、**イベントサブスクリプション** の一覧エリアで、サブスクライブするイベントをオンにします。
+
+## イベントの受信と応答
+
+- **イベント情報の受信**
+
+  イベントが発生すると、DingTalk は設定された HTTP URL に能動的に POST リクエストを送信し、対応するイベント情報をプッシュします。たとえば、連絡先イベントをサブスクライブした後、連絡先が変更されると、以下の形式でイベント情報が登録済みの HTTP URL にプッシュされます。
+
+  **注意**
+
+  DingTalk サーバーは情報をリアルタイムでプッシュします。組織のコールバック URL が 1,500 ミリ秒以内に正しい暗号化情報を DingTalk サーバーに返さない場合、DingTalk サーバーはプッシュを失敗と判定します。
+
+  リクエスト URL の形式は以下のとおりです。
+
+  ```
+  http://your registered HTTP URL?signature=111108bb8e6dbc2xxxx&timestamp=1783610513&nonce=380320111
+  ```
+
+  含まれる JSON データは以下のとおりです。
+
+  ```
+  {
+      "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIBNbWetRg7IP0vdhVgkVwSoZBJeQwY2zhROsJq/HJ+q6tp1qhl9L1+ccC9ZjKs1wV5bmA9NoAWQiZ+7MpzQVq+j74rJQljdVyBdI/dGOvsnBSCxCVW0ISWX0vn9lYTuuHSoaxwCGylH9xRhYHL9bRDskBc7bO0FseHQQasdfghjkl"
+  }
+  ```
+
+  各項目は以下のとおりです。
+
+  - signature は本文の署名です。
+  - timestamp はタイムスタンプです。
+  - nonce はランダムな文字列です。
+  - encrypt は暗号化されたプッシュイベント情報です。
+
+- **イベント情報への応答**
+
+  オープンプラットフォームから POST 検証リクエストを受信したら、それを復号し、**1,500 ms** 以内に **success** を含む暗号化文字列を（**JSON 形式**で）返します。DingTalk オープンプラットフォームは、返された JSON 情報を受信すると復号します。正しい success 文字列を取得できた場合、コールバックプッシュは正常と検証されます。それ以外の場合は、コールバックの失敗と判定されます。
+
+  DingTalk に返す具体的なデータ形式は以下のとおりです。
+
+  **注意**
+
+  返すデータ形式は必ず JSON でなければなりません。
+
+  ```
+  {
+    "msg_signature":"111108bb8e6dbce3c9671d6fdb69d1506xxxx",
+    "timeStamp":"1783610513",
+    "nonce":"123456",
+    "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIxxxx"
+   }
+  ```
+
+  各項目は以下のとおりです。
+
+  - msg_signature は本文の署名です。
+  - timeStamp はタイムスタンプです。
+  - nonce はランダムな文字列です。
+  - encrypt は暗号化された success 文字列です。
+
+## メッセージの暗号化と復号
+
+データ送信の安全性を確保するため、DingTalk はサブスクライブ済みイベントをプッシュするときに、設定されたトークンを付与してイベントのソースを検証します。また、このキーを使用してメッセージ内容を対称暗号化します。
+
+[こちら](https://github.com/open-dingtalk/dingtalk-callback-Crypto)をクリックすると、コールバックの暗号化・復号ライブラリと対応するデモを入手できます。
+
+DingTalk サーバーは、平文の msg 本文を `encrypt` にエンコードします。`encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` は、暗号化された平文メッセージ msg の Base64 エンコードです。各項目は以下のとおりです。
+
+- **random** は 16 バイトのランダムな文字列です。
+- **msg_len** は msg の 4 バイトの長さで、ネットワークバイトオーダーです。
+- **msg** は本文の平文です。
+- **key** はアプリの appKey です。
+
+返された JSON から encrypt フィールドを抽出します。
+
+- 暗号文を Base64 デコードします。aes_msg=Base64_Decode(encrypt);
+- AESKey を使用して AES 復号を実行します。rand_msg=AES_Decrypt(aes_msg);
+
+暗号化・復号のコード例は以下のとおりです。
+
+**注意**
+
+- このコード例の暗号化・復号処理は、**DingCallbackCrypto** ユーティリティクラスに依存します。[dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto) を参照してください。
+- 例の Constant.OWNER_KEY については以下のとおりです。
+
+  - 本ドキュメントの方法で DingTalk からプッシュされるサブスクライブ済みイベントを受信する場合、イベントはアプリの次元でプッシュされます。OWNER_KEY はアプリの AppKey であり、開発者コンソールのアプリ詳細ページで取得できます。
+  - HTTP コールバック登録 API の方法で DingTalk からプッシュされるサブスクライブ済みイベントを受信する場合、イベントは組織の次元でプッシュされます。OWNER_KEY は CorpId です。
+
+```
+public Map<String, String> callBack(
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. HTTP リクエストから暗号化・復号パラメータを取得します
+
+        // 2. 暗号化・復号タイプを使用します
+        // Constant.OWNER_KEY の説明:
+        // 1. 開発者コンソールで設定したサブスクライブ済みイベントはアプリレベルのイベントプッシュであり、この場合 OWNER_KEY はアプリの APP_KEY です。
+        // 2. イベントサブスクリプション API を呼び出してサブスクライブしたイベントは組織レベルのイベントプッシュであり、
+        //      この場合 OWNER_KEY は組織（内部アプリ）の appkey または SUITE_KEY（サードパーティアプリ）です
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. コールバックイベントの JSON データをデシリアライズします
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. EventType に基づいてカテゴリごとに処理します
+        if ("check_url".equals(eventType)) {
+            // コールバック URL の正しさをテストします
+            bizLogger.info("コールバック URL の正しさをテストします");
+        } else if ("user_add_org".equals(eventType)) {
+            // 連絡先のユーザー追加イベントを処理します
+            bizLogger.info("イベントが発生しました: " + eventType);
+        } else {
+            // その他の登録済みイベントを追加します
+            bizLogger.info("イベントが発生しました: " + eventType);
+        }
+
+        // 5. 暗号化された success データを返します
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
+
+復号後の連絡先変更イベントのデータ形式は以下のとおりです。
+
+```
+{
+    "EventType": "user_add_org",
+    "TimeStamp": 43535463645,
+    "UserId": ["user1" , "user2"],
+    "CorpId": "dinge8a56572f80b02a8ffexxxx"
+}
+```
+
+## FAQ
+
+- **問題の説明**
+
+  保存をクリックすると、以下の図のように「HTTP request result verification returned field value failed」というエラーがページに表示されます。
+- **原因**
+
+  - DingTalk サーバーに返された JSON 情報のフィールド値のいずれかが正しくありません。
+  - DingTalk サーバーに返された情報が JSON 形式ではありません。
+- **解決策**
+
+  main メソッドを構築し、コールバック URL が返す 4 つのフィールド値を使用して暗号化 API を呼び出し、取得した値が success 文字列であるかを検証します。
+
+  例:
+
+  ```
+  // 暗号化・復号クラスを構築します。使用するパラメータは変更しません。
+  DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+  // コールバック URL が DingTalk サーバーに返す 4 つのパラメータを暗号化メソッドに渡します。
+  String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+  System.out.println(result);
+  ```
+
+  このときの実行結果は以下のとおりです。
+
+  - success 文字列を取得できた場合、返された値は正しく、問題はコールバック API が DingTalk サーバーに返す値パラメータの形式が正しくないことにあります。再度確認してください。
+  - 実行時にエラーが発生した場合、一般的な実行時エラーとその原因は以下のとおりです。
+
+    | エラー | 原因 | 調整方法 |
+    | --- | --- | --- |
+    | 復号したテキストの corpid が一致しない | DingTalkEncryptor の `OWNER_KEY` パラメータが正しくありません。 | 開発者コンソールの現在のアプリのイベントサブスクリプションでは、`owner_key` に現在のアプリの appkey 値を渡す必要があります。 |
+    | Invalid aes key | DingTalkEncryptor の `ENCODING_AES_KEY` パラメータが正しくありません。 | `ENCODING_AES_KEY` はカスタムの固定 43 文字の文字列で、大文字・小文字の英字と数字のみをサポートします。 |
+    | Signature calculation failed | 復号メソッドで使用したパラメータが正しくありません。 | 復号メソッド getEncryptedMap の 4 つのパラメータは、いずれも DingTalk サーバーのリクエストが付与する値から取得します。 |

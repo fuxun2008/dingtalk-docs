@@ -1,0 +1,80 @@
+---
+title: "Appendix B: How to Handle DingTalk Server API Rate Limiting"
+description: "This article describes the trigger conditions and solutions for DingTalk Server API rate limiting."
+---
+
+This article describes the trigger conditions and solutions for DingTalk Server API rate limiting.
+
+To prevent abnormal load on DingTalk servers caused by application errors, by default, each Server API call from an internal app—or a custom internal app developed by an entrusted service provider—has a rate limit. When any dimension's limit is exceeded, calling the corresponding API returns the corresponding error code.
+
+## **Monthly Call Count Limit per API**
+
+**Note**
+
+For DingTalk organizations on the Standard edition, all internal apps and custom internal apps developed by entrusted third parties—except for APIs that are not counted toward the monthly call quota (including the Access credential API, identity verification APIs, Contacts APIs, and more; for details, see Appendix A: List of APIs Not Counted Toward the Monthly Call Quota)—have a combined call quota of 10,000 calls per month for all other APIs.
+
+### **Trigger Conditions**
+
+For DingTalk organizations on the Standard edition, if the monthly call count limit above is exceeded, the legacy Server API returns error code 90020, and the new Server API returns error code Forbidden.AccessDenied.ApiCountLimitForOrg.
+
+### **Solutions**
+
+- **General:** Contact your DingTalk account manager, DingTalk city manager, or a DingTalk regional service provider to upgrade to [DingTalk Pro](dingtalk://dingtalkclient/page/link?spm=ding_open_doc.document.0.0.2cfb309498qOzp&url=https%3A%2F%2Fn.dingtalk.com%2Fdingding%2Fweb-dd-pro%2Fmobile_microApp%2Findex.html%3FcorpId%3D%26channel%3Dopenpf_web_devdoc&web_wnd=general&width=480&height=800) or the [DingTalk Dedicated edition](https://partner.dingtalk.com/opportunity_web.html?channel=openpf_web_devdoc_trial&templateId=092b3722b3fd4dd08fb641a194a90691#/consultingService) and use its expansion benefits to resolve the issue.
+
+## **IP-Level Rate Limiting per API**
+
+**Note**
+
+Due to DingTalk's API security protection policy, each IP has a limit on the number of DingTalk API calls within a specified time. If the current IP exceeds this call limit within the specified time, DingTalk returns the corresponding information and blocks the calls.
+
+### **Trigger Conditions**
+
+For each IP, calling any DingTalk API more than 10,000 times within 20 seconds triggers rate limiting, and the current IP is blocked from calling for 5 minutes. Triggering this rate limit does not return an error code; instead, it returns an HTML page. An example of the returned information is as follows:
+
+```
+{
+   "status":1111,
+   "wait":5,
+   "source":"x5",
+   "punish":"deny",
+   "uuid":"xxx"
+}
+```
+
+### **Solutions**
+
+- **General:** Prepare enough egress IPs based on your OpenAPI call volume.
+
+## **App-Level QPS Rate Limiting per API**
+
+**Note**
+
+When a DingTalk organization on the Standard edition calls a DingTalk API, the call count per second must not exceed 20. If the call count in the current second exceeds 20, the corresponding error is triggered. Ensure that the call rate does not exceed 20 per second.
+
+### **Trigger Conditions**
+
+For each app, calling each API beyond its maximum rate triggers rate limiting. The legacy Server API returns error code 90018, and the new Server API returns error code Forbidden.AccessDenied.QpsLimitForAppkeyAndApi.
+
+### **Solutions**
+
+- **General**
+
+  - Because the QPS rate-limiting window is 1 second, when you encounter a rate-limiting error, sleep for 1 second in your program and then continue execution.
+  - **Queued calls**: For QPS rate limiting of a single app's API, resolve it by making calls through a queue.
+- **Proactive single-machine rate limiting**: This is the fundamental way to resolve rate limiting. If a single server calls the DingTalk Server API, use a rate-limiting SDK such as **Guava RateLimiter** to freely control the call rate.
+- **Proactive distributed rate limiting**: If multiple servers call the DingTalk Server API, use a distributed cache where the cache key is the current second-level timestamp and the value is the call count.
+
+## **Global-Level QPS Rate Limiting per API**
+
+**Note**
+
+Due to DingTalk's API security protection policy, the number of calls per second is limited. When all DingTalk organization apps call a certain API simultaneously and exceed the per-second call limit for that API, the corresponding error is triggered.
+
+### **Trigger Conditions**
+
+When all apps of all DingTalk organizations call the same API beyond its maximum rate, rate limiting is triggered. The legacy Server API returns error code 90002, and the new Server API returns error code Forbidden.AccessDenied.QpsLimitForApi.
+
+### **Solutions**
+
+- **General**: Because the QPS rate-limiting window is 1 second, when you encounter a rate-limiting error, sleep for 1 second in your program and then continue execution.
+- **Off-peak strategy**: For programs that call DingTalk APIs on a schedule, avoid DingTalk's peak times on the hour—for example, schedule execution at 10 minutes past the hour.

@@ -1,0 +1,214 @@
+---
+title: "Konfigurasikan Langganan peristiwa"
+description: "Pelajari cara mengonfigurasi Langganan peristiwa di DingTalk agar aplikasi menerima push peristiwa seperti perubahan departemen, notifikasi absen, dan notifikasi lainnya melalui URL callback dalam format JSON via HTTP POST."
+---
+
+DingTalk melakukan push peristiwa yang dilanggan ke aplikasi Anda, seperti perubahan departemen, notifikasi sign-in, dan notifikasi absen. Dengan berlangganan peristiwa ini, Anda dapat berintegrasi dengan DingTalk secara lebih baik. Cukup beri tahu DingTalk URL mana yang harus menerima push pesan saat suatu peristiwa terjadi, lalu DingTalk melakukan push konten peristiwa kepada Anda dalam format JSON melalui permintaan HTTP POST.
+
+## Kasus penggunaan
+
+- Ketika bisnis Anda memerlukan performa real-time yang tinggi untuk data. Misalnya, saat karyawan baru bergabung atau keluar, aplikasi perlu memperbarui data pengguna dengan segera. Dalam kasus ini, langgananlah peristiwa Kontak.
+- Ketika aplikasi Anda perlu merespons tindakan pengguna dengan cepat. Misalnya, saat pengguna bergabung ke obrolan grup, aplikasi dapat berlangganan peristiwa obrolan grup untuk mengirim pesan sambutan ketika pengguna memasuki obrolan grup.
+
+Ini hanyalah beberapa kasus penggunaan sederhana. Developer dapat menangani peristiwa yang berbeda dengan cara yang berbeda.
+
+## Proses Langganan peristiwa
+
+Proses Langganan peristiwa ditunjukkan pada gambar di bawah ini.
+
+Pertama, konfigurasikan URL penerima permintaan HTTP di DingTalk Open Platform untuk menerima push peristiwa yang dilanggan, lalu tetapkan peristiwa yang akan dilanggan. Setelah Anda mengonfigurasi URL permintaan, DingTalk Open Platform mengirimkan permintaan POST ke URL tersebut. Langganan peristiwa hanya selesai ketika sebuah string terenkripsi yang berisi "**success**" dikembalikan dengan benar dalam waktu yang ditentukan.
+
+## Konfigurasikan URL permintaan dan Langganan peristiwa
+
+1. Masuk ke [Developer Console](https://open-dev.dingtalk.com/) dan temukan aplikasi internal yang telah Anda buat.
+2. Klik **Event Subscription**, lalu klik Edit untuk mengonfigurasi URL HTTP yang digunakan untuk menerima permintaan.
+
+   **Note**
+
+   Pastikan URL ini dapat diakses melalui jaringan publik.
+
+   Setelah Anda mengedit URL permintaan dan mengklik tombol **Save**, Open Platform melakukan push permintaan POST application/json ke URL yang Anda konfigurasikan untuk memverifikasi validitasnya. Permintaannya adalah sebagai berikut:
+
+   ```
+   {
+       "encrypt": "ajls384kdjx98XX" // String terenkripsi. Lihat bagian enkripsi dan dekripsi pesan di bawah untuk metode dekripsinya.
+   }
+   ```
+
+   Saat Anda menerima permintaan verifikasi POST dari Open Platform, dekripsikan dan kembalikan sebuah string terenkripsi yang berisi **success** (dalam **format JSON**) dalam waktu **1.500 ms**. Setelah DingTalk Open Platform menerima informasi JSON yang dikembalikan, ia mendekripsinya. Jika ia dapat memperoleh string success yang benar, push callback diverifikasi sebagai normal. Jika tidak, ia ditentukan sebagai callback yang gagal.
+3. Setelah Anda berhasil mengonfigurasi URL permintaan, aktifkan peristiwa yang akan dilanggan di area daftar **Event Subscription**.
+
+## Menerima dan merespons peristiwa
+
+- **Menerima informasi peristiwa**
+
+  Ketika suatu peristiwa terjadi, DingTalk secara aktif mengirimkan permintaan POST ke URL HTTP yang dikonfigurasi untuk melakukan push informasi peristiwa yang bersangkutan. Misalnya, setelah Anda berlangganan peristiwa Kontak, ketika Kontak berubah, informasi peristiwa di-push ke URL HTTP yang terdaftar dalam format berikut.
+
+  **Note**
+
+  Server DingTalk melakukan push informasi secara real-time. Jika URL callback organisasi tidak mengembalikan informasi terenkripsi yang benar ke server DingTalk dalam waktu 1.500 milidetik, server DingTalk menentukan push tersebut gagal.
+
+  Format URL permintaan adalah sebagai berikut:
+
+  ```
+  http://your registered HTTP URL?signature=111108bb8e6dbc2xxxx&timestamp=1783610513&nonce=380320111
+  ```
+
+  Data JSON yang disertakan adalah sebagai berikut:
+
+  ```
+  {
+      "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIBNbWetRg7IP0vdhVgkVwSoZBJeQwY2zhROsJq/HJ+q6tp1qhl9L1+ccC9ZjKs1wV5bmA9NoAWQiZ+7MpzQVq+j74rJQljdVyBdI/dGOvsnBSCxCVW0ISWX0vn9lYTuuHSoaxwCGylH9xRhYHL9bRDskBc7bO0FseHQQasdfghjkl"
+  }
+  ```
+
+  Di mana:
+
+  - signature adalah tanda tangan dari isi pesan.
+  - timestamp adalah stempel waktu.
+  - nonce adalah string acak.
+  - encrypt adalah informasi peristiwa terenkripsi yang di-push.
+
+- **Merespons informasi peristiwa**
+
+  Saat Anda menerima permintaan verifikasi POST dari Open Platform, dekripsikan dan kembalikan sebuah string terenkripsi yang berisi **success** (dalam **format JSON**) dalam waktu **1.500 ms**. Setelah DingTalk Open Platform menerima informasi JSON yang dikembalikan, ia mendekripsinya. Jika ia dapat memperoleh string success yang benar, push callback diverifikasi sebagai normal. Jika tidak, ia ditentukan sebagai callback yang gagal.
+
+  Format data spesifik yang dikembalikan ke DingTalk adalah sebagai berikut:
+
+  **Note**
+
+  Format data yang dikembalikan harus JSON.
+
+  ```
+  {
+    "msg_signature":"111108bb8e6dbce3c9671d6fdb69d1506xxxx",
+    "timeStamp":"1783610513",
+    "nonce":"123456",
+    "encrypt":"1ojQf0NSvw2WPvW7LijxS8UvISr8pdDP+rXpPbcLGOmIxxxx"
+   }
+  ```
+
+  Di mana:
+
+  - msg_signature adalah tanda tangan dari isi pesan.
+  - timeStamp adalah stempel waktu.
+  - nonce adalah string acak.
+  - encrypt adalah string success yang terenkripsi.
+
+## Enkripsi dan dekripsi pesan
+
+Untuk memastikan keamanan transmisi data, DingTalk menyertakan token yang dikonfigurasi guna memverifikasi sumber peristiwa saat melakukan push peristiwa yang dilanggan. DingTalk juga menggunakan key ini untuk mengenkripsi konten pesan secara simetris.
+
+Klik [di sini](https://github.com/open-dingtalk/dingtalk-callback-Crypto) untuk mendapatkan library enkripsi dan dekripsi callback beserta demo yang bersangkutan.
+
+Server DingTalk mengodekan isi pesan plaintext msg menjadi `encrypt`. `encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` adalah pengodean Base64 dari pesan plaintext msg yang terenkripsi. Di mana:
+
+- **random** adalah string acak sepanjang 16 byte.
+- **msg_len** adalah panjang 4 byte dari msg, dalam urutan byte jaringan (network byte order).
+- **msg** adalah plaintext dari isi pesan.
+- **key** adalah appKey dari aplikasi.
+
+Ekstrak bidang encrypt dari JSON yang dikembalikan:
+
+- Dekode Base64 pada ciphertext: aes_msg=Base64_Decode(encrypt);
+- Gunakan AESKey untuk melakukan dekripsi AES: rand_msg=AES_Decrypt(aes_msg);
+
+Contoh kode enkripsi dan dekripsi adalah sebagai berikut:
+
+**Note**
+
+- Proses enkripsi dan dekripsi dalam contoh kode ini bergantung pada kelas utilitas **DingCallbackCrypto**. Lihat [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto).
+- Constant.OWNER_KEY dalam contoh dijelaskan sebagai berikut:
+
+  - Ketika Anda menggunakan metode dalam dokumen ini untuk menerima peristiwa yang dilanggan yang di-push oleh DingTalk, peristiwa tersebut di-push pada dimensi aplikasi. OWNER_KEY adalah App Key dari aplikasi, yang dapat diperoleh pada halaman detail aplikasi di Developer Console.
+  - Ketika Anda menggunakan metode HTTP callback registration API untuk menerima peristiwa yang dilanggan yang di-push oleh DingTalk, peristiwa tersebut di-push pada dimensi organisasi. OWNER_KEY adalah CorpId.
+
+```
+public Map<String, String> callBack(
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. Ambil parameter enkripsi dan dekripsi dari permintaan HTTP
+
+        // 2. Gunakan tipe enkripsi dan dekripsi
+        // Deskripsi Constant.OWNER_KEY:
+        // 1. Peristiwa yang dilanggan yang dikonfigurasi di Developer Console adalah push peristiwa tingkat aplikasi, dalam hal ini OWNER_KEY adalah APP_KEY dari aplikasi.
+        // 2. Peristiwa yang dilanggan dengan memanggil event subscription API adalah push peristiwa tingkat organisasi,
+        //      dalam hal ini OWNER_KEY adalah: appkey dari organisasi (aplikasi internal) atau SUITE_KEY (aplikasi pihak ketiga)
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. Deserialisasi data JSON peristiwa callback
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. Tangani berdasarkan kategori sesuai EventType
+        if ("check_url".equals(eventType)) {
+            // Uji kebenaran URL callback
+            bizLogger.info("Uji kebenaran URL callback");
+        } else if ("user_add_org".equals(eventType)) {
+            // Tangani peristiwa penambahan pengguna Kontak
+            bizLogger.info("Peristiwa terjadi: " + eventType);
+        } else {
+            // Tambahkan peristiwa terdaftar lainnya
+            bizLogger.info("Peristiwa terjadi: " + eventType);
+        }
+
+        // 5. Kembalikan data success yang terenkripsi
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
+
+Berikut adalah format data dari peristiwa perubahan Kontak setelah didekripsi:
+
+```
+{
+    "EventType": "user_add_org",
+    "TimeStamp": 43535463645,
+    "UserId": ["user1" , "user2"],
+    "CorpId": "dinge8a56572f80b02a8ffexxxx"
+}
+```
+
+## FAQ
+
+- **Deskripsi masalah**
+
+  Ketika Anda mengklik Save, halaman melaporkan error "HTTP request result verification returned field value failed", seperti ditunjukkan pada gambar di bawah ini.
+- **Penyebab**
+
+  - Salah satu nilai bidang dalam informasi JSON yang dikembalikan ke server DingTalk salah.
+  - Informasi yang dikembalikan ke server DingTalk tidak dalam format JSON.
+- **Solusi**
+
+  Buatlah sebuah metode main, gunakan keempat nilai bidang yang dikembalikan oleh URL callback, panggil encryption API, dan verifikasi apakah nilai yang diperoleh adalah string success.
+
+  Misalnya:
+
+  ```
+  // Buat kelas enkripsi dan dekripsi. Parameter yang digunakan tetap tidak berubah.
+  DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+  // Teruskan keempat parameter yang dikembalikan URL callback Anda ke server DingTalk ke dalam metode enkripsi.
+  String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+  System.out.println(result);
+  ```
+
+  Hasil eksekusi pada titik ini adalah sebagai berikut:
+
+  - Jika Anda memperoleh string success, nilai yang dikembalikan sudah benar, dan masalahnya terletak pada format nilai parameter yang dikembalikan callback API ke server DingTalk yang salah. Konfirmasikan kembali parameter tersebut.
+  - Jika eksekusi menghasilkan error, error runtime yang umum beserta penyebabnya adalah sebagai berikut:
+
+    | Error | Penyebab | Metode penyesuaian |
+    | --- | --- | --- |
+    | corpid dari teks yang didekripsi tidak cocok | Parameter `OWNER_KEY` pada DingTalkEncryptor salah. | Untuk Langganan peristiwa dari aplikasi saat ini di Developer Console, `owner_key` harus meneruskan nilai appkey dari aplikasi saat ini. |
+    | Invalid aes key | Parameter `ENCODING_AES_KEY` pada DingTalkEncryptor salah. | `ENCODING_AES_KEY` adalah string tetap kustom sepanjang 43 karakter yang hanya mendukung huruf besar, huruf kecil, dan digit. |
+    | Signature calculation failed | Parameter yang digunakan dalam metode dekripsi salah. | Keempat parameter dalam metode dekripsi getEncryptedMap semuanya berasal dari nilai yang dibawa oleh permintaan server DingTalk. |

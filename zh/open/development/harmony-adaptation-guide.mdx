@@ -1,0 +1,168 @@
+---
+title: "鸿蒙适配指南"
+description: "本文档将指导你在鸿蒙系统中完成调用钉钉 JSAPI。"
+---
+
+本文档将指导你在鸿蒙系统中完成调用钉钉 JSAPI。
+
+## **步骤一：**升级 SDK 到最新版本
+
+在 Web 页面在鸿蒙系统中调用JSAPI，需要将 [dingtalk-jsapi](https://www.npmjs.com/package/dingtalk-jsapi) 升级到最新版本(3.0.45+)。
+
+### **npm方式**
+
+```
+npm install dingtalk-jsapi@latest --save
+```
+
+### **yarn方式**
+
+```
+yarn upgrade dingtalk-jsapi --latest
+```
+
+### **pnpm方式**
+
+```
+pnpm update dingtalk-jsapi --latest
+```
+
+当项目中依赖的npm包依赖了旧版本 [dingtalk-jsapi](https://www.npmjs.com/package/dingtalk-jsapi) 时，需要将其升级到最新版本。可以通过package.json 中的overrides、resolution等配置，强制设置 dingtalk-jsapi 的版本。
+
+### **npm方式**
+
+```
+{
+  "overrides": {
+    "dingtalk-jsapi": "^3.0.45"
+  }
+}
+```
+
+### **yarn方式**
+
+```
+{
+  "resolutions": {
+    "dingtalk-jsapi": "^3.0.45"
+  }
+}
+```
+
+### **pnpm方式**
+
+```
+{
+  "pnpm": {
+    "overrides": {
+      "dingtalk-jsapi": "^3.0.45"
+    }
+  }
+}
+```
+
+## **步骤二：检查 JSAPI 兼容性**
+
+确认项目中依赖的 JSAPI 在鸿蒙系统中已支持。支持情况参见开放平台的 JSAPI 文档中的“**支持说明**”章节，客户端 JSAPI 参考文档JSAPI 总览。
+
+![image](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/2292754371/p890481.png)
+
+## **步骤三：适配客户端特殊逻辑**
+
+需要判断用户系统是否为鸿蒙系统，方式有三种，分别为：
+
+### **方式一**
+
+通过 dingtalk-jsapi sdk来判断是否鸿蒙系统。
+
+```
+import { env } from 'dingtalk-jsapi/core';
+import { ENV_ENUM } from 'dingtalk-jsapi/lib/env';
+
+const isHarmony = env.platform === ENV_ENUM.harmony;
+```
+
+### **方式二**
+
+Web 页面中通过 navigator.userAgent 判断是否鸿蒙系统。
+
+```
+// Web中通过navigator.userAgent判断是否鸿蒙系统
+
+const isHarmony = /OpenHarmony/i.test(navigator.userAgent)
+```
+
+### **方式三**
+
+小程序中通过读取 getSystemInfo 中的 platform 来判断是否鸿蒙系统。
+
+```
+// 小程序通过读取getSystemInfo中的platform来判断是否鸿蒙系统。
+const systemInfo = dd.getSystemInfoSync();
+const isHarmony = systemInfo.platform === 'OpenHarmony';
+```
+
+当业务中有针对单独平台特殊处理的逻辑，则需要确认逻辑是否兼容鸿蒙系统。
+
+以下面的特定客户端判定逻辑为例，当出现类似的特定端逻辑时，则需要确认对鸿蒙系统的兼容性问题。
+
+```
+import { env } from 'dingtalk-jsapi/core';
+import { ENV_ENUM } from 'dingtalk-jsapi/lib/env';
+
+switch (env.platform) {
+  case ENV_ENUM.android: {
+    // Android客户端的特别逻辑
+    // ...
+    break;
+  }
+  case ENV_ENUM.ios: {
+    // iOS客户端的特别逻辑
+    // ...
+    break;
+  }
+  default: {
+    // 其他类型客户端的特性逻辑
+
+    // 注意！注意！注意！！！
+    // 这里需要确认是否兼容了鸿蒙客户端。
+
+    
+    // ...
+    
+    break;
+  }
+}
+```
+
+## **步骤四：**验证真机运行
+
+代码侧做相应适配改造后，将代码在鸿蒙系统设备中运行，确定是否符合预期。
+
+1. 下载并安装最新版本[钉钉鸿蒙客户端](https://www.dingtalk.com/download#/)。
+2. 调试对应代码逻辑，方式为：
+
+   |  |  |
+   | --- | --- |
+   | **应用类型** | **说明** |
+   | 网页应用（微应用） | 通过微应用四端调试工具在鸿蒙客户端中进行调试。 |
+   | 小程序 | **真机预览**  通过小程序开发者工具的“预览”进行调试。  image    **真机调试**  - 步骤一：升级钉钉客户端版本到**7.6.30**+。 - 步骤二：在小程序开发者工具「菜单」中开启鸿蒙小程序「真机调试」能力。   1. 打开 「帮助」 > 「本地配置」，输入如下配置，保存并重启：      ```    &#123;      "DD_PROJECT_100": [        &#123;          "keyPath": "enableRemoteX",          "priority": 1000,          "value": true        &#125;,        &#123;          "keyPath": "supportsAppxNG",          "priority": 1000,          "value": true        &#125;      ]    &#125;    ```      image 2. 单击「真机调试」，等待小程序编译完成并生成调试二维码。使用钉钉「扫一扫」扫码调试。  image 3. 真机效果。  image-4 |
+   |  |  |
+
+## **步骤五：开启鸿蒙适配开关并重新发布**
+
+1. 应用适配完成后，单击对应应用，进入应用详情页面。
+
+   > 如果你还未创建应用，详情参考[创建应用](/zh/open/dingstart/create-application)文档。
+2. 单击**基础信息** > **凭证与基础信息**，在**操作系统模块**中，开启“鸿蒙系统”开关。
+
+   ![image](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/2307123371/p882216.png)
+3. 开启“鸿蒙系统”开关后，单击**应用发布** > **版本管理与发布**，在发布页面，创建新版本，完成发布操作。
+
+   ![image](https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/2307123371/p882219.png)
+
+## **常见问题（Q&A）**
+
+### **报错：[DINGTALK-JSAPI] ERROR 4040: Do not support the current environment: 'notinDingTalk'**
+
+答：dingtalk-jsapi 未升级到最新版本，旧版本不识别鸿蒙客户端导致。将 dingtalk-jsapi 升级到最新版本即可。

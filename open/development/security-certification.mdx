@@ -1,0 +1,343 @@
+---
+title: "Security Test Report Guide"
+description: "This article describes the security test report, including frequently asked questions, security test cases, and security test results."
+---
+
+This article describes the security test report, including frequently asked questions, security test cases, and security test results.
+
+## Guide to the Security Test Report for Listing an App on the Marketplace
+
+Test and complete the [Security Test Report Result Template](https://open-dev-resource.oss-cn-beijing.aliyuncs.com/%E5%AE%89%E5%85%A8%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A-%E6%A8%A1%E6%9D%BF.docx), convert it to PDF format, and submit it.
+For the final content of the report, refer to the [Sample App Security Test Report Result (Sample)](https://open-dev-resource.oss-cn-beijing.aliyuncs.com/%E6%9F%90%E6%9F%90%E5%BA%94%E7%94%A8%E5%AE%89%E5%85%A8%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A%E7%BB%93%E6%9E%9C%20%28%E6%A0%B7%E4%BE%8B%29.pdf).
+
+## Frequently Asked Questions
+
+**When taking screenshots, capture the entire interface of the tool (including the request content and the response content). Do not compress them and attach them directly to the report.**
+
+1. Q: What information must the report provide? Must every test case be tested?
+
+   A: All test cases specified in the report are mandatory security checkpoints. The report presents the typical risk types that need attention during security assessment. The ISV must, based on the requirements of the report and combined with its own business type, **perform security tests on all applicable APIs. The report should reflect the testing process for the key APIs, but the actual testing scope is not limited to the API tests reflected in the report.**
+2. Q: Our company does not have dedicated security personnel. Can we skip providing the security assessment report?
+
+   A: No. The report provides recommended testing methods and tools for each test case, such as Burp Suite. Detailed usage guidelines for these tools can be found online. To ensure the security of the business after it goes live, security testing before launch is mandatory and essential.
+3. Q: Does each test case in the report have testing standard requirements?
+
+   A: Test cases fall into two categories: data checks and security tests. Data checks are similar to port scanning and using middleware information. They do not involve data modification, but require you to record the actual system status and provide the necessary information. For checks performed using tools, you must provide screenshots, such as the Nmap scan results.
+
+   **For security test cases, follow the standards below:**
+
+   1. **Have the system send a normal request. Use a tool to capture screenshots of the normal request and the server-side response, and also capture a screenshot of the information displayed on the business app page.**
+   2. **Modify the network request information in the tool—for example, modify an ID. Capture screenshots of the modified network request and the server-side response in the tool, and also capture a screenshot of the result returned on the business app page.**
+   3. **Attach both the tool screenshots and the business app screenshots to the report.**
+4. Q: What should I do if a test case mentioned in the report does not exist in my business?
+
+   A: In this case, provide the reason it is not applicable or the alternative technology used. For example, if there is no SMS module, note that the SMS feature is not used.
+5. Q: I have already implemented parameter tamper protection. What is the purpose of permission verification testing?
+
+   A: Parameter tamper protection and permission verification target different scenarios. The former prevents data forgery and verifies data consistency. For some APIs, a legitimate user may attempt to access unauthorized data—for example, viewing information of another department. The submitted information is valid, but the operator is outside the authorized scope.
+6. Q: There are many testing steps. Can I skip the screenshots?
+
+   A: The purpose of testing is to discover risks as early as possible and ensure the security of the business after it goes live. Screenshots are used to record the testing process. The DingTalk security team analyzes the screenshot information to help identify potential additional business risks, so the screenshots are essential.
+7. Q: What should I do if the testing performed before the business goes live is more extensive than what the report requires?
+
+   A: If you tested scenarios not covered by the security report through other means, we recommend organizing the content into a document and attaching it as a new worksheet in the worksheet. The DingTalk security team will help analyze the report and assess the risks.
+8. Q: What is the purpose of the test screenshots?
+
+   A: The purpose of the screenshots is to check whether the testing method is correct and whether the testing was performed as required.
+
+## Security Test Cases
+
+### Prepare Tools
+
+**Packet capture and modification tools:**
+
+|  |  |  |
+| --- | --- | --- |
+| Tools | **Editions** | **Download** |
+| Burp Suite | Community | &lt;https://portswigger.net/burp/> |
+| Charles | — | — |
+| Fiddler | — | — |
+
+**Port scanning tool:**
+
+|  |  |
+| --- | --- |
+| Tools | **Download** |
+| Nmap | - Windows: &lt;https://nmap.org/book/inst-windows.html> - MAC: &lt;https://nmap.org/book/inst-macosx.html> |
+
+### Security Requirements
+
+1. You must configure and use the SSL protocol, and use HTTPS in both the code and the services you provide.
+2. Listed apps must use the DingTalk account system and use the APIs provided by the Open Platform to obtain user identity information. Building a custom login system is prohibited.
+
+**Note**
+
+If you have a scenario where user files are stored, then to ensure data security and stability, do not store files on ECS servers. Use Object Storage Service (OSS) to store the data.
+
+|  |  |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- | --- |
+| Case number | Test name | Tool used | Testing process | Test result | Fix plan | Alias |
+| NO.01 | Externally exposed port information of the domain/IP | Nmap | Nmap command: nmap -sV -T4 -Pn -p1-65535 ip | Attach a screenshot of the port scan results that shows the scanned IP and the scan results. | Only allow ports 22, 80, and 443 to be exposed externally. | — |
+| NO.02 | Database information | Manual | Inspect the table structure of the production database | Attach the database table and field structure information. | Do not store users' sensitive information, including but not limited to ID card numbers and bank card numbers. | — |
+| NO.03 | Sensitive information | Manual and packet capture tool | Review the code and environment.  1. Whether any API returns or displays relatively sensitive user information  2. Whether the server-side business logs print or store sensitive information | 1. Sensitive information is masked.  2. No sensitive information is printed or stored. | 1. Relatively sensitive information (such as phone numbers and email addresses) that is returned or displayed must be masked.  2. Server-side business logs are not allowed to print or store sensitive information. | — |
+| NO.04 | Privilege escalation vulnerability | Packet capture tool | Modify ID-type parameters in the request URL | 1. Using the identity of user A, you cannot obtain other users' data by modifying the request parameters.  2. Using an ordinary user's identity, you cannot obtain data or perform modification operations by accessing admin-level APIs. | Implement proper permission verification. Do not determine the user identity based on the content of parameters. | — |
+| NO.05 | Cross-site vulnerability | Manual | In places where the user can enter input, enter the JS code  `&lt;img src=x onerror=alert(1)/>` | The JS code entered by the user is not executed on the display page. | Properly filter the content entered by users. | — |
+| NO.06 | SQL injection vulnerability | Manual and packet capture tool | Modify the query-type parameters in the request | The program does not execute the SQL statement in the parameters. | Do not concatenate SQL statements. Use precompiled mode for database operations. | — |
+| NO.07 | CSRF vulnerability | Manual or packet capture tool | Modify the referer or token in the add/delete/modify request APIs | After modifying the referer or token, the add/delete/modify operations cannot be executed successfully. | Perform allowlist verification on the referer of add/delete/modify request APIs, or add a random token to the parameters. | — |
+| NO.08 | Privacy security | Manual | 1. Go to the **App Development** > **Basic Information** > **Manage Permissions** page, click **User Information Usage Statement**, and fill in the collected user information and its usage scenario description.  2. Go to the **App Operations** > **Promotion Management** > **Offline App Promotion** > **Offline Micro App Deployment** page, click the QR Code icon in the Actions list on the far right to **View the offline deployment QR Code of the product**, scan it with DingTalk to install the app, and provide a screenshot of the installation authorization page. | 1. The usage statement for self-collected user data is completed.  2. Provide a screenshot of the installation authorization page (integrated by default; the authorization content is displayed based on the requested API permissions). | — | — |
+
+## Security Test Results
+
+### NO.01 Externally Exposed Port Information of the EIP
+
+Complete the table and attach a screenshot of the scan.
+
+**Requirement**: The EIP (Elastic IP) should only expose necessary service ports (such as ports 22, 80, 443, and 3389); the SLB should only expose web service ports (such as ports 80 and 443). If any special ports are exposed, describe the scenario.
+
+|  |  |  |
+| --- | --- | --- |
+| Domain/IP | Port exposure information | **Alias** |
+| Domain: \*\*\*.\*\*\*.com  EIP: \*\*\*.\*\*\*.\*\*\*.\*\*\* |  |  |
+
+> Replace "\*\*\*" with the EIP. If there are multiple EIPs (Elastic IPs), provide the port exposure information for all of them. Port information for internal IPs does not need to be provided. Nmap command: nmap -sV -T4 -Pn -p1-65535 ip
+
+### NO.02 Database Information
+
+Complete the table (database table and field structure information). If there are many tables and fields, fill in only the tables and fields related to user information.
+
+**Requirement**: Do not store users' sensitive information (including but not limited to ID card numbers and bank card numbers). If you have special requirements, describe the usage scenario.
+
+|  |  |  |
+| --- | --- | --- |
+| **Database field name** | **Field description** | **Alias** |
+| username | User name |  |
+| address | User's mailing address |  |
+
+### NO.03 Sensitive Information
+
+Complete the table.
+
+**Requirements**:
+
+1. Relatively sensitive information (such as phone numbers and email addresses) that is returned or displayed must be masked.
+
+2. Server-side business logs are not allowed to print or store sensitive information.
+
+|  |  |  |
+| --- | --- | --- |
+| **Scenario information** | **Description** | **Alias** |
+| Whether any API returns or displays relatively sensitive user information |  |  |
+| Whether the server-side business logs print or store sensitive information |  |  |
+
+### NO.04 Privilege Escalation Vulnerability
+
+Tool used: packet capture tool
+
+1. **Vulnerability introduction:**
+
+By directly accessing a URL or modifying a URL parameter such as an ID, you can view information belonging to other people's entries, and may even modify it.
+
+2. **Root cause:**
+
+The user identity (user ID) is obtained from URL parameters or an unencrypted cookie and is used as the basis for data queries and function operations. Users can modify this parameter, resulting in horizontal or vertical privilege escalation.
+
+3. **Fix plan:**
+
+Implement proper user identity verification. Verify whether the current user has permission to perform the operation. Obtain the user identity information from an encrypted cookie or session, rather than determining the current user identity by reading URL parameters.
+
+4. **Testing method:**
+
+Test based on your own business scenario.
+
+- **Horizontal privilege escalation:** For example, consider a scenario for viewing order information: the order number for user A's order is 1, and the order number for user B's order is 2. User A accesses `****.com/my?orderid=1` to view their own order with order number 1. Use a packet capture tool to modify the API parameters in the request, changing `orderid=1` in user A's `****.com/my?orderid=1` request to `orderid=2`, and check whether you can obtain user B's order information with order number 2. If you can view the information, a horizontal privilege escalation vulnerability exists. Similarly, in addition to the scenario of viewing information, add/delete/modify operation APIs are tested in the same way.
+- **Vertical privilege escalation:** For example, consider a scenario for modifying information: the order number for user A's order is 1, but user A does not have permission to modify their own order information; admin B has permission to modify all order information. Admin B can view all orders by accessing the `****.com/my?orderid=all` API. Have user A access `****.com/my?orderid=all`, an API that should only be operable by an admin, and check whether they can obtain all order information. If they can, a vertical privilege escalation vulnerability exists. Similarly, viewing information and add/delete/modify operation API scenarios are tested in the same way.
+
+5. **Test result:**
+
+Complete the table and attach a screenshot of the test.
+
+**Requirement: All APIs must be tested and must not have any privilege escalation vulnerabilities, but the screenshots may show the test of only some APIs.**
+
+**Screenshot requirement: At least two screenshots are required, one showing user A's normal request and one showing user A's request with the modified URL parameter. The screenshots must show the requested URL and the returned content.**
+
+|  |  |  |
+| --- | --- | --- |
+| **Related API** | **Function description** | **Alias** |
+| \*\*\*\*.com/my?orderid= | API for viewing order information | No privilege escalation vulnerability |
+| \*\*\*\*.com/my?UpdateOrderid=&name= | API for modifying order information | No privilege escalation vulnerability |
+
+### NO.05 Cross-Site Scripting (XSS) Vulnerability (Mini Programs May Skip This Test)
+
+1. **Vulnerability introduction:**
+
+A malicious attacker inserts malicious HTML code into a web page. When a user browses the page, the HTML code embedded in the page is executed, achieving the special purpose of maliciously attacking the user.
+
+2. **Root cause:**
+
+The cause of an XSS vulnerability is that the attacker's input is not strictly controlled and is ultimately displayed to visiting users. The attacker uses clever methods to inject malicious command code into the web page, causing the user to load and execute the malicious web program crafted by the attacker. These malicious web programs are usually JavaScript, but can actually include Java, VBScript, ActiveX, Flash, or even plain HTML. After a successful attack, the attacker may obtain higher permissions (such as performing certain operations), personal web page content, sessions, cookies, and other content.
+
+3. **Fix plan:**
+
+To defend against XSS, strictly filter the user's input based on the actual situation. For example, in PHP, use the `htmlspecialchars()` function to HTML-escape the content entered by the user. Also, adding the httponly attribute to cookies can protect users' cookies to some extent and reduce losses when XSS occurs.
+
+4. **Testing method:**
+
+Test based on your own business scenario.
+
+For example, consider a scenario where user A submits form information. Have user A enter HTML code in the input field, such as `"` or `<script>alert(123)</script>`. When user A or the admin views the page displaying the submitted form content, check whether the inserted HTML code is executed—for example, whether a pop-up appears. If it is executed, a cross-site vulnerability exists.
+
+5. **Test result**
+
+Complete the table and attach a screenshot of the test.
+
+**Requirement: All pages that have input content must be tested and must not have any cross-site vulnerabilities, but the screenshots may show the test of only some APIs.**
+
+**Screenshot requirement: At least one screenshot is required, showing the page whose content had HTML code inserted. The screenshot must show that the HTML code in the content is executed.**
+
+|  |  |  |
+| --- | --- | --- |
+| **Pages with input and output content** | **Function description** | **Alias** |
+| \*\*\*\*.com/my | Page for modifying profile | No cross-site vulnerability |
+| \*\*\*\*.com/my | Page for viewing profile | No cross-site vulnerability |
+
+### NO.06 SQL Injection Vulnerability
+
+1. **Root cause:**
+
+A SQL injection attack can be described as an attack that injects SQL syntax into user-controllable parameters, breaking the original SQL structure and achieving results unintended by the developer. Its cause can be attributed to the combination of the following two factors:
+
+- When handling the interaction between the application and the database, the developer uses string concatenation to construct SQL statements.
+- The user-controllable parameters are not sufficiently filtered before their content is concatenated into the SQL statement.
+
+2. **Fix plan:**
+
+Use precompiled SQL statements. Concatenating SQL statements is strictly prohibited. For example, use MyBatis for Java and SQLAlchemy for Python.
+
+If you use Ibatis, replace var with #var#
+
+If you use MyBatis, replace $&#123;var&#125; with #&#123;var&#125;
+
+3. **Test result**:
+
+Complete the table and attach a screenshot of the test.
+
+**Screenshot requirement: Take a screenshot of the key code related to executing SQL statements, so that it can be seen that SQL statement concatenation is not used.**
+
+|  |  |
+| --- | --- |
+| Code implementation method for SQL operations | Alias |
+| Uses MyBatis | SQL statement concatenation is not used |
+
+### NO.07 Cross-Site Request Forgery (CSRF) Vulnerability
+
+Tool used: packet capture tool
+
+1. **Root cause:**
+
+The attacker forges requests that appear to come from a trusted user, achieving the purpose of adding, deleting, or tampering with website content.
+
+When the user clicks a malicious link crafted by the attacker, the corresponding operation is "executed" on their behalf.
+
+For example, a bank's transfer function (transferring 100 to BOB's account) is implemented as follows:
+
+`GET http://bank.com/transfer.do?acct=BOB&amount=100 HTTP/1.1`
+
+When the attacker lures the user into clicking the link below, if the user's login credential for the bank website has not yet expired, then the user transfers 100,000 to MARIA without knowing it:
+
+`http://bank.com/transfer.do?acct=MARIA&amount=100000`
+
+Simple identity verification can only guarantee that the request is sent from a certain user's browser, but cannot guarantee that the request itself was sent voluntarily by the user.
+
+2. **Fix plan (choose one):**
+
+|  |  |
+| --- | --- |
+| Fix plan | Description |
+| Verify the HTTP Referer field | Under normal circumstances, a request to access a security-restricted page comes from the same website. The Referer field in the HTTP header records the source address of the HTTP request. If the address in the Referer does not originate from this website, the request can be considered unsafe and should be declined. This method is simple and easy to implement. For an existing system, you only need to add a filter that checks the Referer value, without changing any existing code or logic of the current system. |
+| Add a token | A CSRF attack succeeds because the attacker can forge the user's request. The best defense against this is to prevent the attacker from forging the request. Therefore, you can add a random token as a parameter to the HTTP request and check on the server side whether this token is correct. If it is incorrect or does not exist, the request can be considered unsafe, and the related service is declined. |
+| Add a verification code | Have the user enter a verification code before submitting data. |
+
+3. **Testing method:**
+
+For example, the request to modify information is:
+
+```
+GET my?username=BOB&age=18 HTTP/1.1
+Host: ***.com
+Referer: ***.com/my
+......
+```
+
+Use a packet capture tool to change `Referer: ***.com/my` in the modification request to other content, and send the request again.
+
+```
+GET my?username=BOB&age=18 HTTP/1.1
+Host: ***.com
+Referer: ***111.com
+......
+```
+
+If the modification operation is executed successfully, a cross-site request forgery vulnerability exists. Similarly, if a random token is used, change the token value; if the modification operation is executed successfully, a vulnerability exists. All add/delete/modify operation APIs must be tested.
+
+4. **Test result**
+
+Complete the table and attach a screenshot of the test.
+
+**Requirement: All APIs must be tested and must not have any cross-site request forgery vulnerabilities, but the screenshots may show the test of only some APIs.**
+
+**Screenshot requirement: At least two screenshots are required, one showing a request with a normal Referer or token and one showing a request with a modified Referer or token. The screenshots must show the request content and the returned content.**
+
+|  |  |  |
+| --- | --- | --- |
+| **Related API** | **Function description** | **Alias** |
+| \*\*\*.com/my?username=&age | API for modifying profile | No cross-site request forgery vulnerability |
+| \*\*\*.com/my?delusername= | API for deleting profile | No cross-site request forgery vulnerability |
+
+### NO.08 Privacy Security
+
+Complete the table and describe the usage scenarios for the obtained permissions and data.
+
+**Requirements:**
+
+**For self-collected data:** Go to the **App Development** > **Basic Information** > **Manage Permissions** page, click **User Information Usage Statement**, and fill in the collected user information and its usage scenario description. DingTalk detects this automatically; simply completing the form is sufficient. See the figure below:
+
+After completing the form, fill in the description of the scenario in which the private data is needed in the sample report.
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| **Privacy Permissions/data** | **Data source** | **Result/scenario description** | **Alias** |
+| User's phone number | Self-collected | Used for the XXX feature in the XXX scenario |  |
+| Obtain the profile photo, name, and other information from Contacts | Synced from DingTalk | Displaying the user's basic profile information |  |
+
+## Using Burp Suite and Importing the Certificate
+
+### Set the Proxy
+
+Set the proxy as shown in the figure below. The port can be customized.
+
+**On PC:**
+
+Set the proxy listening address and port for Burp Suite.
+
+By default, it listens on port 8080 of 127.0.0.1. You can add or modify the listening address or port based on your actual testing needs.
+
+**On mobile, using iOS as an example:**
+
+Enter the proxy address and port for Burp Suite.
+
+**Wi-Fi** > **HTTP Proxy** > **Configure Proxy**
+
+### Import the Certificate
+
+On the mobile device, access the proxy address `http://ip:port` in a browser to download and import the certificate.
+
+Tips: On iOS, there are two places where you need to set trust.
+
+1. **Settings** > **General** > **About** > **Certificate Trust Settings**
+2. **Settings** > **General** > **Profiles & Device Management**
+
+### Intercept and Modify Packets
+
+1. Intercept the packet and send it to the Repeater window.
+2. Modify the packet in the Repeater window and replay it.
+3. In the left window, modify the request packet content directly, then send the request by clicking the `Go` button; you can view the returned content in the right window.
