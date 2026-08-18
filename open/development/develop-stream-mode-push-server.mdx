@@ -1,0 +1,417 @@
+---
+title: "Develop the Event Push Service"
+description: "Learn how to build a DingTalk event subscription push server using one of three modes—Stream, HTTP, or SyncHTTP—covering prerequisites, SDK setup, integration code, and callback samples."
+---
+
+To develop a push service for event subscriptions, you can choose one of three push modes: Stream mode, HTTP mode, or SyncHTTP. Follow the steps in this document to complete the development.
+
+## Develop Stream Mode (Recommended)
+
+<Tabs>
+  <Tab title="Java">
+    <Steps>
+      <Step title="Prerequisites">
+        - A runtime environment with public network access.
+        - JDK 1.8 or later.
+      </Step>
+      <Step title="Install the SDK">
+        Add the dependency to your project's `pom.xml` file or download the corresponding JAR package. You can view and download the latest SDK version on [Maven Central](https://central.sonatype.com/artifact/com.dingtalk.open/app-stream-client){target="_blank"}.
+
+        ```xml
+        <dependency>
+          <groupId>com.dingtalk.open</groupId>
+          <artifactId>app-stream-client</artifactId>
+          <version>{sdk-version}</version>
+        </dependency>
+        ```
+      </Step>
+      <Step title="Server-Side Integration">
+        | Parameter | Description |
+        | --- | --- |
+        | `${clientId}` | The unique identity of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID corresponds to the AppKey/SuiteKey of legacy apps. |
+        | `${clientSecret}` | The call secret of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret corresponds to the AppSecret/SuiteSecret of legacy apps. |
+
+        ```java
+        public static void main(String[] args) {
+          OpenDingTalkStreamClientBuilder
+            .custom()
+            .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+            //Register the event listener
+            .registerAllEventListener(new GenericEventListener() {
+              public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+                try {
+                  //Unique event ID
+                  String eventId = event.getEventId();
+                  //Event type
+                  String eventType = event.getEventType();
+                  //Event creation time
+                  Long bornTime = event.getEventBornTime();
+                  //Get the event body
+                  JSONObject bizData = event.getData();
+                  //Process the event
+                  process(bizData);
+                  //Consumed successfully
+                  return EventAckStatus.SUCCESS;
+                } catch (Exception e) {
+        ```
+      </Step>
+    </Steps>
+
+    ### Sample Code
+
+    The following examples use a Bot callback and an interactive Card callback for reference.
+
+    **Bot Callback**
+
+    ```java
+    public static void main(String[] args) throws Exception {
+      OpenDingTalkStreamClientBuilder
+        .custom()
+        .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+        //Register the Bot listener
+        .registerCallbackListener("${topic}", robotMessage -> {
+          log.info("receive robotMessage, {}", robotMessage);
+          //Process the Bot callback based on your business needs
+          return new JSONObject();
+
+        })
+        .build().start();
+    }
+    ```
+
+    | Parameter | Description |
+    | --- | --- |
+    | `clientId` | The unique identity of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID corresponds to the AppKey/SuiteKey of legacy apps. |
+    | `clientSecret` | The call secret of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret corresponds to the AppSecret/SuiteSecret of legacy apps. |
+    | `topic` | The Bot callback name. Fixed value: `/v1.0/im/bot/messages/get`. |
+
+    **Card Callback**
+
+    For details, see Interactive Card - Event Callback.
+
+    ```java
+    public static void main(String[] args) throws Exception {
+            OpenDingTalkStreamClientBuilder
+                    .custom()
+                    .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                    //Register the Card callback listener
+                    .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                        log.info("receive call back request, {}", callbackData);
+                        //your code is here
+
+                        //Change the card content and return a response based on your business needs
+                        CardCallbackResponse resp = new CardCallbackResponse();
+                        return resp;
+
+                    })
+                    .build().start();
+    }
+    ```
+
+    | Parameter | Description |
+    | --- | --- |
+    | `clientId` | The unique identity of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID corresponds to the AppKey/SuiteKey of legacy apps. |
+    | `clientSecret` | The call secret of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret corresponds to the AppSecret/SuiteSecret of legacy apps. |
+    | `topic` | The registered Card callback name. Fixed value: `/v1.0/card/instances/callback`. |
+  </Tab>
+  <Tab title="Golang">
+    <Steps>
+      <Step title="Prerequisites">
+        - A runtime environment with public network access.
+        - Runtime environment 1.16 or later.
+      </Step>
+      <Step title="Install the SDK">
+        ```bash
+        go get github.com/open-dingtalk/dingtalk-stream-sdk-go/v0.0.5
+        ```
+      </Step>
+      <Step title="Server-Side Integration">
+        | Parameter | Description |
+        | --- | --- |
+        | `${clientId}` | The unique identity of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID corresponds to the AppKey/SuiteKey of legacy apps. |
+        | `${clientSecret}` | The call secret of a DingTalk internal app or a third-party enterprise app. For details, see [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret corresponds to the AppSecret/SuiteSecret of legacy apps. |
+
+        ```go
+        func main() {
+          e := clientV2.
+            NewBuilder().
+            Credential(&clientV2.AuthClientCredential{ClientId: "${clientId}", ClientSecret: "${clientSecret}"}).
+            //Listen for Open Platform events
+            RegisterAllEventHandler(func(event *clientV2.GenericOpenDingTalkEvent) clientV2.EventStatus {
+              println("receive event ", event.Data)
+              //Return clientV2.EventStatusSuccess on success, clientV2.EventStatusLater on failure
+              return clientV2.EventStatusSuccess
+            }).
+            Build().
+            Start(context.Background())
+
+          if e != nil {
+            println("failed to start stream client", e.Error())
+            return
+          }
+
+          select {}
+        }
+        ```
+      </Step>
+    </Steps>
+
+    ### Sample Code
+
+    The following example uses a Bot callback for reference.
+
+    ```go
+    func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+      return nil
+    }
+
+    func StartRobot() {
+      logger.SetLogger(logger.NewStdTestLogger())
+      cli := client.NewStreamClient(
+        client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+        client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+        client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+      )
+
+      err := cli.Start(context.Background())
+      if err != nil {
+        panic(err)
+      }
+
+      defer cli.Close()
+
+      select {}
+    }
+    ```
+
+    | Parameter | Description |
+    | --- | --- |
+    | `clientId` | The AppKey for internal app development / the SuiteKey for third-party enterprise apps. |
+    | `clientSecret` | The AppSecret for internal app development / the SuiteSecret for third-party enterprise apps. |
+    | `topic` | The Bot callback name. Fixed value: `/v1.0/im/bot/messages/get`. |
+  </Tab>
+</Tabs>
+
+### Other Language Support
+
+<CardGroup cols={2}>
+  <Card title="Java SDK Quick-Start Project" icon="java" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start" />
+  <Card title="Golang SDK and Sample Code" icon="golang" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-go" />
+  <Card title="Python SDK and Sample Code" icon="python" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-python" />
+  <Card title="Node.js SDK and Sample Code" icon="node-js" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs" />
+</CardGroup>
+
+If you run into any issues during the process, you can submit feedback and discuss them through [Technical Support](https://open.dingtalk.com/document/services/ngliko){target="_blank"}.
+
+### Error Codes
+
+When receiving an event returns the following error code, resolve it according to the solution.
+
+| Error Code (errCode) | Error Message (errMsg) | Description | Solution |
+| --- | --- | --- | --- |
+| 20001 | Affected by exceeding the call quota, your message service is currently suspended. Contact your organization administrator to handle this. An `errMsg` field is added to the received message to display the error message. | The received message has no content and no `text` or `content` field. Log in to the [Developer Console](https://open-dev.dingtalk.com/){target="_blank"} to view the call quota. | Upgrade to DingTalk Professional Edition or purchase an add-on package. |
+
+### FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I start multiple event listeners in one application?">
+    Yes. You can start multiple event listening services and configure multiple Stream clients as needed.
+
+    1. **Internal app**: An enterprise only needs to configure one Stream client.
+    2. **Third-party enterprise app**: Listen to that third-party enterprise app only to obtain the event subscription content of the currently authorized enterprise.
+  </Accordion>
+</AccordionGroup>
+
+## Develop HTTP Mode
+
+<Steps>
+  <Step title="Prerequisites">
+    - Understand the [Configure HTTP Push (Not Recommended)](/open/dingstart/configure-stream-push) process.
+    - Development environment: Maven 3, JDK 1.8 or later.
+  </Step>
+  <Step title="Integrate the Event Message Encryption/Decryption Class">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    For more languages, see [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"}.
+  </Step>
+  <Step title="Write the HTTP Push Server Code">
+    **Receive event messages**
+
+    | Parameter | Description |
+    | --- | --- |
+    | `msg_signature` | The message body signature. |
+    | `timestamp` | The timestamp. |
+    | `nonce` | A random string. |
+    | `json` | The encrypted event data body. |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{the urlpath of your registered HTTP address}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **Respond to event messages**
+
+    <Note>When you receive a POST verification request from the Open Platform, you must decrypt it and respond within 2500 ms.</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{the urlpath of your registered HTTP address}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>
+
+Your HTTP push server is now developed. You can follow the [Configure HTTP Push (Not Recommended)](/open/dingstart/configure-stream-push) process to verify that the integration is correct.
+
+## Develop SyncHTTP Mode
+
+<Steps>
+  <Step title="Prerequisites">
+    - Understand the [Configure SyncHTTP Push (Not Recommended)](/open/dingstart/configure-stream-push) process.
+    - Development environment: Maven 3, JDK 1.8 or later.
+  </Step>
+  <Step title="Integrate the Event Message Encryption/Decryption Class">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    For more languages, see [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"}.
+  </Step>
+  <Step title="Write the SyncHTTP Push Server Code">
+    **Receive event messages**
+
+    | Parameter | Description |
+    | --- | --- |
+    | `msg_signature` | The message body signature. |
+    | `timestamp` | The timestamp. |
+    | `nonce` | A random string. |
+    | `json` | The encrypted event data body. |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{the urlpath of your registered HTTP address}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **Respond to event messages**
+
+    <Note>When you receive a POST verification request from the Open Platform, you must decrypt it and respond within 2500 ms.</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{the urlpath of your registered HTTP address}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>
