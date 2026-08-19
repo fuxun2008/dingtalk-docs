@@ -1,0 +1,417 @@
+---
+title: "开发事件推送服务"
+description: "介绍通过 Stream、HTTP、SyncHTTP 三种推送模式开发钉钉事件订阅推送服务端的前提条件、SDK 安装、接入代码与示例，帮助开发者快速完成回调接入。"
+---
+
+如果你需要开发事件订阅的推送服务，可以选择 Stream 模式推送、HTTP 模式推送或 SyncHTTP 等三种推送模式中的一种，你可以参考本文档操作步骤完成开发操作。
+
+## 开发 Stream 模式（推荐）
+
+<Tabs>
+  <Tab title="Java">
+    <Steps>
+      <Step title="前提条件">
+        - 拥有访问公网的运行环境。
+        - JDK 1.8 及以上。
+      </Step>
+      <Step title="安装 SDK">
+        添加依赖项到工程的 `pom.xml` 文件或下载对应的 jar 包，最新的 SDK 版本可以在 [Maven central](https://central.sonatype.com/artifact/com.dingtalk.open/app-stream-client){target="_blank"} 查看和下载。
+
+        ```xml
+        <dependency>
+          <groupId>com.dingtalk.open</groupId>
+          <artifactId>app-stream-client</artifactId>
+          <version>{sdk-version}</version>
+        </dependency>
+        ```
+      </Step>
+      <Step title="服务端接入">
+        | 配置项 | 描述 |
+        | --- | --- |
+        | `${clientId}` | 钉钉企业内部应用和钉钉第三方企业应用的唯一身份标识。详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client ID 对应旧版应用的 AppKey/SuiteKey。 |
+        | `${clientSecret}` | 钉钉企业内部应用和钉钉第三方企业应用的调用密钥，详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client Secret 对应旧版应用的 AppSecret/SuiteSecret。 |
+
+        ```java
+        public static void main(String[] args) {
+          OpenDingTalkStreamClientBuilder
+            .custom()
+            .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+            //注册事件监听
+            .registerAllEventListener(new GenericEventListener() {
+              public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+                try {
+                  //事件唯一Id
+                  String eventId = event.getEventId();
+                  //事件类型
+                  String eventType = event.getEventType();
+                  //事件产生时间
+                  Long bornTime = event.getEventBornTime();
+                  //获取事件体
+                  JSONObject bizData = event.getData();
+                  //处理事件
+                  process(bizData);
+                  //消费成功
+                  return EventAckStatus.SUCCESS;
+                } catch (Exception e) {
+        ```
+      </Step>
+    </Steps>
+
+    ### 示例代码
+
+    我们以机器人回调和互动卡片回调举例，开发者可参考下方示例代码。
+
+    **机器人回调**
+
+    ```java
+    public static void main(String[] args) throws Exception {
+      OpenDingTalkStreamClientBuilder
+        .custom()
+        .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+        //注册机器人监听器
+        .registerCallbackListener("${topic}", robotMessage -> {
+          log.info("receive robotMessage, {}", robotMessage);
+          //开发者根据自身业务需求，处理机器人回调
+          return new JSONObject();
+
+        })
+        .build().start();
+    }
+    ```
+
+    | 参数名 | 说明 |
+    | --- | --- |
+    | `clientId` | 钉钉企业内部应用和钉钉第三方企业应用的唯一身份标识。详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client ID 对应旧版应用的 AppKey/SuiteKey。 |
+    | `clientSecret` | 钉钉企业内部应用和钉钉第三方企业应用的调用密钥，详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client Secret 对应旧版应用的 AppSecret/SuiteSecret。 |
+    | `topic` | 机器人回调名称，固定值：`/v1.0/im/bot/messages/get`。 |
+
+    **卡片回调**
+
+    详情参见互动卡片-事件回调。
+
+    ```java
+    public static void main(String[] args) throws Exception {
+            OpenDingTalkStreamClientBuilder
+                    .custom()
+                    .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                    //注册卡片回传监听器
+                    .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                        log.info("receive call back request, {}", callbackData);
+                        //your code is here
+
+                        //开发者根据自身业务需求，变更卡片内容，返回response
+                        CardCallbackResponse resp = new CardCallbackResponse();
+                        return resp;
+
+                    })
+                    .build().start();
+    }
+    ```
+
+    | 参数名 | 说明 |
+    | --- | --- |
+    | `clientId` | 钉钉企业内部应用和钉钉第三方企业应用的唯一身份标识。详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client ID 对应旧版应用的 AppKey/SuiteKey。 |
+    | `clientSecret` | 钉钉企业内部应用和钉钉第三方企业应用的调用密钥，详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client Secret 对应旧版应用的 AppSecret/SuiteSecret。 |
+    | `topic` | 注册的卡片回调名称，固定值：`/v1.0/card/instances/callback`。 |
+  </Tab>
+  <Tab title="Golang">
+    <Steps>
+      <Step title="前提条件">
+        - 拥有访问公网的运行环境。
+        - 运行环境 1.16 及以上。
+      </Step>
+      <Step title="安装 SDK">
+        ```bash
+        go get github.com/open-dingtalk/dingtalk-stream-sdk-go/v0.0.5
+        ```
+      </Step>
+      <Step title="服务端接入">
+        | 配置项 | 描述 |
+        | --- | --- |
+        | `${clientId}` | 钉钉企业内部应用和钉钉第三方企业应用的唯一身份标识。详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client ID 对应旧版应用的 AppKey/SuiteKey。 |
+        | `${clientSecret}` | 钉钉企业内部应用和钉钉第三方企业应用的调用密钥，详情参见 [Client ID/Client Secret](/zh/open/dingstart/basic-concepts-beta)。Client Secret 对应旧版应用的 AppSecret/SuiteSecret。 |
+
+        ```go
+        func main() {
+          e := clientV2.
+            NewBuilder().
+            Credential(&clientV2.AuthClientCredential{ClientId: "${clientId}", ClientSecret: "${clientSecret}"}).
+            //监听开放平台事件
+            RegisterAllEventHandler(func(event *clientV2.GenericOpenDingTalkEvent) clientV2.EventStatus {
+              println("receive event ", event.Data)
+              //成功返回 clientV2.EventStatusSuccess,失败返回clientV2.EventStatusLater
+              return clientV2.EventStatusSuccess
+            }).
+            Build().
+            Start(context.Background())
+
+          if e != nil {
+            println("failed to start stream client", e.Error())
+            return
+          }
+
+          select {}
+        }
+        ```
+      </Step>
+    </Steps>
+
+    ### 示例代码
+
+    我们以机器人回调举例，开发者可参考下方示例代码。
+
+    ```go
+    func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+      return nil
+    }
+
+    func StartRobot() {
+      logger.SetLogger(logger.NewStdTestLogger())
+      cli := client.NewStreamClient(
+        client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+        client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+        client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+      )
+
+      err := cli.Start(context.Background())
+      if err != nil {
+        panic(err)
+      }
+
+      defer cli.Close()
+
+      select {}
+    }
+    ```
+
+    | 参数名 | 说明 |
+    | --- | --- |
+    | `clientId` | 企业内部开发 AppKey/第三方企业应用 SuiteKey。 |
+    | `clientSecret` | 企业内部开发 AppSecret/第三方企业应用 SuiteSecret。 |
+    | `topic` | 机器人回调名称，固定值：`/v1.0/im/bot/messages/get`。 |
+  </Tab>
+</Tabs>
+
+### 其他语言支持
+
+<CardGroup cols={2}>
+  <Card title="Java SDK 接入示例工程" icon="java" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start" />
+  <Card title="Golang SDK 及示例代码" icon="golang" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-go" />
+  <Card title="Python SDK 及示例代码" icon="python" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-python" />
+  <Card title="Node.js SDK 及示例代码" icon="node-js" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs" />
+</CardGroup>
+
+过程中有问题也可以通过[技术支持](https://open.dingtalk.com/document/services/ngliko){target="_blank"}提交反馈和问题交流。
+
+### 错误码
+
+当接收事件显示如下错误码时，请参考解决方案处理。
+
+| 错误码（errCode） | 错误信息（errMsg） | 说明 | 解决方案 |
+| --- | --- | --- | --- |
+| 20001 | 受调用量超量影响，当前我的消息服务已经暂停。请联系你所在的组织管理员并予以处理。接收消息中，新增 `errMsg` 字段，用于展示错误信息。 | 接收消息中无消息内容，无 `text` 和 `content` 字段内容。登录[开发者后台](https://open-dev.dingtalk.com/){target="_blank"}即可查看调用量。 | 需要升级钉钉专业版或购买增购包。 |
+
+### 常见问题
+
+<AccordionGroup>
+  <Accordion title="一个应用程序中，是否可以启动多个事件监听？">
+    可以启动多个事件监听服务，你可以根据需要启动多个 Stream 客户端配置。
+
+    1. **企业内部应用**：一个企业仅需配置一个 Stream 客户端即可。
+    2. **第三方企业应用**：仅需监听该第三方企业应用，即可获取当前授权企业的事件订阅内容。
+  </Accordion>
+</AccordionGroup>
+
+## 开发 HTTP 模式
+
+<Steps>
+  <Step title="前提条件">
+    - 了解[配置 HTTP 推送（不推荐）](/zh/open/dingstart/configure-stream-push)流程。
+    - 开发环境：Maven 3、JDK 1.8 及以上。
+  </Step>
+  <Step title="接入事件消息加解密类">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    更多语言请参考 [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"}。
+  </Step>
+  <Step title="编写 HTTP 推送服务端代码">
+    **接收事件消息**
+
+    | 配置项 | 描述 |
+    | --- | --- |
+    | `msg_signature` | 消息体签名。 |
+    | `timestamp` | 时间戳。 |
+    | `nonce` | 随机字符串。 |
+    | `json` | 加密事件数据体。 |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{你注册的HTTP地址的urlpath}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **响应事件消息**
+
+    <Note>当你收到开放平台的 POST 验证请求时，你需要做解密处理，并在 2500 ms 内响应并返回。</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{你注册的HTTP地址的urlpath}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>
+
+此时，你的 HTTP 推送服务端就已经开发完成了。你可以按照[配置 HTTP 推送（不推荐）](/zh/open/dingstart/configure-stream-push)流程校验是否接入正确。
+
+## 开发 SyncHTTP 模式
+
+<Steps>
+  <Step title="前提条件">
+    - 了解[配置 SyncHTTP 推送（不推荐）](/zh/open/dingstart/configure-stream-push)流程。
+    - 开发环境：Maven 3、JDK 1.8 及以上。
+  </Step>
+  <Step title="接入事件消息加解密类">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    更多语言请参考 [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"}。
+  </Step>
+  <Step title="编写 SyncHTTP 推送服务端代码">
+    **接收事件消息**
+
+    | 配置项 | 描述 |
+    | --- | --- |
+    | `msg_signature` | 消息体签名。 |
+    | `timestamp` | 时间戳。 |
+    | `nonce` | 随机字符串。 |
+    | `json` | 加密事件数据体。 |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{你注册的HTTP地址的urlpath}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **响应事件消息**
+
+    <Note>当你收到开放平台的 POST 验证请求时，你需要做解密处理，并在 2500 ms 内响应并返回。</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{你注册的HTTP地址的urlpath}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>

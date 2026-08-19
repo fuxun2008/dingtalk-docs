@@ -1,0 +1,417 @@
+---
+title: "イベントプッシュサービスの開発"
+description: "Stream、HTTP、SyncHTTP の 3 つのプッシュモードから 1 つを選び、DingTalk のイベントサブスクリプション用プッシュサーバーを開発する方法を、前提条件・SDK 導入・接続コード・サンプルを交えて解説します。"
+---
+
+イベントサブスクリプションのプッシュサービスを開発するには、Stream モードプッシュ、HTTP モードプッシュ、SyncHTTP の 3 つのプッシュモードから 1 つを選択できます。本ドキュメントの手順に従って開発を進めてください。
+
+## Stream モードの開発（推奨）
+
+<Tabs>
+  <Tab title="Java">
+    <Steps>
+      <Step title="前提条件">
+        - パブリックネットワークにアクセスできる実行環境。
+        - JDK 1.8 以上。
+      </Step>
+      <Step title="SDK のインストール">
+        依存関係をプロジェクトの `pom.xml` ファイルに追加するか、対応する JAR パッケージをダウンロードします。最新の SDK バージョンは [Maven Central](https://central.sonatype.com/artifact/com.dingtalk.open/app-stream-client){target="_blank"} で確認・ダウンロードできます。
+
+        ```xml
+        <dependency>
+          <groupId>com.dingtalk.open</groupId>
+          <artifactId>app-stream-client</artifactId>
+          <version>{sdk-version}</version>
+        </dependency>
+        ```
+      </Step>
+      <Step title="サーバー側の接続">
+        | 設定項目 | 説明 |
+        | --- | --- |
+        | `${clientId}` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの一意の ID。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client ID は旧版アプリの AppKey/SuiteKey に対応します。 |
+        | `${clientSecret}` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの呼び出しシークレット。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client Secret は旧版アプリの AppSecret/SuiteSecret に対応します。 |
+
+        ```java
+        public static void main(String[] args) {
+          OpenDingTalkStreamClientBuilder
+            .custom()
+            .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+            //イベントリスナーを登録
+            .registerAllEventListener(new GenericEventListener() {
+              public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+                try {
+                  //イベントの一意 ID
+                  String eventId = event.getEventId();
+                  //イベントタイプ
+                  String eventType = event.getEventType();
+                  //イベント発生時刻
+                  Long bornTime = event.getEventBornTime();
+                  //イベント本文を取得
+                  JSONObject bizData = event.getData();
+                  //イベントを処理
+                  process(bizData);
+                  //消費成功
+                  return EventAckStatus.SUCCESS;
+                } catch (Exception e) {
+        ```
+      </Step>
+    </Steps>
+
+    ### サンプルコード
+
+    ここでは Bot コールバックとインタラクティブカードコールバックを例に、開発者向けのサンプルコードを示します。
+
+    **Bot コールバック**
+
+    ```java
+    public static void main(String[] args) throws Exception {
+      OpenDingTalkStreamClientBuilder
+        .custom()
+        .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+        //Bot リスナーを登録
+        .registerCallbackListener("${topic}", robotMessage -> {
+          log.info("receive robotMessage, {}", robotMessage);
+          //開発者は自身の業務ニーズに応じて Bot コールバックを処理
+          return new JSONObject();
+
+        })
+        .build().start();
+    }
+    ```
+
+    | パラメーター名 | 説明 |
+    | --- | --- |
+    | `clientId` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの一意の ID。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client ID は旧版アプリの AppKey/SuiteKey に対応します。 |
+    | `clientSecret` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの呼び出しシークレット。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client Secret は旧版アプリの AppSecret/SuiteSecret に対応します。 |
+    | `topic` | Bot コールバック名。固定値：`/v1.0/im/bot/messages/get`。 |
+
+    **カードコールバック**
+
+    詳細はインタラクティブカード - イベントコールバックを参照してください。
+
+    ```java
+    public static void main(String[] args) throws Exception {
+            OpenDingTalkStreamClientBuilder
+                    .custom()
+                    .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                    //カードコールバックリスナーを登録
+                    .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                        log.info("receive call back request, {}", callbackData);
+                        //your code is here
+
+                        //開発者は自身の業務ニーズに応じてカード内容を変更し、response を返す
+                        CardCallbackResponse resp = new CardCallbackResponse();
+                        return resp;
+
+                    })
+                    .build().start();
+    }
+    ```
+
+    | パラメーター名 | 説明 |
+    | --- | --- |
+    | `clientId` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの一意の ID。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client ID は旧版アプリの AppKey/SuiteKey に対応します。 |
+    | `clientSecret` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの呼び出しシークレット。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client Secret は旧版アプリの AppSecret/SuiteSecret に対応します。 |
+    | `topic` | 登録したカードコールバック名。固定値：`/v1.0/card/instances/callback`。 |
+  </Tab>
+  <Tab title="Golang">
+    <Steps>
+      <Step title="前提条件">
+        - パブリックネットワークにアクセスできる実行環境。
+        - 実行環境 1.16 以上。
+      </Step>
+      <Step title="SDK のインストール">
+        ```bash
+        go get github.com/open-dingtalk/dingtalk-stream-sdk-go/v0.0.5
+        ```
+      </Step>
+      <Step title="サーバー側の接続">
+        | 設定項目 | 説明 |
+        | --- | --- |
+        | `${clientId}` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの一意の ID。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client ID は旧版アプリの AppKey/SuiteKey に対応します。 |
+        | `${clientSecret}` | DingTalk 企業内部アプリおよび DingTalk サードパーティ企業アプリの呼び出しシークレット。詳細は [Client ID/Client Secret](/ja/open/dingstart/basic-concepts-beta) を参照してください。Client Secret は旧版アプリの AppSecret/SuiteSecret に対応します。 |
+
+        ```go
+        func main() {
+          e := clientV2.
+            NewBuilder().
+            Credential(&clientV2.AuthClientCredential{ClientId: "${clientId}", ClientSecret: "${clientSecret}"}).
+            //オープンプラットフォームのイベントをリッスン
+            RegisterAllEventHandler(func(event *clientV2.GenericOpenDingTalkEvent) clientV2.EventStatus {
+              println("receive event ", event.Data)
+              //成功時は clientV2.EventStatusSuccess、失敗時は clientV2.EventStatusLater を返す
+              return clientV2.EventStatusSuccess
+            }).
+            Build().
+            Start(context.Background())
+
+          if e != nil {
+            println("failed to start stream client", e.Error())
+            return
+          }
+
+          select {}
+        }
+        ```
+      </Step>
+    </Steps>
+
+    ### サンプルコード
+
+    ここでは Bot コールバックを例に、開発者向けのサンプルコードを示します。
+
+    ```go
+    func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+      return nil
+    }
+
+    func StartRobot() {
+      logger.SetLogger(logger.NewStdTestLogger())
+      cli := client.NewStreamClient(
+        client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+        client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+        client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+      )
+
+      err := cli.Start(context.Background())
+      if err != nil {
+        panic(err)
+      }
+
+      defer cli.Close()
+
+      select {}
+    }
+    ```
+
+    | パラメーター名 | 説明 |
+    | --- | --- |
+    | `clientId` | 企業内部開発の AppKey / サードパーティ企業アプリの SuiteKey。 |
+    | `clientSecret` | 企業内部開発の AppSecret / サードパーティ企業アプリの SuiteSecret。 |
+    | `topic` | Bot コールバック名。固定値：`/v1.0/im/bot/messages/get`。 |
+  </Tab>
+</Tabs>
+
+### その他の言語のサポート
+
+<CardGroup cols={2}>
+  <Card title="Java SDK 接続サンプルプロジェクト" icon="java" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start" />
+  <Card title="Golang SDK とサンプルコード" icon="golang" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-go" />
+  <Card title="Python SDK とサンプルコード" icon="python" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-python" />
+  <Card title="Node.js SDK とサンプルコード" icon="node-js" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs" />
+</CardGroup>
+
+途中で問題が発生した場合は、[テクニカルサポート](https://open.dingtalk.com/document/services/ngliko){target="_blank"}からフィードバックの送信や問題の相談ができます。
+
+### エラーコード
+
+イベント受信時に次のエラーコードが表示された場合は、解決策に従って対処してください。
+
+| エラーコード（errCode） | エラーメッセージ（errMsg） | 説明 | 解決策 |
+| --- | --- | --- | --- |
+| 20001 | 呼び出し量の超過により、現在「マイメッセージ」サービスは一時停止しています。所属組織の管理者に連絡して対処してください。受信メッセージに、エラー情報を表示するための `errMsg` フィールドが追加されます。 | 受信メッセージに内容がなく、`text` および `content` フィールドの内容がありません。[開発者コンソール](https://open-dev.dingtalk.com/){target="_blank"}にログインすると呼び出し量を確認できます。 | DingTalk Professional Edition へのアップグレード、または増量パッケージの購入が必要です。 |
+
+### よくある質問
+
+<AccordionGroup>
+  <Accordion title="1 つのアプリケーションで複数のイベントリスナーを起動できますか？">
+    複数のイベントリスニングサービスを起動できます。必要に応じて複数の Stream クライアント設定を起動してください。
+
+    1. **企業内部アプリ**：1 つの企業につき、Stream クライアントを 1 つ設定するだけで済みます。
+    2. **サードパーティ企業アプリ**：当該サードパーティ企業アプリをリッスンするだけで、現在認可されている企業のイベントサブスクリプション内容を取得できます。
+  </Accordion>
+</AccordionGroup>
+
+## HTTP モードの開発
+
+<Steps>
+  <Step title="前提条件">
+    - [HTTP プッシュの設定（非推奨）](/ja/open/dingstart/configure-stream-push) のフローを理解している。
+    - 開発環境：Maven 3、JDK 1.8 以上。
+  </Step>
+  <Step title="イベントメッセージの暗号化・復号クラスを接続">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    その他の言語については [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"} を参照してください。
+  </Step>
+  <Step title="HTTP プッシュサーバーのコードを記述">
+    **イベントメッセージの受信**
+
+    | 設定項目 | 説明 |
+    | --- | --- |
+    | `msg_signature` | メッセージ本文の署名。 |
+    | `timestamp` | タイムスタンプ。 |
+    | `nonce` | ランダムな文字列。 |
+    | `json` | 暗号化されたイベントデータ本文。 |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{登録した HTTP アドレスの urlpath}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **イベントメッセージへの応答**
+
+    <Note>オープンプラットフォームからの POST 検証リクエストを受信したら、復号処理を行い、2500 ms 以内に応答を返す必要があります。</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{登録した HTTP アドレスの urlpath}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>
+
+これで HTTP プッシュサーバーの開発は完了です。[HTTP プッシュの設定（非推奨）](/ja/open/dingstart/configure-stream-push) のフローに従って、接続が正しいかを検証できます。
+
+## SyncHTTP モードの開発
+
+<Steps>
+  <Step title="前提条件">
+    - [SyncHTTP プッシュの設定（非推奨）](/ja/open/dingstart/configure-stream-push) のフローを理解している。
+    - 開発環境：Maven 3、JDK 1.8 以上。
+  </Step>
+  <Step title="イベントメッセージの暗号化・復号クラスを接続">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    その他の言語については [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"} を参照してください。
+  </Step>
+  <Step title="SyncHTTP プッシュサーバーのコードを記述">
+    **イベントメッセージの受信**
+
+    | 設定項目 | 説明 |
+    | --- | --- |
+    | `msg_signature` | メッセージ本文の署名。 |
+    | `timestamp` | タイムスタンプ。 |
+    | `nonce` | ランダムな文字列。 |
+    | `json` | 暗号化されたイベントデータ本文。 |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{登録した HTTP アドレスの urlpath}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **イベントメッセージへの応答**
+
+    <Note>オープンプラットフォームからの POST 検証リクエストを受信したら、復号処理を行い、2500 ms 以内に応答を返す必要があります。</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{登録した HTTP アドレスの urlpath}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>
