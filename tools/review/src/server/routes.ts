@@ -1,10 +1,27 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createReadStream } from 'node:fs';
 import { listProductTabs, parseNavigation } from './nav-parse';
 import { readMdx, resolveMdxPath, writeMdxAtomic } from './fs-safe';
 import { parseMdxBlocks, validateMdxSyntax } from './mdx-parse';
 import { parseFrontmatter } from '../shared/frontmatter';
 import { deletePage } from './delete-page';
+import {
+  applyImageBatch,
+  preflightImageBatchTargets,
+  prepareImageBatch,
+  resolveImageBatchOutput,
+  scanImageBatch,
+  updateImageBatch,
+} from './image-batch';
+import {
+  cancelImageAutomation,
+  importImageAutomationMappings,
+  readImageAutomationJob,
+  startImageAutomation,
+} from './image-automation';
 import { ALL_LANGS } from '../shared/types';
+import type { BatchMappingInput } from '../shared/image-batch';
+import type { StartImageAutomationInput } from '../shared/image-automation';
 import type { FrontmatterMeta, Lang, NavNode, PageBundle, PageContent } from '../shared/types';
 
 function json(res: ServerResponse, data: unknown, status = 200): void {
@@ -217,5 +234,167 @@ export async function handleDeletePage(
     json(res, { ok: true, ...result });
   } catch (err) {
     fail(res, 500, err instanceof Error ? err.message : 'delete failed');
+  }
+}
+
+export async function handleImageBatchScan(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as { scope?: string };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    json(res, scanImageBatch(repoRoot, body.scope));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image batch scan failed');
+  }
+}
+
+export function handleImageBatchOutput(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): void {
+  try {
+    const query = getQuery(req);
+    const scope = query.get('scope');
+    const id = query.get('id');
+    if (!scope) return fail(res, 400, 'missing scope');
+    if (!id) return fail(res, 400, 'missing id');
+    const output = resolveImageBatchOutput(repoRoot, scope, id);
+    res.statusCode = 200;
+    res.setHeader('Content-Type', output.contentType);
+    res.setHeader('Content-Length', output.size);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(output.filename)}`);
+    res.setHeader('Cache-Control', 'no-store');
+    createReadStream(output.path).pipe(res);
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'read generated output failed');
+  }
+}
+
+export async function handleImageBatchUpdate(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as { scope?: string; updates?: BatchMappingInput[] };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    if (!Array.isArray(body.updates)) return fail(res, 400, 'missing updates');
+    json(res, updateImageBatch(repoRoot, body.scope, body.updates));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image batch update failed');
+  }
+}
+
+export async function handleImageBatchPrepare(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as { scope?: string; ids?: string[] };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    if (!Array.isArray(body.ids)) return fail(res, 400, 'missing ids');
+    json(res, await prepareImageBatch(repoRoot, body.scope, body.ids));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image batch prepare failed');
+  }
+}
+
+export async function handleImageBatchApply(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as { scope?: string; ids?: string[]; dryRun?: boolean };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    if (!Array.isArray(body.ids)) return fail(res, 400, 'missing ids');
+    json(res, applyImageBatch(repoRoot, body.scope, body.ids, body.dryRun === true));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image batch apply failed');
+  }
+}
+
+export async function handleImageBatchPreflight(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as { scope?: string; ids?: string[] };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    if (!Array.isArray(body.ids)) return fail(res, 400, 'missing ids');
+    json(res, preflightImageBatchTargets(repoRoot, body.scope, body.ids));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image batch preflight failed');
+  }
+}
+
+export async function handleImageAutomationStart(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as Partial<StartImageAutomationInput>;
+    if (!body.scope || typeof body.scope !== 'string') return fail(res, 400, 'missing scope');
+    if (!body.planOnly && (!body.uploadPage || typeof body.uploadPage !== 'string')) {
+      return fail(res, 400, 'missing CDN upload page');
+    }
+    json(res, startImageAutomation(repoRoot, body as StartImageAutomationInput), 202);
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image automation start failed');
+  }
+}
+
+export function handleImageAutomationStatus(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): void {
+  try {
+    const scope = getQuery(req).get('scope');
+    if (!scope) return fail(res, 400, 'missing scope');
+    const job = readImageAutomationJob(repoRoot, scope);
+    if (!job) return fail(res, 404, 'automation job not found');
+    json(res, job);
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image automation status failed');
+  }
+}
+
+export async function handleImageAutomationCancel(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as { scope?: string };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    json(res, cancelImageAutomation(repoRoot, body.scope));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image automation cancel failed');
+  }
+}
+
+export async function handleImageAutomationImportMappings(
+  repoRoot: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  try {
+    const body = JSON.parse(await readBody(req)) as {
+      scope?: string;
+      updates?: Array<{ id: string; cdnUrl: string }>;
+    };
+    if (!body.scope) return fail(res, 400, 'missing scope');
+    if (!Array.isArray(body.updates)) return fail(res, 400, 'missing updates');
+    json(res, await importImageAutomationMappings(repoRoot, body.scope, body.updates));
+  } catch (err) {
+    fail(res, 400, err instanceof Error ? err.message : 'image automation mapping import failed');
   }
 }

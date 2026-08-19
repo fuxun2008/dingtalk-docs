@@ -11,20 +11,35 @@ import { SaveBar } from './components/SaveBar';
 import { TopBar } from './components/TopBar';
 import { AlignmentPanel } from './components/AlignmentPanel';
 import { DeletePageDialog } from './components/DeletePageDialog';
+import { ImageLocalizationDialog } from './components/ImageLocalizationDialog';
+import { BatchImagePanel } from './components/BatchImagePanel';
 import {
   InsertBlockDialog,
-  parseMediaRaw,
   type InsertKind,
   type InsertMode,
 } from './components/InsertBlockDialog';
 import { LANG_LABEL } from './shared/types';
-import { computeAlignment, type BlockAlignment } from './lib/align-blocks';
+import { computeAlignment, resolveMediaTarget, type BlockAlignment } from './lib/align-blocks';
+import { INSERT_AT_START } from './lib/apply-edits';
+import { parseMediaRaw } from './lib/media';
 
 type Side = 'left' | 'right';
 
 type MediaDialogState =
   | { mode: 'insert'; side: Side; kind: InsertKind; afterBlockId: string; url?: undefined; alt?: undefined }
-  | { mode: 'replace'; side: Side; kind: InsertKind; blockId: string; url: string; alt: string };
+  | { mode: 'replace'; side: Side; kind: InsertKind; blockId: string; url: string; alt: string; raw: string };
+
+type LocalizationDialogState = {
+  targetSide: Side;
+  sourceUrl: string;
+  sourceAlt: string;
+  initialCdnUrl: string;
+  initialEnglishAlt: string;
+  templateRaw: string;
+} & (
+  | { mode: 'replace'; blockId: string }
+  | { mode: 'insert'; afterBlockId: string }
+);
 
 interface HoverState {
   side: Side;
@@ -45,7 +60,9 @@ export default function App() {
   const products = useProducts();
   const [hovered, setHovered] = useState<HoverState | null>(null);
   const [mediaDialog, setMediaDialog] = useState<MediaDialogState | null>(null);
+  const [localizationDialog, setLocalizationDialog] = useState<LocalizationDialogState | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const { setContext } = page;
@@ -85,7 +102,7 @@ export default function App() {
   const openReplaceDialog = (side: Side) => (blockId: string, raw: string) => {
     const parsed = parseMediaRaw(raw);
     if (!parsed) return;
-    setMediaDialog({ mode: 'replace', side, kind: parsed.kind, blockId, url: parsed.url, alt: parsed.alt });
+    setMediaDialog({ mode: 'replace', side, kind: parsed.kind, blockId, url: parsed.url, alt: parsed.alt, raw });
   };
 
   const handleMediaSubmit = (raw: string) => {
@@ -94,6 +111,72 @@ export default function App() {
     if (mediaDialog.mode === 'insert') editor.insertBlock(mediaDialog.afterBlockId, raw);
     else editor.markDirty(mediaDialog.blockId, raw);
     setMediaDialog(null);
+  };
+
+  const openLocalizationDialog = (sourceSide: Side) => (sourceIndex: number, raw: string) => {
+    const sourceEditor = sourceSide === 'left' ? page.left : page.right;
+    const targetSide: Side = sourceSide === 'left' ? 'right' : 'left';
+    const targetEditor = targetSide === 'left' ? page.left : page.right;
+    const sourceBlocks = sourceEditor.content?.blocks;
+    const targetBlocks = targetEditor.content?.blocks;
+    const sourceMedia = parseMediaRaw(raw);
+    if (!sourceBlocks || !targetBlocks || !sourceMedia || sourceMedia.kind !== 'image') return;
+    if (sourceEditor.lang === 'en' || targetEditor.lang !== 'en') {
+      setNotice('图片本地化需要将非英文文档放在一侧、英文（en）文档放在另一侧。');
+      return;
+    }
+
+    const sourceToTarget = sourceSide === 'left' ? alignment.leftToRight : alignment.rightToLeft;
+    const target = resolveMediaTarget(sourceIndex, sourceBlocks, targetBlocks, sourceToTarget);
+    if (target.mode === 'replace') {
+      const targetBlock = targetBlocks[target.blockIndex];
+      const targetMedia = parseMediaRaw(targetBlock.raw);
+      setLocalizationDialog({
+        mode: 'replace',
+        targetSide,
+        blockId: targetBlock.id,
+        sourceUrl: sourceMedia.url,
+        sourceAlt: sourceMedia.alt,
+        initialCdnUrl: targetMedia?.kind === 'image' ? targetMedia.url : '',
+        initialEnglishAlt: targetMedia?.kind === 'image' ? targetMedia.alt : '',
+        templateRaw: targetBlock.raw,
+      });
+      return;
+    }
+
+    const anchor = target.afterBlockIndex === null ? INSERT_AT_START : targetBlocks[target.afterBlockIndex]?.id;
+    if (!anchor) {
+      setNotice('无法定位英文插入位置，请先检查中英文段落对齐。');
+      return;
+    }
+    setLocalizationDialog({
+      mode: 'insert',
+      targetSide,
+      afterBlockId: anchor,
+      sourceUrl: sourceMedia.url,
+      sourceAlt: sourceMedia.alt,
+      initialCdnUrl: '',
+      initialEnglishAlt: '',
+      templateRaw: raw,
+    });
+  };
+
+  const handleLocalizationSubmit = (raw: string) => {
+    if (!localizationDialog) return;
+    const targetEditor = localizationDialog.targetSide === 'left' ? page.left : page.right;
+    if (localizationDialog.mode === 'replace') {
+      const existing = targetEditor.content?.blocks.find((block) => block.id === localizationDialog.blockId);
+      if (existing?.raw === raw) {
+        setNotice('英文文档已使用该 CDN 图片，无需重复写入。');
+        setLocalizationDialog(null);
+        return;
+      }
+      targetEditor.markDirty(localizationDialog.blockId, raw);
+    } else {
+      targetEditor.insertBlock(localizationDialog.afterBlockId, raw);
+    }
+    setLocalizationDialog(null);
+    setNotice('英文图片已加入待保存修改，请在英文侧点击“保存”写回 MDX。');
   };
 
   const leftBodyRef = useRef<HTMLDivElement>(null);
@@ -191,6 +274,7 @@ export default function App() {
         onChange={page.setContext}
         canDelete={!!page.slug}
         onDeletePage={() => setDeleteOpen(true)}
+        onOpenImageBatch={() => setBatchOpen(true)}
       />
 
       {notice && (
@@ -252,6 +336,7 @@ export default function App() {
               registerRef={(i, el) => setRef(leftRefs, i, el)}
               onOpenInsertDialog={openInsertDialog('left')}
               onOpenReplaceDialog={openReplaceDialog('left')}
+              onLocalizeMedia={page.left.lang !== 'en' && page.right.lang === 'en' ? openLocalizationDialog('left') : undefined}
             />
           </PaneShell>
           <PaneShell
@@ -276,6 +361,7 @@ export default function App() {
               registerRef={(i, el) => setRef(rightRefs, i, el)}
               onOpenInsertDialog={openInsertDialog('right')}
               onOpenReplaceDialog={openReplaceDialog('right')}
+              onLocalizeMedia={page.right.lang !== 'en' && page.left.lang === 'en' ? openLocalizationDialog('right') : undefined}
             />
           </PaneShell>
         </main>
@@ -303,8 +389,31 @@ export default function App() {
         mode={(mediaDialog?.mode ?? 'insert') as InsertMode}
         initialUrl={mediaDialog?.mode === 'replace' ? mediaDialog.url : ''}
         initialAlt={mediaDialog?.mode === 'replace' ? mediaDialog.alt : ''}
+        initialRaw={mediaDialog?.mode === 'replace' ? mediaDialog.raw : ''}
         onSubmit={handleMediaSubmit}
         onCancel={() => setMediaDialog(null)}
+      />
+
+      <ImageLocalizationDialog
+        open={!!localizationDialog}
+        sourceUrl={localizationDialog?.sourceUrl ?? ''}
+        sourceAlt={localizationDialog?.sourceAlt ?? ''}
+        initialCdnUrl={localizationDialog?.initialCdnUrl ?? ''}
+        initialEnglishAlt={localizationDialog?.initialEnglishAlt ?? ''}
+        templateRaw={localizationDialog?.templateRaw ?? ''}
+        targetExists={localizationDialog?.mode === 'replace'}
+        onSubmit={handleLocalizationSubmit}
+        onCancel={() => setLocalizationDialog(null)}
+      />
+
+      <BatchImagePanel
+        open={batchOpen}
+        defaultScope={page.slug?.includes('/') ? page.slug.slice(0, page.slug.lastIndexOf('/')) : 'yida/intro'}
+        onClose={() => setBatchOpen(false)}
+        onApplied={(result) => {
+          setNotice(`批处理已回写 ${result.appliedIds.length} 个媒体，修改 ${result.changedFiles.length} 个英文 MDX；请刷新当前页面查看。`);
+          void nav.reload();
+        }}
       />
     </div>
   );
@@ -346,6 +455,7 @@ interface PaneContentProps {
   registerRef: (index: number, el: HTMLDivElement | null) => void;
   onOpenInsertDialog: (kind: InsertKind, afterBlockId: string) => void;
   onOpenReplaceDialog: (blockId: string, raw: string) => void;
+  onLocalizeMedia?: (index: number, raw: string) => void;
 }
 
 function PaneContent({
@@ -357,6 +467,7 @@ function PaneContent({
   registerRef,
   onOpenInsertDialog,
   onOpenReplaceDialog,
+  onLocalizeMedia,
 }: PaneContentProps) {
   if (page.loading) return <div className="pane-placeholder">加载中…</div>;
   if (page.error) return <div className="pane-placeholder error">{page.error}</div>;
@@ -385,6 +496,7 @@ function PaneContent({
         onRestoreBlock={editor.unmarkDirty}
         onOpenInsertDialog={onOpenInsertDialog}
         onOpenReplaceDialog={onOpenReplaceDialog}
+        onLocalizeMedia={onLocalizeMedia}
         onRemoveInsert={editor.removeInsert}
         registerBlockRef={registerRef}
       />
