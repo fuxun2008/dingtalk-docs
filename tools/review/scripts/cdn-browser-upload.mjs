@@ -47,11 +47,14 @@ function readManifest(path) {
   const manifest = JSON.parse(readFileSync(path, 'utf8'));
   if (manifest?.version !== 1 || !Array.isArray(manifest.items)) throw new Error('上传清单格式无效');
   const names = new Set();
+  const ids = new Set();
   const items = manifest.items.map((item) => {
     const file = resolve(String(item.path ?? ''));
     const filename = String(item.filename || basename(file));
     if (!item.id || !existsSync(file) || !statSync(file).isFile()) throw new Error(`上传文件不存在：${file}`);
+    if (ids.has(String(item.id))) throw new Error(`上传 ID 重复：${item.id}`);
     if (names.has(filename)) throw new Error(`上传文件名重复：${filename}`);
+    ids.add(String(item.id));
     names.add(filename);
     return { id: String(item.id), path: file, filename };
   });
@@ -142,6 +145,10 @@ class Cdp {
       if (message.error) entry.reject(new Error(message.error.message));
       else entry.resolve(message.result);
     });
+    this.socket.addEventListener('close', () => {
+      for (const entry of this.pending.values()) entry.reject(new Error('Chrome CDP 页面连接已关闭'));
+      this.pending.clear();
+    });
   }
 
   async send(method, params = {}) {
@@ -220,10 +227,9 @@ async function waitForFilenames(cdp, filenames, previousSources) {
   const wanted = new Set(filenames);
   for (let attempt = 0; attempt < 180; attempt += 1) {
     const records = await pageRecords(cdp);
-    const sourceSet = new Set(records.map((record) => record.src));
-    const direct = new Set(records.filter((record) => wanted.has(record.filename)).map((record) => record.filename));
-    const newCount = [...sourceSet].filter((source) => !previousSources.has(source)).length;
-    if (direct.size === wanted.size || newCount >= wanted.size) return records;
+    const freshRecords = records.filter((record) => !previousSources.has(record.src));
+    const direct = new Set(freshRecords.filter((record) => wanted.has(record.filename)).map((record) => record.filename));
+    if (direct.size === wanted.size) return { records, freshRecords };
     await sleep(1000);
   }
   throw new Error(`等待上传完成超时：${filenames.join(', ')}`);
@@ -233,29 +239,34 @@ function clipboardText() {
   return spawnSync('pbpaste', [], { encoding: 'utf8' }).stdout?.trim() || '';
 }
 
-async function clickWireless(cdp, filename) {
-  spawnSync('pbcopy', [], { input: '', encoding: 'utf8' });
-  const clicked = await evaluate(cdp, `(() => {
-    const filename = ${JSON.stringify(filename)};
-    const cards = Array.from(document.querySelectorAll('.image-card-container'));
-    const card = cards.find((candidate) => (candidate.innerText || '').indexOf(filename) !== -1);
-    const button = card && Array.from(card.querySelectorAll('button,a,span')).find((node) => node.textContent?.trim() === '无线链接');
-    if (!button) return false;
-    button.click();
-    return true;
-  })()`);
-  if (!clicked) return '';
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    await sleep(200);
-    const copied = clipboardText();
-    if (/^https:\/\//.test(copied)) return copied;
+async function clickWireless(cdp, source) {
+  const sentinel = `YIDA_CDN_PENDING_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  spawnSync('pbcopy', [], { input: sentinel, encoding: 'utf8' });
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const clicked = await evaluate(cdp, `(() => {
+      const source = ${JSON.stringify(source)};
+      const cards = Array.from(document.querySelectorAll('.image-card-container'));
+      const card = cards.find((candidate) => candidate.querySelector('img.image-card-show')?.src === source);
+      const button = card && Array.from(card.querySelectorAll('button,a,span')).find((node) => node.textContent?.trim() === '无线链接');
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    if (clicked) {
+      for (let clipboardAttempt = 0; clipboardAttempt < 5; clipboardAttempt += 1) {
+        await sleep(200);
+        const copied = clipboardText();
+        if (copied !== sentinel && /^https:\/\//.test(copied)) return copied;
+      }
+    }
+    await sleep(250);
   }
   return '';
 }
 
 async function validateFirstWireless(cdp, record) {
   const expected = wirelessUrl(record.src);
-  const copied = await clickWireless(cdp, record.filename);
+  const copied = await clickWireless(cdp, record.src);
   if (!copied) return { useDomConversion: false, expected };
   return { useDomConversion: copied === expected, expected, copied };
 }
@@ -277,7 +288,25 @@ async function main() {
   const uploadPage = assertHttps(String(args['upload-page']), 'CDN 上传页');
   const manifest = readManifest(resolve(String(args.manifest)));
   const resultPath = resolve(String(args.result));
-  writeJsonAtomic(resultPath, { ok: false, inProgress: true, items: [] });
+  const manifestIds = new Set(manifest.items.map((item) => item.id));
+  let previousResult = {};
+  if (existsSync(resultPath)) {
+    try {
+      previousResult = JSON.parse(readFileSync(resultPath, 'utf8'));
+    } catch {}
+  }
+  const existingResults = new Map((Array.isArray(previousResult.items) ? previousResult.items : [])
+    .filter((item) => manifestIds.has(item.id) && /^https:\/\//.test(item.cdnUrl || ''))
+    .map((item) => [item.id, item.cdnUrl]));
+  writeJsonAtomic(resultPath, {
+    ok: false,
+    inProgress: true,
+    resumed: existingResults.size,
+    validation: previousResult.validation ?? null,
+    items: manifest.items.flatMap((item) => existingResults.has(item.id)
+      ? [{ id: item.id, cdnUrl: existingResults.get(item.id) }]
+      : []),
+  });
   if (args['validate-manifest']) {
     writeJsonAtomic(resultPath, { ok: true, validated: manifest.items.length, items: [] });
     return;
@@ -303,35 +332,44 @@ async function main() {
     }
 
     let records = await pageRecords(cdp);
-    const resolvedUrls = new Map();
-    let validation = null;
-    for (let index = 0; index < manifest.items.length; index += batchSize) {
-      const batch = manifest.items.slice(index, index + batchSize);
-      const existing = new Map(records.map((record) => [record.filename, record]));
-      const missing = batch.filter((item) => !existing.has(item.filename));
-      if (missing.length) {
-        const previousSources = new Set(records.map((record) => record.src));
-        await setFiles(cdp, missing.map((item) => item.path));
-        records = await waitForFilenames(cdp, missing.map((item) => item.filename), previousSources);
-      }
-      const current = new Map(records.map((record) => [record.filename, record]));
-      const batchRecords = [];
-      for (const item of batch) {
-        const record = current.get(item.filename) ?? existing.get(item.filename);
-        if (record) batchRecords.push({ item, record });
-      }
+    const resolvedUrls = new Map(existingResults);
+    let validation = previousResult.validation ?? null;
+    const pendingAll = manifest.items.filter((item) => !resolvedUrls.has(item.id));
+    const maxItems = args['max-items'] === undefined
+      ? pendingAll.length
+      : Math.max(1, Math.min(pendingAll.length, Number(args['max-items']) || 1));
+    const pending = pendingAll.slice(0, maxItems);
+    for (let index = 0; index < pending.length; index += batchSize) {
+      const batch = pending.slice(index, index + batchSize);
+      const previousSources = new Set(records.map((record) => record.src));
+      await setFiles(cdp, batch.map((item) => item.path));
+      const uploadState = await waitForFilenames(cdp, batch.map((item) => item.filename), previousSources);
+      records = uploadState.records;
+      const fresh = new Map(uploadState.freshRecords.map((record) => [record.filename, record]));
+      const batchRecords = batch.flatMap((item) => fresh.has(item.filename)
+        ? [{ item, record: fresh.get(item.filename) }]
+        : []);
       if (batchRecords.length !== batch.length) {
         const found = new Set(batchRecords.map(({ item }) => item.filename));
-        throw new Error(`上传后未找到对应图片卡片：${batch.filter((item) => !found.has(item.filename)).map((item) => item.filename).join(', ')}`);
+        throw new Error(`上传后未找到本批新图片卡片：${batch.filter((item) => !found.has(item.filename)).map((item) => item.filename).join(', ')}`);
       }
       if (!validation) {
-        const expected = wirelessUrl(batchRecords[0].record.src);
-        validation = { useDomConversion: true, expected };
+        validation = await validateFirstWireless(cdp, batchRecords[0].record);
       }
       for (const { item, record } of batchRecords) {
-        const cdnUrl = validation.useDomConversion ? wirelessUrl(record.src) : await clickWireless(cdp, item.filename);
+        const cdnUrl = validation.useDomConversion ? wirelessUrl(record.src) : await clickWireless(cdp, record.src);
         if (!cdnUrl) throw new Error(`未能读取无线链接：${item.filename}`);
         resolvedUrls.set(item.id, cdnUrl);
+        writeJsonAtomic(resultPath, {
+          ok: false,
+          inProgress: true,
+          completed: resolvedUrls.size,
+          total: manifest.items.length,
+          validation,
+          items: manifest.items.flatMap((candidate) => resolvedUrls.has(candidate.id)
+            ? [{ id: candidate.id, cdnUrl: resolvedUrls.get(candidate.id) }]
+            : []),
+        });
       }
       writeJsonAtomic(resultPath, {
         ok: false,
@@ -346,7 +384,16 @@ async function main() {
       : { id: item.id, error: '上传结果缺失' });
     const firstUrl = items.find((item) => item.cdnUrl)?.cdnUrl;
     if (!firstUrl || !await verifyFirst(firstUrl)) throw new Error('首个 CDN 无线链接不可访问或不是图片');
-    writeJsonAtomic(resultPath, { ok: items.every((item) => item.cdnUrl), validation, items });
+    const complete = items.every((item) => item.cdnUrl);
+    writeJsonAtomic(resultPath, {
+      ok: complete,
+      inProgress: !complete,
+      paused: !complete && pending.length < pendingAll.length,
+      completed: resolvedUrls.size,
+      total: manifest.items.length,
+      validation,
+      items,
+    });
   } finally {
     cdp.close();
   }

@@ -40,6 +40,7 @@ const OCR_CONCURRENCY = 8;
 interface OcrResult {
   path: string;
   texts: string[];
+  confidences?: number[];
   qrCount: number;
   error?: string;
 }
@@ -585,11 +586,11 @@ function extractSvgTexts(path: string): string[] {
   return [...new Set(texts)];
 }
 
-function sensitiveFindings(texts: string[], qrCount: number): string[] {
+function sensitiveFindings(texts: string[], qrCount: number, confidences: number[] = []): string[] {
   const text = texts.join('\n');
   const textWithoutSafeUrls = text.replace(/https?:\/\/(?:example\.(?:com|invalid)|localhost)\b\S*/gi, '');
   const textWithoutSafePlaceholders = textWithoutSafeUrls
-    .replace(/\b(?:test|user)@example\.com\b/gi, '')
+    .replace(/\b[A-Z0-9._%+-]+@example\.(?:com|invalid)\b/gi, '')
     .replace(/\b(?:token|access[_ -]?key|secret|authorization)\s*[:=]\s*(?:TEST_VALUE|REDACTED)\b/gi, '')
     .replace(/\b(?:uid|user[_ -]?id|account[_ -]?id)\s*[:=]\s*(?:TEST_ID|REDACTED)\b/gi, '');
   const findings = new Set<string>();
@@ -598,7 +599,12 @@ function sensitiveFindings(texts: string[], qrCount: number): string[] {
   if (/\b(?:token|access[_ -]?key|secret|authorization)\s*[:=]\s*\S{4,}|\bbearer\s+\S{4,}/i.test(textWithoutSafePlaceholders)) findings.add('token');
   if (/\b(?:uid|user[_ -]?id|account[_ -]?id)\s*[:=]\s*\S{2,}|(?:工号|账号)\s*[:：=]\s*\S{2,}/i.test(textWithoutSafePlaceholders)) findings.add('uid/account');
   if (/https?:\/\//i.test(textWithoutSafeUrls)) findings.add('url');
-  if (/[\u3400-\u9fff]/u.test(text)) findings.add('chinese-text');
+  // Vision can classify English letter strokes as one or two low-confidence CJK
+  // glyphs. Keep low-confidence findings only when they form a longer phrase.
+  if (texts.some((value, index) => {
+    const count = value.match(/[\u3400-\u9fff]/gu)?.length ?? 0;
+    return count >= 4 || (count >= 2 && (confidences[index] ?? 1) >= 0.5);
+  })) findings.add('chinese-text');
   if (qrCount > 0) findings.add('qr-code');
   return [...findings];
 }
@@ -655,7 +661,7 @@ export async function inspectImagesSafety(
       inspections.set(path, { ok: false, findings: ['ocr-unavailable'], textCount: 0, qrCount: 0 });
       continue;
     }
-    const findings = sensitiveFindings(result.texts, result.qrCount);
+    const findings = sensitiveFindings(result.texts, result.qrCount, result.confidences);
     inspections.set(path, {
       ok: findings.length === 0,
       findings,
@@ -732,15 +738,21 @@ export async function prepareImageBatch(
           ? [item.prepared.sourcePath]
           : [];
     const texts: string[] = [];
+    const confidences: number[] = [];
     let qrCount = 0;
     for (const path of paths) {
       const result = ocr.get(path);
       if (!result) continue;
       texts.push(...result.texts);
+      confidences.push(...(result.confidences ?? result.texts.map(() => 1)));
       qrCount += result.qrCount;
     }
-    if (item.mediaKind === 'svg') texts.push(...(item.prepared.svgTexts ?? []));
-    item.privacyFindings = sensitiveFindings(texts, qrCount);
+    if (item.mediaKind === 'svg') {
+      const svgTexts = item.prepared.svgTexts ?? [];
+      texts.push(...svgTexts);
+      confidences.push(...svgTexts.map(() => 1));
+    }
+    item.privacyFindings = sensitiveFindings(texts, qrCount, confidences);
     item.privacyReview = item.privacyReview || item.privacyFindings.length > 0;
     if (item.localOutput && item.privacyFindings.length > 0) {
       item.status = 'needs_review';
@@ -784,6 +796,7 @@ export function applyImageBatch(repoRoot: string, scope: string, ids: string[], 
     ? JSON.parse(readFileSync(cacheFile, 'utf8')) as BatchImageJob
     : scanImageBatch(repoRoot, scope);
   const selected = new Set(ids);
+  const mappedCdnUrls = new Set(job.items.flatMap((item) => item.cdnUrl ? [item.cdnUrl] : []));
   const result: BatchApplyResult = { dryRun, changedFiles: [], appliedIds: [], skipped: [] };
   const bySlug = new Map<string, BatchImageItem[]>();
   for (const item of job.items) {
@@ -802,13 +815,25 @@ export function applyImageBatch(repoRoot: string, scope: string, ids: string[], 
     const sourceById = new Map(context.sourceOccurrences.map((occurrence) => [stableId(slug, occurrence), occurrence]));
     const edits: ApplyEdit[] = [];
     for (const item of items) {
+      if (item.cdnUrl && context.targetContent.includes(item.cdnUrl)) {
+        result.appliedIds.push(item.id);
+        continue;
+      }
       const sourceOccurrence = sourceById.get(item.id);
       if (!sourceOccurrence) {
         result.skipped.push({ id: item.id, reason: 'source occurrence changed; rescan required' });
         continue;
       }
       const target = locateTarget(sourceOccurrence, context);
-      if (target.mode === 'replace') {
+      // Once a newly uploaded CDN URL owns the located occurrence, replacing it
+      // would evict another source image on structurally mismatched zh/en pages.
+      // Insert the current image next to that occurrence instead. Combined with
+      // the content check above, this makes retries idempotent and prevents URL
+      // oscillation between multiple source images sharing one target anchor.
+      const targetOwnedByAnotherItem = target.mode === 'replace'
+        && mappedCdnUrls.has(target.occurrence.url)
+        && target.occurrence.url !== item.cdnUrl;
+      if (target.mode === 'replace' && !targetOwnedByAnotherItem) {
         edits.push({
           start: target.occurrence.urlStart,
           end: target.occurrence.urlEnd,
@@ -817,9 +842,10 @@ export function applyImageBatch(repoRoot: string, scope: string, ids: string[], 
           id: item.id,
         });
       } else {
-        const anchorEnd = target.afterBlockIndex === null
+        const afterBlockIndex = target.mode === 'replace' ? target.occurrence.blockIndex : target.afterBlockIndex;
+        const anchorEnd = afterBlockIndex === null
           ? context.targetBlocks[0]?.endOffset ?? 0
-          : context.targetBlocks[target.afterBlockIndex]?.endOffset;
+          : context.targetBlocks[afterBlockIndex]?.endOffset;
         if (anchorEnd === undefined) {
           result.skipped.push({ id: item.id, reason: 'target anchor not found' });
           continue;
