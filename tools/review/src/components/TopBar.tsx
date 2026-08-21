@@ -9,6 +9,7 @@ interface TopBarProps {
   onChange: (partial: Partial<ReviewContext>) => void;
   canDelete: boolean;
   onDeletePage: () => void;
+  onOpenImageBatch: () => void;
 }
 
 interface ProductGroup {
@@ -26,7 +27,7 @@ function groupByProduct(products: ProductTab[]): ProductGroup[] {
   return out;
 }
 
-export function TopBar({ products, productsLoading, ctx, onChange, canDelete, onDeletePage }: TopBarProps) {
+export function TopBar({ products, productsLoading, ctx, onChange, canDelete, onDeletePage, onOpenImageBatch }: TopBarProps) {
   const groups = useMemo(() => groupByProduct(products), [products]);
 
   return (
@@ -66,6 +67,10 @@ export function TopBar({ products, productsLoading, ctx, onChange, canDelete, on
       />
 
       <div className="topbar-spacer" />
+
+      <button type="button" className="btn btn-primary topbar-batch" onClick={onOpenImageBatch}>
+        图片批处理
+      </button>
 
       <button
         type="button"

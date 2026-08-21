@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { buildMediaRaw, type MediaKind } from '../lib/media';
 
-export type InsertKind = 'image' | 'video';
+export type InsertKind = MediaKind;
 export type InsertMode = 'insert' | 'replace';
 
 interface InsertBlockDialogProps {
@@ -9,6 +10,7 @@ interface InsertBlockDialogProps {
   mode?: InsertMode;
   initialUrl?: string;
   initialAlt?: string;
+  initialRaw?: string;
   onSubmit: (raw: string) => void;
   onCancel: () => void;
 }
@@ -20,31 +22,7 @@ function isSafeUrl(url: string): boolean {
   return /^https?:\/\/\S+$/i.test(trimmed);
 }
 
-function escapeAlt(s: string): string {
-  return s.replace(/[\[\]]/g, '');
-}
-
-function buildRaw(kind: InsertKind, url: string, alt: string): string {
-  const u = url.trim();
-  if (kind === 'image') {
-    return `![${escapeAlt(alt.trim())}](${u})`;
-  }
-  return `<video src="${u}" controls width="100%"/>`;
-}
-
-/** Parse an existing media block back into {kind, url, alt} for replace mode. */
-export function parseMediaRaw(raw: string): { kind: InsertKind; url: string; alt: string } | null {
-  const t = raw.trim();
-  const md = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(t);
-  if (md) return { kind: 'image', url: md[2].trim(), alt: md[1] };
-  const src = /\bsrc\s*=\s*"([^"]+)"/i.exec(t);
-  if (/^<video\b/i.test(t)) return { kind: 'video', url: src?.[1] ?? '', alt: '' };
-  if (/^<img\b/i.test(t)) {
-    const altAttr = /\balt\s*=\s*"([^"]*)"/i.exec(t);
-    return { kind: 'image', url: src?.[1] ?? '', alt: altAttr?.[1] ?? '' };
-  }
-  return null;
-}
+export { parseMediaRaw } from '../lib/media';
 
 export function InsertBlockDialog({
   open,
@@ -52,6 +30,7 @@ export function InsertBlockDialog({
   mode = 'insert',
   initialUrl = '',
   initialAlt = '',
+  initialRaw = '',
   onSubmit,
   onCancel,
 }: InsertBlockDialogProps) {
@@ -87,7 +66,7 @@ export function InsertBlockDialog({
 
   const submit = () => {
     if (!canSubmit) return;
-    onSubmit(buildRaw(kind, url, alt));
+    onSubmit(buildMediaRaw(kind, url, alt, initialRaw));
   };
 
   return (
@@ -138,7 +117,7 @@ export function InsertBlockDialog({
           )}
           <div className="insert-dialog-preview-label">{`将${verb}`}</div>
           <pre className="insert-dialog-preview">
-            {url.trim() ? buildRaw(kind, url, alt) : '（填入 URL 后预览）'}
+            {url.trim() ? buildMediaRaw(kind, url, alt, initialRaw) : '（填入 URL 后预览）'}
           </pre>
         </div>
         <div className="dialog-actions">

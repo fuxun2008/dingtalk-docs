@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Block, BlockType } from '../shared/types';
 import { INSERT_AT_START, type PendingInsert } from '../lib/apply-edits';
+import { isMediaBlock, parseMediaRaw } from '../lib/media';
 import { InlineEditor } from './InlineEditor';
 import type { InsertKind } from './InsertBlockDialog';
 
@@ -20,6 +21,7 @@ interface BlockPaneProps {
   onRestoreBlock?: (blockId: string) => void;
   onOpenInsertDialog?: (kind: InsertKind, afterBlockId: string) => void;
   onOpenReplaceDialog?: (blockId: string, raw: string) => void;
+  onLocalizeMedia?: (index: number, raw: string) => void;
   onRemoveInsert?: (insertId: string) => void;
   registerBlockRef?: (index: number, el: HTMLDivElement | null) => void;
 }
@@ -55,17 +57,6 @@ const READONLY_LABEL: Partial<Record<BlockType, string>> = {
 
 const SKIP_TYPES: Set<BlockType> = new Set(['frontmatter']);
 
-const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
-const VIDEO_TAG_RE = /^<video\s+([^>]*?)\/?\s*>(?:\s*<\/video>)?\s*$/i;
-const IMG_TAG_RE = /^<img\s+([^>]*?)\/?\s*>\s*$/i;
-
-function isMediaBlock(block: Block): boolean {
-  const trimmed = block.raw.trim();
-  if (block.type === 'paragraph') return IMAGE_ONLY_RE.test(trimmed);
-  if (block.type === 'mdxJsxFlow') return VIDEO_TAG_RE.test(trimmed) || IMG_TAG_RE.test(trimmed);
-  return false;
-}
-
 export function BlockPane({
   blocks,
   side,
@@ -78,6 +69,7 @@ export function BlockPane({
   onRestoreBlock,
   onOpenInsertDialog,
   onOpenReplaceDialog,
+  onLocalizeMedia,
   onRemoveInsert,
   registerBlockRef,
 }: BlockPaneProps) {
@@ -120,6 +112,7 @@ export function BlockPane({
                 onCommitBlock(block.id, '');
               } : undefined}
               onReplace={onOpenReplaceDialog ? () => onOpenReplaceDialog(block.id, block.raw) : undefined}
+              onLocalize={onLocalizeMedia && isMediaBlock(block) ? () => onLocalizeMedia(index, block.raw) : undefined}
               onRestore={onRestoreBlock ? () => onRestoreBlock(block.id) : undefined}
               registerBlockRef={registerBlockRef}
             />
@@ -151,6 +144,7 @@ interface BlockItemProps {
   onCancel: () => void;
   onDelete?: () => void;
   onReplace?: () => void;
+  onLocalize?: () => void;
   onRestore?: () => void;
   registerBlockRef?: (index: number, el: HTMLDivElement | null) => void;
 }
@@ -170,6 +164,7 @@ function BlockItem({
   onCancel,
   onDelete,
   onReplace,
+  onLocalize,
   onRestore,
   registerBlockRef,
 }: BlockItemProps) {
@@ -211,6 +206,7 @@ function BlockItem({
           block={block}
           onDelete={mediaActionable ? onDelete : undefined}
           onReplace={mediaActionable ? onReplace : undefined}
+          onLocalize={onLocalize}
         />
       )}
     </div>
@@ -232,14 +228,26 @@ function DeletedPlaceholder({ block, onRestore }: { block: Block; onRestore?: ()
   );
 }
 
-function MediaActions({ onDelete, onReplace, replaceLabel, deleteLabel }: {
+function MediaActions({ onDelete, onReplace, onLocalize, replaceLabel, deleteLabel }: {
   onDelete?: () => void;
   onReplace?: () => void;
+  onLocalize?: () => void;
   replaceLabel: string;
   deleteLabel: string;
 }) {
   return (
     <div className="readonly-content-actions">
+      {onLocalize && (
+        <button
+          type="button"
+          className="readonly-content-localize"
+          onClick={onLocalize}
+          title="生成英文图并定位到英文文档"
+          aria-label="本地化到英文"
+        >
+          英文图
+        </button>
+      )}
       {onReplace && (
         <button
           type="button"
@@ -266,37 +274,30 @@ function MediaActions({ onDelete, onReplace, replaceLabel, deleteLabel }: {
   );
 }
 
-function ReadonlyContent({ block, onDelete, onReplace }: { block: Block; onDelete?: () => void; onReplace?: () => void }) {
-  const trimmed = block.raw.trim();
-
-  if (block.type === 'paragraph' && IMAGE_ONLY_RE.test(trimmed)) {
+function ReadonlyContent({ block, onDelete, onReplace, onLocalize }: {
+  block: Block;
+  onDelete?: () => void;
+  onReplace?: () => void;
+  onLocalize?: () => void;
+}) {
+  const media = parseMediaRaw(block.raw);
+  if (media) {
     return (
       <div className="readonly-content readonly-content-media">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.raw}</ReactMarkdown>
-        <MediaActions onDelete={onDelete} onReplace={onReplace} replaceLabel="替换此图片" deleteLabel="删除此图片" />
+        {media.kind === 'video' ? (
+          <video src={media.url} controls width="100%" />
+        ) : (
+          <img src={media.url} alt={media.alt} />
+        )}
+        <MediaActions
+          onDelete={onDelete}
+          onReplace={onReplace}
+          onLocalize={media.kind === 'image' ? onLocalize : undefined}
+          replaceLabel={media.kind === 'image' ? '替换此图片' : '替换此视频'}
+          deleteLabel={media.kind === 'image' ? '删除此图片' : '删除此视频'}
+        />
       </div>
     );
-  }
-
-  if (block.type === 'mdxJsxFlow') {
-    const videoMatch = trimmed.match(VIDEO_TAG_RE);
-    if (videoMatch) {
-      return (
-        <div className="readonly-content readonly-content-media">
-          <div dangerouslySetInnerHTML={{ __html: `<video ${videoMatch[1]}></video>` }} />
-          <MediaActions onDelete={onDelete} onReplace={onReplace} replaceLabel="替换此视频" deleteLabel="删除此视频" />
-        </div>
-      );
-    }
-    const imgMatch = trimmed.match(IMG_TAG_RE);
-    if (imgMatch) {
-      return (
-        <div className="readonly-content readonly-content-media">
-          <div dangerouslySetInnerHTML={{ __html: `<img ${imgMatch[1]}/>` }} />
-          <MediaActions onDelete={onDelete} onReplace={onReplace} replaceLabel="替换此图片" deleteLabel="删除此图片" />
-        </div>
-      );
-    }
   }
 
   const label = READONLY_LABEL[block.type] ?? block.type;
@@ -344,10 +345,7 @@ interface PendingInsertPreviewProps {
 }
 
 function PendingInsertPreview({ insert, onRemove }: PendingInsertPreviewProps) {
-  const trimmed = insert.raw.trim();
-  const videoMatch = trimmed.match(VIDEO_TAG_RE);
-  const imgMatch = !videoMatch ? trimmed.match(IMG_TAG_RE) : null;
-  const isImageMarkdown = !videoMatch && !imgMatch && IMAGE_ONLY_RE.test(trimmed);
+  const media = parseMediaRaw(insert.raw);
 
   return (
     <div className="pending-insert-preview">
@@ -365,12 +363,10 @@ function PendingInsertPreview({ insert, onRemove }: PendingInsertPreviewProps) {
         )}
       </div>
       <div className="pending-insert-preview-body">
-        {videoMatch ? (
-          <div dangerouslySetInnerHTML={{ __html: `<video ${videoMatch[1]}></video>` }} />
-        ) : imgMatch ? (
-          <div dangerouslySetInnerHTML={{ __html: `<img ${imgMatch[1]}/>` }} />
-        ) : isImageMarkdown ? (
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{insert.raw}</ReactMarkdown>
+        {media?.kind === 'video' ? (
+          <video src={media.url} controls width="100%" />
+        ) : media?.kind === 'image' ? (
+          <img src={media.url} alt={media.alt} />
         ) : (
           <pre className="pending-insert-preview-raw">{insert.raw}</pre>
         )}

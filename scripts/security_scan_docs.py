@@ -35,6 +35,9 @@ EXCLUDE_DIRS = {
     ".claude/import",  # 钉钉下载器敏感产物（gitignore 已覆盖，提前排）
     "scripts/output",  # 自己的产物，避免自扫
     "scripts/__pycache__",
+    ".qoder",  # gitignore 覆盖：repowiki 元数据 hash 子串被误报手机号，不部署
+    "scripts/pdf_export",  # gitignore 覆盖：venv 第三方库 idna 十六进制码点误报，不部署
+    "scripts/import_yida/output",  # gitignore 覆盖：宜搭导入中间产物 json，不部署
 }
 
 SEVERITY_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}

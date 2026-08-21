@@ -1,22 +1,12 @@
 import type { Block, BlockType } from '../shared/types';
+import { isMediaBlock } from './media';
 
 export interface BlockAlignment {
   leftToRight: Map<number, number>;
   rightToLeft: Map<number, number>;
 }
 
-const IMAGE_ONLY_RE = /^!\[[^\]]*\]\([^)]+\)\s*$/;
-const VIDEO_TAG_RE = /^<video\b/i;
-const IMG_TAG_RE = /^<img\b/i;
-
 const SKIP_FOR_ALIGN: Set<BlockType> = new Set(['frontmatter']);
-
-function isMediaBlock(block: Block): boolean {
-  const trimmed = block.raw.trim();
-  if (block.type === 'paragraph') return IMAGE_ONLY_RE.test(trimmed);
-  if (block.type === 'mdxJsxFlow') return VIDEO_TAG_RE.test(trimmed) || IMG_TAG_RE.test(trimmed);
-  return false;
-}
 
 interface IndexedBlock {
   index: number;
@@ -87,6 +77,18 @@ function lcsHeadingPairs(zh: HeadingEntry[], en: HeadingEntry[]): Array<[number,
 function pairHeadings(zh: HeadingEntry[], en: HeadingEntry[]): Array<[HeadingEntry, HeadingEntry]> {
   if (depthsEqual(zh, en)) {
     return zh.map((z, i) => [z, en[i]] as [HeadingEntry, HeadingEntry]);
+  }
+  // When every heading has the same depth, depth-only LCS has no semantic
+  // signal and may arbitrarily align the tail of one side with the head of the
+  // other. Documentation translations normally preserve heading order, so a
+  // stable prefix pairing is safer and keeps missing trailing sections local.
+  const uniformDepth = zh.length > 0
+    && en.length > 0
+    && zh.every((entry) => entry.depth === zh[0].depth)
+    && en.every((entry) => entry.depth === zh[0].depth);
+  if (uniformDepth) {
+    const length = Math.min(zh.length, en.length);
+    return Array.from({ length }, (_, i) => [zh[i], en[i]] as [HeadingEntry, HeadingEntry]);
   }
   return lcsHeadingPairs(zh, en).map(([zi, ei]) => [zh[zi], en[ei]] as [HeadingEntry, HeadingEntry]);
 }
@@ -162,4 +164,59 @@ export function computeAlignment(leftBlocks: Block[], rightBlocks: Block[]): Blo
     rightToLeft.set(ei, zi);
   }
   return { leftToRight, rightToLeft };
+}
+
+export type MediaTarget =
+  | { mode: 'replace'; blockIndex: number }
+  | { mode: 'insert'; afterBlockIndex: number | null };
+
+/**
+ * Resolve a media block to the same structural interval on the other language.
+ * Text/heading alignment supplies the boundaries; media order within that interval
+ * decides whether to replace an existing peer or insert a missing one.
+ */
+export function resolveMediaTarget(
+  sourceIndex: number,
+  sourceBlocks: Block[],
+  targetBlocks: Block[],
+  sourceToTarget: Map<number, number>,
+): MediaTarget {
+  let previousSource = -1;
+  let previousTarget = -1;
+  for (let i = sourceIndex - 1; i >= 0; i--) {
+    const peer = sourceToTarget.get(i);
+    if (peer !== undefined) {
+      previousSource = i;
+      previousTarget = peer;
+      break;
+    }
+  }
+
+  let nextSource = sourceBlocks.length;
+  let nextTarget = targetBlocks.length;
+  for (let i = sourceIndex + 1; i < sourceBlocks.length; i++) {
+    const peer = sourceToTarget.get(i);
+    if (peer !== undefined) {
+      nextSource = i;
+      nextTarget = peer;
+      break;
+    }
+  }
+
+  const sourceMedia = sourceBlocks
+    .map((block, index) => ({ block, index }))
+    .filter(({ block, index }) => index > previousSource && index < nextSource && isMediaBlock(block));
+  const ordinal = Math.max(0, sourceMedia.findIndex(({ index }) => index === sourceIndex));
+  const targetMedia = targetBlocks
+    .map((block, index) => ({ block, index }))
+    .filter(({ block, index }) => index > previousTarget && index < nextTarget && isMediaBlock(block));
+
+  const existing = targetMedia[ordinal];
+  if (existing) return { mode: 'replace', blockIndex: existing.index };
+
+  const precedingMedia = targetMedia[Math.min(ordinal, targetMedia.length) - 1];
+  return {
+    mode: 'insert',
+    afterBlockIndex: precedingMedia?.index ?? (previousTarget >= 0 ? previousTarget : null),
+  };
 }
