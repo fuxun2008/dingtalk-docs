@@ -546,9 +546,10 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       { code: "zh", label: "中文", href: "/zh/index" },
       { code: "ja", label: "日本語", href: "/ja/index" },
       { code: "id", label: "Bahasa Indonesia", href: "/id/index" },
+      { code: "ms", label: "Bahasa Melayu", href: "/ms/index" },
     ];
     // Button label reflects the page's actual language.
-    const LABEL_MAP = { en: "English", zh: "中文", ja: "日本語", id: "Bahasa Indonesia" };
+    const LABEL_MAP = { en: "English", zh: "中文", ja: "日本語", id: "Bahasa Indonesia", ms: "Bahasa Melayu" };
     const current = LANGS.find((l) => l.code === lang) ||
       { code: lang, label: LABEL_MAP[lang] || "English" };
     return (

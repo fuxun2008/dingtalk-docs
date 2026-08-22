@@ -13,13 +13,14 @@
 (function () {
   if (typeof document === "undefined") return;
 
-  var MORE_LABEL = { en: "More", zh: "更多", ja: "その他", id: "Lainnya" };
+  var MORE_LABEL = { en: "More", zh: "更多", ja: "その他", id: "Lainnya", ms: "Lagi" };
 
   function detectLang() {
     var p = location.pathname;
     if (p.indexOf("/zh/") === 0 || p === "/zh") return "zh";
     if (p.indexOf("/ja/") === 0 || p === "/ja") return "ja";
     if (p.indexOf("/id/") === 0 || p === "/id") return "id";
+    if (p.indexOf("/ms/") === 0 || p === "/ms") return "ms";
     return "en";
   }
 
