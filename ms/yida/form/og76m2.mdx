@@ -1,0 +1,212 @@
+---
+title: "Panel Sumber Data"
+description: "Ketahui cara mencipta Sumber Data merentas edisi yang berbeza, termasuk pemboleh ubah, Permintaan jauh, dan Sumber Data Parameter. Topik ini turut merangkumi keperluan format data untuk Permintaan jauh, pilihan muat auto, pemilihan Kaedah muat, syarat Permintaan, serta penggunaan terperinci willFetch, fit, didFetch, onError, dan Fungsi lain."
+polished: true
+---
+
+| **Keupayaan** | **Pelan Percuma** | **Edisi Basic** | **Edisi Profesional** | **Edisi Dedicated** |
+|---|---|---|---|---|
+| Sumber Data Luaran | Tidak disokong | Tidak disokong | Disokong | Disokong |
+
+## 1. Cipta Sumber Data
+
+### 1.1 Cara Mencipta Sumber Data
+
+Klik **Tambah** untuk mula mencipta Sumber Data baharu. Sumber Data terbahagi kepada tiga kategori, dan anda boleh memilih salah satu semasa mencipta. Selepas dicipta, jenisnya tidak boleh diubah.
+
+- Pemboleh ubah: pemboleh ubah tempatan.
+- Permintaan jauh: data yang diambil daripada API Bahagian pelayan.
+- Sumber Data Parameter: Sistem menghantar masuk Sumber Data ini secara lalai untuk mendapatkan parameter dalam URL semasa. Contohnya, apabila URL ialah `a.html?key1=value1&key2=value2`, nilai bagi Sumber Data Parameter tersebut ialah:
+
+```javascript
+{
+  key1: 'value1',
+  key2: 'value2'
+}
+```
+
+### 1.2 Sumber Data Pemboleh Ubah
+
+Sumber Data pemboleh ubah biasanya digunakan untuk menyimpan item konfigurasi (seperti awalan remote API `apiUrlPrefix`), pemboleh ubah sementara peringkat halaman, dan data yang serupa. Ia menyokong semua jenis data JS, termasuk string, object, array, nombor, dan boolean.
+
+```javascript
+string: "string"
+Number: 123
+boolean: true / false
+object: {"name": "gaokai"}
+array: ["1", "2"]
+null: null
+```
+
+### 1.3 Permintaan Jauh
+
+**Format Data Respons API**
+
+Sumber Data jauh mempunyai beberapa kekangan wajib pada format data:
+
+```javascript
+{
+    content: [], // Medan content membawa data. Struktur data bagi content tidak terhad.
+    success: true // success menunjukkan sama ada permintaan berjaya.
+}
+```
+
+Untuk kekangan format terperinci, lihat [**natty-fetch**](https://github.com/oner-team/oner-io/blob/natty-fetch/docs/rules.md).
+
+**Nota khas**:
+
+Bagi data yang dikembalikan dalam format yang ditunjukkan di atas 👆, lapisan `content` dan `success` akan dinyahlapiskan dalam Fungsi callback Respons bagi permintaan tersebut (seperti didFetch dan nilai yang akhirnya disimpan dalam kumpulan data).
+
+Bagi data yang dikembalikan oleh API tidak standard, tambahkan lapisan fit supaya Sumber Data dapat mengecam Respons tersebut. fit menukar kandungan Respons mentah kepada format yang mematuhi spesifikasi Respons RPC YiDA sebelum didFetch (pengambilan data) dijalankan. Untuk butiran lanjut, lihat Nota penggunaan fit di bawah 👇.
+
+Jika anda menggunakan perkhidmatan API anda sendiri, berhati-hati dengan isu rentas domain. Anda perlu menggunakan JSONP atau mengonfigurasikan perkhidmatan API anda untuk membenarkan [**permintaan rentas domain.**](https://www.baidu.com/s?wd=%E8%B7%A8%E5%9F%9F%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88&rsv_spt=1&rsv_iqid=0xb4bc961e002c4bf1&issp=1&f=3&rsv_bp=1&rsv_idx=2&ie=utf-8&rqlang=cn&tn=baiduhome_pg&rsv_enter=0&rsv_dl=ts_0&oq=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsv_btype=t&rsv_t=9447WFp%2FaXjCnHf21%2BpQbVggodBCHxIJ1kWR%2FKv8r%2FkP1SGPy8aAS62FCEEAtb9vrwrJ&rsv_pq=fbe7a51d001b0915&prefixsug=%25E8%25B7%25A8%25E5%259F%259F%25E8%25A7%25A3%25E5%2586%25B3%25E6%2596%25B9%25E6%25A1%2588&rsp=0) Pendekatan mengonfigurasikan perkhidmatan API adalah disyorkan. Lihat [**Perkongsian Sumber Rentas Asal**](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/CORS). Nota: Semua aplikasi YiDA menggunakan HTTPS, jadi anda perlu mengonfigurasikan domain yang ditentukan: `Access-Control-Allow-Origin: https://www.yidaapps.com`.
+
+**Kaedah HTTP**
+
+Tiga Kaedah HTTP tersedia untuk memuatkan Sumber Data jauh:
+
+- GET
+- POST
+- JSONP. Kaedah ini memerlukan sokongan Bahagian pelayan.
+
+### 1.4 Muat Auto
+
+Sumber Data dengan muat auto diaktifkan akan menghantar Permintaan kepada remote API sebelum halaman dipaparkan. Halaman hanya mula dipaparkan selepas semua Sumber Data muat auto selesai dimuatkan. Ini biasanya digunakan untuk pemuatan data awal halaman.
+
+**Nota: Terlalu banyak Sumber Data muat auto akan memanjangkan masa pemaparan halaman. Jangan gunakan pilihan ini secara berlebihan.**
+
+### 1.5 Kaedah Muat (Aktifkan Muat Auto Terlebih Dahulu)
+
+**Bersiri**: Semua Sumber Data bersiri dijalankan dari atas ke bawah. Jika terdapat kebergantungan, letakkan Sumber Data yang menjadi pergantungan terlebih dahulu.
+
+**Selari**: Semua Sumber Data selari dijalankan serentak.
+
+Jika anda tidak mahu mengaktifkan muat auto (untuk mengelakkan permintaan menyekat pemaparan halaman) tetapi masih mahu pemuatan bersiri, cetuskan pemuatan Sumber Data secara manual dalam Fungsi "on Page load Complete". Contoh kod: cetuskan Permintaan Sumber Data jauh pertama, dan selepas ia dikembalikan, cetuskan Permintaan Sumber Data jauh kedua.
+
+### 1.6 Sama Ada Perlu Menghantar Permintaan
+
+Menerima nilai boolean yang menentukan sama ada Permintaan perlu dihantar. Medan input ini juga menerima ungkapan pemboleh ubah yang menentukan sama ada untuk menghantar Permintaan.
+
+### 1.7 willFetch
+
+Fungsi pelaksana pra-Permintaan. willFetch membolehkan anda mengubah suai pelbagai Parameter permintaan sebelum menghantar Permintaan. Contoh kod:
+
+```javascript
+function willFetch(vars, config) {
+    // vars.data membolehkan anda menukar Parameter pertanyaan
+    // config.header membolehkan anda menukar header
+    // config.url membolehkan anda menukar url
+    vars.data.a = 1; // Tukar 'a' dalam Parameter permintaan kepada 1
+    config.url = 'https://www.taobao.com'; // Tukar url permintaan kepada Taobao
+    config.header['Content-Type'] = 'application/json'; // Tukar Content-Type
+    console.log(vars, config); // Lihat parameter lain yang boleh diubah suai.
+}
+```
+
+### 1.8 Fit
+
+Penyesuai data untuk Respons permintaan. fit membolehkan anda mengubah suai Respons mentah supaya sepadan dengan format Permintaan data yang diperlukan. Contoh kod:
+
+```javascript
+function fit(response) {
+  const content = (response.content !== undefined) ? response.content : response;
+  const error = {
+    message: response.errorMsg ||
+      (response.errors && response.errors[0] && response.errors[0].msg) ||
+      response.content || 'Remote Data Source request failed, success is false',
+  };
+  let success = true;
+  if (response.success !== undefined) {
+    success = response.success;
+  } else if (response.hasError !== undefined) {
+    success = !response.hasError;
+  }
+  return {
+    content,
+    success,
+    error,
+  };
+}
+```
+
+### 1.9 didFetch
+
+Fungsi callback penyelesaian Permintaan. didFetch membolehkan anda mengubah suai data yang diterima. Berbeza daripada fit, ia hanya dijalankan apabila `success` yang dikembalikan oleh API bernilai `true`. Contoh kod:
+
+```javascript
+function didFetch(content) {
+    content.b = 1; // Tukar Medan 'b' dalam struktur data yang dikembalikan kepada 1
+    return content; // Penting: content mesti dikembalikan
+}
+```
+
+### 1.10 onError
+
+Fungsi Pengendalian ralat Permintaan. onError menangkap Ralat API daripada Sumber Data jauh. Ia dijalankan apabila `success` yang dikembalikan oleh API bernilai `false`. Contoh kod:
+
+```javascript
+function onError(error) {
+  console.log(error);
+}
+```
+
+### 1.11 Data Lalai
+
+Data Lalai biasanya digunakan untuk pemaparan skrin pertama. Ia menyediakan nilai lalai awal sebelum Permintaan Sumber Data jauh dikembalikan. Nota: Format data bagi Data Lalai sepadan dengan format data yang dikembalikan pada lapisan didFetch, dan boleh diikat serta digunakan terus.
+
+### 1.12 Sumber Data Penyambung (BAHARU)
+
+Dalam Sumber Data Penyambung, sebuah Penyambung bertindak sebagai Sumber Data. Ini direka untuk menembusi sekatan rentas domain dan Pengesahan antara sistem dan halaman web. Untuk butiran lanjut, lihat Gunakan Penyambung data tersuai untuk menyelesaikan isu rentas domain.
+
+## 2. Menggunakan Sumber Data
+
+### 2.1 Ikat Dalam Komponen
+
+Dalam panel Tetapan Atribut Komponen YiDA, anda boleh mengikat pemboleh ubah kepada satu Atribut untuk mencipta gelagat dinamik. Ikut langkah berikut:
+
+- Semua Atribut yang menyokong pemboleh ubah memaparkan ikon yang ditunjukkan di bawah. Klik ikon tersebut untuk membuka **panel Pengikatan Pemboleh Ubah**.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i1/O1CN01edXqeyJhjMH15yZC_!!6000000004524-2-tps-540-258.png)
+</Frame>
+
+- **Panel Pengikatan Pemboleh Ubah** menyokong pengikatan jenis pemboleh ubah berikut. Klik pemboleh ubah untuk menggunakannya terus:
+
+Contohnya: `state.urlParams.type === 'test' ? '1' : '2'`
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i3/O1CN01u4sDG8QboID34q5o_!!6000000005480-2-tps-1516-1052.png)
+</Frame>
+
+### 2.2 Percubaan Praktikal Pusat Pembangun
+
+- **Klik Pautan ini untuk mencubanya.**
+
+## 3. Soalan Lazim
+
+### 3.1 Tiada Data Dikembalikan Selepas Permintaan Sumber Data
+
+Semak perkara berikut:
+
+- Laluan API dan Kaedah HTTP anda adalah betul.
+- Permintaan lalai diaktifkan, atau panggilan manual telah berkuat kuasa.
+- Pelayan yang mengehos perkhidmatan API tidak menguatkuasakan sekatan Senarai Dibenarkan akses.
+- Format parameter input adalah betul.
+- API anda menyokong akses rentas domain daripada `www.yidaapps.com`.
+- API anda menggunakan HTTPS dan sijilnya sah ("Selamat").
+
+### 3.2 Pendekatan Penyelesaian Masalah
+
+1. Tentukan sama ada Sumber Data dimuatkan secara manual atau automatik. Bagi pemuatan manual, tetapkan titik henti pada kod pemuatan Sumber Data untuk Nyahpepijat.
+2. Pratonton atau akses Halaman tersebut.
+3. Buka konsol pelayar.
+4. Cetuskan pemuatan Sumber Data.
+5. Semak maklumat Permintaan yang berkaitan dalam konsol untuk menyelesaikan masalah.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i1/O1CN01JMo0xjLZidL5eCtC_!!6000000004153-2-tps-2782-1568.png)
+</Frame>
+
+### 3.3 Ralat 307 Semasa Memanggil API Platform YiDA
+
+Semak sama ada Organisasi Anda telah mengaktifkan domain peringkat kedua. Jika ya, tukar alamat akses API daripada `www.yidaapps.com/...` kepada alamat relatif `/dingtalk/web/APP_X1X2X3X4/v1/process/startInstance.json` untuk mengelakkan Ralat ini.
