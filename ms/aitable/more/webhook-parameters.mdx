@@ -1,0 +1,63 @@
+---
+title: "Parameter Webhook — Rujukan Penuh"
+description: "Rujukan penuh untuk parameter webhook automasi AI Table — pengepala Kebenaran (Bearer token) dan Client-Token idempoten, format isi permintaan, struktur respons, serta cara menyelesaikan masalah kod ralat."
+---
+
+## 1. Pengepala
+
+| **Nama**       | **Jenis** | **Wajib** | **Keterangan**                                                                                                                                                                                                                                                                                |
+| ------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization | string  | Tidak       | Semakan Kelayakan (Bearer token) — hantar melalui pengepala permintaan. Format pengepala (peka huruf besar/kecil):  \--header 'Authorization: Bearer \\[Bearer token sebenar]'  Tanda petikan tunggal diperlukan dalam pengepala sebenar. Kurungan segi empat adalah pemegang tempat — jangan sertakan dalam pengepala sebenar. Kunci pengepala tetap `Authorization` dan nilainya mempunyai awalan tetap `Bearer`.  Nota: mesti ada satu ruang di antara awalan `Bearer` dan Bearer token sebenar. |
+| Client-Token  | string  | Tidak       | Untuk idempoten. Kunci pengepala tetap `Client-Token` dan nilainya dijana oleh pemanggil (biasanya UUID).  Nilai kosong = permintaan baharu. Nilai tidak kosong = kemas kini idempoten — nilai yang sama dalam tempoh 3 jam hanya dicetuskan sekali.                                                                                                                                                                    |
+
+Contoh permintaan Bearer token (kurungan segi empat adalah pemegang tempat — gantikan sebelum menjalankan, jangan sertakan kurungan):
+
+```bash 
+curl --location --request POST '[URL webhook sebenar]' \
+--header 'Authorization: Bearer [Bearer token sebenar]' \
+--header 'Content-Type: application/json' \
+--data-raw '{[isi permintaan sebenar]}'
+```
+
+## 2. Isi Permintaan
+
+Tetapkan apa jua medan yang anda perlukan. Isi permintaan mesti dalam format JSON yang sah.
+
+## 3. Isi Respons
+
+Jika `code` dalam respons bukan `0`, permintaan gagal.
+
+Apabila `code` bukan sifar, semak kod dan mesej dalam jadual **Kod ralat** di bawah untuk menyahpepijat.
+
+Apabila webhook berjaya menerima permintaan, respons kelihatan seperti:
+
+```json 
+{
+"msg": "",
+"data": { },
+"code": 0
+}
+```
+
+Apabila webhook menemui ralat, respons kelihatan seperti:
+
+```json 
+{
+"data": { },
+"code": 800004509,
+"msg": "webhook trigger workflow is disabled"
+}
+```
+
+## 4. Kod Ralat
+
+Apabila pencetus webhook mengalami ralat, semak respons di pihak pemanggil dan padankan kod serta mesej dengan jadual di bawah.
+
+| **Kod**  | **Mesej**                             | **Punca**                                                                                                                                                            | **Penyelesaian**                              |
+| --------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 800005649 | Semakan Kelayakan gagal                               | Semakan Kelayakan diaktifkan, tetapi Kelayakan dalam permintaan HTTP tidak sepadan dengan yang dijangkakan oleh automasi — larian tidak dapat diteruskan.                                                                                                                       | Semak semula dan masukkan semula Kelayakan.                             |
+| 800005650 | IP sumber tiada dalam Senarai Dibenarkan                       | Senarai Dibenarkan IP diaktifkan, dan IP sumber permintaan tiada di dalamnya.                                                                                                                                                                                                         | Tambah IP tersebut ke Senarai Dibenarkan atau hantar permintaan daripada IP yang dibenarkan.            |
+| 800005647 | Isi permintaan terlalu besar                      | Webhook menerima permintaan HTTP yang lebih besar daripada 4 MB.                                                                                                                                                                       | Kurangkan saiz isi permintaan.                                 |
+| 800005646 | Nod HTTP memanggil dirinya sendiri — gelung dikesan; tukar URL nod HTTP | Automasi dicetuskan "apabila webhook dipanggil" dan tindakannya ialah "hantar permintaan HTTP" — dan URL HTTP sama dengan URL webhook tersebut, menyebabkan gelung tak terhingga.                                                                                                                                           | Tukar URL **Hantar permintaan HTTP** — ia mesti tidak sepadan dengan URL webhook. |
+| 800005652 | Terlalu banyak permintaan; cuba lagi kemudian                          | Webhook telah dihadkan kadar.  \-   Had kadar webhook seluruh AI Table: 50 permintaan/saat.  \-   Had kadar webhook setiap automasi: 5 permintaan/saat.  \-   Automasi tanpa semakan Kelayakan (tiada Bearer token): 1 permintaan/saat setiap satu. | Cuba lagi kemudian.                                  |
+| 800006003 | Isi permintaan bukan JSON yang sah; betulkan dan cuba semula             | Biasanya berlaku apabila menggunakan "tetapkan output melalui permintaan masuk" — isi yang diterima bukan JSON yang sah.                                                                                                                     | Semak semula JSON isi permintaan, betulkan, dan cuba semula.                  |

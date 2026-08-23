@@ -1,0 +1,121 @@
+---
+title: "Mencetuskan Automasi melalui Webhook"
+description: "Ketahui cara menyediakan Webhook dengan penapisan kata kunci dan format parameter untuk mencetuskan Automasi apabila sistem luaran menghantar data yang sepadan di DingTalk."
+---
+
+## 1 Apa Fungsinya
+
+Webhook membolehkan sistem saling menghantar (push) data antara satu sama lain — **apabila sesuatu yang anda ambil berat berlaku di hulu, data akan tiba secara automatik**. URL Webhook ialah alamat penghantaran yang memastikan data tiba tepat pada masanya.
+
+- Nota: Webhook merupakan ciri lanjutan untuk pembangun — bekerjasama dengan pembangun untuk menyediakannya.
+
+> ⚠️ Rahsiakan URL Webhook anda — jangan sekali-kali menerbitkannya di laman luaran. Kebocoran boleh membanjiri organisasi anda dengan trafik berniat jahat, menghabiskan sumber pembangun dan meletakkan organisasi anda dalam risiko.
+
+## 2 Kes Penggunaan
+
+Dengan menyediakan Webhook, anda boleh "melanggan" kemas kini daripada sistem atau aplikasi:
+
+- **Penyegerakan data sistem dalaman** — sediakan Webhook dalam ERP, CRM, dan lain-lain untuk menyegerakkan data antara sistem tanpa pemindahan manual.
+- **Kemas kini kandungan laman web** — sediakan Webhook pada laman yang dipantau; kandungan baharu akan memaklumkan anda tanpa perlu memuat semula halaman.
+- **Pemantauan dan makluman** — sediakan Webhook dalam platform pemantauan atau makluman untuk wawasan kesihatan sistem secara masa nyata dan respons insiden yang lebih pantas.
+
+## 3 Cara Menggunakan
+
+### 3.1 Tetapkan Kata Kunci Pencetus
+
+Aliran kerja hanya akan tercetus apabila data yang diterima mengandungi kata kunci. Klik **Tambah kata kunci** untuk menambah sehingga 10 kata kunci — sebarang satu padanan akan mencetuskan aliran kerja.
+
+### 3.2 Tetapkan Format Parameter
+
+Apabila data tiba daripada sistem hulu, parameter akan diteruskan ke hilir. **Format menentukan cara langkah hilir menghurai dan merujuk parameter ini.**
+
+#### 3.2.1 Format = JSON
+
+Langkah hilir akan menghurai parameter sebagai JSON berstruktur. **Isikan contoh muatan (payload)** supaya langkah seterusnya dapat merujuk data berstruktur.
+
+#### 3.2.2 Format = Text
+
+Di hilir, anda merujuk keseluruhan blok parameter sebagai teks. (Kes khas: jika parameter sepadan dengan [struktur mesej DingTalk Bot](https://open.dingtalk.com/document/orgapp/custom-bot-send-message-type#66407430cd5xr "DingTalk bot message structure"), dalam **Hantar mesej ke kumpulan ini**, anda boleh menukar **Sumber** kepada **Penghuraian data sumber** dan parameter akan dijana secara automatik sebagai Kandungan Mel.)
+
+#### 3.2.3 Format = None
+
+Langkah hilir tidak dapat merujuk parameter ini.
+
+### 3.3 Konfigurasikan URL Webhook
+
+Klik **Salin** dan tampalkan URL tersebut ke dalam sistem hulu. (Setiap Automasi mempunyai URL Webhook tersendiri — **rahsiakannya; kebocoran boleh membanjiri organisasi anda dengan trafik berniat jahat dan menghabiskan sumber pembangun**.)
+
+### 3.4 Hantar Permintaan HTTP
+
+Satu permintaan akan mencetuskan Automasi.
+
+| Parameter | Nilai | Contoh |
+| --- | --- | --- |
+| Kaedah | POST | \- |
+| URL | URL Webhook daripada Pencetus | [https://connector.dingtalk.io/webhook/flow/xxxxx](https://connector.dingtalk.io/webhook/flow/xxxxx "https://connector.dingtalk.io/webhook/flow/xxxxx") |
+| Isi (Body) | JSON — mesti mengandungi kata kunci Pencetus untuk mencetuskan aliran kerja | \{  "key": "value"  \} |
+
+## 4 Header dan Contoh
+
+| **Nama**       | **Jenis** | **Wajib** | **Keterangan**                                                                                                                                                                                                                                                                              |
+| -------------- | -------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authorization | string   | Tidak           | Semakan Kelayakan (Bearer token) — hantar melalui header Authorization. Format (peka huruf besar/kecil):  --header 'Authorization: Bearer \\[Bearer token sebenar]'  Tanda petikan tunggal adalah sebahagian daripada header sebenar. Tanda kurung hanya pemegang tempat (placeholder) — jangan ditaip. Kunci header ditetapkan sebagai `Authorization`; nilai mempunyai awalan tetap `Bearer`.  Perhatikan ruang yang diperlukan antara `Bearer` dan token sebenar. |
+| Client-Token  | string   | Tidak           | Kependuaan (idempotency). Kunci header ditetapkan sebagai `Client-Token`; nilai dijana oleh pengguna, biasanya UUID.  Nilai kosong = Permintaan baharu. Nilai tidak kosong = kemas kini idempoten — dalam tempoh 3 jam, nilai yang sama hanya akan mencetuskan sekali sahaja. |
+
+Contoh Bearer token (tanda kurung ialah pemegang tempat — jangan ditaip):
+
+```bash 
+curl --location --request POST '[real webhook URL]' \
+--header 'Authorization: Bearer [real Bearer token]' \
+--header 'Content-Type: application/json' \
+--data-raw '{[real request body]}'
+```
+
+## 5 Isi Permintaan
+
+Tetapkan mengikut keperluan anda — mestilah JSON yang sah.
+
+## 6 Respons dan Contoh
+
+`code` bukan sifar dalam Respons menandakan kegagalan.
+
+Apabila `code` bukan sifar, rujuk mesej dalam jadual kod ralat di bawah untuk Nyahpepijat.
+
+Respons berjaya:
+
+```json 
+{
+"msg": "",
+"data": { },
+"code": 0
+}
+```
+
+Respons ralat:
+
+```json 
+{
+"data": { },
+"code": 800004509,
+"msg": "webhook trigger workflow is disabled"
+}
+```
+
+## 7 Kod Ralat
+
+Apabila Pencetus Webhook mengalami Ralat, semak Respons di pihak Penghantar dan rujuk kod di bawah.
+
+| **Kod**  | **Mesej**                             | **Punca**                                                                                                                                                      | **Penyelesaian**                              |
+| --------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 800005649 | Credential check failed                  | Semakan Kelayakan diaktifkan, tetapi Kelayakan dalam Permintaan tidak sepadan dengan yang dikonfigurasikan dalam Automasi. | Semak semula dan masukkan semula Kelayakan. |
+| 800005650 | IP not in the allow-list — please check  | Senarai benar (allow-list) IP diaktifkan, dan IP Penghantar tiada dalam senarai tersebut. | Tambahkan IP tersebut ke senarai benar, atau hantar daripada IP yang berada dalam senarai benar. |
+| 800005647 | Request body too large — please reduce   | Isi Permintaan Webhook melebihi 4 MB. | Kurangkan saiz isi Permintaan. |
+| 800005646 | HTTP node calls itself, causing a loop — change the HTTP node URL | Pencetus ialah "Apabila Webhook tercetus" dan Tindakan ialah "Hantar permintaan HTTP" dengan URL HTTP ditetapkan sama dengan URL Webhook — menyebabkan gelung. | Tukar URL dalam **Hantar permintaan HTTP** supaya berbeza daripada URL Webhook. |
+| 800005652 | Too many requests — try again later      | Kekerapan penerimaan Webhook melebihi had dan telah dihadkan (throttled).  -   Setiap AI Table: 50 req/s.  -   Setiap satu Automasi: 5 req/s.  -   Automasi tanpa Semakan Kelayakan (Bearer token): 1 req/s. | Cuba lagi kemudian. |
+| 800006003 | Body doesn't match JSON spec — please fix and retry | Biasanya berlaku apabila "tetapkan output dengan menghantar Permintaan" digunakan dan isi mengandungi JSON yang tidak sah. | Semak semula dan betulkan JSON tersebut. |
+
+## 8 Penggunaan dalam Praktik
+
+1. Sebagai Admin F\&B, anda ingin **data barangan dalaman disegerakkan ke kumpulan DingTalk**. Dalam **Contoh parameter**, isikan secara manual muatan hulu (nama produk baharu, spesifikasi, asas teh, bahan-bahan). Dalam **Hantar mesej ke kumpulan ini**, sesuaikan Kandungan Mel dan gunakan `+` untuk **merujuk parameter ini** — butiran produk terkini akan tiba di kumpulan dengan segera.
+
+2. **Jika anda pernah menggunakan "Bot tersuai" dalam kumpulan sembang sebelum ini** dan parameter hulu sepadan dengan [struktur mesej DingTalk Bot](https://open.dingtalk.com/document/orgapp/custom-bot-send-message-type#66407430cd5xr "DingTalk bot message structure"), dalam **Hantar mesej ke kumpulan ini**, tukar **Sumber** kepada **Penghuraian data sumber** dan pilih output "Apabila data diterima" nod Webhook sebagai sumber — parameter akan **dijana secara automatik sebagai Kandungan Mel dan dihantar**.
