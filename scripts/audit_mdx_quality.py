@@ -611,7 +611,7 @@ def discover_files(root: str | None, lang: str) -> list[Path]:
             continue
 
         first = parts[0]
-        if lang == "en" and first in ("zh", "ja", "id"):
+        if lang == "en" and first in ("zh", "ja", "id", "ms"):
             continue
         if lang == "zh" and first != "zh":
             continue
@@ -619,10 +619,12 @@ def discover_files(root: str | None, lang: str) -> list[Path]:
             continue
         if lang == "id" and first != "id":
             continue
+        if lang == "ms" and first != "ms":
+            continue
 
         if root:
             # 命中条件：路径段含 root，或紧跟 lang 前缀后的段是 root
-            if first in ("zh", "ja", "id"):
+            if first in ("zh", "ja", "id", "ms"):
                 if len(parts) < 2 or parts[1] != root:
                     continue
             else:
@@ -735,7 +737,7 @@ def write_reports(issues: list[Issue], applied: dict[str, int], scanned: int, mo
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="MDX 质量审计：++/  /废 URL 检测与修复")
     p.add_argument("--root", default=None, help="限定单产品根，如 docs / aitable")
-    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id"])
+    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id", "ms"])
     p.add_argument("--apply", action="store_true", help="实际写盘修复（默认 dry-run）")
     p.add_argument("--limit", type=int, default=0, help="只扫前 N 个文件")
     return p.parse_args()

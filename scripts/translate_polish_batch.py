@@ -109,6 +109,20 @@ STYLE_ID = """Panduan gaya (Bahasa Indonesia)：
 - 功能更新：Baru / Ditingkatkan / Diperbaiki / Tidak digunakan lagi"""
 
 
+STYLE_MS = """Panduan gaya (Bahasa Melayu, bahasa baku)：
+- 目标读者：马来西亚企业用户与 IT 管理员（标准马来语商务书面语，非印尼语）
+- 语气：清晰、专业、动作导向（imperative：Klik / Pilih / Buka，不写 Anda boleh mengklik）
+- 句式：短句优先；避免被动堆砌；一句话讲一件事
+- Heading：Sentence case；避免 Title Case
+- 用词：通用 IT 术语用马来语主流译法（Tetapan / Ciri / Kebenaran / Fail / Folder / Muat turun / Muat naik / Log masuk / Urus / Kongsi / Simpan / Hantar）——注意与印尼语区分：上传是 Muat naik 非 Unggah、下载是 Muat turun 非 Unduh、设置是 Tetapan 非 Pengaturan、登录是 Log masuk 非 Masuk
+- 人称：用 anda 非 kamu；否定用 tidak boleh
+- 技术缩写保持英文：API / SDK / URL / JSON / SaaS / SSO / OAuth / H5 / QR
+- 数字 / 日期：日期 2 Jun 2026
+- 标点：拉丁标点 . , ? ! " ( )
+- 品牌词不译：DingTalk / DingTalk Docs / DingTalk Spreadsheet / DingTalk Mind / DingTalk Whiteboard / Knowledge Base / AI Table / AI Minutes 遵循术语表
+- 功能更新：Baharu / Dipertingkatkan / Dibaiki / Tidak lagi digunakan"""
+
+
 # 开放平台 (Open Platform / OpenAPI) 专属润色规则 — 仅 root=open 注入，防止润色改坏 API 契约
 OPEN_PLATFORM_POLISH_RULES = """开放平台 (Open Platform / OpenAPI) 专属规则 — 润色时违反任意一条则无效：
 
@@ -204,11 +218,12 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
 
 
 def build_system_prompt(lang: str, root: str = "") -> str:
-    style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID}[lang]
+    style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID, "ms": STYLE_MS}[lang]
     target = {
         "en": "英文（American English）",
         "ja": "日文（敬体 です・ます）",
         "id": "印尼文（Bahasa Indonesia，bahasa baku）",
+        "ms": "马来文（Bahasa Melayu，bahasa baku）",
     }[lang]
     open_block = f"\n\n{OPEN_PLATFORM_POLISH_RULES}" if (root == "open" or root.startswith("open/")) else ""
     return (
@@ -247,8 +262,10 @@ class FileResult:
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
     # user_msg 作为 positional prompt 传入（而非 stdin），规避 claude CLI 高负载下 3s stdin
     # 握手竞争导致的 "no stdin data received" 死锁；prompt 体量远低于 ARG_MAX(1MB)。
+    # CLI 二进制走 CLAUDE_CLI_BIN（集团云壳会 SIGKILL 原生 claude，须用 cc_222 端），兜底 "claude"。
+    claude_bin = os.environ.get("CLAUDE_CLI_BIN") or "claude"
     proc = await asyncio.create_subprocess_exec(
-        "claude", "-p", "--bare",
+        claude_bin, "-p", "--bare",
         "--model", model,
         "--system-prompt", system_prompt,
         "--tools", "",
@@ -397,8 +414,10 @@ def gather_tasks(root: str, lang: str, only: str | None) -> list[FileTask]:
         target_base = REPO_ROOT / "ja" / root
     elif lang == "id":
         target_base = REPO_ROOT / "id" / root
+    elif lang == "ms":
+        target_base = REPO_ROOT / "ms" / root
     else:
-        sys.exit(f"ERROR: lang must be en / ja / id, got {lang}")
+        sys.exit(f"ERROR: lang must be en / ja / id / ms, got {lang}")
 
     if not target_base.exists():
         sys.exit(f"ERROR: target dir not found: {target_base}")
@@ -526,7 +545,7 @@ def parse_args() -> argparse.Namespace:
         description="批量润色已译 mdx：<root>/ (en) / ja/<root>/ (ja) / id/<root>/ (id) 同路径覆盖；不改语义，只改语言质量。",
     )
     p.add_argument("--root", required=True, help="产品根目录名，如 docs / aitable")
-    p.add_argument("--lang", required=True, choices=["en", "ja", "id"])
+    p.add_argument("--lang", required=True, choices=["en", "ja", "id", "ms"])
     p.add_argument("--concurrency", type=int, default=4)
     p.add_argument("--model", default=None, help="覆盖默认 ANTHROPIC_MODEL")
     p.add_argument("--timeout", type=int, default=240, help="单次 claude CLI 调用超时秒数")

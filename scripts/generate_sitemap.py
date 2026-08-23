@@ -159,11 +159,11 @@ def build_urlset():
     # lastmod would cause spurious daily diffs. Google does not strongly
     # trust sitemap lastmod anyway.
 
-    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja/id.
+    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja/id/ms.
     home_langs = base_lang_map.get("", {})
     if "en" in home_langs:
         emit(combined, "en", [], home_langs, is_home=True)
-    for lang in ("zh", "ja", "id"):
+    for lang in ("zh", "ja", "id", "ms"):
         if lang in home_langs:
             emit(combined, lang, [], home_langs, is_home=False)
 
