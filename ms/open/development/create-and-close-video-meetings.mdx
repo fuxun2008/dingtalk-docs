@@ -1,0 +1,339 @@
+---
+title: "Cipta, pertanyakan, dan tutup mesyuarat video"
+description: "Menunjukkan aliran hujung ke hujung penggunaan aplikasi dalaman untuk memanggil API mesyuarat bagi mencipta, mempertanyakan secara kelompok, dan menutup mesyuarat video, meliputi kelayakan aplikasi, kebenaran API, dan perolehan access token."
+---
+
+Dokumen ini menerangkan cara memanggil API mesyuarat untuk mencipta mesyuarat video dan melaksanakan operasi berkaitan. Pertama, cipta aplikasi dalaman, kemudian gunakan API mesyuarat untuk mencipta mesyuarat video, menutup mesyuarat video, dan mempertanyakan maklumat mesyuarat video secara kelompok.
+
+## Gambaran keseluruhan proses
+
+Prasyarat: Lengkapkan proses [cipta dan konfigurasi aplikasi](/open/dingstart/create-application).
+
+Langkah 1: Dapatkan kelayakan aplikasi untuk memperoleh client ID dan Client Secret.
+
+Langkah 2: Mohon kebenaran API untuk API berkaitan mesyuarat.
+
+Langkah 3: Dapatkan kredensial akses aplikasi dengan mengikuti [Dapatkan access token bagi aplikasi dalaman](/open/development/obtain-the-access-token-of-an-internal-app). Access token digunakan untuk mengesahkan pemanggil apabila memanggil API.
+
+Langkah 4: Panggil Server API berkaitan mesyuarat.
+
+1. Panggil Server API [Cipta mesyuarat video](/open/development/create-a-video-conference) untuk mencipta mesyuarat video dan mendapatkan `conferenceId` mesyuarat.
+2. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan kelompok maklumat mesyuarat video](/open/development/batch-query-of-video-conference-information) untuk mendapatkan maklumat mesyuarat dan senarai ahli.
+3. Berdasarkan `conferenceId`, panggil Server API [Mulakan rakaman awan untuk mesyuarat video](/open/development/video-conference-open-cloud-recording) untuk memulakan rakaman awan.
+4. Berdasarkan `conferenceId`, panggil Server API [Mulakan rakaman awan untuk mesyuarat video](/open/development/video-conference-open-cloud-recording) untuk menghentikan rakaman awan.
+5. Berdasarkan `conferenceId`, panggil Server API [Tutup mesyuarat video](/open/development/close-audio-video-conference) untuk menutup mesyuarat.
+6. Pertanyaan maklumat rakaman mesyuarat.
+
+   1. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan butiran rakaman mesyuarat](/open/development/query-recording-information) untuk mendapatkan maklumat seperti perakam, masa mula rakaman, dan tempoh rakaman.
+   2. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan maklumat video rakaman mesyuarat](/open/development/queries-the-playback-information-about-a-recorded-cloud-video) untuk mendapatkan maklumat seperti URL muat turun video, saiz fail video, dan tempoh video.
+   3. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan maklumat teks rakaman mesyuarat](/open/development/queries-the-text-information-about-cloud-recording) untuk mendapatkan maklumat seperti kandungan teks rakaman, masa mula rekod teks, dan masa tamat rekod teks.
+
+## Prasyarat
+
+Lengkapkan proses [cipta dan konfigurasi aplikasi](/open/dingstart/create-application).
+
+## Langkah 1: Dapatkan kelayakan aplikasi
+
+1. Pilih aplikasi sasaran untuk membuka halaman butiran aplikasi, dan klik **Maklumat asas** > **Kelayakan dan maklumat asas**.
+2. Dapatkan client ID dan Client Secret.
+
+## Langkah 2: Tambah kebenaran API
+
+Klik **Konfigurasi pembangunan** > **Urus kebenaran**. Dalam kotak carian kebenaran, masukkan `VideoConference.Conference.Write` dan `VideoConference.Conference.Read` masing-masing, dan mohon kebenaran tersebut.
+
+## Langkah 3: Dapatkan access token aplikasi
+
+<Warning>
+Untuk perbezaan antara Server API, lihat API lama berbanding API baharu. Semua API berikut menggunakan Server API. Untuk muat turun SDK, lihat Muat Turun SDK Bahagian Pelayan.
+</Warning>
+
+Menggunakan client ID dan Client Secret daripada Langkah 1, dapatkan access token aplikasi dengan mengikuti [Dapatkan access token bagi aplikasi dalaman](/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Langkah 4: Panggil Server API berkaitan mesyuarat
+
+1. Panggil Server API [Cipta mesyuarat video](/open/development/create-a-video-conference) untuk mencipta mesyuarat video dan mendapatkan `conferenceId`.
+
+   ```java lines
+   public void videoConferencesCreate() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           CreateVideoConferenceHeaders createVideoConferenceHeaders = new CreateVideoConferenceHeaders();
+           createVideoConferenceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           CreateVideoConferenceRequest createVideoConferenceRequest = new CreateVideoConferenceRequest()
+                   .setUserId("E9CS6X*******QiEiE")
+                   .setConfTitle("202211071001 Video Meeting")
+                   .setInviteCaller(true)
+                   .setInviteUserIds(java.util.Arrays.asList(
+                           "tXguN3*******URAiEiE"
+                   ));
+           try {
+               CreateVideoConferenceResponse videoConferenceWithOptions = client.createVideoConferenceWithOptions(createVideoConferenceRequest, createVideoConferenceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(videoConferenceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan kelompok maklumat mesyuarat video](/open/development/batch-query-of-video-conference-information) untuk mendapatkan maklumat mesyuarat dan senarai ahli.
+
+### Nota
+
+   Hanya mesyuarat video yang sedang berlangsung boleh dipertanyakan.
+
+   ```java lines
+   public void  videoConferencesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           QueryConferenceInfoBatchHeaders queryConferenceInfoBatchHeaders = new QueryConferenceInfoBatchHeaders();
+           queryConferenceInfoBatchHeaders.xAcsDingtalkAccessToken = "accessToken";
+           QueryConferenceInfoBatchRequest queryConferenceInfoBatchRequest = new QueryConferenceInfoBatchRequest()
+                   .setConferenceIdList(java.util.Arrays.asList(
+                           "636866074147ec014a76e720"
+                   ));
+           try {
+               QueryConferenceInfoBatchResponse queryConferenceInfoBatchResponse = client.queryConferenceInfoBatchWithOptions(queryConferenceInfoBatchRequest, queryConferenceInfoBatchHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryConferenceInfoBatchResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+
+           }
+       }
+   ```
+3. Berdasarkan `conferenceId`, panggil Server API [Mulakan rakaman awan untuk mesyuarat video](/open/development/video-conference-open-cloud-recording) untuk memulakan rakaman awan.
+
+   ```java lines
+   public void cloudRecordsStart() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           StartCloudRecordHeaders startCloudRecordHeaders = new StartCloudRecordHeaders();
+           startCloudRecordHeaders.xAcsDingtalkAccessToken = "accessToken";
+           StartCloudRecordRequest startCloudRecordRequest = new StartCloudRecordRequest()
+                   .setUnionId("E9CS6X*******QiEiE")
+                   .setSmallWindowPosition("relative_right")
+                   .setMode("speech");
+           try {
+               StartCloudRecordResponse startCloudRecordResponse = client.startCloudRecordWithOptions("636866074147ec014a76e720", startCloudRecordRequest, startCloudRecordHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startCloudRecordResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           }
+       }
+   ```
+4. Berdasarkan `conferenceId`, panggil Server API [Hentikan rakaman awan untuk mesyuarat video](/open/development/video-conferencing-stops-cloud-recording) untuk menghentikan rakaman awan.
+
+   ```java lines
+    public void cloudRecordsStop() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+           StopCloudRecordHeaders stopCloudRecordHeaders = new StopCloudRecordHeaders();
+           stopCloudRecordHeaders.xAcsDingtalkAccessToken = "accessToken";
+           StopCloudRecordRequest stopCloudRecordRequest = new StopCloudRecordRequest()
+                   .setUnionId("E9CS6X*******QiEiE");
+           try {
+               StopCloudRecordResponse stopCloudRecordResponse = client.stopCloudRecordWithOptions("636866074147ec014a76e720", stopCloudRecordRequest, stopCloudRecordHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(stopCloudRecordResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           }
+       }
+   ```
+5. Berdasarkan `conferenceId`, panggil Server API [Tutup mesyuarat video](/open/development/close-audio-video-conference) untuk menutup mesyuarat.
+
+   ```java lines
+   public void  videoConferencesClose() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);        CloseVideoConferenceHeaders closeVideoConferenceHeaders = new CloseVideoConferenceHeaders();
+           closeVideoConferenceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           CloseVideoConferenceRequest closeVideoConferenceRequest = new CloseVideoConferenceRequest()
+                   .setUnionId("E9CS6X*******QiEiE");
+           try {
+               CloseVideoConferenceResponse closeVideoConferenceResponse = client.closeVideoConferenceWithOptions("636866074147ec014a76e720", closeVideoConferenceRequest, closeVideoConferenceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(closeVideoConferenceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.message);
+                   System.out.println(err.code);
+               }
+           }
+       }
+   ```
+6. Pertanyaan maklumat rakaman mesyuarat.
+
+   1. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan butiran rakaman mesyuarat](/open/development/query-recording-information) untuk mendapatkan maklumat seperti perakam, masa mula rakaman, dan tempoh rakaman.
+
+      ```java lines
+       public void VideoDetailedInfos() throws Exception {
+              Config config = new Config();
+              config.protocol = "https";
+              config.regionId = "central";
+              com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+              QueryCloudRecordVideoHeaders queryCloudRecordVideoHeaders = new QueryCloudRecordVideoHeaders();
+              queryCloudRecordVideoHeaders.xAcsDingtalkAccessToken = "accessToken";
+              QueryCloudRecordVideoRequest queryCloudRecordVideoRequest = new QueryCloudRecordVideoRequest()
+                      .setUnionId("E9CS6X*******QiEiE");
+              try {
+                  QueryCloudRecordVideoResponse queryCloudRecordVideoResponse = client.queryCloudRecordVideoWithOptions("636866074147ec014a76e720", queryCloudRecordVideoRequest, queryCloudRecordVideoHeaders, new RuntimeOptions());
+                  System.out.println(JSON.toJSONString(queryCloudRecordVideoResponse.getBody()));
+              } catch (TeaException err) {
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+
+              } catch (Exception _err) {
+                  TeaException err = new TeaException(_err.getMessage(), _err);
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              }
+          }
+      ```
+   2. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan maklumat video rakaman mesyuarat](/open/development/queries-the-playback-information-about-a-recorded-cloud-video) untuk mendapatkan maklumat seperti URL muat turun video, saiz fail video, dan tempoh video.
+
+      ```java lines
+       public void  videosPlayInfos() throws Exception {
+              Config config = new Config();
+              config.protocol = "https";
+              config.regionId = "central";
+              com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+              QueryCloudRecordVideoPlayInfoHeaders queryCloudRecordVideoPlayInfoHeaders = new QueryCloudRecordVideoPlayInfoHeaders();
+              queryCloudRecordVideoPlayInfoHeaders.xAcsDingtalkAccessToken = "accessToken";
+              QueryCloudRecordVideoPlayInfoRequest queryCloudRecordVideoPlayInfoRequest = new QueryCloudRecordVideoPlayInfoRequest()
+                      .setUnionId("E9CS6X*******QiEiE")
+                      .setMediaId("7665cd17********90991fe43bb")
+                      .setRegionId("cn-shanghai");
+              try {
+                  QueryCloudRecordVideoPlayInfoResponse queryCloudRecordVideoPlayInfoResponse = client.queryCloudRecordVideoPlayInfoWithOptions("636866074147ec014a76e720", queryCloudRecordVideoPlayInfoRequest, queryCloudRecordVideoPlayInfoHeaders, new RuntimeOptions());
+                  System.out.println(JSON.toJSONString(queryCloudRecordVideoPlayInfoResponse.getBody()));
+              } catch (TeaException err) {
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              } catch (Exception _err) {
+                  TeaException err = new TeaException(_err.getMessage(), _err);
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              }
+          }
+      ```
+   3. Berdasarkan `conferenceId`, panggil Server API [Pertanyaan maklumat teks rakaman mesyuarat](/open/development/queries-the-text-information-about-cloud-recording) untuk mendapatkan maklumat seperti kandungan teks rakaman, masa mula rekod teks, dan masa tamat rekod teks.
+
+      ```java lines
+       public void  videosTextInfos() throws Exception {
+              Config config = new Config();
+              config.protocol = "https";
+              config.regionId = "central";
+              com.aliyun.dingtalkconference_1_0.Client client = new com.aliyun.dingtalkconference_1_0.Client(config);
+              QueryCloudRecordTextHeaders queryCloudRecordTextHeaders = new QueryCloudRecordTextHeaders();
+              queryCloudRecordTextHeaders.xAcsDingtalkAccessToken = "accessToken";
+              QueryCloudRecordTextRequest queryCloudRecordTextRequest = new QueryCloudRecordTextRequest()
+                      .setUnionId("E9CS6X*******QiEiE")
+                      .setStartTime(1000L)
+                      .setDirection("0")
+                      .setMaxResults(200L);
+                      // Parameter ini boleh diabaikan untuk pertanyaan pertama
+                      //.setNextToken(0L);
+              try {
+                  QueryCloudRecordTextResponse queryCloudRecordTextResponse = client.queryCloudRecordTextWithOptions("636866074147ec014a76e720", queryCloudRecordTextRequest, queryCloudRecordTextHeaders, new RuntimeOptions());
+                  System.out.println(JSON.toJSONString(queryCloudRecordTextResponse.getBody()));
+              } catch (TeaException err) {
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              } catch (Exception _err) {
+                  TeaException err = new TeaException(_err.getMessage(), _err);
+                  if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                      // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                      System.out.println(err.message);
+                      System.out.println(err.code);
+                  }
+              }
+          }
+      ```

@@ -1,0 +1,1117 @@
+---
+title: "API Sumber Data Merentas Aplikasi"
+description: "Ketahui URL permintaan, parameter, dan struktur respons API sumber data merentas aplikasi terbina dalam YiDA. Aktifkan akses merentas aplikasi kepada data borang dan aliran kerja untuk menghubungkan maklumat antara aplikasi."
+polished: true
+---
+
+YiDA menyediakan keupayaan remote API yang membolehkan anda memanggil antara muka asinkron berasaskan HTTP (untuk butiran, lihat [dokumentasi remote API](/open/yida/guide/concept/datasource)). YiDA juga menyediakan beberapa remote API terbina dalam untuk mengendalikan data YiDA.
+
+<Warning>
+Open API YiDA memerlukan pengesahan, jadi ia tidak boleh dipanggil terus daripada halaman log masuk senyap (silent-login). Salurkan panggilan ini melalui fungsi FaaS atau perkhidmatan backend anda sendiri.
+</Warning>
+
+## Nota Penggunaan API
+
+### Laluan Permintaan
+
+YiDA menyediakan API pada peringkat aplikasi. Dalam sesebuah aplikasi, panggil remote API (panggilan merentas aplikasi disokong) menggunakan format URL berikut:
+
+```bash
+# Anda boleh dapatkan kod aplikasi pada halaman Penggunaan & Operasi di bawah Tetapan Aplikasi.
+# Untuk laluan antara muka, rujuk dokumentasi di bawah. API berbeza menggunakan laluan antara muka yang berbeza.
+"/dingtalk/web/${appCode}/${interfacePath}"
+```
+
+<Tip>
+Semasa menulis kod permintaan API pada platform YiDA, gunakan laluan relatif seperti di bawah supaya anda tidak perlu mengemas kini kod anda apabila subdomain organisasi berubah.
+
+```bash
+/dingtalk/web/APP_X1X2X3X4/v1/form/searchFormDatas.json
+```
+
+</Tip>
+
+### Struktur Respons
+
+Remote API YiDA mengembalikan struktur respons berikut:
+
+```typescript
+interface IResponse {
+  success: boolean; // Sama ada permintaan berjaya
+  result?: object | array | string; // Kandungan respons apabila permintaan berjaya
+  errorMsg?: string; // Mesej ralat
+  errorCode?: string; // Kod ralat
+  errorLevel?: number; // Tahap ralat
+}
+```
+
+## API Borang
+
+Platform YiDA menyediakan halaman jenis borang untuk mengumpul data borang. API Borang membolehkan anda mencipta, membaca, mengemas kini, dan memadam data borang. "Instans borang" di sini merujuk kepada satu rekod dalam set data borang.
+
+### Cipta Instans Borang
+
+- Laluan antara muka: `/v1/form/saveFormData.json`
+- Kaedah permintaan: `POST`
+- Parameter (`formDataJson` mesti disiri-hantarkan dengan `JSON.stringify()`):
+
+| Parameter    | Penerangan | Wajib | Contoh                                                                | Nota                                                                              |
+| :----------- | :--------- | :---- | :--------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| formUuid     | ID Borang  | Ya    | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB                            |                                                                                    |
+| appType      | ID Aplikasi | Ya   | APP_DR4OK27ZKL5N22B907E8                                               |                                                                                    |
+| formDataJson | Data borang | Ya   | `{"textField_jcpm6agt": "Baris tunggal", "employeeField_jcos0sar": ["workno"]}` | Lihat [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini). |
+
+- Contoh respons:
+
+```json
+{
+  "result": "FINST-EF6Y93URN2UZ1SBPLIP9NAV6HR2GEO1Z4ZCHSCJ0",
+  "success": true
+}
+```
+
+### Kemas Kini Nilai Komponen dalam Borang
+
+- Antara muka: `/v1/form/updateFormData.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter          | Penerangan                                | Wajib | Contoh                                        | Nota                                                                                                                                                                                                              |
+| :----------------- | :----------------------------------------- | :---- | :--------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| formInstId         | ID rekod borang untuk dikemas kini         | Ya    | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9   |                                                                                                                                                                                                                    |
+| updateFormDataJson | Nilai komponen borang untuk dikemas kini   | Ya    | `{"employeeField_jcpm5gy2": ["xxxxx", "yyyyy"]}` | Lihat [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini). Komponen yang disertakan dalam permintaan akan dikemas kini; komponen yang tidak disertakan kekal tidak berubah. Nilai subborang mesti dikemas kini secara pukal—anda tidak boleh mengemas kini satu komponen sahaja dalam baris subborang. |
+| useLatestVersion   | Kemas kini menggunakan versi borang terkini | Tidak | y                                              | Lihat "Nota Penting" dalam [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini).                                                                                                            |
+
+- Contoh respons:
+
+```json
+{
+  "success": true
+}
+```
+
+### Padam Instans Borang
+
+- Antara muka: `/v1/form/deleteFormData.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter  | Penerangan                       | Wajib | Contoh                                      | Nota |
+| :--------- | :--------------------------------- | :---- | :------------------------------------------- | :---- |
+| formInstId | ID rekod borang untuk dipadam      | Ya    | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 |       |
+
+- Contoh respons:
+
+```json
+{
+  "success": true
+}
+```
+
+### Dapatkan Butiran Instans Borang mengikut ID Instans
+
+- Antara muka: `/v1/form/getFormDataById.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter  | Penerangan                          | Wajib | Contoh                                      | Nota |
+| :--------- | :----------------------------------- | :---- | :------------------------------------------- | :---- |
+| formInstId | ID rekod borang untuk diambil        | Ya    | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 |       |
+
+- Contoh respons:
+
+```json
+{
+  "success": "Sama ada permintaan berjaya",
+  "errorMsg": "Mesej ralat",
+  "errorCode": "Kod ralat",
+  "result": "Butiran instans borang 👇🏻👇🏻👇🏻"
+}
+```
+
+Untuk `result`, lihat [Lampiran 5: Format Objek Butiran Instans Borang](#format-objek-butiran-instans-borang).
+
+### Cari ID Instans Borang mengikut Syarat
+
+- Antara muka: `/v1/form/searchFormDataIds.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter       | Penerangan                                                                                          | Wajib | Contoh                                       | Nota                                                                                                                                                        |
+| :-------------- | :--------------------------------------------------------------------------------------------------- | :---- | :-------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| formUuid        | ID Borang                                                                                              | Ya    | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 |                                                                                                                                                              |
+| searchFieldJson | Cari mengikut nilai komponen dalam borang                                                               | Tidak |                                               | Untuk format, lihat [Lampiran 2: Format Nilai Komponen untuk Carian Bersyarat](#format-nilai-komponen-untuk-carian-bersyarat).                                       |
+| currentPage     | Halaman semasa                                                                                         | Tidak | 1                                             | Mesti lebih besar daripada 0. Lalai: 1.                                                                                                                          |
+| pageSize        | Rekod setiap halaman                                                                                     | Tidak | 10                                            | Mesti lebih besar daripada 0 dan tidak melebihi 100. Lalai: 10.                                                                                                  |
+| originatorId    | Cari mengikut ID Pekerja penghantar                                                           | Tidak |                                               |                                                                                                                                                              |
+| createFrom      | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.              | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD.                                                                                                                                 |
+| createTo        | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.              | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD. Digabungkan dengan createFrom, ini menanyakan rekod yang dicipta antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).                           |
+| modifiedFrom    | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut.         | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD.                                                                                                                                 |
+| modifiedTo      | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut.         | Tidak | 2018-02-01                                    | String dalam format yyyy-MM-DD. Digabungkan dengan modifiedFrom, ini menanyakan rekod yang diubah suai antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).                        |
+| dynamicOrder    | Isih                                                                                                 | Tidak | column: '+'                                   | column: '+'                                                                                                                                                  |
+
+- Contoh respons:
+
+```json
+{
+  "result": {
+    "data": ["FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0"],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### Cari Butiran Instans Borang mengikut Syarat
+
+- Antara muka: `/v1/form/searchFormDatas.json`
+- Kaedah permintaan: `GET`
+- Kawalan kebenaran: Antara muka ini mematuhi tetapan kebenaran peringkat halaman (kecuali untuk pentadbir).
+- Parameter:
+
+| Parameter       | Penerangan                                                                                          | Wajib | Contoh                                       | Nota                                                                                                                                                                                       |
+| :-------------- | :--------------------------------------------------------------------------------------------------- | :---- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| formUuid        | ID Borang                                                                                              | Ya    | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 |                                                                                                                                                                                             |
+| searchFieldJson | Cari mengikut nilai komponen dalam borang                                                               | Tidak |                                               | Untuk format, lihat [Lampiran 2: Format Nilai Komponen untuk Carian Bersyarat](#format-nilai-komponen-untuk-carian-bersyarat).                                                                      |
+| currentPage     | Halaman semasa                                                                                         | Tidak | 1                                             | Mesti lebih besar daripada 0. Lalai: 1.                                                                                                                                                         |
+| pageSize        | Rekod setiap halaman                                                                                     | Tidak | 10                                            | Mesti lebih besar daripada 0 dan tidak melebihi 100. Lalai: 10.                                                                                                                                 |
+| originatorId    | Cari mengikut ID Pekerja penghantar                                                           | Tidak |                                               |                                                                                                                                                                                             |
+| createFrom      | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.              | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD (atau tepat hingga saat: yyyy-MM-DD HH:mm:ss).                                                                                                                |
+| createTo        | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.              | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD (atau tepat hingga saat: yyyy-MM-DD HH:mm:ss). Digabungkan dengan createFrom, ini menanyakan rekod yang dicipta antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).          |
+| modifiedFrom    | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut.         | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD (atau tepat hingga saat: yyyy-MM-DD HH:mm:ss).                                                                                                                |
+| modifiedTo      | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut.         | Tidak | 2018-02-01                                    | String dalam format yyyy-MM-DD (atau tepat hingga saat: yyyy-MM-DD HH:mm:ss). Digabungkan dengan modifiedFrom, ini menanyakan rekod yang diubah suai antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).       |
+| dynamicOrder    | Isih                                                                                                 | Tidak | `{"numberField_1ac":"+"}`                     | Mengisih rekod mengikut medan numberField_1ac secara menaik.                                                                                                                              |
+
+- Contoh respons:
+
+```json
+{
+  "success": true,
+  "errorCode": "",
+  "errorMsg": "",
+  "result": {
+    "data": [],
+    "totalCount": 1,
+    "currentPage": 1
+  }
+}
+```
+
+### Dapatkan Definisi Borang
+
+> Antara muka ini akan dinaik taraf pada 1 Disember 2024. Selepas naik taraf, ia hanya tersedia untuk pentadbir dan tidak lagi tersedia untuk pengguna biasa.
+
+- Antara muka: `/v1/form/getFormComponentDefinationList.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter                                              | Penerangan  | Wajib | Contoh                                      | Nota                                     |
+| :----------------------------------------------------- | :----------- | :---- | :------------------------------------------- | :---------------------------------------- |
+| formUuid                                               | ID Borang      | Ya    | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB  |                                           |
+| version                                                | Versi borang | Tidak | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 | Anda boleh hantar medan version dalam formData. |
+| Mengembalikan definisi versi terkini apabila dibiarkan kosong. |
+
+- Contoh respons:
+
+```json
+{
+    "success":true,
+    "content":[
+        {
+            "label":"{"en_US":"CheckBox Field", "zh_CN":"Pilih Banyak", "type":"i18n"}",
+            "key":"checkboxField_jiwvhkdi"
+        },
+        {
+            "label":"{"en_US":"Textarea Field", "zh_CN":"Input berbilang baris", "type":"i18n"}",
+            "key":"textareaField_jiwvhkdh"
+        },
+        {
+            "label":"{"en_US":"Select Field", "zh_CN":"Pilihan lungsur", "type":"i18n"}",
+            "key":"selectField_jiwvhkdg"
+        }
+    ]
+}
+```
+
+### Dapatkan Data Subborang
+
+- Antara muka: `v1/form/listTableDataByFormInstIdAndTableId.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter      | Penerangan                                          | Wajib | Contoh                                      | Nota                                                    |
+| :------------- | :--------------------------------------------------- | :---- | :------------------------------------------- | :------------------------------------------------------- |
+| formUuid       | ID Borang                                              | Ya    | FORM-NJYJZELV8YZRDEI2N5IQ7L6VEDMR1VE9GMPCJB  |                                                          |
+| formInstanceId | ID instans untuk ditanya                          | Ya    | FINST-NJYJZELVVYZRVGJHR7M6FJW3ESJN1P1TCNPCJ9 |                                                          |
+| tableFieldId   | Pengecam unik komponen subborang sasaran    | Ya    | tableField_ksyaujq1                          |                                                          |
+| currentPage    | Halaman semasa                                         | Tidak | 10                                           | Mesti lebih besar daripada 0. Lalai: 1.                       |
+| pageSize       | Rekod setiap halaman                                     | Tidak | 50                                           | Mesti lebih besar daripada 0 dan tidak melebihi 50. Lalai: 10. |
+
+- Contoh respons:
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "textField_kstqokaa": ""
+      },
+      {
+        "textField_kstqokaa": "1"
+      },
+      {
+        "textField_kstqokaa": "2"
+      }
+    ],
+    "totalCount": 120,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+## API Aliran Kerja
+
+Borang aliran kerja adalah satu lagi keupayaan teras platform YiDA. API Aliran Kerja membolehkan anda mengendalikan instans aliran kerja.
+
+### Mulakan Aliran Kerja
+
+- Laluan antara muka: `/v1/process/startInstance.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter    | Penerangan                              | Wajib | Contoh                                                                             | Nota                                                                          |
+| :----------- | :--------------------------------------- | :---- | :---------------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| processCode  | Kod aliran kerja                            | Ya    | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4 (boleh didapati dalam URL halaman mula berasingan) |                                                                                |
+| formUuid     | ID Borang                                  | Ya    | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 (boleh didapati dalam URL halaman mula berasingan)  |                                                                                |
+| formDataJson | Data borang                                | Ya    |                                                                                     | Lihat [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini). |
+| deptId       | ID jabatan pencetus aliran kerja | Tidak | 18295                                                                               | Lalai kepada jabatan utama pencetus apabila tidak disertakan.                  |
+
+- Contoh respons:
+
+```json
+{
+  "result": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+  "success": true
+}
+```
+
+### Cari ID Instans Aliran Kerja mengikut Syarat
+
+- Laluan antara muka: `/v1/process/getInstanceIds.json`
+- Kaedah permintaan: `GET`
+- Kebenaran: Aliran kerja mesti dikonfigurasikan dengan kebenaran "instans boleh dilihat" (kecuali untuk pentadbir).
+- Parameter:
+
+| Parameter       | Penerangan                                                                                    | Wajib | Contoh                                       | Nota                                                                                                                                       |
+| :-------------- | :------------------------------------------------------------------------------------------------ | :---- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| formUuid        | ID Borang                                                                                        | Ya    | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 |                                                                                                                                             |
+| searchFieldJson | Cari mengikut nilai komponen dalam borang                                                         | Tidak |                                               | Untuk format, lihat [Lampiran 2: Format Nilai Komponen untuk Carian Bersyarat](#format-nilai-komponen-untuk-carian-bersyarat).                     |
+| taskId          | ID Tugas                                                                                        | Tidak | 2199132092                                    | Jarang digunakan.                                                                                                                                |
+| instanceStatus  | Status instans                                                                                | Tidak | RUNNING                                       | Nilai enum: RUNNING, TERMINATED, COMPLETED, ERROR—masing-masing untuk Sedang Berjalan, Ditamatkan, Selesai, dan Ralat.                             |
+| approvedResult  | Keputusan kelulusan aliran kerja                                                                       | Tidak | agree                                         | Nilai enum: agree, disagree—masing-masing untuk Terima dan Tolak.                                                                          |
+| currentPage     | Halaman semasa                                                                                   | Tidak | 1                                             | Mesti lebih besar daripada 0. Lalai: 1.                                                                                                         |
+| pageSize        | Rekod setiap halaman                                                                               | Tidak | 10                                            | Mesti lebih besar daripada 0 dan tidak melebihi 100. Lalai: 10.                                                                                 |
+| originatorId    | Cari mengikut ID Pekerja pencetus aliran kerja                                           | Tidak |                                               |                                                                                                                                             |
+| createFrom      | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.        | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD.                                                                                                                |
+| createTo        | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.        | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD. Digabungkan dengan createFrom, ini menanyakan rekod yang dicipta antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).          |
+| modifiedFrom    | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut.   | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD.                                                                                                                |
+| modifiedTo      | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut.   | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD. Digabungkan dengan modifiedFrom, ini menanyakan rekod yang diubah suai antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).       |
+
+- Contoh respons:
+
+```json
+{
+  "result": {
+    "data": [
+      "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "bc0950a3-fe1b-459c-b6ba-282be38523ab",
+      "f540cbd7-43eb-40de-b915-6716578a2802"
+    ],
+    "totalCount": 3,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### Dapatkan Butiran Instans Aliran Kerja mengikut Syarat
+
+- Laluan antara muka: `/v1/process/getInstances.json`
+- Kaedah permintaan: `GET`
+- Kebenaran: Aliran kerja mesti dikonfigurasikan dengan kebenaran "instans boleh dilihat" (kecuali untuk pentadbir).
+- Parameter:
+
+| Parameter                                                                                            | Penerangan                                                                                  | Wajib | Contoh                                       | Nota                                                                                                                                       |
+| :--------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- | :---- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| formUuid                                                                                             | ID Borang                                                                                      | Ya    | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3 |                                                                                                                                             |
+| searchFieldJson                                                                                      | Cari mengikut nilai komponen dalam borang                                                       | Tidak |                                               | Untuk format, lihat [Lampiran 2: Format Nilai Komponen untuk Carian Bersyarat](#format-nilai-komponen-untuk-carian-bersyarat).                     |
+| taskId                                                                                               | ID Tugas                                                                                      | Tidak | 2199132092                                    | Jarang digunakan.                                                                                                                                |
+| instanceStatus                                                                                       | Status instans                                                                              | Tidak | RUNNING                                       | Nilai enum: RUNNING, TERMINATED, COMPLETED, ERROR.                                                                                         |
+| Ini masing-masing sepadan dengan Sedang Berjalan, Ditamatkan, Selesai, dan Ralat.                          |
+| approvedResult                                                                                       | Keputusan kelulusan aliran kerja                                                                     | Tidak | agree                                         | Nilai enum: agree, disagree—masing-masing untuk Terima dan Tolak.                                                                          |
+| currentPage                                                                                          | Halaman semasa                                                                                 | Tidak | 1                                             | Mesti lebih besar daripada 0. Lalai: 1.                                                                                                         |
+| pageSize                                                                                             | Rekod setiap halaman                                                                             | Tidak | 10                                            | Mesti lebih besar daripada 0 dan tidak melebihi 100. Lalai: 10.                                                                                 |
+| originatorId                                                                                         | Cari mengikut ID Pekerja pencetus aliran kerja                                         | Tidak |                                               |                                                                                                                                             |
+| createFrom                                                                                           | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.      | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD.                                                                                                                |
+| createTo                                                                                             | createFrom dan createTo menentukan julat masa. Mengembalikan rekod yang dicipta dalam julat tersebut.      | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD. Digabungkan dengan createFrom, ini menanyakan rekod yang dicipta antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).          |
+| modifiedFrom                                                                                         | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut. | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD.                                                                                                                |
+| modifiedTo                                                                                           | modifiedFrom dan modifiedTo menentukan julat masa. Mengembalikan rekod yang diubah suai dalam julat tersebut. | Tidak | 2018-01-01                                    | String dalam format yyyy-MM-DD. Digabungkan dengan modifiedFrom, ini menanyakan rekod yang diubah suai antara 2018-01-01 dan 2018-01-31 (termasuk kedua-duanya).       |
+
+- Contoh respons:
+
+```json
+{
+  "success": true,
+  "errorCode": "",
+  "errorMsg": "",
+  "result": {
+    "data": [],
+    "totalCount": 1,
+    "currentPage": 1
+  }
+}
+```
+
+### Dapatkan Butiran Instans Aliran Kerja mengikut ID Instans
+
+- Laluan antara muka: `/v1/process/getInstanceById.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter         | Penerangan          | Wajib | Contoh                              | Nota |
+| :---------------- | :------------------- | :---- | :----------------------------------- | :---- |
+| processInstanceId | ID instans aliran kerja | Ya    | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 |       |
+
+- Contoh respons:
+
+```json
+{
+  "success": true,
+  "errorCode": "",
+  "errorMsg": "",
+  "result": "Butiran instans. Lihat [Lampiran 3: Format Objek Butiran Instans Aliran Kerja](#format-objek-butiran-instans-aliran-kerja)."
+}
+```
+
+### Padam Instans Aliran Kerja
+
+- Laluan antara muka: `/v1/process/deleteInstance.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter         | Penerangan          | Wajib | Contoh                              | Nota |
+| :---------------- | :------------------- | :---- | :----------------------------------- | :---- |
+| processInstanceId | ID instans aliran kerja | Ya    | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 |       |
+
+- Contoh respons:
+
+```json
+{
+  "success": true,
+  "errorCode": "",
+  "errorMsg": ""
+}
+```
+
+### Tamatkan Instans Aliran Kerja
+
+- Laluan antara muka: `/v1/process/terminateInstance.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter         | Penerangan          | Wajib | Contoh                              | Nota |
+| :---------------- | :------------------- | :---- | :----------------------------------- | :---- |
+| processInstanceId | ID instans aliran kerja | Ya    | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 |       |
+
+- Contoh respons:
+
+```json
+{
+  "success": true,
+  "errorCode": "",
+  "errorMsg": ""
+}
+```
+
+### Laksanakan Satu Tugas
+
+- Laluan antara muka: `/v1/task/executeTask.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter                                                                                                     | Penerangan                                       | Wajib | Contoh                              | Nota                                                                                                                                             |
+| :------------------------------------------------------------------------------------------------------------ | :------------------------------------------------ | :---- | :----------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| taskId                                                                                                        | ID Tugas                                           | Ya    | 12002575                             |                                                                                                                                                   |
+| procInstId                                                                                                    | ID instans                                       | Ya    | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 |                                                                                                                                                   |
+| outResult                                                                                                     | Keputusan kelulusan                                   | Ya    | AGREE                                | AGREE (Terima), DISAGREE (Tolak).                                                                                                               |
+| remark                                                                                                        | Komen kelulusan                                  | Ya    | Confirmed and accepted               |                                                                                                                                                   |
+| formDataJson                                                                                                  | Data borang                                         | Tidak | Confirmed and accepted               | Lihat [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini).                                                                   |
+| Komponen yang disertakan dalam permintaan akan dikemas kini; komponen yang tidak disertakan kekal tidak berubah. Nilai subborang mesti dikemas kini secara pukal—anda tidak boleh mengemas kini satu komponen sahaja dalam baris subborang. |
+| noExecuteExpressions                                                                                          | Langkau pengesahan dan tindakan berkaitan                | Tidak | y                                    | Apabila nod tugas ini mempunyai peraturan pengesahan atau tindakan berkaitan:                                                                                                       |
+| y → langkau peraturan pengesahan dan tindakan berkaitan; n → laksanakan peraturan pengesahan dan tindakan berkaitan. Lalai kepada n, bermaksud peraturan pengesahan dan tindakan berkaitan dilaksanakan. |
+
+- Contoh respons:
+
+```json
+{
+  "success": "Sama ada permintaan berjaya",
+  "errorCode": "Mesej ralat",
+  "errorMsg": "Kod ralat"
+}
+```
+
+### Dapatkan Rekod Kelulusan
+
+- Laluan antara muka: `/v1/process/getOperationRecords.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter         | Penerangan          | Wajib | Contoh                              | Nota |
+| :---------------- | :------------------- | :---- | :----------------------------------- | :---- |
+| processInstanceId | ID instans aliran kerja | Ya    | f30233fb-72e1-4af4-8cb8-c7e0ea9ee530 |       |
+
+- Contoh respons:
+
+```json
+{
+  "success": true,
+  "content": [
+    {
+      "operateTime": "2018-06-22 14:35:40",
+      "remark": "",
+      "taskHoldTime": 0,
+      "type": "HISTORY",
+      "operatorName": "Pengguna YiDA",
+      "operator": "yida",
+      "activityId": "sid-restartevent",
+      "action": "Hantar permintaan",
+      "actionExt": "submit",
+      "id": 2846866118,
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "Hantar permintaan",
+      "operateType": "NEW_PROCESS",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Pengguna YiDA",
+      "taskId": "null"
+    },
+    {
+      "taskHoldTime": 531398377,
+      "type": "TODO",
+      "operatorName": "Pengguna YiDA",
+      "operator": "yida",
+      "activityId": "sidJIOB2P2J1JW3RPMDOS28",
+      "taskType": "COMMON_ALL_AT_ONCE",
+      "actionExt": "doing",
+      "operatorPhotoUrl": "/photo/yida.128x128.jpg",
+      "processInstanceId": "8c124808-82e7-473b-9a7a-43c29b310837",
+      "showName": "Penyokong",
+      "activeTime": "2018-06-22 14:35:41",
+      "domains": [],
+      "operatorStatus": "A",
+      "operatorAgentIds": [],
+      "size": 1,
+      "operatorDisplayName": "Pengguna YiDA",
+      "taskId": "2846866145"
+    }
+  ]
+}
+```
+
+### Kemas Kini Instans Aliran Kerja
+
+- Laluan antara muka: `/v1/process/updateInstance.json`
+- Kaedah permintaan: `POST`
+- Parameter:
+
+| Parameter          | Penerangan         | Wajib | Contoh | Nota                                                                          |
+| :----------------- | :------------------ | :---- | :------ | :----------------------------------------------------------------------------- |
+| processInstanceId  | ID Instans         | Ya    |         |                                                                                |
+| updateFormDataJson | Data borang untuk dikemas kini | Ya    |         | Lihat [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini). |
+
+- Contoh respons:
+
+```json
+{
+  "success": true
+}
+```
+
+## API Pusat Tugasan
+
+Platform YiDA menyediakan pusat tugasan tempat anda boleh melihat senarai tugasan dan status semua aplikasi dalam organisasi semasa. API Pusat Tugasan membolehkan anda menanyakan senarai tugasan.
+
+### Tugasan yang Dihantar
+
+- Laluan antara muka: `/v1/process/getMySubmitInApp.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter   | Penerangan      | Wajib | Contoh | Nota                                              |
+| :---------- | :--------------- | :---- | :------ | :------------------------------------------------- |
+| pageSize    | Rekod setiap halaman | Ya    | 10      | Mesti lebih besar daripada 0. Lalai: 10. Maksimum: 100. |
+| currentPage | Halaman semasa     | Ya    | 1       | Mesti lebih besar daripada 0. Lalai: 1.                |
+| keyword     | Kata kunci          | Tidak |         |                                                    |
+
+- Contoh respons:
+  - Berjaya
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "Tiket",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "Nama",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "jack"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+- Gagal
+
+```json
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Kebenaran ditolak"
+}
+```
+
+### Tugasan Perlu Dilakukan
+
+- Laluan antara muka: `/v1/task/getTodoTasksInApp.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter   | Penerangan      | Wajib | Contoh | Nota                                              |
+| :---------- | :--------------- | :---- | :------ | :------------------------------------------------- |
+| pageSize    | Rekod setiap halaman | Ya    | 10      | Mesti lebih besar daripada 0. Lalai: 10. Maksimum: 100. |
+| currentPage | Halaman semasa     | Ya    | 1       | Mesti lebih besar daripada 0. Lalai: 1.                |
+| keyword     | Kata kunci          | Tidak |         |                                                    |
+
+- Contoh respons:
+  - Berjaya
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "XXXXXX",
+        "originatorName": "XXX",
+        "title": "Aliran kerja dimulakan oleh XXX",
+        "originatorPhoto": "http://static.dingtalk.com/media/lADPdfafafsAXXXXXX.jpg",
+        "titleEn": "Aliran kerja dimulakan oleh XXX",
+        "createTime": "2018-04-13 13:35:58",
+        "appType": "APP_R8MdfadfXXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "NEW"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+- Gagal
+
+```json
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Kebenaran ditolak"
+}
+```
+
+### Tugasan Selesai
+
+- Laluan antara muka: `/v1/task/getDoneTasksInApp.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter   | Penerangan      | Wajib | Contoh | Nota                                              |
+| :---------- | :--------------- | :---- | :------ | :------------------------------------------------- |
+| pageSize    | Rekod setiap halaman | Ya    | 10      | Mesti lebih besar daripada 0. Lalai: 10. Maksimum: 100. |
+| currentPage | Halaman semasa     | Ya    | 1       | Mesti lebih besar daripada 0. Lalai: 1.                |
+| keyword     | Kata kunci          | Tidak |         |                                                    |
+
+- Contoh respons:
+  - Berjaya
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "processInstanceId": "abc434rfds23XXXXXX",
+        "finishTime": "2018-03-28 17:46:14",
+        "originatorName": "",
+        "title": "Halaman aliran kerja dimulakan oleh XXX",
+        "originatorPhoto": "//img.alicdn.com/tfs/TB1msdfsXXXXXX.jpg",
+        "titleEn": "Halaman aliran kerja dimulakan oleh XXX",
+        "createTime": "2018-03-28 17:45:43",
+        "appType": "XXXXXX",
+        "originatorNameEn": "XXXXXX",
+        "originatorId": "XXXXXX",
+        "taskId": "XXXXXX",
+        "status": "COMPLETED"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+- Gagal
+
+```json
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Kebenaran ditolak"
+}
+```
+
+### Tugasan CC kepada Saya (Skop Aplikasi)
+
+- Laluan antara muka: `/v1/task/getNotifyMeTasksInApp.json`
+- Kaedah permintaan: `GET`
+- Parameter:
+
+| Parameter      | Penerangan      | Wajib | Contoh       | Nota                                              |
+| :------------- | :--------------- | :---- | :------------ | :------------------------------------------------- |
+| pageSize       | Rekod setiap halaman | Ya    | 10            | Mesti lebih besar daripada 0. Lalai: 10. Maksimum: 100. |
+| currentPage    | Halaman semasa     | Ya    | 1             | Mesti lebih besar daripada 0. Lalai: 1.                |
+| keyword        | Kata kunci          | Tidak |               |                                                    |
+| processCodes   | processCodes     | Tidak | ["xx", "xxx"] |                                                    |
+| instanceStatus | Status instans  | Tidak |               | Nilai enum.                                       |
+
+- Contoh respons:
+  - Berjaya
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "modifiedTime": "2018-04-12 19:44:14",
+        "formInstanceId": "FINST-AJ1L4CJVXL0UIAIPR06ZA52U9HKUXXXXXX",
+        "title": "Tiket",
+        "instValue": [
+          {
+            "componentId": "node_jfwgghbo",
+            "componentName": "TextField",
+            "fieldId": "textField_jfwggg8e",
+            "label": "Nama",
+            "validation": [],
+            "fieldData": {
+              "complexType": "custom",
+              "dataType": "CHANGED",
+              "pass": true,
+              "value": "jack"
+            },
+            "errorMsg": null,
+            "hasError": false
+          }
+        ],
+        "processId": 0,
+        "appType": "APP_R8MYLKYXXXXXX",
+        "dataMap": {
+          "textField_jfXXXXXX": "XXXXXX"
+        },
+        "originatorId": "XXXXXX",
+        "formUuid": "FORM-0G7KPV3WZL0U3AHTOA9BFVXXXXXX",
+        "dataType": "finst",
+        "originatorAvatar": "http://static.dingtalk.com/media/lADPBbCc1R7VwSHNXXXXXX.jpg",
+        "version": 0,
+        "createTime": "2018-04-12 19:44:14"
+      }
+    ],
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+- Gagal
+
+```json
+{
+  "errorCode": "TIANSHU_000006",
+  "success": false,
+  "errorMsg": "Kebenaran ditolak"
+}
+```
+
+## Lampiran
+
+### Format Data Borang untuk Simpan/Kemas Kini
+
+- Setiap komponen dalam borang mempunyai ID unik (boleh dilihat pada panel "Advanced" di sebelah kanan komponen dalam Pereka bentuk halaman), dan setiap komponen menggunakan format data tetap. Komponen borang berikut disokong: input baris tunggal, input berbilang baris, nombor, radio, pilihan lungsur, pilih banyak, pilih banyak lungsur, tarikh, julat tarikh, pemilih pengguna, pemilih wilayah, pemilih jabatan, pilihan berperingkat, dan subborang.
+- Semasa menyimpan atau mengemas kini data borang, hantar nilai borang sebagai string JSON dalam format `Map<String, Object>`. Kunci ialah ID komponen, dan nilai ialah nilai komponen tersebut. Format nilai untuk setiap komponen adalah seperti berikut:
+
+| Jenis komponen      | Jenis data      | Format data                                                                                                                | Nota                                                                                                                     |
+| :------------------ | :------------- | :------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| Input baris tunggal   | String         | "danhang"                                                                                                                  |                                                                                                                           |
+| Input berbilang baris    | String         | "duohang"                                                                                                                  |                                                                                                                           |
+| Input nombor        | Nombor         | 1                                                                                                                          |                                                                                                                           |
+| Radio               | String         | "Pilihan 1"                                                                                                                 |                                                                                                                           |
+| Pilihan lungsur     | String         | "Pilihan 1"                                                                                                                 |                                                                                                                           |
+| Pilih Banyak         | Array string   | ["Pilihan 1", "Pilihan 2"]                                                                                                   |                                                                                                                           |
+| Pilih banyak lungsur | Array string  | ["Pilihan 1", "Pilihan 2"]                                                                                                   |                                                                                                                           |
+| Komponen tarikh      | Cap masa      | Komponen tarikh                                                                                                             |                                                                                                                           |
+| Julat tarikh          | Array string   | ["1514736000000", "1517328000000"]. Jika hanya masa akhir ditetapkan, gunakan ["", "1517328000000"].                                | Nilai pertama ialah string cap masa mula; nilai kedua ialah string cap masa akhir.                            |
+| Pemilih pengguna         | Array string   | ["xxxxx", "yyyyy"]                                                                                                         |                                                                                                                           |
+| Pemilih bandar         | Array string   | ["110000", "110100", "110101"]                                                                                             | Nilai pertama mesti ID negeri, kedua ID bandar, dan ketiga ID daerah.                                       |
+| Pemilih jabatan   | Array string   | ["1123456"]                                                                                                                | ["xxx"] mengandungi ID jabatan.                                                                                       |
+| Pilihan berperingkat      | Array string   | ["part", "part_b"]                                                                                                         | Nilai mesti diletakkan dalam array mengikut urutan berperingkat.                                                           |
+| Muat naik gambar        | Array string   | `[{"downloadUrl":"URL muat turun fail", "name": "Nama fail"}]`                                                               |                                                                                                                           |
+| Lampiran           | Array string   | `[{"downloadUrl":"URL muat turun fail", "name": "Nama fail"}]`                                                               |                                                                                                                           |
+| Pautan           | Array string   | `[{"link":"http://www.yidaapps.com", "text":"YiDA"}]`                                                                      |                                                                                                                           |
+| Subborang             | JSONARRAY      | `[{"textField_jcr0069m": "danhang1"}, {"textField_jcr0069m": "danhang2"}]` (textField_jcr0069m ialah ID komponen baris tunggal dalam subborang) | Subborang mengandungi banyak rekod, jadi JSONARRAY digunakan. Setiap rekod mengandungi banyak nilai komponen, jadi JSONObject menyimpan setiap nilai. |
+| Tandatangan           | String         | "URL gambar"                                                                                                                |                                                                                                                           |
+
+- Contoh lengkap data borang:
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": 1,
+  "radioField_jcr0069p": "Pilihan 1",
+  "selectField_jcr0069q": "Pilihan 1",
+  "checkboxField_jcr0069r": [
+    "Pilihan 2",
+    "Pilihan 3"
+  ],
+  "multiSelectField_jcr0069s": [
+    "Pilihan 2",
+    "Pilihan 3"
+  ],
+  "dateField_jcr0069t": 1516636800000,
+  "cascadeDate_jcr0069u": [
+    "1514736000000",
+    "1517328000000"
+  ],
+  "employeeField_jcr0069x": [
+    "xxxxx"
+  ],
+  "citySelectField_jcr0069y": [
+    "110000",
+    "110100",
+    "110101"
+  ],
+  "departmentField_jcr0069z": 1123456,
+  "cascadeSelectField_jcr006a0": [
+    "part",
+    "part_b"
+  ],
+  "imageField_l096bb9l": [
+    {
+      "name": "Crayon-Shin-chan.jpg",
+      "previewUrl": "https://img.alicdn.com/imgextra/i4/O1CN01DD8OQA1Lnay0fZRs3_!!6000000001344-0-tps-640-452.jpg",
+      "downloadUrl": "https://img.alicdn.com/imgextra/i4/O1CN01DD8OQA1Lnay0fZRs3_!!6000000001344-0-tps-640-452.jpg",
+      "size": 19039,
+      "url": "https://img.alicdn.com/imgextra/i4/O1CN01DD8OQA1Lnay0fZRs3_!!6000000001344-0-tps-640-452.jpg"
+    }
+  ],  
+  "attachmentField_jna1lvyb": [
+    {
+      "downloadUrl": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "name": "test.txt",
+      "previewUrl": "https://www.yidaapps.com/inst/preview?appType=default_tianshu_app&fileName=test.txt&fileSize=4&downloadUrl=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt",
+      "url": "https://www.yidaapps.com/fileHandle?appType=default_tianshu_app&fileName=edd07ca9-1d2e-44b5-98fe-c1e16202f90d.txt&instId=&type=download",
+      "ext": "txt"
+    }
+  ],
+  "tableField_jcr006a1": [
+    {
+      "cascadeDate_jcr006aa": [
+        "1514736000000",
+        "1517328000000"
+      ],
+      "cascadeSelectField_jcr006ae": [
+        "product",
+        "product_a"
+      ],
+      "checkboxField_jcr006a7": [
+        "Pilihan 1",
+        "Pilihan 2",
+        "Pilihan 3"
+      ],
+      "citySelectField_jcr006ac": [
+        "120000",
+        "120100",
+        "120102"
+      ],
+      "dateField_jcr006a9": 1517328000000,
+      "departmentField_jcr006ad": ["1123456"],
+      "employeeField_jcr006ab": [
+        "yyyyy",
+        "xxxxx"
+      ],
+      "multiSelectField_jcr006a8": [
+        "Pilihan 1",
+        "Pilihan 2",
+        "Pilihan 3"
+      ],
+      "numberField_jcr006a4": 2,
+      "radioField_jcr006a5": "Pilihan 2",
+      "selectField_jcr006a6": "Pilihan 3",
+      "textField_jcr006a2": "Baris tunggal subborang",
+      "textareaField_jcr006a3": "Berbilang baris subborang"
+    }
+  ],
+	"digitalSignatureField_kt3nh972": "https://tianshu-vpc.oss-cn-shanghai.aliyuncs.com/5e03f863-dd39-4f62-ba9b-497af2c9ad9f.png"
+}
+```
+
+### Format Nilai Komponen untuk Carian Bersyarat
+
+- Setiap komponen dalam borang mempunyai ID unik (boleh dilihat pada panel "Advanced" di sebelah kanan komponen dalam Pereka bentuk halaman), dan setiap komponen mempunyai format carian tersendiri. Komponen borang berikut menyokong carian: input baris tunggal, input berbilang baris, nombor, radio, pilihan lungsur, pilih banyak, pilih banyak lungsur, tarikh, julat tarikh, pemilih pengguna, pemilih wilayah, pemilih jabatan, pilihan berperingkat, dan subborang.
+- Semasa mencari, gunakan format `Map<String, Object>` untuk menyatakan syarat carian bagi setiap komponen. Kunci ialah ID komponen, dan nilai ialah nilai carian bagi komponen tersebut. Jenis carian dan format nilai untuk setiap komponen adalah seperti berikut:
+
+| Jenis komponen      | Jenis data    | Format data                                                                 | Nota                                                                                                                                    |
+| :------------------ | :----------- | :-------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| Input baris tunggal   | String       | "danhang"                                                                   | Carian kabur.                                                                                                                            |
+| Input berbilang baris    | String       | "duohang"                                                                   | Carian kabur.                                                                                                                            |
+| Input nombor        | Array string | ["1", "10"]                                                                 | Carian julat. Nilai pertama ialah minimum; nilai kedua ialah maksimum.                                                                         |
+| Radio               | String       | "Pilihan 1"                                                                  | Padanan tepat.                                                                                                                             |
+| Pilihan lungsur     | String       | "Pilihan 1"                                                                  |                                                                                                                                          |
+| Pilih Banyak         | Array string | ["Pilihan 2"]                                                                | Carian array. Nilai carian mesti menjadi subset nilai pilih banyak.                                                                |
+| Pilih banyak lungsur | Array string | ["Pilihan 2"]                                                               | Carian array. Nilai carian mesti menjadi subset nilai pilih banyak.                                                                |
+| Komponen tarikh      | Array string | ["1514736000000", "1517414399000"]                                          | Carian julat. Nilai pertama ialah cap masa tarikh mula; nilai kedua ialah cap masa tarikh akhir.                                                 |
+| Julat tarikh          | Array        | [["1514736000000", "1517414399000"], ["1514736000000", "1517414399000"]]    | Carian julat. Array pertama ialah julat carian bagi permulaan julat tarikh; kedua ialah julat carian bagi penghujungnya.          |
+| Pemilih pengguna         | Array string | ["xxxxx", "yyyyy"]                                                          | ["xxxxx", "yyyyyy"]—padanan tepat. Nilai mesti padan tepat, dan susunan ID pekerja mesti sama.                              |
+| Pemilih bandar         | Array string | ["110000", "110100", "110101"]                                              | ["110000", "110100", "110101"]—carian array. Nilai carian mesti menjadi subset nilai bandar. Untuk menyertakan ID bandar, anda mesti menyertakan ID negeri. Untuk menyertakan ID daerah, anda mesti menyertakan kedua-dua ID negeri dan bandar. |
+| Pemilih jabatan   | Nombor       | 1123456                                                                     | Padanan tepat.                                                                                                                             |
+| Pilihan berperingkat      | Array string | ["part", "part_b"]                                                          | Carian array. Sekatan sama seperti pemilih bandar.                                                                                      |
+| Komponen subborang   | String       | "danhang"                                                                   | Carian kabur. Nilai subborang dianggap sebagai medan teks besar, jadi carian kabur digunakan.                                               |
+
+- Contoh lengkap:
+
+```json
+{
+  "textField_jcr0069m": "danhang",
+  "textareaField_jcr0069n": "duohang",
+  "numberField_jcr0069o": ["1", "10"],
+  "radioField_jcr0069p": "Pilihan 1",
+  "selectField_jcr0069q": "Pilihan 1",
+  "checkboxField_jcr0069r": ["Pilihan 2"],
+  "multiSelectField_jcr0069s": ["Pilihan 2", "Pilihan 3"],
+  "dateField_jcr0069t": [1514736000000, 1517414399000],
+  "cascadeDate_jcr0069u": [
+    [1514736000000, 1517414399000],
+    [1514736000000, 1517414399000]
+  ],
+  "employeeField_jcr0069x": ["xxxxx"],
+  "citySelectField_jcr0069y": ["110000", "110100", "110101"],
+  "departmentField_jcr0069z": ["1123456"],
+  "cascadeSelectField_jcr006a0": ["part", "part_b"],
+  "tableField_jcr006a1": "Data subborang"
+}
+```
+
+### Format Objek Butiran Instans Aliran Kerja
+
+- Setiap komponen dalam borang mempunyai ID unik (boleh dilihat pada panel "Advanced" di sebelah kanan komponen dalam Pereka bentuk halaman), dan setiap komponen mempunyai format carian tersendiri. Komponen borang berikut menyokong carian: input baris tunggal, input berbilang baris, nombor, radio, pilihan lungsur, pilih banyak, pilih banyak lungsur, tarikh, julat tarikh, pemilih pengguna, pemilih wilayah, pemilih jabatan, pilihan berperingkat, dan subborang.
+- Semasa mencari, gunakan format `Map<String, Object>` untuk menyatakan syarat carian bagi setiap komponen. Kunci ialah ID komponen, dan nilai ialah nilai carian bagi komponen tersebut. Jenis carian dan format nilai untuk setiap komponen adalah seperti berikut:
+
+| Medan             | Penerangan                                    | Contoh                                                                     | Nota                                                                          |
+| :---------------- | :--------------------------------------------- | :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| actioners         | Penerima tugas semasa bagi instans aliran kerja | `[{"userId": "workno", "name":{"zh_CN": "user_zh_name", "type": "i18n"}}]`  | Jika aliran kerja telah selesai dan tiada penerima tugas, medan ini kosong.          |
+| processInstanceId | ID Instans                                    | "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530"                                      | Unik.                                                                        |
+| formUuid          | ID Borang aliran kerja                               | FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3                               |                                                                                |
+| processCode       | Kod aliran kerja                                  | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4                             |                                                                                |
+| title             | Tajuk instans                                 | Aliran kerja dimulakan oleh xxxx                                                    | Tajuk dikembalikan dalam bahasa lokal anda.                          |
+| instanceStatus    | Status instans                                | RUNNING                                                                     |                                                                                |
+| approvedResult    | Keputusan kelulusan apabila aliran kerja tamat         | agree                                                                       | agree → diluluskan; disagree → ditolak.                                         |
+| originator        | Array string                                   | `[{"name":{"zh_CN": "user_zh_name", "type": "i18n"}, "userId": "workno"}]`  |                                                                                |
+| data              | Data borang                                      |                                                                             | Lihat [Lampiran 4: Format Data Borang sebagai Nilai Respons](#format-data-borang-sebagai-nilai-respons). |
+
+- Demo format data lengkap:
+
+```json
+{
+  "result": {
+    "data": {
+      "actioners": [
+        {
+          "name": {
+            "pureEn_US": "xxx",
+            "en_US": "xxx",
+            "zh_CN": "xxx",
+            "type": "i18n"
+          },
+          "userId": "xxx"
+        }
+      ],
+      "processInstanceId": "f30233fb-72e1-4af4-8cb8-c7e0ea9ee530",
+      "formUuid": "FORM-EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ3",
+      "data": {
+        "numberField_jcr0069o": 1,
+        "multiSelectField_jcr0069s": ["Pilihan 3", "Pilihan 2"],
+        "textareaField_jcr0069n": "duohang",
+        "employeeField_jcr0069x": ["xxxx"],
+        "departmentField_jcr0069z": "Platform Maklumat xxx",
+        "cascadeDate_jcr0069u": ["1514736000000", "1517328000000"],
+        "cascadeSelectField_jcr006a0": ["part", "part_b"],
+        "tableField_jcr006a1": [
+          {
+            "departmentField_jcr006ad": "Maklumat xxx",
+            "cascadeDate_jcr006aa": ["1514736000000", "1517328000000"],
+            "selectField_jcr006a6": "Pilihan 3",
+            "citySelectField_jcr006ac": ["Tianjin", "Tianjin", "Daerah Hedong"],
+            "radioField_jcr006a5": "Pilihan 2",
+            "employeeField_jcr006ab": ["yyyyy", "xxxxxx"],
+            "dateField_jcr006a9": 1517328000000,
+            "textField_jcr006a2": "Baris tunggal subborang",
+            "textareaField_jcr006a3": "Berbilang baris subborang",
+            "cascadeSelectField_jcr006ae": ["product", "product_a"],
+            "numberField_jcr006a4": 2,
+            "checkboxField_jcr006a7": ["Pilihan 1", "Pilihan 3", "Pilihan 2"],
+            "multiSelectField_jcr006a8": ["Pilihan 1", "Pilihan 3", "Pilihan 2"]
+          }
+        ],
+        "selectField_jcr0069q": "Pilihan 1",
+        "citySelectField_jcr0069y": ["Beijing", "Beijing", "Daerah Dongcheng"],
+        "checkboxField_jcr0069r": ["Pilihan 3", "Pilihan 2"],
+        "textField_jcr0069m": "danhang",
+        "radioField_jcr0069p": "Pilihan 1",
+        "dateField_jcr0069t": 1516636800000
+      },
+      "processCode": "TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4",
+      "originator": {
+        "name": {
+          "pureEn_US": "xxx",
+          "en_US": "xxxx",
+          "zh_CN": "xxx",
+          "type": "i18n"
+        },
+        "userId": "xxxx"
+      },
+      "title": "Aliran kerja dimulakan oleh xxx",
+      "instanceStatus": "RUNNING"
+    },
+    "totalCount": 1,
+    "currentPage": 1
+  },
+  "success": true
+}
+```
+
+### Format Data Borang sebagai Nilai Respons
+
+Format data borang untuk nilai respons pada dasarnya sama seperti [Lampiran 1: Format Data Borang untuk Simpan/Kemas Kini](#format-data-borang-untuk-simpankemas-kini), dengan perbezaan berikut:
+
+- Pada input, nilai komponen wilayah ialah ["ID Negeri", "ID Bandar", "ID Daerah"]. Dalam respons, ia ialah ["Nama negeri", "Nama bandar", "Nama daerah"].
+- Komponen radio, pilihan lungsur, pilih banyak, dan pilih banyak lungsur menyokong pengantarabangsaan. Respons mengembalikan nilai data yang sepadan dengan parameter bahasa yang anda hantar.
+
+### Format Objek Butiran Instans Borang
+
+| Medan       | Penerangan             | Contoh                                                                     | Nota                                                                          |
+| :---------- | :---------------------- | :-------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
+| gmtModified | Masa pengubahsuaian terakhir      | 2018-01-24 11:22:01                                                         |                                                                                |
+| formUuid    | ID Borang                 | FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1                               |                                                                                |
+| originator  | Butiran penghantar      | `[{"name":{"zh_CN": "user_zh_name", "type": "i18n"}, "userId": "workno"}]`  |                                                                                |
+| formData    | Butiran data borang       | TPROC--EF6Y4G8WO2FN0SUB43TDQ3CGC3FMFQ1G9400RCJ4                             | Lihat [Lampiran 4: Format Data Borang sebagai Nilai Respons](#format-data-borang-sebagai-nilai-respons). |
+
+- Demo format data lengkap:
+
+```json
+{
+  "result": {
+    "gmtModified": "2018-01-24 11:22:01",
+    "formUuid": "FORM-EF6Y93URN24F1SCX15VA2P918LPEIJ2H3UFORCJ1",
+    "formInstId": "FINST-EF6Y93URN2F02S745LTMW2D2G4WVDS16O17ISCJ0",
+    "formData": {
+      "numberField_jcr0069o": 1,
+      "multiSelectField_jcr0069s": ["Pilihan 3", "Pilihan 2"],
+      "textareaField_jcr0069n": "duohang",
+      "employeeField_jcr0069x": ["xxxx"],
+      "departmentField_jcr0069z": "xxxx",
+      "cascadeDate_jcr0069u": ["1514736000000", "1517328000000"],
+      "cascadeSelectField_jcr006a0": ["part", "part_b"],
+      "tableField_jcr006a1": [
+        {
+          "departmentField_jcr006ad": "xxxx",
+          "cascadeDate_jcr006aa": ["1514736000000", "1517328000000"],
+          "selectField_jcr006a6": "Pilihan 3",
+          "citySelectField_jcr006ac": ["Tianjin", "Tianjin", "Daerah Hedong"],
+          "radioField_jcr006a5": "Pilihan 2",
+          "employeeField_jcr006ab": ["xxxxxx", "yyyyyy"],
+          "dateField_jcr006a9": 1517328000000,
+          "textField_jcr006a2": "Baris tunggal subborang",
+          "textareaField_jcr006a3": "Berbilang baris subborang",
+          "cascadeSelectField_jcr006ae": ["product", "product_a"],
+          "numberField_jcr006a4": 2,
+          "checkboxField_jcr006a7": ["Pilihan 1", "Pilihan 3", "Pilihan 2"],
+          "multiSelectField_jcr006a8": ["Pilihan 1", "Pilihan 3", "Pilihan 2"]
+        }
+      ],
+      "selectField_jcr0069q": "Pilihan 1",
+      "citySelectField_jcr0069y": ["Beijing", "Beijing", "Daerah Dongcheng"],
+      "checkboxField_jcr0069r": ["Pilihan 3", "Pilihan 2"],
+      "textField_jcr0069m": "danhang",
+      "radioField_jcr0069p": "Pilihan 1",
+      "dateField_jcr0069t": 1516636800000
+    },
+    "originator": {
+      "name": {
+        "pureEn_US": "userEnglishName",
+        "en_US": "userEnglishName",
+        "zh_CN": "userName",
+        "type": "i18n"
+      },
+      "userId": "xxxx"
+    }
+  },
+  "success": true
+}
+```

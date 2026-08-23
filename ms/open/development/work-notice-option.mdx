@@ -1,0 +1,198 @@
+---
+title: "Hantar, semak, dan tarik balik Notifikasi Kerja"
+description: "Pelajari cara menghantar, menyemak, dan menarik balik Notifikasi Kerja DingTalk melalui Server API, termasuk aliran integrasi, kelayakan aplikasi, dan kebenaran API."
+---
+
+Topik ini menerangkan cara memanggil API berkaitan Notifikasi Kerja untuk menghantar, menyemak, dan menarik balik mesej.
+
+## Hasil yang dijangka
+
+Rajah berikut menunjukkan hasil penghantaran Notifikasi Kerja.
+
+## Gambaran keseluruhan aliran integrasi
+
+Dokumen ini menerangkan proses mencipta Aplikasi dalaman dan menggunakan API berkaitan kehadiran untuk menghantar Notifikasi Kerja.
+
+Prasyarat: Selesaikan aliran [Penciptaan dan konfigurasi aplikasi](/open/dingstart/create-application).
+
+Langkah 1: Dapatkan Kelayakan aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Mohon Kebenaran API untuk API Notifikasi Kerja.
+
+Langkah 3: Dapatkan Kredensial akses (access_token) Aplikasi dalaman. access token digunakan untuk mengesahkan pemanggil semasa memanggil API.
+
+Langkah 4: Panggil API Notifikasi Kerja:
+
+1. Panggil Server API [Hantar Notifikasi Kerja](/open/development/asynchronous-sending-of-enterprise-session-messages) untuk menghantar Notifikasi Kerja dan mendapatkan ID Tugas unik `task_id` bagi mesej tersebut.
+2. Dengan ID Tugas unik `task_id`, panggil Server API [Dapatkan kemajuan penghantaran Notifikasi Kerja](/open/development/obtain-the-sending-progress-of-asynchronous-sending-of-enterprise-session) untuk menyemak kemajuan penghantaran.
+3. Dengan ID Tugas unik `task_id`, panggil Server API [Dapatkan hasil penghantaran Notifikasi Kerja](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) untuk melihat hasil penghantaran.
+4. Dengan ID Tugas unik `task_id`, panggil Server API [Kemas kini bar status Notifikasi Kerja](/open/development/update-work-notification-status-bar) untuk mengemas kini Notifikasi Kerja.
+5. Dengan ID Tugas unik `task_id`, panggil Server API [Tarik Balik Notifikasi Kerja](/open/development/notification-of-work-withdrawal) untuk menarik balik Notifikasi Kerja.
+
+## Prasyarat
+
+Selesaikan aliran [Penciptaan dan konfigurasi aplikasi](/open/dingstart/create-application).
+
+## Langkah 1: Dapatkan Kelayakan aplikasi
+
+1. Pilih aplikasi sasaran untuk membuka halaman butiran aplikasi, kemudian klik **Maklumat asas** > **Kelayakan dan maklumat asas**.
+2. Dapatkan client ID dan Client Secret.
+
+## Langkah 2: Tambah Kebenaran API
+
+Kebenaran API diaktifkan secara lalai. Tiada permohonan diperlukan.
+
+## Langkah 3: Dapatkan access token aplikasi
+
+<Warning>
+Untuk maklumat lanjut tentang perbezaan antara versi Server API, rujuk perbandingan antara API lama dan API baharu. Semua API berikut ialah Server API. Untuk maklumat lanjut tentang cara memuat turun SDK, rujuk Muat turun SDK bahagian pelayan.
+</Warning>
+
+Gunakan client ID dan Client Secret yang diperoleh dalam Langkah 1 untuk mendapatkan access_token bagi Aplikasi dalaman.
+
+```java
+public void getAccessToken() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+        OapiGettokenRequest req = new OapiGettokenRequest();
+        req.setAppkey("dingxxxxxxxxxhgn");
+        req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+        req.setHttpMethod("GET");
+        OapiGettokenResponse rsp = client.execute(req);
+        System.out.println(rsp.getBody());
+}
+```
+
+## Langkah 4: Panggil Server API berkaitan
+
+1. Panggil Server API [Hantar Notifikasi Kerja](/open/development/asynchronous-sending-of-enterprise-session-messages) untuk menghantar Notifikasi Kerja dan mendapatkan ID Tugas unik `task_id` bagi mesej tersebut.
+
+```java
+public void OAWorkNotice() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+        OapiMessageCorpconversationAsyncsendV2Request request = new OapiMessageCorpconversationAsyncsendV2Request();
+        request.setAgentId(1185599675L);
+        request.setUseridList("manager7675");
+        request.setToAllUser(false);
+
+        OapiMessageCorpconversationAsyncsendV2Request.Msg msg = new OapiMessageCorpconversationAsyncsendV2Request.Msg();
+        OapiMessageCorpconversationAsyncsendV2Request.OA oa = new OapiMessageCorpconversationAsyncsendV2Request.OA();
+
+        OapiMessageCorpconversationAsyncsendV2Request.Head head = new OapiMessageCorpconversationAsyncsendV2Request.Head();
+        head.setBgcolor("FFFF6A00");
+        head.setText("Ujian");
+        OapiMessageCorpconversationAsyncsendV2Request.Body body = new OapiMessageCorpconversationAsyncsendV2Request.Body();
+        List<OapiMessageCorpconversationAsyncsendV2Request.Form> list = new ArrayList<>();
+        OapiMessageCorpconversationAsyncsendV2Request.Form form1 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form1.setKey("Nama:");
+        form1.setValue("Ahmad");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form2 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form2.setKey("Umur:");
+        form2.setValue("21");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form3 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form3.setKey("Ketinggian:");
+        form3.setValue("1.8 m");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form4 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form4.setKey("Berat:");
+        form4.setValue("65 kg");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form5 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form5.setKey("Pendidikan:");
+        form5.setValue("Ijazah Sarjana Muda");
+        OapiMessageCorpconversationAsyncsendV2Request.Form form6 = new OapiMessageCorpconversationAsyncsendV2Request.Form();
+        form6.setKey("Hobi:");
+        form6.setValue("Sukan, mendengar muzik");
+
+        OapiMessageCorpconversationAsyncsendV2Request.Rich rich = new OapiMessageCorpconversationAsyncsendV2Request.Rich();
+        rich.setNum("10.6");
+        rich.setUnit("USD");
+
+        list.add(form1);
+        list.add(form2);
+        list.add(form3);
+        list.add(form4);
+        list.add(form5);
+        list.add(form6);
+
+        body.setForm(list);
+        body.setRich(rich);
+        body.setTitle("Tajuk kandungan 5");
+        body.setImage("@lADOADmaWMzazQKA");
+        body.setFileCount("3");
+        body.setAuthor("Siti");
+
+        OapiMessageCorpconversationAsyncsendV2Request.StatusBar statusBar = new OapiMessageCorpconversationAsyncsendV2Request.StatusBar();
+        statusBar.setStatusBg("0xFFFF6A00");
+        statusBar.setStatusValue("Dalam proses");
+
+        oa.setMessageUrl("https://dingtalk.io");
+        oa.setHead(head);
+        oa.setBody(body);
+        oa.setStatusBar(statusBar);
+        msg.setOa(oa);
+        msg.setMsgtype("oa");
+        msg.setOa(oa);
+        request.setMsg(msg);
+        OapiMessageCorpconversationAsyncsendV2Response rsp = client.execute(request, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```
+
+2. Dengan ID Tugas unik `task_id`, panggil Server API [Dapatkan kemajuan penghantaran Notifikasi Kerja](/open/development/obtain-the-sending-progress-of-asynchronous-sending-of-enterprise-session) untuk menyemak kemajuan penghantaran.
+
+```java
+public void workNoticeSendProgress() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/getsendprogress");
+        OapiMessageCorpconversationGetsendprogressRequest req = new OapiMessageCorpconversationGetsendprogressRequest();
+        req.setAgentId(123L);
+        req.setTaskId(456L);
+        OapiMessageCorpconversationGetsendprogressResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```
+
+3. Dengan ID Tugas unik `task_id`, panggil Server API [Dapatkan hasil penghantaran Notifikasi Kerja](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) untuk melihat hasil penghantaran.
+
+```java
+public void workNoticeSendResult() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/getsendresult");
+        OapiMessageCorpconversationGetsendresultRequest req = new OapiMessageCorpconversationGetsendresultRequest();
+        req.setAgentId(123L);
+        req.setTaskId(456L);
+        OapiMessageCorpconversationGetsendresultResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```
+
+4. Dengan ID Tugas unik `task_id`, panggil Server API [Kemas kini bar status Notifikasi Kerja](/open/development/update-work-notification-status-bar) untuk mengemas kini Notifikasi Kerja.
+
+```java
+/**
+ * Rujukan warna status kelulusan
+ * Diterima 0xFF78C06E
+ * Ditolak 0xFFF65E5E
+ * Ditarik balik 0xFF858E99
+ * Menunggu kelulusan 0xFFFF9D46
+ */
+ public void updateWorkNoticeStatus() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/status_bar/update");
+        OapiMessageCorpconversationStatusBarUpdateRequest request = new OapiMessageCorpconversationStatusBarUpdateRequest();
+        request.setAgentId(1068622214L);
+        request.setStatusValue("Diterima");
+        request.setStatusBg("0xFF78C06E");
+        request.setTaskId(313382528774L);
+        OapiMessageCorpconversationStatusBarUpdateResponse response = client.execute(request, "access_token");
+        System.out.println(JSON.toJSONString(response));
+    }
+```
+
+5. Dengan ID Tugas unik `task_id`, panggil Server API [Tarik Balik Notifikasi Kerja](/open/development/notification-of-work-withdrawal) untuk menarik balik Notifikasi Kerja.
+
+```java
+ public void recallWorkNotice() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/recall");
+        OapiMessageCorpconversationRecallRequest req = new OapiMessageCorpconversationRecallRequest();
+        req.setAgentId(1000L);
+        req.setMsgTaskId(2000L);
+        OapiMessageCorpconversationRecallResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+    }
+```

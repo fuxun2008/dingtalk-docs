@@ -1,0 +1,127 @@
+---
+title: "Soalan Lazim"
+description: "Ringkasan Soalan Lazim dan penyelesaian untuk DingTalk Single Sign-On, merangkumi Skop penggunaan, aliran SSO, sampel boleh jalan, dan analisis Kod ralat biasa."
+---
+
+Artikel ini menerangkan isu biasa dengan Log masuk senyap DingTalk dan penyelesaiannya, membantu pembangun mendiagnosis dan menyelesaikan ralat dengan cepat semasa proses Kebenaran.
+
+## Skop penggunaan
+
+Dokumen ini terpakai untuk jenis aplikasi berikut:
+
+- Aplikasi mikro H5
+- Aplikasi Mini program (termasuk Mini program organisasi)
+
+Pelaksanaan Log masuk senyap berbeza sedikit mengikut jenis aplikasi. Pilih kaedah yang betul untuk mendapatkan authorization_code berdasarkan senario sebenar anda.
+
+Untuk mengetahui cara mencipta jenis aplikasi yang berkaitan, lihat [Pengenalan kepada jenis aplikasi](https://open.dingtalk.com/document/development/introduction-to-application-types).
+
+## Gambaran keseluruhan aliran Log masuk senyap
+
+Pengesahan identiti melalui **Log masuk senyap** membolehkan pengguna memasuki aplikasi tanpa memasukkan nama pengguna atau kata laluan DingTalk mereka. Aplikasi secara automatik mendapatkan identiti pengguna semasa dan melengkapkan proses log masuk.
+
+Aliran ini dibina berdasarkan mekanisme authorization_code sementara. Bahagian hadapan memanggil JSAPI untuk mendapatkan authorization_code sementara sekali guna `tmp_auth_code`, dan pelayan menggunakan kod ini untuk memanggil API DingTalk Open Platform bagi menukarkannya kepada maklumat identiti seperti `userId` pengguna.
+
+**Istilah utama**: `tmp_auth_code` ialah authorization_code sementara sekali guna yang diperoleh melalui JSAPI Bahagian hadapan (seperti `dd.getAuthCode` atau `dd.runtime.permission.requestAuthCode`). Ia sah selama 5 minit dan hanya boleh digunakan sekali. Pelayan mesti menghantarnya kepada API DingTalk (seperti `/user/get`) untuk menukarkannya kepada identiti pengguna.
+
+## Contoh boleh jalan
+
+### Kod Bahagian hadapan (Aplikasi mikro H5)
+
+```text
+// Gunakan dd SDK untuk mendapatkan authorization_code sementara
+dd.ready(function() {
+  dd.runtime.permission.requestAuthCode({
+    corpId: "your_corp_id", // Ganti dengan ID organisasi anda
+    onSuccess: function(result) {
+      const code = result.code; // Dapatkan tmp_auth_code
+      // Hantar kepada pelayan anda
+      fetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ tmp_auth_code: code }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onFail: function(err) {
+      console.error('Gagal mendapatkan authorization_code:', err);
+    }
+  });
+});
+```
+
+## Kod ralat biasa
+
+Ralat berikut dan puncanya mungkin berlaku dalam pelbagai senario Log masuk senyap.
+
+### errcode=40078, errmsg=authorization_code sementara tidak wujud
+
+Kemungkinan punca:
+
+- **authorization_code Log masuk senyap tidak diperoleh dengan betul**
+
+  - Untuk aplikasi Mini program, gunakan `dd.getAuthCode`.
+  - Untuk Aplikasi mikro H5, gunakan `dd.runtime.permission.requestAuthCode` atau `dd.runtime.permission.requestOperateAuthCode`.
+- **authorization_code telah tamat tempoh**
+
+  - authorization_code Log masuk senyap sah selama **5 minit** selepas ia dijana. Ia menjadi tidak sah selepas tempoh ini.
+- **authorization_code telah digunakan**
+
+  - authorization_code Log masuk senyap ialah Kelayakan sekali guna. Setelah digunakan, ia menjadi tidak sah dan tidak boleh digunakan semula.
+- **Jenis authorization_code bercampur**
+
+  - Sebagai contoh, menghantar authorization_code Log masuk senyap daripada Admin Console ke dalam API Aplikasi dalaman untuk mendapatkan `userId` pengguna menyebabkan ralat ini.
+
+### errcode=41007, errmsg=ssoCode tidak sah
+
+Kemungkinan punca:
+
+- **ssoCode tidak wujud atau salah eja**
+
+  - Semak bahawa parameter `ssoCode` yang dihantar daripada Bahagian hadapan adalah lengkap dan tidak terpotong.
+- **ssoCode telah tamat tempoh**
+
+  - ssoCode biasanya mempunyai tempoh sah yang singkat (kira-kira 5 minit). Pastikan ia digunakan dengan segera.
+- **ssoCode telah digunakan**
+
+  - Kod ini hanya untuk kegunaan sekali sahaja. Jika ia telah digunakan dalam Permintaan lain, panggilan seterusnya akan gagal.
+
+### errcode=41026, errmsg=tmp_auth_code tiada
+
+Kemungkinan punca:
+
+- Parameter Permintaan tidak termasuk Medan `tmp_auth_code`.
+- Nama parameter salah eja (contohnya, `temp_auth_code` atau `authCode`).
+- Parameter tidak dihantar dengan betul melalui rentetan pertanyaan (query string) (ia sepatutnya dalam bentuk `?tmp_auth_code=xxx`).
+- Bahagian hadapan tidak berjaya memulangkan authorization_code, jadi pelayan tidak dapat membina Permintaan yang lengkap.
+
+> Penyelesaian: Sahkan bahawa Bahagian hadapan mengendalikan Callback dengan betul dan menghantar nilai `code`, serta pelayan dikonfigurasikan untuk menerima parameter `tmp_auth_code`.
+
+### errcode=40079, errmsg=Maklumat Kebenaran tidak wujud
+
+Kemungkinan punca:
+
+- Aplikasi belum melengkapkan aliran Kebenaran, dan pengguna belum melengkapkan pengesahan log masuk.
+- Pengguna tidak berada dalam Skop kelihatan aplikasi (contohnya, pengguna tiada dalam Kenalan atau belum diberi Kebenaran untuk mengakses aplikasi).
+- Kebenaran aplikasi tidak dikonfigurasikan dengan betul, dan keupayaan Log masuk senyap tidak diaktifkan.
+- Panggilan dibuat terlalu awal, cuba mendapatkan authorization_code sebelum Konteks pengguna sedia.
+
+> Cadangan: Tambah logik pengesahan sebelum panggilan untuk memastikan pengguna telah memasuki aplikasi dan persekitaran Bahagian klien sudah sedia.
+
+### errcode=40087, errmsg=Gagal mencipta authorization_code kekal
+
+Kemungkinan punca:
+
+- Jenis aplikasi semasa tidak menyokong penciptaan authorization_code kekal.
+- Kebenaran yang diperlukan tiada (contohnya, Kebenaran "Kebenaran kekal" tidak diaktifkan).
+- Kekerapan panggilan API terlalu tinggi dan telah mencetuskan Had kadar.
+- Aplikasi berada dalam keadaan tidak normal (contohnya, Dinyahaktifkan atau sedang disemak).
+
+### errcode=40091, errmsg=tmp_auth_code tiada
+
+Kemungkinan punca:
+
+- Tiada authorization_code sementara (`tmp_auth_code`) yang sah disediakan semasa mencipta authorization_code kekal.
+- Pengguna tidak melengkapkan Tindakan Kebenaran, jadi kod sementara adalah kosong.
+- Parameter tidak dihantar dengan betul kepada API penciptaan.
+
+> Penyelesaian: Prompt pengguna untuk memberi Kebenaran semula, dapatkan `authCode` baharu daripada Bahagian hadapan, dan hantarkannya kepada pelayan untuk mencipta authorization_code kekal.

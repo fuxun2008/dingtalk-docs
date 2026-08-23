@@ -1,0 +1,417 @@
+---
+title: "Membangunkan Perkhidmatan Push Peristiwa"
+description: "Ketahui cara membina pelayan push langganan peristiwa DingTalk menggunakan salah satu daripada tiga mod—Stream, HTTP, atau SyncHTTP—merangkumi prasyarat, persediaan SDK, kod integrasi, dan contoh callback."
+---
+
+Untuk membangunkan perkhidmatan push bagi langganan peristiwa, anda boleh memilih salah satu daripada tiga mod push: mod Stream, mod HTTP, atau SyncHTTP. Ikuti langkah-langkah dalam dokumen ini untuk melengkapkan pembangunan.
+
+## Membangunkan Mod Stream (Disyorkan)
+
+<Tabs>
+  <Tab title="Java">
+    <Steps>
+      <Step title="Prasyarat">
+        - Persekitaran runtime dengan akses rangkaian awam.
+        - JDK 1.8 atau lebih tinggi.
+      </Step>
+      <Step title="Pasang SDK">
+        Tambahkan kebergantungan pada fail `pom.xml` projek anda atau muat turun pakej JAR yang berkaitan. Anda boleh melihat dan memuat turun versi SDK terkini di [Maven Central](https://central.sonatype.com/artifact/com.dingtalk.open/app-stream-client){target="_blank"}.
+
+        ```xml
+        <dependency>
+          <groupId>com.dingtalk.open</groupId>
+          <artifactId>app-stream-client</artifactId>
+          <version>{sdk-version}</version>
+        </dependency>
+        ```
+      </Step>
+      <Step title="Integrasi Bahagian Pelayan">
+        | Parameter | Penerangan |
+        | --- | --- |
+        | `${clientId}` | Identiti unik bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID sepadan dengan AppKey/SuiteKey bagi aplikasi lama. |
+        | `${clientSecret}` | Rahsia panggilan bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret sepadan dengan AppSecret/SuiteSecret bagi aplikasi lama. |
+
+        ```java
+        public static void main(String[] args) {
+          OpenDingTalkStreamClientBuilder
+            .custom()
+            .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+            //Register the event listener
+            .registerAllEventListener(new GenericEventListener() {
+              public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+                try {
+                  //Unique event ID
+                  String eventId = event.getEventId();
+                  //Event type
+                  String eventType = event.getEventType();
+                  //Event creation time
+                  Long bornTime = event.getEventBornTime();
+                  //Get the event body
+                  JSONObject bizData = event.getData();
+                  //Process the event
+                  process(bizData);
+                  //Consumed successfully
+                  return EventAckStatus.SUCCESS;
+                } catch (Exception e) {
+        ```
+      </Step>
+    </Steps>
+
+    ### Kod Contoh
+
+    Contoh berikut menggunakan Callback kad interaktif dan Callback bot sebagai rujukan.
+
+    **Callback Bot**
+
+    ```java
+    public static void main(String[] args) throws Exception {
+      OpenDingTalkStreamClientBuilder
+        .custom()
+        .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+        //Register the Bot listener
+        .registerCallbackListener("${topic}", robotMessage -> {
+          log.info("receive robotMessage, {}", robotMessage);
+          //Process the Bot callback based on your business needs
+          return new JSONObject();
+
+        })
+        .build().start();
+    }
+    ```
+
+    | Parameter | Penerangan |
+    | --- | --- |
+    | `clientId` | Identiti unik bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID sepadan dengan AppKey/SuiteKey bagi aplikasi lama. |
+    | `clientSecret` | Rahsia panggilan bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret sepadan dengan AppSecret/SuiteSecret bagi aplikasi lama. |
+    | `topic` | Nama Callback bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+
+    **Callback Kad**
+
+    Untuk butiran, lihat Kad interaktif - Panggilan balik peristiwa.
+
+    ```java
+    public static void main(String[] args) throws Exception {
+            OpenDingTalkStreamClientBuilder
+                    .custom()
+                    .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                    //Register the Card callback listener
+                    .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                        log.info("receive call back request, {}", callbackData);
+                        //your code is here
+
+                        //Change the card content and return a response based on your business needs
+                        CardCallbackResponse resp = new CardCallbackResponse();
+                        return resp;
+
+                    })
+                    .build().start();
+    }
+    ```
+
+    | Parameter | Penerangan |
+    | --- | --- |
+    | `clientId` | Identiti unik bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID sepadan dengan AppKey/SuiteKey bagi aplikasi lama. |
+    | `clientSecret` | Rahsia panggilan bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret sepadan dengan AppSecret/SuiteSecret bagi aplikasi lama. |
+    | `topic` | Nama Callback kad yang didaftarkan. Nilai tetap: `/v1.0/card/instances/callback`. |
+  </Tab>
+  <Tab title="Golang">
+    <Steps>
+      <Step title="Prasyarat">
+        - Persekitaran runtime dengan akses rangkaian awam.
+        - Persekitaran runtime 1.16 atau lebih tinggi.
+      </Step>
+      <Step title="Pasang SDK">
+        ```bash
+        go get github.com/open-dingtalk/dingtalk-stream-sdk-go/v0.0.5
+        ```
+      </Step>
+      <Step title="Integrasi Bahagian Pelayan">
+        | Parameter | Penerangan |
+        | --- | --- |
+        | `${clientId}` | Identiti unik bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client ID sepadan dengan AppKey/SuiteKey bagi aplikasi lama. |
+        | `${clientSecret}` | Rahsia panggilan bagi Aplikasi dalaman DingTalk atau Aplikasi perusahaan pihak ketiga. Untuk butiran, lihat [Client ID/Client Secret](/open/dingstart/basic-concepts-beta). Client Secret sepadan dengan AppSecret/SuiteSecret bagi aplikasi lama. |
+
+        ```go
+        func main() {
+          e := clientV2.
+            NewBuilder().
+            Credential(&clientV2.AuthClientCredential{ClientId: "${clientId}", ClientSecret: "${clientSecret}"}).
+            //Listen for Open Platform events
+            RegisterAllEventHandler(func(event *clientV2.GenericOpenDingTalkEvent) clientV2.EventStatus {
+              println("receive event ", event.Data)
+              //Return clientV2.EventStatusSuccess on success, clientV2.EventStatusLater on failure
+              return clientV2.EventStatusSuccess
+            }).
+            Build().
+            Start(context.Background())
+
+          if e != nil {
+            println("failed to start stream client", e.Error())
+            return
+          }
+
+          select {}
+        }
+        ```
+      </Step>
+    </Steps>
+
+    ### Kod Contoh
+
+    Contoh berikut menggunakan Callback bot sebagai rujukan.
+
+    ```go
+    func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+      return nil
+    }
+
+    func StartRobot() {
+      logger.SetLogger(logger.NewStdTestLogger())
+      cli := client.NewStreamClient(
+        client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+        client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+        client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+      )
+
+      err := cli.Start(context.Background())
+      if err != nil {
+        panic(err)
+      }
+
+      defer cli.Close()
+
+      select {}
+    }
+    ```
+
+    | Parameter | Penerangan |
+    | --- | --- |
+    | `clientId` | AppKey untuk pembangunan Aplikasi dalaman / SuiteKey untuk Aplikasi perusahaan pihak ketiga. |
+    | `clientSecret` | AppSecret untuk pembangunan Aplikasi dalaman / SuiteSecret untuk Aplikasi perusahaan pihak ketiga. |
+    | `topic` | Nama Callback bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+  </Tab>
+</Tabs>
+
+### Sokongan Bahasa Lain
+
+<CardGroup cols={2}>
+  <Card title="Projek Quick-Start SDK Java" icon="java" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start" />
+  <Card title="SDK Golang dan Kod Contoh" icon="golang" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-go" />
+  <Card title="SDK Python dan Kod Contoh" icon="python" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-python" />
+  <Card title="SDK Node.js dan Kod Contoh" icon="node-js" href="https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs" />
+</CardGroup>
+
+Jika anda menghadapi sebarang isu semasa proses ini, anda boleh menghantar Maklum Balas dan berbincang melaluinya di [Sokongan Teknikal](https://open.dingtalk.com/document/services/ngliko){target="_blank"}.
+
+### Kod Ralat
+
+Apabila menerima peristiwa yang mengembalikan Kod ralat berikut, selesaikannya mengikut penyelesaian yang disediakan.
+
+| Kod Ralat (errCode) | Mesej Ralat (errMsg) | Penerangan | Penyelesaian |
+| --- | --- | --- | --- |
+| 20001 | Terjejas oleh Kuota panggilan yang melebihi had, perkhidmatan Mesej anda kini digantung. Hubungi pentadbir Organisasi Anda untuk mengendalikan perkara ini. Medan `errMsg` ditambah pada Mesej yang diterima untuk memaparkan Mesej ralat. | Mesej yang diterima tidak mempunyai Kandungan dan tiada Medan `text` atau `content`. Log masuk ke [Konsol Pembangun](https://open-dev.dingtalk.com/){target="_blank"} untuk melihat Kuota panggilan. | Naik taraf kepada DingTalk Edisi Profesional atau beli pakej tambahan. |
+
+### Soalan Lazim
+
+<AccordionGroup>
+  <Accordion title="Bolehkah saya memulakan beberapa pendengar peristiwa dalam satu aplikasi?">
+    Boleh. Anda boleh memulakan beberapa perkhidmatan pendengaran peristiwa dan mengonfigurasikan beberapa klien Stream mengikut keperluan.
+
+    1. **Aplikasi dalaman**: Sesebuah organisasi hanya perlu mengonfigurasikan satu klien Stream.
+    2. **Aplikasi perusahaan pihak ketiga**: Dengar hanya pada Aplikasi perusahaan pihak ketiga tersebut untuk mendapatkan Kandungan Langganan peristiwa bagi organisasi yang sedang diberi kuasa.
+  </Accordion>
+</AccordionGroup>
+
+## Membangunkan Mod HTTP
+
+<Steps>
+  <Step title="Prasyarat">
+    - Fahami proses [Konfigurasikan Push HTTP (Tidak Disyorkan)](/open/dingstart/configure-stream-push).
+    - Persekitaran pembangunan: Maven 3, JDK 1.8 atau lebih tinggi.
+  </Step>
+  <Step title="Integrasikan Kelas Penyulitan/Penyahsulitan Mesej Peristiwa">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    Untuk lebih banyak bahasa, lihat [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"}.
+  </Step>
+  <Step title="Tulis Kod Pelayan Push HTTP">
+    **Terima mesej peristiwa**
+
+    | Parameter | Penerangan |
+    | --- | --- |
+    | `msg_signature` | Tandatangan Kandungan Mel. |
+    | `timestamp` | Cap masa. |
+    | `nonce` | Rentetan rawak. |
+    | `json` | Kandungan data peristiwa yang disulitkan. |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{the urlpath of your registered HTTP address}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **Respons kepada mesej peristiwa**
+
+    <Note>Apabila anda menerima permintaan pengesahan POST daripada Platform Terbuka, anda mesti menyahsulitkannya dan memberikan Respons dalam masa 2500 ms.</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{the urlpath of your registered HTTP address}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>
+
+Pelayan push HTTP anda kini telah siap dibangunkan. Anda boleh mengikuti proses [Konfigurasikan Push HTTP (Tidak Disyorkan)](/open/dingstart/configure-stream-push) untuk mengesahkan bahawa integrasi telah dilakukan dengan betul.
+
+## Membangunkan Mod SyncHTTP
+
+<Steps>
+  <Step title="Prasyarat">
+    - Fahami proses [Konfigurasikan Push SyncHTTP (Tidak Disyorkan)](/open/dingstart/configure-stream-push).
+    - Persekitaran pembangunan: Maven 3, JDK 1.8 atau lebih tinggi.
+  </Step>
+  <Step title="Integrasikan Kelas Penyulitan/Penyahsulitan Mesej Peristiwa">
+    ```java
+    package com.dingtalk.open;
+
+    import java.io.ByteArrayOutputStream;
+    import java.nio.charset.Charset;
+    import java.security.MessageDigest;
+    import java.security.Permission;
+    import java.security.PermissionCollection;
+    import java.util.Arrays;
+    import java.util.HashMap;
+    import java.util.Map;
+    import java.util.Random;
+    import java.security.Security;
+    import java.lang.reflect.Field;
+
+    import javax.crypto.Cipher;
+    import javax.crypto.spec.IvParameterSpec;
+    import javax.crypto.spec.SecretKeySpec;
+
+    import com.alibaba.fastjson.JSON;
+
+    import org.apache.commons.codec.binary.Base64;
+    ```
+
+    Untuk lebih banyak bahasa, lihat [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto){target="_blank"}.
+  </Step>
+  <Step title="Tulis Kod Pelayan Push SyncHTTP">
+    **Terima mesej peristiwa**
+
+    | Parameter | Penerangan |
+    | --- | --- |
+    | `msg_signature` | Tandatangan Kandungan Mel. |
+    | `timestamp` | Cap masa. |
+    | `nonce` | Rentetan rawak. |
+    | `json` | Kandungan data peristiwa yang disulitkan. |
+
+    ```java
+    import com.alibaba.fastjson.JSONObject;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+      @PostMapping("{the urlpath of your registered HTTP address}")
+      public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+
+        }
+    }
+    ```
+
+    **Respons kepada mesej peristiwa**
+
+    <Note>Apabila anda menerima permintaan pengesahan POST daripada Platform Terbuka, anda mesti menyahsulitkannya dan memberikan Respons dalam masa 2500 ms.</Note>
+
+    ```java
+    import com.alibaba.fastjson.JSON;
+    import com.alibaba.fastjson.JSONObject;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.web.bind.annotation.RequestBody;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestParam;
+    import org.springframework.web.bind.annotation.RestController;
+
+    import java.util.Map;
+
+    @RestController
+    public class CallbackController {
+
+        private final Logger bizLogger = LoggerFactory.getLogger(getClass());
+        @PostMapping("{the urlpath of your registered HTTP address}")
+        public Map<String, String> callBack(
+                @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                @RequestParam(value = "timestamp", required = false) String timeStamp,
+                @RequestParam(value = "nonce", required = false) String nonce,
+                @RequestBody(required = false) JSONObject json) {
+    ```
+  </Step>
+</Steps>

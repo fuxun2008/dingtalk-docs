@@ -1,0 +1,88 @@
+---
+title: "Kebenaran sensitif untuk aplikasi"
+description: "Pelajari cara mengurus kebenaran sensitif aplikasi DingTalk untuk API Kenalan dan AI Table, serta aliran kebenaran Admin Organisasi."
+---
+
+Jika aplikasi anda perlu memanggil API sensitif yang melibatkan data teras organisasi (seperti operasi penulisan Kenalan atau baca/tulis AI Table), aplikasi tersebut mesti melalui aliran kebenaran yang ketat. Artikel ini memperkenalkan secara sistematik konsep kebenaran sensitif, aliran integrasi pembangun, pengalaman kebenaran Admin, dan Soalan Lazim untuk membantu anda mengurus kebenaran sensitif dengan lancar.
+
+## Gambaran keseluruhan konsep
+
+### Apakah kebenaran sensitif
+
+Di DingTalk Open Platform, sesetengah kebenaran ditakrifkan sebagai "kebenaran sensitif" kerana ia melibatkan data teras organisasi atau tindakan berisiko tinggi. Aplikasi mesti memohon kebenaran ini secara berasingan dan mendapatkan kebenaran eksplisit daripada Admin Organisasi sebelum boleh memanggil OpenAPI yang berkaitan.
+
+Kebenaran sensitif utama yang tersedia pada masa ini termasuk:
+
+<Note>
+Hanya pengguna dengan peranan yang ditetapkan boleh memberi kebenaran atau membatalkan kebenaran sensitif. Sebagai contoh, "Admin Kenalan Seluruh Organisasi" ialah satu-satunya peranan yang boleh memberi kebenaran `qyapi_manage_addresslist`.
+</Note>
+
+| **Kod skop kebenaran** | **Penerangan** | **Peranan layak** |
+| --- | --- | --- |
+| qyapi_manage_addresslist | Kebenaran pengurusan data Kenalan | Admin Kenalan Seluruh Organisasi |
+| Notable.Base.Write | Kebenaran tulis DingTalk AI Table. **Penting:** Skop kebenaran AI Table sedang diperluaskan. Permohonan baharu buat sementara waktu tidak disokong. Untuk keperluan khas, hubungi pasukan produk. | Admin DingTalk Docs (Knowledge Base) |
+| Notable.Base.Read | Kebenaran baca DingTalk AI Table. **Penting:** Skop kebenaran AI Table sedang diperluaskan. Permohonan baharu buat sementara waktu tidak disokong. Untuk keperluan khas, hubungi pasukan produk. | Admin DingTalk Docs (Knowledge Base) |
+
+### Apakah Admin Kenalan Seluruh Organisasi
+
+`qyapi_manage_addresslist` ialah skop kebenaran sensitif yang digunakan untuk memanggil API tulis Kenalan. Hanya "Admin Kenalan Seluruh Organisasi" boleh memberi kebenaran ini.
+
+Peranan ini mesti memenuhi kedua-dua syarat berikut:
+
+- Mempunyai kebenaran pengurusan Kenalan asas
+- Menguruskan keseluruhan organisasi
+
+Untuk melihat Admin Kenalan Seluruh Organisasi, pergi ke [bahagian belakang OA](https://oa.dingtalk.io) dan klik Urus kebenaran.
+
+### Suite kebenaran bersepadu dan authCode
+
+- **Suite kebenaran bersepadu**: Penyelesaian kebenaran peringkat organisasi yang piawai disediakan oleh DingTalk, direka untuk senario di mana Aplikasi pihak ketiga memohon kebenaran sensitif daripada organisasi pelanggan. Dengan mengintegrasikan suite ini, pembangun boleh membimbing organisasi pemberi kebenaran melalui aliran kebenaran dan mendapatkan authorization_code sementara (authCode).
+- **authCode**: authorization_code sementara yang dikembalikan oleh DingTalk selepas pengguna mengesahkan kebenaran. Ia mempunyai jangka hayat yang singkat. Pembangun menggunakan kod ini untuk memanggil API bagi menukarkannya kepada `access_token`, dan seterusnya memanggil OpenAPI yang dilindungi.
+
+## Pengalaman pembangun
+
+### Kaitkan skop kebenaran semasa pembangunan aplikasi
+
+> Artikel ini menggunakan skop kebenaran sensitif `qyapi_manage_addresslist` sebagai contoh.
+
+Pertama, kaitkan skop kebenaran sensitif `qyapi_manage_addresslist` dengan aplikasi anda di Bahagian Belakang Pembangun. Ini membolehkan aplikasi memanggil OpenAPI di bawah kebenaran sensitif — Tetapkan skop pengurusan untuk ahli peranan.
+
+Jika skop kebenaran sensitif `qyapi_manage_addresslist` tidak tersedia di Bahagian Belakang Pembangun, hubungi sokongan teknikal dan terangkan keperluan perniagaan anda. Selepas penilaian diluluskan, platform akan mengaktifkan kebenaran sensitif untuk organisasi pembangun anda.
+
+> Selepas kebenaran dipohon, pembangun juga mesti mengintegrasikan suite kebenaran bersepadu DingTalk untuk menghubungi Admin organisasi pemberi kebenaran bagi mendapatkan kebenaran. Jika tidak, panggilan API akan mengembalikan 403.
+
+### Panggil OpenAPI daripada aplikasi anda
+
+Gunakan `access_token` untuk memanggil OpenAPI sasaran (seperti mencipta Jabatan atau mengemas kini pengguna). HTTP 200 menunjukkan panggilan berjaya. Pengalaman pembangun di sini sama seperti skop kebenaran standard.
+
+## Pengalaman Admin Organisasi
+
+### Kebenaran pengaktifan aplikasi
+
+- Kebenaran standard diberikan kepada aplikasi oleh Admin apabila aplikasi diaktifkan.
+- Kebenaran sensitif tidak berkuat kuasa semasa pengaktifan aplikasi. Admin dengan peranan yang berkaitan mesti melengkapkan kebenaran secara manual di Workbench.
+
+### Lihat log audit di bahagian belakang OA
+
+Anda boleh melihat tindakan organisasi terhadap kebenaran sensitif di bahagian belakang OA, termasuk "Terima permintaan kebenaran aplikasi" dan "Tarik Balik kebenaran yang pernah diberikan kepada aplikasi".
+
+## Soalan Lazim
+
+### Panggilan OpenAPI aplikasi saya mengembalikan 403. Bagaimana saya boleh membetulkannya?
+
+Punca dan penyelesaian yang mungkin adalah seperti berikut:
+
+Sahkan bahawa Kebenaran API yang diperlukan telah dipohon dengan betul di Bahagian Belakang Pembangun.
+
+- Pertama, sahkan bahawa Kebenaran API telah dipohon di Bahagian Belakang Pembangun.
+
+- Semak sama ada kebenaran pihak organisasi telah dilengkapkan:
+
+  - Bimbing Admin organisasi pemberi kebenaran untuk melengkapkan kebenaran manual di Workbench.
+  - Atau integrasikan SDK suite kebenaran bersepadu untuk mendayakan aliran kebenaran automatik.
+
+Respons 403 daripada panggilan OpenAPI bermaksud organisasi pemberi kebenaran aplikasi belum memberikan kebenaran kepada aplikasi, atau telah membatalkan kebenaran yang pernah diberikan kepadanya.
+
+### Mengintegrasikan Komponen kebenaran memerlukan masa pembangunan. Bagaimana jika pembangun tidak dapat mengintegrasikannya tepat pada masanya? Adakah terdapat penyelesaian sementara untuk isu 403?
+
+Jawapan: Pembangun Aplikasi pihak ketiga boleh membimbing **Admin organisasi pemberi kebenaran** untuk melengkapkan kebenaran manual di Workbench.

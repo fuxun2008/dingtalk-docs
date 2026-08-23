@@ -1,0 +1,73 @@
+---
+title: "Had kadar"
+description: "Ketahui mekanisme had kadar lalai untuk Server API DingTalk — istilah utama, peraturan sekatan kelajuan global dan peringkat IP, serta amalan terbaik untuk mengelakkan had panggilan API."
+---
+
+Untuk mengelakkan panggilan aplikasi yang tidak normal membebankan pelayan DingTalk, platform mengenakan had kadar lalai pada semua titik akhir Server API. Apabila kekerapan panggilan melebihi had dalam mana-mana dimensi, API akan mencetuskan had kadar dan mengembalikan mesej ralat berkaitan, yang menjejaskan operasi perniagaan biasa.
+
+## Gambaran keseluruhan
+
+Apabila anda memanggil API, sistem menyemak pelbagai dimensi had kadar pada masa yang sama. Sebaik sahaja mana-mana dimensi (seperti dimensi global atau IP) melebihi ambangnya, permintaan akan ditolak dan respons had kadar berkaitan dikembalikan. Beri perhatian kepada dua peraturan had kadar utama — **dimensi global** dan **dimensi IP** — serta tambahkan mekanisme cuba semula (retry) dan fallback dalam reka bentuk aplikasi anda untuk meningkatkan kestabilan.
+
+<Note>
+Mekanisme ini memastikan kestabilan keseluruhan platform. Rancang rentak panggilan anda dengan baik dan elakkan permintaan berkekerapan tinggi yang tertumpu.
+</Note>
+
+## Glosari
+
+Istilah teras berikut yang berkaitan dengan mekanisme had kadar ditakrifkan untuk membantu anda memahami kandungan seterusnya:
+
+- **Kekerapan panggilan**: Bilangan permintaan HTTP yang dihantar ke titik akhir API bagi setiap unit masa, biasanya diukur dalam "permintaan sesaat".
+- **IP keluar (IP awam)**: Alamat IP awam yang digunakan oleh pelayan aplikasi anda untuk mengakses API DingTalk.
+- **Dimensi global**: Jumlah kekerapan panggilan kumulatif ke titik akhir API tertentu merentasi semua organisasi dan semua aplikasi di seluruh platform.
+- **Dimensi IP**: Jumlah keseluruhan volum panggilan API bagi setiap unit masa daripada alamat IP keluar awam pemanggil, tanpa mengira API tertentu.
+- **errcode**: Kod ralat yang dikembalikan oleh API DingTalk untuk mengenal pasti punca kegagalan panggilan. Contohnya, `90002` menunjukkan had kadar global telah dicetuskan.
+- **Exponential backoff**: Strategi cuba semula di mana selang antara percubaan semula meningkat secara eksponen (seperti 1s, 2s, 4s...) untuk mengelakkan panggilan berterusan ke API.
+
+## Dimensi had kadar global
+
+- Apabila kekerapan panggilan ke **titik akhir API yang sama** daripada semua organisasi dan semua aplikasi mencapai had maksimum, had kadar global akan dicetuskan.
+- Selepas dicetuskan, tiada pemanggil dapat berjaya membuat permintaan ke API ini, dan kod ralat `90002` akan dikembalikan.
+- Had ini terpakai kepada semua jenis App, termasuk Aplikasi dalaman, Aplikasi perusahaan pihak ketiga, dan Aplikasi peribadi pihak ketiga.
+- **Senario berkenaan**: Dalam senario konkurensi tinggi (seperti penyegerakan data secara pukal), pelbagai aplikasi yang memanggil API popular (seperti pengurusan pengguna atau penghantaran mesej) pada masa yang sama mudah mencetuskan had ini.
+- **Keperluan kebenaran**: Untuk memanggil API yang dilindungi, anda mesti memiliki pakej kebenaran berkaitan, dan kebenaran Admin biasanya diperlukan untuk mengaktifkan keupayaan berkaitan.
+- **Cadangan pengendalian ralat**:
+
+  - Apabila anda menerima `errcode: 90002`, segera hentikan panggilan intensif ke API ini.
+  - Gunakan strategi exponential backoff untuk mencuba semula (seperti menunggu 1s, 2s, 4s...).
+  - Gabungkan mekanisme langganan peristiwa untuk memproses tugas secara asinkron dan mengurangkan kekerapan polling aktif.
+
+## Had kadar dimensi IP
+
+- Jumlah keseluruhan panggilan daripada setiap alamat IP keluar awam ke semua API adalah dihadkan kepada **10,000 panggilan dalam 20 saat**.
+- Selepas had kadar dicetuskan, IP tersebut akan disekat daripada memanggil semua API selama **5 minit**.
+- Had kadar ini tidak mengembalikan struktur ralat JSON Standard. Sebaliknya, ia mengembalikan halaman HTML atau respons JSON dalam format berikut:
+
+  ```json lines
+  {
+     "status":1111,
+     "wait":5,
+     "source":"x5",
+     "punish":"deny",
+     "uuid":"xxx"
+  }
+  ```
+- **Nota**
+
+  - Had ini tidak membezakan jenis API. Trafik keseluruhan daripada satu IP adalah satu-satunya kriteria.
+  - Ia lazim berlaku dalam senario di mana pelbagai aplikasi berkongsi satu IP keluar di sebalik gateway bersatu atau NAT.
+  - Apabila anda menggunakan perkhidmatan awan, jika pelbagai penyewa (tenant) berkongsi IP keluar kluster, ambang mungkin dicapai lebih awal daripada yang dijangka.
+
+## Cadangan mitigasi dan amalan terbaik
+
+- **Gunakan kumpulan proksi atau penggunaan teragih (distributed deployment)**: Sebarkan permintaan merentasi pelbagai IP keluar yang berbeza untuk mengelakkan satu IP menjadi kesesakan.
+- **Gunakan strategi pengimbangan beban**: Laksanakan pengagihan permintaan pada Bahagian klien atau di lapisan gateway untuk mengimbangi tekanan panggilan merentasi nod.
+- **Tambahkan mekanisme cache setempat**: Simpan cache data yang kerap dibaca tetapi jarang berubah (seperti Struktur Organisasi dan maklumat pengguna) untuk mengurangkan panggilan berulang.
+- **Laksanakan circuit breaker dan logik fallback**:
+
+  - Apabila anda mengesan sesuatu IP telah disekat, tukar secara automatik kepada IP sandaran atau tangguhkan tugas yang tidak kritikal.
+  - Rekod log dan cetuskan makluman supaya pasukan operasi dapat bertindak balas dengan pantas.
+- **Pemantauan dan makluman**:
+
+  - Jejaki trend pertanyaan sesaat (QPS).
+  - Sediakan notifikasi makluman yang dicetuskan apabila nilai menghampiri ambang (seperti 8,000 permintaan setiap 20 saat).

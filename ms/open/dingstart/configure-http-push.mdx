@@ -1,0 +1,78 @@
+---
+title: "Konfigurasikan Push HTTP"
+description: "Konfigurasikan push peristiwa mod HTTP untuk aplikasi dalaman dalam Konsol Pembangun DingTalk, termasuk aes_key penyulitan, token tandatangan, dan URL permintaan callback, serta selesaikan masalah kegagalan pengesahan."
+---
+
+Untuk mengonfigurasikan push peristiwa mod HTTP, ikuti langkah-langkah dalam dokumen ini untuk melengkapkan integrasi.
+
+## Prasyarat
+
+- Anda mempunyai URL permintaan yang boleh diakses secara awam.
+- Anda mempunyai kebenaran pembangun dalam Konsol Pembangun DingTalk organisasi anda.
+- Anda mempunyai [aplikasi dalaman](/open/dingstart/create-application) dalam organisasi DingTalk anda.
+
+## Prosedur
+
+<Steps>
+<Step title="Buka halaman butiran aplikasi">
+Log masuk ke <a href="https://open-dev.dingtalk.com/" target="_blank">Konsol Pembangun</a>, klik aplikasi yang disasarkan, dan pergi ke halaman butiran aplikasi.
+</Step>
+<Step title="Pilih push HTTP">
+Klik **Konfigurasi Pembangunan > Langganan Peristiwa**, dan pilih **push HTTP**.
+</Step>
+<Step title="Konfigurasikan maklumat HTTP">
+| Item | Penerangan |
+| --- | --- |
+| aes_key penyulitan | Parameter penyulitan dan penyahsulitan untuk kandungan mesej callback. Ia merupakan pengekodan Base64 bagi kunci AES. |
+| Token tandatangan | DingTalk menyertakan `token` dalam setiap push peristiwa yang dihantar ke URL anda. Ia digunakan untuk menjana tandatangan dan mengesahkan kesahihan permintaan callback. Ia hanya boleh mengandungi huruf atau digit dan panjangnya mestilah 3 hingga 32 aksara. |
+| URL permintaan | URL yang digunakan untuk menerima permintaan langganan peristiwa. Apabila peristiwa yang dilanggan oleh aplikasi itu dicetuskan, DingTalk menghantar permintaan HTTP POST yang sepadan ke URL ini. |
+</Step>
+<Step title="Bangunkan pelayan langganan peristiwa">
+Selepas konfigurasi selesai, anda perlu membangunkan pelayan langganan peristiwa. Untuk maklumat lanjut, lihat Membangunkan pelayan push HTTP.
+</Step>
+<Step title="Simpan">
+Selepas pembangunan bahagian pelayan selesai dan pelayan push HTTP dimulakan, klik **Simpan**. Senarai langganan peristiwa hanya akan dipaparkan selepas anda menyimpan.
+
+<Frame>
+  <img src="https://img.alicdn.com/imgextra/i2/O1CN01o9NFsaWz9FF5m0j4_!!6000000003546-2-tps-2844-1374.png" alt="Konfigurasikan push HTTP" />
+</Frame>
+</Step>
+</Steps>
+
+## Soalan Lazim
+
+<AccordionGroup>
+<Accordion title="Halaman melaporkan “Pengesahan nilai medan yang dikembalikan dalam hasil permintaan HTTP gagal”">
+**Sebab:**
+
+- Salah satu nilai medan dalam JSON yang dikembalikan kepada pelayan DingTalk adalah salah.
+- Maklumat yang dikembalikan kepada pelayan DingTalk bukan dalam format JSON.
+
+**Penyelesaian:**
+
+<Note>Sahkan bahawa kandungan dalam Membangunkan pelayan push HTTP adalah betul.</Note>
+
+Bina satu kaedah utama, gunakan empat nilai medan yang dikembalikan oleh URL callback, panggil API penyulitan, dan sahkan sama ada nilai yang dikembalikan adalah string `success`. Contoh:
+
+```java
+//Bina kelas penyulitan/penyahsulitan. Parameter kekal tidak berubah.
+DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor("123456", "1234567890123456789012345678901234567890123", "dingsnotzck6pm5veliw");
+//Hantar empat parameter yang dikembalikan oleh URL callback anda kepada pelayan DingTalk ke dalam kaedah penyulitan.
+String result = dingTalkEncryptor.getDecryptMsg("9a95a004dd16f5c307e849b994173f76aa26e5eb", "1614767836", "A7Co0cJLMzIDtMMI", "YvkvaGe4hQxd3VxRmEty0dVlnCOAqwf56xwTRHDHoOURqhalbmBJQk5FNcRk42Gl5T0YQXZNwpwWSm1xAFJ5ZA==");
+System.out.println(result);
+```
+
+- Jika anda mendapat string `success`, nilai yang dikembalikan adalah betul. Masalahnya terletak pada format parameter nilai yang tidak betul yang dikembalikan oleh API callback kepada pelayan DingTalk. Sahkan semula.
+- Jika ralat berlaku semasa masa jalan, ralat dan sebab yang biasa adalah seperti berikut:
+
+| Ralat | Sebab | Penyelesaian |
+| --- | --- | --- |
+| corpid yang disahsulit yang dikira tidak sepadan | Parameter `OWNER_KEY` dalam DingTalkEncryptor adalah salah. | Untuk langganan peristiwa aplikasi semasa dalam Konsol Pembangun, `owner_key` mestilah nilai appkey aplikasi semasa. |
+| aes key tidak sah | Parameter `ENCODING_AES_KEY` dalam DingTalkEncryptor adalah salah. | `ENCODING_AES_KEY` ialah string tetap tersuai sepanjang 43 aksara yang hanya menyokong huruf besar, huruf kecil dan digit. |
+| Pengiraan tandatangan gagal | Parameter dalam kaedah penyahsulitan digunakan secara tidak betul. | Keempat-empat parameter dalam kaedah penyahsulitan getEncryptedMap semuanya berasal daripada nilai yang dibawa dalam permintaan pelayan DingTalk. |
+
+<Frame>
+  <img src="https://help-static-aliyun-doc.aliyuncs.com/assets/img/zh-CN/9545080071/p741380.png" alt="Hasil larian" />
+</Frame>
+</Accordion>
+</AccordionGroup>

@@ -1,0 +1,212 @@
+# Muat turun kandungan separa dengan menentukan Range
+
+## Apakah muat turun HTTP Range
+
+Apabila memuat turun fail besar (melebihi 100 MB) daripada OSS, pemindahan mungkin gagal akibat keadaan rangkaian. Dalam kes ini, gunakan permintaan HTTP Range untuk mendapatkan kandungan separa fail besar tersebut, seperti contoh berikut.
+
+```text
+Get /ObjectName HTTP/1.1
+Host:xxxx.oss-cn-hangzhou.aliyuncs.com
+Date:Tue, 17 Nov 2015 17:27:45 GMT
+Authorization:SignatureValue
+Range:bytes=[$ByteRange]
+```
+
+<Note>
+[$ByteRange] menunjukkan julat sumber yang diminta, dalam unit bait. Contoh ditunjukkan di bawah.
+</Note>
+
+- `Range: bytes=0-499` menunjukkan kandungan daripada bait 0 hingga bait 499.
+- `Range: bytes=500-999` menunjukkan kandungan daripada bait 500 hingga bait 999.
+- `Range: bytes=-500` menunjukkan 500 bait terakhir.
+- `Range: bytes=500-` menunjukkan kandungan daripada bait 500 hingga akhir fail.
+- `Range: bytes=0-` menunjukkan kandungan daripada bait pertama hingga bait terakhir, iaitu keseluruhan fail.
+- OSS tidak menyokong pelbagai parameter Range, iaitu anda tidak boleh menentukan pelbagai julat. Jika pelbagai julat ditentukan, OSS hanya mengembalikan data Range pertama sahaja. Sebagai contoh, bagi `Range:bytes=0-499,500-999`, OSS hanya mengembalikan kandungan daripada bait 0 hingga bait 499.
+- Selang sah bagi [$ByteRange] adalah dari 0 hingga `content-length - 1`.
+
+Jika permintaan HTTP Range sah, respons mengembalikan `206` dan menyertakan `Content-Range` dalam pengepala respons. Jika permintaan HTTP Range tidak sah, atau julat yang ditentukan berada di luar selang sah, Range tidak berkuat kuasa, respons mengembalikan `200`, dan keseluruhan kandungan Object dipindahkan. Berikut adalah contoh permintaan HTTP Range yang tidak sah beserta penerangan ralat berkaitan.
+
+<Note>
+Andaikan saiz sumber Object ialah 1000 bait, dan selang Range yang sah adalah dari 0 hingga 999.
+</Note>
+
+- `Range: byte=0-499`: Ralat format. `byte` sepatutnya `bytes`.
+- `Range: bytes=0-1000`: Bait terakhir 1000 melebihi selang sah.
+- `Range: bytes=1000-2000`: Julat yang ditentukan melebihi selang sah.
+- `Range: bytes=1000-`: Bait pertama melebihi selang sah.
+- `Range: bytes=-2000`: Julat yang ditentukan melebihi selang sah.
+
+### Tingkah laku serasi
+
+Apabila menggunakan HTTP Range, tambahkan pengepala permintaan `x-oss-range-behavior:standard` untuk mengubah tingkah laku OSS apabila julat yang ditentukan berada di luar selang sah. Contoh berikut menggambarkan perubahan tingkah laku tersebut:
+
+<Note>
+Andaikan saiz sumber Object ialah 1000 bait, dan selang Range yang sah adalah dari 0 hingga 999. Apabila mendapatkan kandungan separa fail besar melalui permintaan HTTP Range, jika julat yang tidak sah dipilih, OSS mengembalikan kod ralat `InvalidRange`. Mesej ralat terperinci adalah seperti berikut: `Julat yang diminta tidak dapat dipenuhi`
+</Note>
+
+- `Range: bytes=500-2000`: Bait terakhir melebihi selang sah. Mengembalikan kandungan daripada bait 500 hingga bait 999.
+- `Range: bytes=1000-2000`: Bait pertama melebihi selang sah. Mengembalikan ralat `416 (InvalidRange)`.
+- `Range: bytes=1000-`: Bait pertama melebihi selang sah. Mengembalikan ralat `416 (InvalidRange)`.
+- `Range: bytes=-2000`: Julat yang ditentukan melebihi selang sah. Mengembalikan bait 0 hingga 999, iaitu keseluruhan fail.
+
+## Contoh
+
+Berdasarkan kandungan di atas, topik ini menyediakan contoh permintaan HTTP Range berikut.
+
+<Note>
+Andaikan saiz sumber Object ialah 1000 bait, dan selang Range yang sah adalah dari 0 hingga 999.
+</Note>
+
+### Contoh permintaan biasa
+
+- Minta kandungan daripada bait 0 hingga bait 499 sumber Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-499
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:51:30 GMT
+  Authorization: Sigature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 0-499/1000
+  connection: keep-alive
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA928B227D52731327DE078
+  date: Fri, 18 Oct 2019 02:51:30 GMT
+  [500 bait data object]
+  ```
+- Minta kandungan daripada bait 500 hingga akhir sumber Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=500-
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:24:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9307750EBE33332E3720A
+  date: Fri, 18 Oct 2019 03:24:39 GMT
+  [500 bait data object]
+  ```
+- Minta 500 bait terakhir sumber Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=-500
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:23:22 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9302A6646AC37397F7039
+  date: Fri, 18 Oct 2019 03:23:22 GMT
+  [500 bait data object]
+  ```
+
+### Contoh permintaan di luar julat
+
+- Bait terakhir 1000 melebihi selang sah, jadi Range tidak berkuat kuasa. Respons mengembalikan `200` dan memindahkan keseluruhan kandungan Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=0-1000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 03:00:02 GMT
+  Authorization: Signature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA92AB204321E36347F3E7D
+  date: Fri, 18 Oct 2019 03:00:02 GMT
+  [1000 bait data object]
+  ```
+- Julat yang ditentukan melebihi selang sah, jadi Range tidak berkuat kuasa. Respons mengembalikan `200` dan memindahkan keseluruhan kandungan Object.
+
+  ```text lines
+  GET /ObjectName
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 02:56:24 GMT
+  Authorization: Sigature
+
+  200 (OK)
+  content-length: 1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA929D9CCCC823835CBE134
+  date: Fri, 18 Oct 2019 02:56:25 GMT
+  [1000 bait data object]
+  ```
+
+### Contoh permintaan tingkah laku serasi
+
+- Tambahkan pengepala permintaan `x-oss-range-behavior:standard`. Bait terakhir melebihi selang sah, jadi kandungan daripada bait 500 hingga bait 999 dikembalikan.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=500-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:02:23 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 500
+  content-range: bytes 500-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9637FB3B1C73234CC59EB
+  date: Fri, 18 Oct 2019 07:02:23 GMT
+  [500 bait data object]
+  ```
+- Tambahkan pengepala permintaan `x-oss-range-behavior:standard`. Bait pertama melebihi selang sah, jadi ralat `416` dikembalikan.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=1000-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:04:23 GMT
+  Authorization: Signature
+
+  416 (Requested Range Not Satisfiable)
+  content-length: 345
+  x-oss-request-id: 5DA963F7CEBFAA3931BF91F5
+  date: Fri, 18 Oct 2019 07:04:23 GMT
+  content-type: application/xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <Error>
+    <Code>InvalidRange</Code>
+    <Message>Julat yang diminta tidak dapat dipenuhi</Message>
+    <RequestId>5DA963F7CEBFAA3931BF91F5</RequestId>
+    <HostId>bucket.oss-cn-hangzhou.aliyuncs.com</HostId>
+    <ActualObjectSize>1000</ActualObjectSize>
+    <RangeRequested>bytes=1000-2000</RangeRequested>
+  </Error>
+  ```
+- Tambahkan pengepala permintaan `x-oss-range-behavior:standard`. Julat yang ditentukan melebihi selang sah, jadi bait 0 hingga 999 dikembalikan, iaitu keseluruhan fail.
+
+  ```text lines
+  GET /ObjectName
+  x-oss-range-behavior: standard
+  Range: bytes=-2000
+  Host: bucket.oss-cn-hangzhou.aliyuncs.com
+  Date: Fri, 18 Oct 2019 07:06:39 GMT
+  Authorization: Signature
+
+  206 (Partial Content)
+  content-length: 1000
+  content-range: bytes 0-999/1000
+  etag: "CACF99600561A31D494569C979E6FB81"
+  x-oss-request-id: 5DA9647FC4334F3534AF9A83
+  date: Fri, 18 Oct 2019 07:06:39 GMT
+  [1000 bait data object]
+  ```

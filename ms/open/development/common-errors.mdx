@@ -1,0 +1,146 @@
+---
+title: "Kod ralat biasa"
+description: "Ketahui punca dan penyelesaian kod ralat biasa Server API Contacts DingTalk — daripada userId, unionId, corpId hingga tetapan ketua jabatan."
+---
+
+## Perbezaan antara userId dan unionId
+
+A: Perbezaan antara userId dan unionId dalam senario tertentu adalah seperti berikut:
+
+1. Userid pengguna adalah unik secara global dalam organisasi yang sama dan tidak akan berulang.
+2. UnionId pengguna adalah unik secara global dalam servis aplikasi yang sama. Sebagai contoh, jika Xiaoding tergolong dalam tiga organisasi yang berkongsi Aplikasi perusahaan pihak ketiga yang sama, unionId yang dikembalikan oleh Aplikasi perusahaan pihak ketiga tersebut untuk Xiaoding adalah sama di ketiga-tiga organisasi tersebut.
+3. Anda boleh menanyakan unionId yang berkaitan melalui userId. Lihat [Tanya butiran pengguna](/open/development/query-user-details). Sebaliknya, anda juga boleh menanyakan userId yang berkaitan melalui unionId. Lihat [Dapatkan userid pengguna melalui unionid](/open/development/query-a-user-by-the-union-id).
+
+## API Get user token tidak mengembalikan corpId
+
+A: Apabila memanggil API [Get user token](/open/development/obtain-user-token), isu di atas mungkin disebabkan oleh perkara berikut:
+
+Semasa [mendapatkan Kredensial akses pengguna yang telah log masuk](/open/development/obtain-identity-credentials), anda perlu menghantar `scope=openid%20corpid` dalam halaman kebenaran log masuk yang dibina. Selepas Kebenaran diberikan, dapatkan authCode dan kemudian panggil API Get user token untuk menerima corpid.
+
+## Cara mendapatkan maklumat semua pekerja dalam organisasi
+
+A: DingTalk tidak menyediakan API yang mengembalikan semua pekerja dalam organisasi sekali gus. Pembangun boleh mendapatkan maklumat ini melalui langkah-langkah berikut. Untuk aliran terperinci, rujuk kes penggunaan untuk mendapatkan maklumat semua pekerja dalam organisasi.
+
+1. Pertama, panggil API Get department list untuk mendapatkan semua ID jabatan dalam organisasi.
+2. Ulangi bagi setiap jabatan dengan memanggil API [Get the userid list of a department](/open/development/query-the-list-of-department-userids).
+
+   Pastikan Skop kebenaran API Contacts ditetapkan kepada **Semua pekerja**.
+
+## API Get user profile tidak mengembalikan alamat e-mel
+
+A: Apabila memanggil API [Get user profile](/open/development/dingtalk-retrieve-user-information), isu di atas mungkin disebabkan oleh perkara berikut:
+
+Alamat e-mel hanya dikembalikan jika ia telah dikonfigurasikan di bawah DingTalk Bahagian klien > Mel (seperti ditunjukkan di bawah).
+
+<Warning>
+Alamat e-mel yang disediakan oleh DingTalk (contohnya, xxx@dingtalk.io) tidak dikembalikan.
+</Warning>
+
+## Cara mengosongkan ketua jabatan daripada maklumat pengguna
+
+A: Untuk mengosongkan ketua jabatan semasa memanggil API [Update user information](/open/development/user-information-update), lakukan perkara berikut:
+
+Untuk mengosongkan ketua jabatan, tetapkan `dept_manager_userid_list` (ketua jabatan) dalam `force_update_fields` (medan untuk dikemas kini secara paksa). Jangan hantar nilai kosong untuk `dept_manager_userid_list`, jika tidak, ralat akan berlaku.
+
+## Tidak dapat mendapatkan nombor telefon bimbit pengguna semasa memanggil API Query user details
+
+A: Apabila memanggil API [Query user details](/open/development/query-user-details), ralat di atas mungkin disebabkan oleh Kebenaran tidak mencukupi.
+
+Penyelesaian: Dalam [DingTalk Developer Console](https://open-dev.dingtalk.io/#/), buka halaman butiran aplikasi, cari entri Kebenaran API, dan mohon kebenaran untuk mendapatkan maklumat nombor telefon bimbit.
+
+## Mengenai ralat "The requested userid/department id is not within the authorized scope"
+
+- Untuk Aplikasi dalaman: Dalam Developer Console, pergi ke halaman Urus kebenaran bagi aplikasi berkaitan dan sahkan bahawa jabatan atau pengguna berkaitan telah ditambah ke Skop kebenaran yang dibenarkan.
+- Untuk Aplikasi perusahaan pihak ketiga: Organisasi yang diberi kebenaran (organisasi yang telah mengaktifkan aplikasi) perlu pergi ke [DingTalk Admin Console](https://oa.dingtalk.io/) **> Workbench > App Management**, pilih aplikasi pihak ketiga berkaitan, dan klik butang Tetapan. Dalam kotak dialog yang dipaparkan, sahkan bahawa pengguna berkaitan telah ditambah ke skop yang boleh dilihat.
+
+## Memanggil API Contacts mengembalikan `errcode 50002 The requested employee userid is not within the authorized scope`
+
+A: Aplikasi yang berkaitan dengan access_token yang digunakan untuk memanggil API ini tidak memasukkan pekerja ini dalam Skop kebenaran pada halaman **Urus kebenaran** dalam Developer Console.
+
+Penyelesaian: Klik butang **Tambah** pada halaman Urus kebenaran dan tambah pengguna tersebut ke senarai **Pengguna dibenarkan**.
+
+## Memanggil API Contacts mengembalikan `errcode 50004 The requested department id is not within the authorized scope`
+
+A: Aplikasi yang berkaitan dengan access_token yang digunakan untuk memanggil API ini tidak memasukkan jabatan ini dalam Skop kebenaran pada halaman **Urus kebenaran** dalam Developer Console.
+
+Penyelesaian: Klik butang **Tambah** pada halaman Urus kebenaran dan tambah jabatan yang perlu diubah ke senarai **Pengguna dibenarkan**.
+
+## Memanggil Update user information mengembalikan `errcode 40022 The mobile number in the organization does not match the mobile number used to sign in to DingTalk`
+
+A: Apabila memanggil API [Update user information](/open/development/user-information-update), ralat ini berlaku kerana API ini pada masa ini tidak menyokong pengubahsuaian nombor telefon bimbit pengguna. Anda boleh padam pengguna tersebut dan tambah semula.
+
+## Memanggil Query user by mobile number mengembalikan `errmsg No permission to call`
+
+A: Apabila memanggil API [Query user by mobile number](/open/development/query-users-by-phone-number), ralat ini mungkin disebabkan oleh Versi aplikasi yang lapuk (aplikasi yang menggunakan corpId dan Corpsecret untuk mendapatkan access_token).
+
+Penyelesaian: Cipta aplikasi baharu untuk mendapatkan access_token.
+
+## Memanggil Create user mengembalikan `errmsg System is busy`
+
+A: Apabila memanggil API [Create user](/open/development/user-information-creation), ralat ini mungkin disebabkan oleh perkara berikut:
+
+Organisasi mungkin telah melebihi had Mingguan untuk menambah pekerja, atau melebihi had keseluruhan bagi organisasi.
+
+## Memanggil Create user mengembalikan `errcode 60103 Invalid mobile number`
+
+A: Apabila memanggil API [Create user](/open/development/user-information-creation), ralat ini mungkin disebabkan oleh, tetapi tidak terhad kepada, perkara berikut:
+
+- Wilayah Syarikat yang dikonfigurasikan dalam DingTalk berada di luar tanah besar China. Jika nombor telefon bimbit berasal dari tanah besar China, gunakan format +86-xxxxxx.
+- Wilayah Syarikat yang dikonfigurasikan dalam DingTalk ialah tanah besar China. Jika nombor telefon bimbit berasal dari luar tanah besar China, gunakan format +86-xxxxxx.
+
+## Memanggil Create user mengembalikan "errcode: 40103, errmsg: Invitation sent. The user can Join Organization after accepting it"
+
+A: Apabila memanggil API [Create user](/open/development/user-information-creation) untuk menjemput pengguna Sertai Organisasi, respons ini mungkin disebabkan oleh, tetapi tidak terhad kepada, perkara berikut:
+
+- Peraturan Keselamatan dicetuskan: Jika seorang pekerja telah tergolong dalam organisasi A yang disahkan, mesej di atas akan dipaparkan apabila organisasi B cuba menambah pekerja yang sama. Pada Bahagian klien, cari Jemputan pasukan atau semak Jemputan berkaitan pada halaman Kenalan dan uruskan mengikut keperluan.
+- Pengguna yang dijemput telah mengaktifkan "Perlukan pengesahan apabila pasukan menambah saya" di bawah DingTalk mobile Bahagian klien > Saya > Tetapan > Privasi > Pasukan dan Ahli. Selepas pilihan ini diaktifkan, cari Jemputan pasukan pada Bahagian klien atau semak Jemputan berkaitan pada halaman Kenalan dan uruskan mengikut keperluan.
+
+<Warning>
+Selepas pengguna menerima Jemputan dan berjaya menyertai organisasi, jika organisasi memadam pengguna tersebut pada hari yang sama, ralat yang sama akan dikembalikan apabila API dipanggil semula untuk menjemput pengguna dalam masa 24 jam selepas pemadaman.
+</Warning>
+
+## Memanggil Add External Contact mengembalikan `errmsg System is busy errcode 40001`
+
+A: Apabila memanggil [Add External Contact](/open/development/add-enterprise-external-contacts), ralat ini mungkin disebabkan oleh Medan Tersuai yang telah ditambah oleh organisasi untuk Kenalan luaran dan ditandakan sebagai Wajib. Anda boleh menukar pilihan Wajib bagi Medan Tersuai ini kepada "Tidak", atau sertakan Medan ini semasa menambah Kenalan luaran.
+
+## Memanggil Get user profile mengembalikan `Forbidden.AccessDenied.AccessTokenPermissionDenied No permission to call this API`
+
+A: Apabila memanggil API [Get user profile](/open/development/dingtalk-retrieve-user-information), ralat ini mungkin disebabkan oleh, tetapi tidak terhad kepada, perkara berikut:
+
+- Isu Kebenaran: Semak sama ada Kebenaran "Read Contacts Profile" dan "Personal mobile number" telah dimohon.
+
+- Access token tidak betul: Kredensial akses untuk API ini ialah access token pengguna individu. Menghantar access token yang salah juga akan mencetuskan ralat ini. Untuk mendapatkan access token pengguna individu:
+
+  **Langkah 1**: Dapatkan authCode. Dalam pelayar, kunjungi URL halaman Kebenaran log masuk yang dibina: https://login.dingtalk.io/oauth2/auth?redirect_uri=https%3A%2F%2Fwww.aaaaa.com%2Fa%2Fb (URI ini adalah contoh, bukan nilai tetap) // URL callback selepas Kebenaran diluluskan atau ditolak. Pastikan ia telah ditambah ke Sign-in and Share > callback Domain dalam aplikasi berkaitan dalam Developer Console. &response_type=code // Nilai tetap `code`. authCode dikembalikan selepas Kebenaran diluluskan.
+
+  &client_id=dingbbbbbbb // appkey aplikasi
+
+  &scope=openid%2Bcorpid
+
+  &state=dddd
+
+  &prompt=consent
+
+  Selepas pengguna memberikan Kebenaran, halaman akan dialihkan ke https://www.aaaaa.com/a/b?authCode=xxxx&state=dddd, daripada mana anda boleh mendapatkan authCode.
+
+  **Langkah 2**: Selepas mendapatkan authCode, panggil [Get user token](/open/development/obtain-user-token) untuk mendapatkan access token pengguna individu. Untuk butiran, lihat [Dapatkan Kredensial akses pengguna yang telah log masuk](/open/development/obtain-identity-credentials).
+
+## Memanggil Update/Delete/Query user mengembalikan `errcode 60121 User not found`
+
+A: Ralat ini mungkin disebabkan oleh, tetapi tidak terhad kepada, perkara berikut:
+
+- userId (pengecam unik pengguna dalam organisasi) dan access_token (Kredensial akses Server API) yang dihantar tidak tergolong dalam aplikasi di bawah organisasi yang sama.
+- Pengguna yang dikenal pasti oleh userId telah berhenti kerja atau belum lagi mula bekerja.
+- Organisasi telah menjemput pengguna, tetapi pengguna belum lagi menerima Jemputan untuk Sertai Organisasi.
+
+## Memanggil Get department details mengembalikan `errcode 40009 Invalid department id`
+
+A: Apabila memanggil API [Get department details](/open/development/query-department-details0-v2), ralat ini mungkin disebabkan oleh perkara berikut:
+
+`dept_id` yang dihantar ialah -7 (ID Jabatan bagi kenalan sekolah-ibu bapa). Kenalan sekolah-ibu bapa dept_id=-7 tidak disokong dalam dokumentasi senario pengurusan Kenalan.
+
+## Memanggil Update user information mengembalikan `errcode 12150 Smart HR Job Title management is enabled`
+
+A: Apabila memanggil API [Update user information](/open/development/user-information-update), ralat ini mungkin disebabkan oleh perkara berikut:
+
+Apabila Smart HR Job Title management diaktifkan, untuk mengemas kini medan Jawatan (`title`) atau Jabatan (`deptid`) dalam maklumat pengguna, anda perlu mengemas kininya melalui aliran serahkan pekerja Smart HR.

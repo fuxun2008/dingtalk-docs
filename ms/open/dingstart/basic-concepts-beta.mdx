@@ -1,0 +1,126 @@
+---
+title: "Konsep asas"
+description: "Fahami konsep asas DingTalk Open Platform — Developer Console, sistem identiti teras, kelayakan keselamatan, sistem kebenaran, serta panduan pantas untuk pembangun baharu memulakan pembangunan API dengan yakin."
+---
+
+Dokumen ini ialah **panduan konsep asas** untuk pembangunan pada DingTalk Open Platform. Ia disediakan untuk pembangun yang baharu dalam pembangunan DingTalk, dan membantu anda memahami istilah teras, pengecam identiti, serta sistem kebenaran.
+
+## Konsol admin utama
+
+Dokumen ini merangkumi tiga konsol utama. Gunakan konsol yang betul mengikut peranan anda:
+
+### Developer Console
+
+[DingTalk Developer Console](https://open-dev.dingtalk.io/#/index) ialah platform untuk mengurus pembangunan aplikasi. Pembangun boleh mengkonfigurasikan maklumat aplikasi dan memantau status masa jalan aplikasi.
+
+<Warning>
+Hanya Admin Organisasi dan Sub Admin yang diberikan kedua-dua kebenaran **Developer permissions** dan **Workbench Management** boleh mengakses Developer Console. Konfigurasikan kebenaran Sub Admin dalam [DingTalk Admin Console](https://oa.dingtalk.io/).
+</Warning>
+
+### Admin Console
+
+[DingTalk Admin Console](https://oa.dingtalk.io/) ialah platform teras yang membolehkan Admin Organisasi menguruskan Struktur Organisasi, kebenaran pengguna, dan konfigurasi Workbench. Melalui konsol ini, admin boleh mengimport Kenalan, menyediakan proses Kelulusan, memberikan kebenaran Sub Admin, dan banyak lagi.
+
+## Pengecam identiti teras (sistem ID)
+
+Dalam pembangunan DingTalk, membezakan "siapa" daripada "aplikasi yang mana" adalah penting. ID utama berikut ditakrifkan:
+
+### CorpId
+
+Pengecam unik untuk sesebuah Organisasi dalam DingTalk. Kebanyakan panggilan API peringkat organisasi memerlukan ID ini untuk Pengesahan.
+
+**Cara mendapatkannya**: Log masuk ke [DingTalk Developer Console](http://open-dev.dingtalk.io/) dan lihat `CorpId` organisasi pada halaman **Laman Utama**.
+
+### UserId
+
+Pengecam unik bagi seseorang Pekerja tertentu dalam organisasi. Ia digunakan dalam API seperti menghantar mesej, menyemak profil, dan Kelulusan. Ia tidak boleh diubah.
+
+**Cara mendapatkannya**: Log masuk ke [DingTalk Admin Console](http://oa.dingtalk.io/), pergi ke **Kenalan > Pengurusan Pengguna**, dan klik nama Pekerja untuk melihat `UserId`.
+
+### UnionId
+
+Pengecam pengguna bersatu merentasi aplikasi. Pengguna yang sama mempunyai UnionId yang sama di semua aplikasi di bawah akaun Open Platform yang sama. Ia digunakan untuk mengintegrasikan data merentasi aplikasi.
+
+**Cara mendapatkannya**: Panggil API [Query user details](/open/development/query-user-details) dengan userId pengguna untuk mendapatkan nilai parameter `unionid`.
+
+### Unified App ID
+
+ID unik global yang diberikan oleh DingTalk kepada semua jenis aplikasi. Ia memudahkan integrasi merentas sistem dan secara beransur-ansur menggantikan sistem AgentId/AppId yang lama.
+
+**Cara mendapatkannya**: Log masuk ke [DingTalk Developer Console](http://open-dev.dingtalk.io/), buka halaman butiran aplikasi, dan lihat di bawah **Kelayakan dan Maklumat Asas**.
+
+### AgentId
+
+Pengecam keupayaan untuk Aplikasi dalaman (seperti Aplikasi H5 dan Mini program). Ia digunakan terutamanya untuk API pengurusan Workbench (contohnya, mengkonfigurasikan halaman utama).
+
+**Cara mendapatkannya**:
+
+- AgentId untuk Aplikasi H5 dalaman
+
+- AgentId untuk Mini program dalaman
+
+## Kelayakan keselamatan dan kebenaran (sistem Auth)
+
+Bahagian ini merangkumi bahagian pembangunan yang paling mudah berlaku ralat, termasuk Pengesahan panggilan API dan logik Log masuk senyap.
+
+### Client ID / Client Secret
+
+- **Definisi**: Pasangan Kelayakan identiti aplikasi (serupa dengan nama pengguna dan kata laluan).
+- **Tujuan**: Digunakan untuk mendapatkan `access_token`. Kedua-dua Aplikasi dalaman dan Aplikasi pihak ketiga menggunakan mekanisme ini.
+- **Nota**: `Client Secret` ialah kunci peribadi. Simpan dengan selamat dan jangan sekali-kali dedahkan.
+- **Cara mendapatkannya**: Selepas anda mencipta Aplikasi dalaman atau Aplikasi perusahaan pihak ketiga dalam [DingTalk Developer Console](http://open-dev.dingtalk.io/), pasangan Client ID dan Client Secret akan dijana secara automatik.
+
+### Nota
+
+  Jika Aplikasi dalaman diberi kuasa kepada penyedia perkhidmatan untuk dibangunkan, penyedia perkhidmatan mesti mendapatkan kebenaran menggunakan **CustomKey** dan **CustomSecret**.
+
+### access_token
+
+- **Definisi**: "Tiket" untuk memanggil OpenAPI.
+- **Tujuan**: Kelayakan ini mesti disertakan dalam setiap panggilan ke API yang dilindungi untuk mengesahkan Permintaan.
+- **Nota**: Token biasanya sah selama 7,200 saat (2 jam). Memohonnya semula dalam tempoh sah akan memperbaharuinya secara automatik.
+- **Cara mendapatkannya**:
+
+  - Untuk Aplikasi dalaman, panggil API [Obtain the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app) untuk mendapatkan access_token.
+  - Untuk Aplikasi perusahaan pihak ketiga, panggil API untuk mendapatkan access token bagi organisasi yang diberi kuasa oleh Aplikasi pihak ketiga untuk mendapatkan access_token.
+- **Perbezaan**:
+
+  - `access_token` bagi Aplikasi dalaman mempunyai semua Kebenaran yang dimohon oleh aplikasi.
+  - `access_token` bagi Aplikasi pihak ketiga adalah terhad kepada Skop yang diberi kuasa oleh organisasi.
+
+### authCode
+
+**Definisi**: Kelayakan utama yang digunakan untuk Pengesahan identiti pengguna.
+
+**Tujuan**: Digunakan untuk menukar kepada maklumat identiti pengguna (seperti `userid`).
+
+**Nota**: Tempoh sah hanya 5 minit. Ia menjadi tidak sah selepas satu kali penggunaan dan tidak boleh digunakan semula.
+
+**Cara mendapatkannya**: Dapatkan dengan memanggil API seperti getAuthCode dan requestAuthCode. Untuk butiran lanjut, rujuk [Identity authentication (silent login)](/open/development/sso-overview).
+
+### jsapi_ticket
+
+**Definisi**: Digunakan untuk menjana Tandatangan bagi JS API bahagian hadapan (frontend).
+
+**Tujuan**: Aplikasi mikro H5 memerlukannya untuk memanggil pelbagai keupayaan JSAPI yang disediakan oleh DingTalk secara selamat (seperti mendapatkan maklumat pengguna, memulakan Perbualan, dan memanggil komponen asli).
+
+**Nota**: Tempoh sah ialah 2 jam. Jika tamat tempoh atau parameter tidak konsisten, Ralat seperti "Gagal membaca jsapi ticket" atau "Pengesahan tandatangan gagal" akan berlaku.
+
+**Cara mendapatkannya**: Gunakan `access_token` untuk memanggil API [Create a JSAPI ticket](/open/development/create-a-jsapi-ticket) untuk mendapatkannya.
+
+## Panduan pantas
+
+Pseudokod berikut menunjukkan cara menggunakan `CorpId` dan `access_token` untuk membuat panggilan API paling ringkas, dan mengesahkan bahawa persekitaran anda telah dikonfigurasikan dengan betul:
+
+```text
+GET https://api.dingtalk.io/topapi/v2/user/get?access_token=ACCESS_TOKEN&userid=USERID
+```
+
+**Langkah**:
+
+1. **Dapatkan kelayakan**: Gunakan `Client ID` dan `Client Secret` untuk memanggil API dan mendapatkan `access_token`.
+2. **Sediakan parameter**: Cari `UserId` mana-mana pengguna dalam Admin Console.
+3. **Gantikan parameter**: Bina Permintaan di atas dengan menggantikan `ACCESS_TOKEN` dan `USERID`.
+4. **Hantar Permintaan ujian**: Jika Respons mengembalikan `"errcode": 0, "errmsg": "ok"`, konfigurasi berjaya dan anda boleh meneruskan pembangunan selanjutnya.
+
+> Petua: Dalam Produksi, gunakan HTTPS dan laksanakan Pengendalian ralat serta Mekanisme cuba semula yang sesuai.

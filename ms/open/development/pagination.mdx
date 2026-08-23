@@ -1,0 +1,111 @@
+---
+title: "Pagination data"
+description: "Ketahui cara DingTalk OpenAPI menyokong pagination nextToken dan pageSize bagi membantu pembangun memilih kaedah capaian data yang optimum mengikut senario."
+---
+
+DingTalk OpenAPI menyokong dua kaedah pagination. API yang berbeza mungkin menggunakan mekanisme pagination yang berbeza. Pilih mod pagination yang sesuai berdasarkan dokumentasi API tertentu dan senario perniagaan untuk meningkatkan kecekapan capaian data, mengurangkan beban di bahagian pelayan, dan memastikan kestabilan sistem.
+
+## Skop penggunaan dan kebenaran
+
+Dokumen ini terpakai untuk jenis aplikasi berikut:
+
+- **Aplikasi dalaman**: Aplikasi yang dibangunkan oleh organisasi untuk digunakan hanya dalam organisasi tersebut.
+- **Aplikasi perusahaan pihak ketiga**: Aplikasi yang dibangunkan oleh ISV (Independent Software Vendor) dan disediakan untuk dipasang serta digunakan oleh pelbagai organisasi.
+- **Aplikasi peribadi pihak ketiga**: Aplikasi yang dibangunkan oleh penyedia penyelesaian untuk pengguna DingTalk individu.
+
+### Kebenaran
+
+Sebelum memanggil mana-mana DingTalk OpenAPI, pastikan aplikasi mempunyai kebenaran API yang diperlukan.
+
+Dalam konsol DingTalk Open Platform, lengkapkan langkah berikut:
+
+1. Pergi ke halaman butiran aplikasi sasaran.
+2. Klik **Basic information > Credentials and basic information**.
+3. Dalam bahagian "Manage permissions", tambahkan kebenaran API yang diperlukan (seperti "Read contacts" atau "Get event list").
+
+Rujukan: [Cara memohon kebenaran API](/open/development/add-api-permission)
+
+### Prasyarat pengesahan
+
+Sebelum memanggil mana-mana API, dapatkan `access_token` yang sah untuk Pengesahan dan pengesahan kebenaran.
+
+- Gunakan **App Key / App Secret** atau **Client ID / Client Secret** untuk mendapatkan `access_token`.
+- `access_token` biasanya sah selama 7,200 saat. Cache token ini dan muat semula secara berkala.
+- `access_token` yang tidak sah atau telah tamat tempoh menyebabkan API mengembalikan Kod ralat `40001` atau `40014`.
+
+Rujukan: [Cara memanggil API](https://open.dingtalk.com/document/development/how-to-call-apis)
+
+## Kaedah 1: Pagination nextToken
+
+Gunakan `nextToken` sebagai Kelayakan pertanyaan untuk membaca data secara berterusan. Permintaan pertama tidak memerlukan `nextToken`. Untuk permintaan seterusnya, salin nilai `nextToken` daripada Respons sebelumnya ke dalam permintaan semasa untuk mendapatkan kelompok data seterusnya.
+
+### Aliran permintaan
+
+- Untuk permintaan pertama, jangan hantar `nextToken`. Pelayan akan mengembalikan kelompok data pertama bersama nilai `nextToken`.
+- Untuk permintaan seterusnya, hantar nilai `nextToken` daripada Respons sebelumnya sebagai Parameter pertanyaan untuk mendapatkan halaman seterusnya.
+- Apabila Respons tidak lagi mengandungi `nextToken`, semua data telah berjaya diambil.
+
+Contoh: `GET /v1.0/edu/grades/{identifier}/classes?nextToken=bGFzdD0xMTExMExMSZdGhlcnBhcmFtPXh4eCYuLi4u&maxResults=20`
+
+### Istilah utama
+
+- `nextToken`: Kelayakan string legap yang dijana oleh pelayan untuk mengenal pasti kedudukan Konteks pertanyaan semasa. Klien mesti menghantarnya semula tanpa sebarang perubahan dan tidak boleh menghurai atau mengubah suainya.
+- `maxResults`: Bilangan maksimum entri yang dicadangkan oleh klien. Ini bukan nilai tepat. Bilangan sebenar yang dikembalikan mungkin kurang, bergantung pada had di bahagian pelayan atau jumlah data yang masih tinggal.
+
+### Nota
+
+- Parameter `maxResults` mengehadkan bilangan maksimum rekod yang dikembalikan bagi setiap permintaan. Jangan melebihi 500 untuk mengelakkan Kependaman Respons.
+- Pagination yang mendalam boleh menjejaskan prestasi. Gabungkan pagination dengan penapis tetingkap masa untuk mengurangkan jumlah data.
+
+### Senario yang disyorkan
+
+- Tugas penyegerakan data (seperti penyegerakan Kenalan atau pengambilan log)
+- Eksport set data yang besar
+- Senario dengan keperluan integriti data yang tinggi
+
+## Kaedah 2: Pagination pageSize
+
+Kaedah ini menggunakan logik pagination tradisional dan sesuai untuk API senarai bahagian hadapan (seperti senarai pengguna, senarai Jabatan, dan Borang kelulusan). Ia mengawal pemuatan data menggunakan nombor halaman dan saiz halaman.
+
+### Aliran permintaan
+
+- Untuk permintaan pertama, tetapkan `pageNumber=1` dan nyatakan bilangan rekod setiap halaman menggunakan `pageSize`.
+- Untuk setiap permintaan seterusnya, tambahkan `pageNumber` sehingga jumlah data yang dikembalikan kurang daripada `pageSize`, yang biasanya menunjukkan halaman terakhir.
+
+### Nota
+
+- Mulakan panggilan pertama dengan `pageNumber=1` dan tambahkan nombor halaman untuk setiap panggilan seterusnya.
+- Kaedah ini tidak sesuai untuk pengambilan data berfrekuensi tinggi dalam jumlah besar, kerana ia boleh menjejaskan prestasi di bahagian pelayan.
+
+### Istilah utama
+
+- `pageNumber`: Nombor halaman semasa bagi permintaan, bermula daripada 1.
+- `pageSize`: Bilangan entri yang dikembalikan bagi setiap halaman. Julat yang disyorkan ialah 10 hingga 200.
+
+### Senario yang disyorkan
+
+- Integrasi dengan kawalan pagination bahagian hadapan (seperti pagination Jadual)
+- Paparan data statik berskala kecil
+- Pelayaran halaman demi halaman yang dicetuskan oleh tindakan pengguna
+
+## Cadangan dan amalan terbaik
+
+| **Dimensi** | **Kaedah nextToken** | **Kaedah pageSize** |
+| --- | --- | --- |
+| **Konsistensi data** | Tinggi (berasaskan cursor) | Sederhana (berasaskan offset, terjejas oleh operasi tulis) |
+| **Jumlah data yang sesuai** | Set data besar (puluhan ribu atau lebih) | Set data kecil hingga sederhana (dalam lingkungan ribuan) |
+| **Overhed rangkaian** | Lebih rendah (menyokong `maxResults` yang lebih besar) | Sederhana (terhad oleh had atas `pageSize` yang disyorkan) |
+| **Kerumitan pelaksanaan** | Sederhana (memerlukan pengurusan status token) | Rendah (penambahan nombor halaman yang mudah) |
+| **Senario tipikal** | Penyegerakan bahagian belakang, migrasi data | Paparan bahagian hadapan, pertanyaan interaktif |
+
+### Panduan pemilihan
+
+- **API penyegerakan inkremental** (seperti tarikan Langganan peristiwa atau pengambilan log perubahan): Gunakan **kaedah nextToken** untuk memastikan data Tidak berulang atau tertinggal.
+- **API paparan senarai** (seperti senarai Pekerja atau senarai Borang kelulusan): Gunakan **kaedah pageSize** untuk integrasi yang mudah dengan komponen pagination bahagian hadapan.
+
+### Ringkasan amalan terbaik
+
+- Untuk API penyegerakan inkremental, gunakan **Kaedah 1: Pagination nextToken** untuk memastikan data Tidak berulang atau tertinggal.
+- Untuk API paparan senarai, gunakan **Kaedah 2: Pagination pageSize** untuk integrasi yang mudah dengan kawalan pagination bahagian hadapan.
+- Laksanakan Mekanisme cuba semula automatik pada klien. Jika permintaan gagal disebabkan `nextToken` yang tidak sah, kembali ke permintaan awal dan dapatkan semula data.
+- Elakkan nilai `maxResults` atau `pageSize` yang terlalu besar. Julat yang disyorkan ialah 10 hingga 200 untuk mengimbangi kecekapan penghantaran rangkaian dan kelajuan Respons.

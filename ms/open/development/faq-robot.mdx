@@ -1,0 +1,162 @@
+# Soalan Lazim Bot
+
+## Soalan Lazim
+
+## Pengurusan sembang
+
+### Adakah URL kumpulan mempunyai tempoh sah? Apa yang perlu saya lakukan selepas ia tamat tempoh?
+
+J: Ya. URL kumpulan sah selama 365 hari secara lalai. Perubahan pada pemilik kumpulan, nama kumpulan, dan tetapan lain menyebabkan URL kumpulan tamat tempoh.
+
+### Apakah kegunaan UUID semasa mencipta kumpulan?
+
+J: UUID mengawal sifat idempoten permintaan penciptaan kumpulan, bagi menghalang Sembang Kumpulan pendua yang tidak disengajakan akibat klik tersilap atau percubaan semula.
+
+### Bagaimana saya mendapatkan maklumat ahli atau nama kumpulan bagi sesuatu Sembang Kumpulan?
+
+J: Untuk Kumpulan Dalaman, panggil API [Query group information](/open/development/obtain-a-group-session).
+
+### Adakah terdapat penyelesaian automatik untuk mengeluarkan pengguna daripada Kumpulan Standard apabila mereka meninggalkan organisasi?
+
+J: Tidak ada penyelesaian yang tersedia untuk Kumpulan Standard kerana ahli Kumpulan Standard tidak terikat oleh sebarang perkaitan lain. Pada masa ini, hanya Kumpulan Dalaman menyokong pengeluaran pengguna secara automatik daripada kumpulan di bawah organisasi mereka apabila mereka meninggalkan organisasi.
+
+## Pemberitahuan mesej
+
+### Mengapakah penghantaran mesej OA melalui Notifikasi Kerja memaparkan gesaan bahawa bilangan penerima tidak boleh melebihi 5?
+
+J: Apabila anda menghantar mesej OA dengan bar status mesej yang telah dikonfigurasi, sistem perlu bersedia untuk kemas kini bar status pada masa hadapan. Oleh sebab pemprosesan ini mengambil masa, setiap permintaan hanya boleh dihantar kepada maksimum 5 pengguna. Untuk maklumat lanjut, lihat [Message notification types - OA messages](/open/development/message-types-and-data-format).
+
+### Bagaimana saya mengetahui sebab Notifikasi Kerja gagal dihantar?
+
+J: Gunakan API pertanyaan Notifikasi Kerja untuk menyemak hasil penghantaran. Hasil tersebut menunjukkan sebab mesej tidak diterima, seperti userId yang tidak sah atau penghantaran yang terlalu kerap. Untuk maklumat lanjut, lihat [Get the result of sending work notification messages](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise).
+
+### Mengapakah pertanyaan atau kemas kini hasil penghantaran Notifikasi Kerja kadangkala gagal?
+
+J: Sebab yang paling biasa ialah masa pertanyaan atau kemas kini melebihi had masa penghantaran Notifikasi Kerja (24 jam). Sahkan bahawa pertanyaan dan kemas kini dilakukan dalam tempoh penghantaran yang sah.
+
+### Bagaimana saya mengawal sama ada pautan dibuka dalam DingTalk atau dalam pelayar?
+
+J: Gunakan atribut `pc_slide` untuk mengawal sama ada pautan dibuka dalam DingTalk.
+
+- Buka dalam pelayar: `dingtalk://dingtalkclient/page/link?url=https%3A%2F%2Fwww.baidu.com&pc_slide=false&title=title`.
+- Buka dalam DingTalk: `dingtalk://dingtalkclient/page/link?url=https%3A%2F%2Fwww.baidu.com&pc_slide=true&title=title`.
+
+### Keterangan
+
+- **url**: URL sasaran. Ia mesti dikodkan URL.
+- **pc_slide**: Mengawal sama ada pautan dibuka dalam pelayar atau dalam DingTalk.
+- **title**: Teks yang dipaparkan di bahagian kiri atas apabila pautan dibuka dalam DingTalk. Nilai lalai ialah "Butiran".
+
+### Panggilan API mesej Notifikasi Kerja gagal
+
+Apabila panggilan API mesej Notifikasi Kerja gagal, jalankan penyelesaian masalah seperti berikut:
+
+1. Pertama, sahkan sama ada kegagalan disebabkan oleh had kadar API:
+
+   - Pengguna yang sama hanya boleh menerima kandungan mesej yang sama daripada aplikasi yang sama sekali sehari.
+   - Untuk pembangunan aplikasi dalaman, Aplikasi mikro boleh menghantar mesej kepada pengguna yang sama sehingga 500 kali sehari.
+   - Apabila `to_all_user` ditetapkan untuk push mesej kepada semua pengguna, maksimum 3 kali sehari dibenarkan.
+   - Untuk Aplikasi perusahaan pihak ketiga, Aplikasi mikro boleh menghantar mesej kepada pengguna yang sama sehingga 100 kali sehari.
+2. Panggil [Get the sending progress of work notification messages](/open/development/obtain-the-sending-progress-of-asynchronous-sending-of-enterprise-session) untuk mengesahkan bahawa mesej kerja telah dihantar dengan berjaya.
+3. Panggil [Get the result of sending work notification messages](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise). Jika seseorang penerima muncul dalam `forbidden_user_id_list`, had penghantaran mesej kerja telah melebihi. Jika seseorang penerima muncul dalam `failed_user_id_list`, penghantaran gagal dan anda perlu menghantar semula.
+4. Pengalihan "Buka pautan mesej dalam Workbench PC" hanya disokong untuk pengalihan mudah alih ke aplikasi apabila jenis mesej kerja adalah mesej OA.
+
+### Apakah standard format gambar untuk Notifikasi Kerja berbanding Mesej Bot?
+
+J: Lihat jadual di bawah.
+
+| **Mesej gambar yang dihantar oleh Bot (unit: px)** | | **Mesej gambar yang dihantar melalui Notifikasi Kerja (unit: px)** | |
+| --- | --- | --- | --- |
+| **Lebar** | **Ketinggian** | **Lebar** | **Ketinggian** |
+| Lebar ≤ 358 | Ketinggian ≤ 350 | Lebar ≤ 338 | Ketinggian ≤ 677 |
+|  | | **Saiz paparan selepas penghantaran:** 336 × 189 | |
+
+### Notifikasi Kerja dihantar tanpa ralat, tetapi penerima tidak menerimanya
+
+J: Kemungkinan sebab penerima tidak menerima [Notifikasi Kerja](/open/development/asynchronous-sending-of-enterprise-session-messages) termasuk, tetapi tidak terhad kepada:
+
+- Aplikasi dalaman boleh menghantar mesej kepada maksimum 5,000 pengguna bagi setiap permintaan.
+- Hanya satu notifikasi mesej dengan kandungan yang sama boleh dihantar kepada pekerja yang sama dalam sehari.
+- Aplikasi dalaman boleh menghantar maksimum 500 notifikasi mesej kepada setiap pekerja dalam sehari.
+- Aplikasi dalaman boleh menghantar mesej kepada maksimum 5,000 pengguna setiap minit.
+
+Anda juga boleh menggunakan [Get the result of sending work notification messages](/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) untuk menyemak hasil penghantaran.
+
+### Apakah yang perlu saya perhatikan semasa menghantar Notifikasi Kerja?
+
+J: Perhatikan perkara berikut:
+
+- Pengguna yang sama hanya boleh menerima kandungan mesej yang sama daripada aplikasi yang sama sekali sehari.
+- Untuk pembangunan aplikasi dalaman, Aplikasi mikro boleh menghantar mesej kepada pengguna yang sama sehingga 500 kali sehari.
+- Apabila `to_all_user` ditetapkan untuk push mesej kepada semua pengguna, maksimum 3 kali sehari dibenarkan.
+- Untuk Aplikasi perusahaan pihak ketiga, Aplikasi mikro boleh menghantar mesej kepada pengguna yang sama sehingga 100 kali sehari.
+- Panggil API untuk mendapatkan kemajuan penghantaran mesej Notifikasi Kerja dan sahkan bahawa mesej kerja telah dihantar dengan berjaya.
+- Panggil API untuk mendapatkan hasil penghantaran mesej Notifikasi Kerja. Jika seseorang penerima muncul dalam `forbidden_user_id_list`, had penghantaran mesej kerja telah melebihi. Jika seseorang penerima muncul dalam `failed_user_id_list`, penghantaran gagal dan anda perlu menghantar semula.
+- Pengalihan "Buka pautan mesej dalam Workbench PC" hanya disokong untuk pengalihan mudah alih ke aplikasi apabila jenis mesej kerja adalah mesej OA.
+
+### Bagaimana saya membuka pautan mesej PC dalam bar sisi?
+
+J: Untuk membuka pautan URL dalam Bahagian klien PC dan bukan mengalihkan ke pelayar luaran, lihat [Message link description](/open/development/message-link-description).
+
+Contoh: `dingtalk://dingtalkclient/page/link?url=http%3A%2F%2Fwww.dingtalk.io&pc_slide=true`
+
+**Keterangan parameter**: URL yang dihantar mesti dikodkan URL. Apabila `pc_slide` ditetapkan kepada `true`, pautan dibuka dalam bar sisi Bahagian klien PC. Apabila ditetapkan kepada `false` atau diabaikan, pautan dibuka dalam pelayar.
+
+## Bot
+
+### Bagaimana saya mengedit atau memadam plugin kumpulan?
+
+J: Plugin kumpulan pada masa ini tidak menyokong pengeditan atau pemadaman.
+
+### Bagaimana perubahan nama Bot berkuat kuasa?
+
+J: Perubahan nama Bot berkuat kuasa seperti berikut:
+
+- Setelah nama Bot ditukar, nama baharu berkuat kuasa untuk Bot yang ditambah ke Sembang Kumpulan rasmi.
+- Untuk kumpulan ujian "xxxxxxxx-TEST" yang dimasuki melalui Nyahpepijat, anda mesti klik Nyahpepijat semula selepas menukar nama Bot. Jika tidak, perubahan tidak akan berkuat kuasa.
+
+### Avatar Bot yang dimuat naik pada Windows kelihatan kabur
+
+J: Ini mungkin disebabkan oleh perkara berikut:
+
+Kesan paparan berbeza bergantung pada resolusi skrin peranti PC.
+
+### Bagaimana saya menambah ruang dan pemisah baris semasa menghantar mesej markdown melalui Bot?
+
+J: Gunakan format berikut:
+
+- **Ruang**: `&nbsp`, `&#160`, atau `&#xA0`
+- **Pemisah baris**: `\n`
+
+### Penting
+
+  Tambah ruang sebelum dan selepas `\n`.
+
+### Bagaimana saya mendapatkan `robotCode` bagi Bot Aplikasi dalaman?
+
+J: Log masuk ke [Developer Console](https://open-dev.dingtalk.io). Selepas menyimpan dan menerbitkan Bot, anda boleh melihat `robotCode`-nya.
+
+### Bagaimana saya menambah Bot Aplikasi dalaman ke dalam kumpulan?
+
+### Keterangan
+
+1. Bot Aplikasi dalaman telah disimpan dan diterbitkan. Untuk maklumat lanjut, lihat [Configure an Enterprise bot](/open/dingstart/configure-the-robot-application).
+2. Aplikasi dalaman telah diterbitkan. Jika tidak, pengguna lain dalam organisasi tidak dapat melihat Bot tersebut. Untuk maklumat lanjut, lihat Publish an app.
+
+J: Tambah Bot ke kumpulan seperti berikut:
+
+### Bagaimana saya mendapatkan `access_token` untuk Webhook Bot Aplikasi dalaman?
+
+<Note>
+Nilai `access_token` bagi Webhook Bot hanya kelihatan selepas Bot ditambah ke dalam kumpulan.
+</Note>
+
+J: Dapatkan nilai `access_token` Webhook seperti berikut:
+
+### Bagaimana saya mencipta Kumpulan Dalaman secara manual dalam Bahagian klien DingTalk?
+
+Cipta Kumpulan Dalaman dalam organisasi tempat Bot tersebut berada. Jika Kumpulan Dalaman sudah wujud untuk organisasi ini, langkau langkah ini.
+
+<Note>
+Sebagai contoh, jika Bot tersebut milik organisasi "Test Organization Demo", Kumpulan Dalaman mesti dinamakan "Test Organization Demo [Kumpulan Dalaman]".
+</Note>

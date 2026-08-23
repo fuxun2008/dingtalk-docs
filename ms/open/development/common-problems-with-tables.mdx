@@ -1,0 +1,145 @@
+---
+title: "FAQ"
+description: "Menjawab soalan lazim tentang Onboarding Hamparan DingTalk dan penggunaan API, termasuk pelbagai cara untuk mendapatkan workbookId."
+---
+
+## Onboarding
+
+### Bagaimana untuk mendapatkan workbookId bagi Hamparan
+
+Setiap Hamparan DingTalk mempunyai `workbookId` yang Unik. Anda boleh mendapatkannya melalui cara-cara berikut:
+
+- **Daripada URL Hamparan**: Buka Hamparan tersebut. ID Dokumen yang terkandung dalam URL tersebut adalah `workbookId`.
+
+- **Daripada maklumat dokumen**: Di penjuru kiri atas Hamparan, klik **Menu** → **Hamparan** → **Maklumat Dokumen**. ID Dokumen yang dipaparkan di sana adalah `workbookId`.
+
+- **Melalui API Knowledge Base**: Panggil API [Dapatkan nod](/open/development/get-knowledge-base-acquisition-node). `nodeId` (`dentryUuid`) yang dikembalikan adalah `workbookId`.
+
+### Bagaimana untuk mendapatkan operatorId
+
+`operatorId` adalah `unionId` bagi pengendali. Dapatkannya seperti berikut:
+
+1. **Dapatkan userId mengikut Nombor Telefon**: Panggil API [Tanya pengguna mengikut Nombor Telefon](/open/development/query-users-by-phone-number).
+2. **Dapatkan unionId mengikut userId**: Panggil API [Tanya butiran pengguna](/open/development/query-user-details). `unionId` yang dikembalikan adalah `operatorId`.
+
+<Warning>
+Anda mungkin perlu memohon Kebenaran **Kenalan** dalam Aplikasi anda sebelum Panggilan pertama. Selepas mendapatkan `operatorId`, Simpan ia (contohnya, sebagai pemboleh ubah persekitaran) untuk mengelakkan pengambilannya melalui API setiap kali.
+</Warning>
+
+### Apa yang perlu dilakukan apabila access token tamat tempoh
+
+access token sah selama **7,200 saat (2 jam)**. Selepas tamat tempoh, panggil semula API [Dapatkan access token bagi Aplikasi dalaman](/open/development/obtain-the-access-token-of-an-internal-app) untuk mendapatkan token baharu.
+
+Kami mengesyorkan pelaksanaan cache token dan mekanisme Muat Semula automatik dalam Aplikasi anda:
+
+- Cache token tersebut dan Masa tamat tempohnya.
+- Muat Semula token secara proaktif 5 minit sebelumnya ia tamat tempoh.
+- Apabila API mengembalikan Ralat token tidak sah, Muat Semula segera dan cuba semula.
+
+---
+
+### Bagaimana untuk menyelesaikan Ralat "The operator has no permission" apabila memanggil API
+
+Ralat ini menunjukkan bahawa pengguna yang dikenal pasti oleh `operatorId` tidak mempunyai Kebenaran untuk mengendalikan Hamparan sasaran. Semak perkara berikut:
+
+- **Sama ada pengguna mempunyai akses kepada Hamparan tersebut**: Pastikan pengguna telah ditambah sebagai Kolaborator Hamparan tersebut, atau Knowledge Base yang menghoskan Hamparan tersebut telah memberikan Kebenaran kepada pengguna.
+- **Sama ada jenis Kebenaran sepadan**:
+
+  - Operasi baca seperti `GetAllSheets`, `GetSheet`, dan `GetRange` memerlukan Kebenaran `Document.Workbook.Read`.
+  - Operasi tulis seperti `AppendRows`, `UpdateRange`, dan `CreateSheet` memerlukan Kebenaran `Document.Workbook.Write`.
+- **Sama ada Aplikasi telah memohon Kebenaran yang diperlukan**: Dalam Urus Aplikasi pada [DingTalk Open Platform](https://open-dev.dingtalk.io/), sahkan bahawa skop Kebenaran yang berkaitan telah dimohon dan diluluskan.
+
+---
+
+## Penggunaan API
+
+### Adakah parameter sheetId boleh menerima nama Helaian Kerja
+
+Ya. Parameter `sheetId` menerima sama ada **ID** atau **nama (Tajuk)** Helaian Kerja. Contohnya:
+
+- Hantar ID: `Sheet1`, yang dijana oleh sistem.
+- Hantar nama: `Sales Data`, yang merupakan Tajuk Helaian Kerja yang ditentukan pengguna.
+
+> **Cadangan**: Gunakan ID Helaian Kerja apabila boleh, kerana nama boleh diubah oleh pengguna. Anda boleh memanggil API `GetAllSheets` untuk mendapatkan ID dan nama Semua Helaian Kerja.
+
+---
+
+### Di mana data ditulis apabila AppendRows menambah data
+
+`AppendRows` secara automatik mengesan **baris terakhir yang mengandungi data** dalam Helaian Kerja dan menambah baris baharu di bawahnya.
+
+- Jika Helaian Kerja kosong, data ditulis bermula daripada baris pertama.
+- Nombor Lajur yang ditambah perlu sepadan dengan data sedia ada untuk mengekalkan penjajaran data.
+
+---
+
+### Apakah Format rangeAddress apabila menggunakan UpdateRange untuk Kemas kini Sel
+
+`rangeAddress` menggunakan **notasi A1**. Format biasa disenaraikan di bawah:
+
+| Format | Maksud | Contoh |
+| --- | --- | --- |
+| A1 | Satu Sel tunggal | Baris 1, Lajur 1. |
+| A1:C3 | Julat segi empat tepat | 9 Sel dari A1 hingga C3. |
+| A:A | Satu Lajur Penuh | Semua Sel dalam Lajur A. |
+| 1:1 | Satu Rekod Penuh | Semua Sel dalam Baris 1. |
+| A1:ZZ99999 | Julat besar | Digunakan untuk operasi Helaian Penuh. |
+
+---
+
+### Apakah perbezaan antara GetRange dan UpdateRange
+
+| Perkara | GetRange | UpdateRange |
+| --- | --- | --- |
+| Kaedah HTTP | GET | PUT |
+| Fungsi | Membaca nilai, gaya, dan Atribut lain bagi julat Sel | Kemas kini nilai, gaya, dan Atribut lain bagi julat Sel |
+| Kebenaran Wajib | `Document.Workbook.Read` | `Document.Workbook.Write` |
+| Dokumentasi | [Dapatkan sifat Sel](/open/development/get-cell-properties) | [Kemas kini sifat Sel](/open/development/update-cell-properties) |
+
+`GetRange` sesuai untuk mengesahkan hasil selepas menulis data, atau untuk membaca data Hamparan dalam aliran Automasi untuk pemprosesan hiliran. Kedua-dua API menggunakan parameter `rangeAddress` yang sama (notasi A1) untuk menentukan julat Sel sasaran.
+
+---
+
+### Bagaimana untuk menyelesaikan masalah Ralat invalidRequest.resource.notFound
+
+Ralat ini menunjukkan bahawa sumber yang diminta tidak wujud. Sebab biasa:
+
+| Senario | Kemungkinan sebab | Penyelesaian |
+| --- | --- | --- |
+| workbookId tidak sah | Hamparan telah dipadam, atau ID salah eja | Dapatkan semula workbookId. |
+| sheetId tidak sah | Helaian Kerja telah dipadam, atau namanya telah diubah | Panggil `GetAllSheets` untuk mendapatkan Senarai Helaian Kerja yang terkini. |
+| rangeAddress tidak sah | Alamat Sel tidak sah format atau di luar julat | Semak Format notasi A1 dan pastikan ia berada dalam julat Hamparan. |
+
+### Apakah had penggunaan API Hamparan DingTalk
+
+| Had | Nilai | Penerangan |
+| --- | --- | --- |
+| Had kadar | Disyorkan ≤ 100 Panggilan/minit | Kekerapan Panggilan bagi satu Aplikasi terhadap Hamparan yang sama. |
+| AppendRows setiap Panggilan | Disyorkan ≤ 5,000 baris | Melebihi ini boleh menyebabkan tamat masa. |
+| Panjang Kandungan Sel | Tertakluk kepada had Hamparan | Teks yang terlalu long mungkin dipotong. |
+| Kesahan access token | 7,200 saat (2 jam) | Token baharu perlu didapatkan selepas tamat tempoh. |
+
+### Bagaimana untuk mengendalikan kegagalan Panggilan API dalam kod
+
+Kami mengesyorkan strategi Pengendalian ralat berikut:
+
+- **Muat Semula automatik apabila token tamat tempoh**: Tangkap Ralat token tidak sah, Muat Semula token secara automatik, dan cuba semula.
+- **Cuba semula apabila Had kadar dikenakan**: Apabila Ralat 429 dikembalikan, tunggu sebelum mencuba semula (kami mengesyorkan strategi Exponential backoff).
+- **Pengendalian idempoten**: Untuk operasi tulis seperti `AppendRows`, perhatikan bahawa percubaan semula boleh menyebabkan penulisan data berganda. Sertakan pengecam Unik dalam data dan sahkan dengan `GetRange` selepas menulis.
+- **Pengendalian tamat masa**: Tetapkan tamat masa yang munasabah untuk permintaan rangkaian (kami mengesyorkan 30 saat), dan cuba semula selepas tamat masa.
+
+```python
+import time
+
+def call_api_with_retry(func, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except TokenExpiredError:
+            refresh_token()
+        except RateLimitError:
+            time.sleep(2 ** attempt)
+        except TimeoutError:
+            time.sleep(1)
+    raise Exception("Panggilan API Gagal. Jumlah maksimum percubaan semula telah dicapai.")
+```

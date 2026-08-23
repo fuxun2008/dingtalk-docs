@@ -1,0 +1,95 @@
+---
+title: "Melaksanakan mod tarik tulen untuk kad tersemat"
+description: "Panduan ini menerangkan cara melaksanakan mod tarik tulen untuk kad tersemat di DingTalk, meliputi gambaran aliran integrasi, tingkah laku dijangka, dan langkah kemas kini kandungan kad."
+---
+
+## Hasil yang dijangka
+
+- Mod tarik tulen untuk kad tersemat
+
+  Setiap kali Chat dibuka, callbackUrl yang ditetapkan oleh pembangun akan dipanggil untuk mendapatkan Data peribadi dan mengemas kininya pada Kad.
+
+- Mod tarik tulen untuk Mesej kad
+
+  Setiap kali Chat dibuka untuk menarik mesej, callbackUrl yang ditetapkan oleh pembangun akan dipanggil untuk mendapatkan Data peribadi dan mengemas kininya pada Kad.
+
+## Gambaran aliran integrasi
+
+Langkah 4: Kemas kini Kandungan Kad.
+
+### 1. Cipta Templat Kad tersemat
+
+<Note>
+Untuk butiran tentang cara mengkonfigurasikan Kandungan Templat Kad, rujuk dokumen tentang mencipta Templat mesej.
+</Note>
+
+### Nota
+
+- Gunakan Kad interaktif untuk mengaktifkan Interaksi antara pengguna dan kad. Untuk butiran, rujuk dokumen tentang penggunaan Kad interaktif.
+- Mod tarik tulen hanya boleh menarik Data yang berkaitan dengan pemboleh ubah peribadi yang ditakrifkan dalam Templat Mesej kad interaktif.
+
+Anda boleh menetapkan pemboleh ubah peribadi dalam Editor Templat Kad.
+
+Dalam Editor Templat Kad, gabungkan pelbagai komponen untuk memenuhi keperluan perniagaan anda. Selepas Kad dibina, klik **Simpan** atau **Terbitkan** untuk menjadikannya tersedia.
+
+Untuk menggunakan mod tarik tulen bagi kad, Panggil API untuk mendaftarkan URL callback Kad dan dapatkan parameter **callbackRouteKey**.
+
+<Note>
+Tetapkan parameter **pullStrategy** kepada **true** untuk mengaktifkan mod tarik tulen bagi Kad.
+</Note>
+
+## Langkah 4: Kemas kini Kandungan Kad
+
+<Note>
+Setiap kali Pengguna membuka Chat, callbackUrl yang ditetapkan oleh pembangun akan dipanggil untuk mendapatkan Data yang berkaitan dengan pemboleh ubah peribadi. Data yang berkaitan dengan pemboleh ubah bukan peribadi tidak boleh diperoleh melalui mod tarik tulen.
+</Note>
+
+### 1. Tarik Data peribadi
+
+Apabila Pengguna membuka Chat, tindakan tersebut dihantar ke alamat HTTP yang didaftarkan oleh pembangun sebagai Permintaan HTTP POST untuk menarik Data peribadi. Isi permintaan dihantar kepada pembangun dengan contentType="application/json" dan mengandungi parameter berikut.
+
+<Note>
+Medan content merangkumi Data bukan peribadi bagi Kad tersebut.
+</Note>
+
+```json
+{
+    "corpId": "dingXXXXXX",
+    "outTrackId": "XXXXXX",
+    "userId": "XXXXXX",
+    "content": "{\"cardData\":{\"cardParamMap\":{\"xxx\":\"xxx\"}}}",
+    ...
+}
+```
+
+### 2. Kemas kini Data Kad peribadi secara segerak
+
+Dalam mod tarik tulen, jika anda perlu mengemas kini Data peribadi Kad secara segerak, kembalikan Data Kad peribadi terkini dalam Respons kepada Permintaan callback. Ini memastikan Pengguna sentiasa melihat Data peribadi terkini setiap kali Kad dipaparkan. Format Data Kad yang dikembalikan adalah seperti berikut.
+
+<Note>
+Anda tidak perlu mengembalikan Data yang berkaitan dengan pemboleh ubah bukan peribadi. Walaupun dikembalikan, Data bukan peribadi pada Kad tidak akan dikemas kini.
+</Note>
+
+```json
+{
+ "outTrackId": "XXXXXX(unique ID used to update the card)",
+ "cardOptions": {
+  "updatePrivateDataByKey": true/false,
+ },
+ "userPrivateData": {
+  "cardParamMap": {
+   "key1": "value1",
+   "key2": "value2",
+   "variableN": "valueN"
+  },
+  "cardMediaIdParamMap": {
+   "image1": "mediaIdXXXXX1",
+   "image2": "mediaIdXXXXX2"
+  }
+ }
+}
+```
+
+### 3. Hasil mod tarik tulen untuk kad tersemat
+
+Setiap kali Chat dibuka, Kad akan dipaparkan seperti ditunjukkan di bawah.

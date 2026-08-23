@@ -1,0 +1,209 @@
+---
+title: "Muat naik fail ke Knowledge Base"
+description: "Muat naik fail ke direktori Knowledge Base (Ruang pasukan) dalam tiga langkah: mendapatkan kelayakan muat naik, memuat naik fail ke OSS, dan mengkomit fail."
+---
+
+## Gambaran Keseluruhan
+
+1. **Dapatkan maklumat muat naik fail**: Minta kelayakan muat naik daripada pelayan (URL OSS + Headers tandatangan).
+2. **Muat naik fail ke OSS**: Gunakan URL dan Headers yang dikembalikan dalam Langkah 1 untuk PUT kandungan fail ke OSS.
+3. **Komit fail**: Maklumkan pelayan bahawa muat naik telah selesai untuk memuktamadkan penyimpanan fail.
+
+<Warning>
+Ketiga-tiga langkah mesti dilaksanakan mengikut urutan. Muat naik fail tidak dapat diselesaikan jika mana-mana langkah tertinggal.
+</Warning>
+
+---
+
+## Langkah 1: Dapatkan maklumat muat naik fail
+
+Panggil API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query`, dengan menghantar `parentDentryUuid` (pengenal unik direktori induk) direktori sasaran dan `unionId` pengendali untuk mendapatkan kelayakan yang diperlukan bagi muat naik ini.
+
+<Note>
+Untuk butiran API, rujuk dokumentasi [Dapatkan maklumat muat naik fail](/open/development/obtain-file-upload-informations). Untuk arahan tentang cara memanggil API, rujuk dokumentasi tentang cara memanggil Server API.
+</Note>
+
+### Parameter permintaan utama:
+
+- `parentDentryUuid` (Path): dentryUuid direktori muat naik sasaran. Untuk memuat naik ke direktori root Knowledge Base, dapatkan dentryUuid direktori root melalui salah satu daripada dua cara berikut:
+
+  - Panggil API [Dapatkan maklumat Knowledge Base Dokumen Saya](/open/development/get-my-documents) dan ambil nilai medan `rootNodeId` di bawah `workspace` dalam respons.
+  - Panggil API [Dapatkan senarai Knowledge Base](/open/development/get-knowledge-base-list) dan ambil nilai medan `rootNodeId` di bawah `workspaces` dalam respons.
+- `unionId` (Query): unionId pengendali. Panggil API [Query butiran pengguna](/open/development/query-user-details) untuk mendapatkannya.
+- `protocol` (Body): Nilai tetap `HEADER_SIGNATURE`.
+- `option.preCheckParam.name` (Body): Nama fail (termasuk sambungan). Ia tidak boleh mengandungi aksara khas (`*`, `"`, `<`, `>`, `|`) dan tidak boleh berakhir dengan `.`.
+
+### Parameter respons:
+
+- `uploadKey`: Pengenal unik bagi muat naik ini, digunakan dalam Langkah 3.
+- `headerSignatureInfo.resourceUrls`: URL muat naik OSS, digunakan dalam Langkah 2.
+- `headerSignatureInfo.headers`: Headers permintaan OSS, digunakan dalam Langkah 2.
+- `expirationSeconds`: Masa tamat tempoh kelayakan (dalam saat). Selesaikan langkah-langkah seterusnya sebelum ia tamat tempoh.
+
+**Contoh HTTP**:
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/uploadInfos/query?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "protocol": "HEADER_SIGNATURE",
+  "option": {
+    "storageDriver": "DINGTALK",
+    "preCheckParam": {
+      "size": 512,
+      "name": "TestFile.xlsx"
+    }
+  }
+}
+```
+
+## Langkah 2: Muat naik fail ke OSS
+
+Gunakan `resourceUrls[0]` yang dikembalikan dalam Langkah 1 sebagai URL muat naik dan `headers` sebagai headers permintaan. Muat naik kandungan fail tempatan terus ke OSS melalui kaedah HTTP `PUT`.
+
+<Note>
+`Content-Type` mesti ditetapkan secara eksplisit kepada rentetan kosong. Jika tidak, pengesahan tandatangan akan gagal.
+</Note>
+
+**Kod contoh**:
+
+Java
+
+```java
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Map;
+
+public void uploadToOss(String resourceUrl, Map<String, String> headers, String filePath) throws Exception {
+  URL url = new URL(resourceUrl);
+  HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+  // Tetapkan headers yang dikembalikan dalam Langkah 1
+  if (headers != null) {
+    for (Map.Entry<String, String> entry : headers.entrySet()) {
+      connection.setRequestProperty(entry.getKey(), entry.getValue());
+    }
+  }
+
+  connection.setDoOutput(true);
+  connection.setRequestMethod("PUT");
+  connection.setUseCaches(false);
+  connection.setReadTimeout(10000);
+  connection.setConnectTimeout(10000);
+  connection.connect();
+
+  // Tulis kandungan fail
+  OutputStream out = connection.getOutputStream();
+  InputStream is = new FileInputStream(new File(filePath));
+
+  byte[ ] buffer = new byte[1024];
+
+  int bytesRead;
+  while ((bytesRead = is.read(buffer)) != -1) {
+    out.write(buffer, 0, bytesRead);
+  }
+  out.flush();
+  out.close();
+  is.close();
+
+  int responseCode = connection.getResponseCode();
+  connection.disconnect();
+
+  if (responseCode == 200) {
+    System.out.println("Muat naik OSS berjaya");
+  } else {
+    System.out.println("Muat naik OSS gagal. Kod status: " + responseCode);
+  }
+}
+```
+
+Python
+
+```python
+import requests
+
+resource_url = '<resourceUrls[0] dikembalikan dalam Langkah 1>'
+headers = <headers dikembalikan dalam Langkah 1>
+
+  # Nota: content-type mesti ditetapkan kepada kosong
+  headers['content-type'] = ''
+
+result = requests.put(resource_url, data=open('<laluan fail tempatan>', 'rb'), headers=headers)
+print(result.status_code)  # 200 menunjukkan muat naik berjaya
+```
+
+Node.js
+
+```javascript
+const fs = require('fs');
+const request = require('request-promise');
+
+const url = '<resourceUrls[0] dikembalikan dalam Langkah 1>';
+const headers = <headers dikembalikan dalam Langkah 1>;
+
+// Nota: content-type mesti ditetapkan secara eksplisit kepada kosong
+headers['content-type'] = '';
+
+fs.createReadStream('/path/to/local/file.txt')
+  .pipe(request({ method: 'PUT', url, headers }))
+  .then(() => console.log('Muat naik OSS berjaya'))
+  .catch(err => console.log('Muat naik OSS gagal', err));
+```
+
+## Langkah 3: Komit fail
+
+Selepas muat naik OSS selesai, panggil API `POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit` untuk menulis fail secara rasmi ke dalam direktori Knowledge Base dan melengkapkan keseluruhan proses muat naik.
+
+### Nota
+
+- Panggilan API yang berjaya mengembalikan maklumat fail (`dentry`), termasuk ID fail, uuid, dan ruang yang menjadi miliknya. Muat naik selesai.
+- Untuk butiran API, rujuk dokumentasi [Komit fail](/open/development/submittal-file). Untuk arahan tentang cara memanggil API, rujuk dokumentasi tentang cara memanggil Server API.
+
+### Parameter permintaan utama:
+
+- `parentDentryUuid` (Path): Kekalkan konsisten dengan Langkah 1.
+- `unionId` (Query): unionId pengendali. Panggil API [Query butiran pengguna](/open/development/query-user-details) untuk mendapatkannya.
+- `uploadKey` (Body): uploadKey yang dikembalikan dalam Langkah 1, digunakan untuk mengaitkan muat naik ini.
+- `name` (Body): Nama fail (termasuk sambungan).
+- `option.conflictStrategy` (Body): Strategi konflik nama fail. Pilihan: `AUTO_RENAME` (lalai, namakan semula secara automatik) atau `OVERWRITE` (tulis ganti).
+
+### Contoh HTTP:
+
+```http
+POST /v2.0/storage/spaces/files/{parentDentryUuid}/commit?unionId=union_id HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "uploadKey": "uploadKey dikembalikan dalam Langkah 1",
+  "name": "TestFile.xlsx",
+  "option": {
+    "conflictStrategy": "AUTO_RENAME"
+  }
+}
+```
+
+## Ringkasan proses penuh
+
+```text
+[Langkah 1] Panggil API "Dapatkan maklumat muat naik fail"
+         → Mengembalikan uploadKey + resourceUrls + headers (dengan masa tamat tempoh; selesaikan langkah-langkah seterusnya secepat mungkin)
+
+[Langkah 2] Gunakan resourceUrls[0] + headers untuk memuat naik kandungan fail ke OSS melalui HTTP PUT
+         → OSS mengembalikan 200 untuk menunjukkan muat naik berjaya
+
+[Langkah 3] Panggil API "Komit fail", dengan menghantar uploadKey + nama fail
+         → Mengembalikan maklumat fail (dentry). Fail disimpan secara rasmi, dan muat naik selesai.
+```
+
+## Nota
+
+- Semasa muat naik dalam Langkah 2, `Content-Type` mesti ditetapkan kepada rentetan kosong. Jika tidak, pengesahan tandatangan OSS akan gagal.
+- Kelayakan muat naik yang dikembalikan dalam Langkah 1 mempunyai masa tamat tempoh (`expirationSeconds`). Selesaikan Langkah 2 dan Langkah 3 sebelum ia tamat tempoh. Jika tidak, anda mesti memanggil Langkah 1 semula.
+- Apabila jenis ruang storan ialah `USER`, hanya pemilik ruang dan pentadbir mempunyai kebenaran operasi. Pekerja lain mesti diberikan kebenaran terlebih dahulu melalui API "Tambah Kebenaran".
+- Apabila jenis ruang storan ialah `APP`, sesiapa sahaja yang melakukan operasi mesti diberikan kebenaran terlebih dahulu melalui API "Tambah Kebenaran".

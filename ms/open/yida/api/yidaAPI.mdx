@@ -1,0 +1,765 @@
+---
+title: "YiDA JS-API"
+description: "Rujukan lengkap YiDA JS-API. Merangkumi setiap API yang boleh anda panggil terus daripada panel JS dan pengikatan pemboleh ubah, termasuk pengambilan data, operasi komponen, dan interaksi halaman, berserta kod contoh untuk setiap API."
+polished: true
+---
+
+Dokumen ini memperkenalkan API yang boleh anda panggil terus daripada panel JS atau dialog pengikatan pemboleh ubah pada platform YiDA, berserta cara penggunaannya. Setiap API disertakan dengan satu contoh yang menunjukkan penggunaan sebenarnya secara konkrit. Dalam setiap contoh, kod dibungkus dalam struktur fungsi berikut untuk mensimulasikan senario dunia sebenar penggunaan panel tindakan (dalam persekitaran sebenar, anda bebas menamakan fungsi pembungkus mengikut kehendak anda).
+```js
+export function someFunctionName() {
+  ...
+}
+```
+
+## Sebelum Anda Bermula
+
+API berikut memerlukan pengetahuan asas `JavaScript`. Anda harus biasa dengan jenis data yang lazim, cara mengisytiharkan dan menggunakan pemboleh ubah serta fungsi, dan tahu cara mengelakkan beberapa perangkap `JavaScript` yang biasa berlaku.
+
+Ambil `this.state`, `this.setState`, dan `this.$()`, yang kerap muncul dalam API di bawah, sebagai contoh. Apabila `this` muncul pada peringkat teratas fungsi pengendali peristiwa, ia menunjuk kepada konteks pelaksanaan yang betul, jadi anda boleh membaca dan menulis ke Sumber Data serta membaca nilai daripada medan borang lain tanpa masalah:
+
+```js
+export function setSomeValue() {
+  const status = this.state.status;
+  const newStatus = status + 1;
+  this.setState({ status: newStatus });
+  this.$('numberField_xxx').setValue(newStatus);
+}
+```
+
+Walau bagaimanapun, apabila `this` muncul di dalam fungsi bersarang, pastikan ia masih menunjuk kepada konteks yang betul:
+
+```js
+export function setSomeValue(value) {
+  // Simpan rujukan kepada this
+  const that = this;
+
+  this.dataSourceMap.xxx.load(function (ret) {
+    // SALAH!!! function mencipta konteks pelaksanaan baharu.
+    // this telah berubah di sini dan tidak dapat membaca Sumber Data atau mengakses medan lain.
+    this.$('numberField_xxx').setValue(ret);
+
+    // Penyelesaian: gunakan rujukan yang betul yang disimpan di luar sebaliknya
+    that.$('numberField_xxx').setValue(ret);
+  });
+
+  // Atau gunakan fungsi anak panah untuk mengelakkan this diikat semula
+  this.dataSourceMap.xxx.load((ret) => {
+    // Fungsi anak panah tidak mencipta konteks baharu, jadi this dikekalkan
+    this.$('numberField_xxx').setValue(ret);
+  });
+}
+```
+
+Panduan permulaan `JavaScript` yang disyorkan:
+* [JavaScript on MDN](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript)
+* [JavaScript Reference - Expressions and Operators - this](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/this)
+* [Stack Overflow](https://stackoverflow.com/)
+
+## API Pemboleh Ubah Global
+Corak reka bentuk YiDA sebahagian besarnya diilhamkan oleh React. Ia menyediakan pemboleh ubah global untuk pengurusan keadaan peringkat halaman, berserta API yang mencetuskan pengemasan semula (re-render) halaman (lihat [dokumentasi pemboleh ubah global](/open/yida/guide/concept/state) untuk butiran).
+
+### this.state.xxx
+Dapatkan nilai pemboleh ubah global (sama seperti API React).
+
+`xxx` biasanya ialah nama pemboleh ubah bagi Sumber Data peringkat halaman.
+
+Contoh:
+```js
+export function getState() {
+  // Baca nilai pemboleh ubah global peringkat halaman dan cetak melalui console
+  const status = this.state.status;
+  console.log( `status: ${status}` )
+}
+```
+
+### this.setState()
+Tetapkan nilai pemboleh ubah global dan cetuskan pengemasan semula halaman (sebahagian besarnya sama seperti API React).
+
+**Perhatian: Jangan ubah pemboleh ubah menggunakan `this.state.a = b`. Keserasian tidak dijamin dalam kemas kini akan datang, dan kod sedemikian mungkin berhenti berfungsi.**
+
+Contoh:
+```js
+export function setStateValue() {
+  // Tetapkan pemboleh ubah global peringkat halaman dan cetuskan pengemasan semula halaman
+  this.setState({
+    status: 'loading',
+    text: 'Sedang memuatkan...'
+  });
+}
+```
+
+## API Data Jauh
+YiDA menyokong konfigurasi Sumber Data jauh dan menyediakan API yang mencetuskan panggilan Sumber Data jauh daripada JS (lihat [dokumentasi remote API](/open/yida/guide/concept/datasource) untuk butiran).
+
+### this.dataSourceMap.xxx.load()
+Panggil secara manual remote API yang ditentukan. `xxx` ialah nama Sumber Data yang dikonfigurasikan dalam panel Sumber Data. Anda juga boleh menghantar parameter permintaan; parameter yang dihantar di sini akan digabungkan dengan yang dikonfigurasikan dalam Sumber Data sebelum permintaan dihantar. `load` mengembalikan satu Promise.
+
+Contoh:
+```js
+export function fetchData() { 
+  // Panggil remote API getDataList yang dikonfigurasikan dalam Sumber Data dengan parameter pageSize dan page.
+  // Jika berjaya, cetak hasilnya dalam console; jika gagal, paparkan toast.
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10, 
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error', 
+      title: 'Permintaan gagal!'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+Muat semula semua remote API yang pilihan auto-load ditetapkan kepada true. Kaedah ini juga mengembalikan satu Promise.
+
+Contoh:
+```js
+export function reload() {
+  // Laksanakan semula semua permintaan awal dan paparkan toast apabila berjaya
+  this.reloadDataSource().then(res => {
+    this.utils.toast({
+      type: 'success', 
+      title: 'Berjaya disegarkan semula!'
+    })；
+  });
+}
+
+```
+
+## API Panggilan JS
+YiDA menyediakan panel tindakan untuk menulis kod JS. Fungsi dalam panel tindakan boleh diikat kepada pemboleh ubah atau tindakan, dan juga boleh saling memanggil antara satu sama lain.
+
+### this.methodName()
+YiDA menyediakan cara untuk memanggil fungsi JS lain dalam panel tindakan. Panggil `this.xxx()`, dengan `xxx` ialah nama fungsi lain tersebut.
+
+Contoh:
+```js
+export function hello(params) {
+  this.utils.toast({
+    title: `hello ${params}` , 
+    type: 'success'
+  })
+}
+
+export function onClickInvoke(){
+  const value = this.$('textField_k1u12o6l').getValue()
+  // Panggil fungsi lain yang ditakrifkan dalam panel tindakan
+  this.hello(value)
+}
+```
+
+## API Utiliti
+YiDA menyediakan banyak fungsi utiliti terbina dalam yang membantu anda melaksanakan ciri lazim dengan lebih mudah.
+
+### this.utils.dialog()
+Buka satu dialog. Kesannya ditunjukkan di bawah. Pengguna perlu menutupnya secara manual.
+
+YiDA menggunakan komponen [Fusion](https://fusion.design/) di bahagian dalaman, jadi anda boleh mengonfigurasikan mana-mana sifat yang disokong oleh komponen Dialog.
+[Dokumentasi](https://fusion.design/pc/component/dialog?themeid=2#demo-api). Sifat yang lazim digunakan disenaraikan di bawah:
+
+| Parameter | Nilai | Lalai | Penerangan |
+| :--- | :--- | :--- | :--- |
+| type | 'alert', 'confirm', 'show' | 'alert' | - |
+| title | (String) | - | - |
+| content | (String\|ReactNode) | - | HTML/JSX juga diterima untuk susun atur yang kompleks |
+| hasMask | (Boolean) | true | Sama ada untuk memaparkan topeng (mask) |
+| footer | (Boolean) | true | Sama ada untuk memaparkan butang tindakan footer |
+| footerAlign | 'left', 'center', 'right' | 'right' | Penjajaran tindakan footer |
+| footerActions | ['cancel', 'ok'], ['ok', 'cancel'], ['ok'], ['cancel'] | - | Jenis dan susunan tindakan footer |
+| onOk | (Func) | - | Callback apabila Sahkan diklik | 
+| onCancel | (Func) | - | Callback apabila Batal diklik |
+
+Contoh:
+```js
+export function popDialog(){
+  this.utils.dialog({
+    type: 'confirm', 
+    title: 'tajuk', 
+    content: 'kandungan', // Hantar HTML/JSX untuk pemisahan baris
+    onOk: () => { }, 
+    onCancel: () => { }, 
+  });
+}
+
+// Tutup dialog secara manual
+export function closeDialog() {
+  // Tangkap nilai pulangan dialog, iaitu satu object
+  const dialog = this.utils.dialog({});
+
+  // Panggil kaedah hide pada object yang dipulangkan pada waktu yang sesuai untuk menutup dialog
+  dialog.hide();
+}
+```
+
+### this.utils.formatter()
+Fungsi formatter lazim untuk memformat tarikh, mata wang, nombor telefon, dan lain-lain.
+
+Contoh:
+```js
+export function format() {
+  // Format tarikh. Output: 2022-01-29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY-MM-DD');
+
+  // Format tarikh. Output: 2022/01/29
+  const formatDate = this.utils.formatter('date', new Date(), 'YYYY/MM/DD');
+
+  // Format tarikh-masa. Output: 2022-01-29 13:01:02
+  const formatDate2 = this.utils.formatter('date', new Date(), 'YYYY-MM-DD HH:mm:ss');
+
+  // Format mata wang. Output: 10, 000.99
+  const formatMoney = this.utils.formatter('money', '10000.99', ', ');
+  
+  // Format nombor telefon. Output: +86 1565 2988 282
+  const formatPhoneNumber = this.utils.formatter('cnmobile', '+8615652988282');
+
+  // Format nombor kad bank. Output: 1565 2988 2821 2233
+  const formatCardNumber = this.utils.formatter('card', '1565298828212233');
+}
+```
+
+### this.utils.getDateTimeRange(when, type)
+Dapatkan Cap masa permulaan dan akhir bagi julat tarikh semasa atau yang ditentukan.
+
+Kedua-dua `when` dan `type` adalah Pilihan. Secara lalai, ia mengembalikan permulaan dan akhir hari semasa; anda juga boleh menentukan tarikh dan jenis julat.
+
+| Parameter | Nilai | Lalai | Penerangan |
+| :--- | :--- | :--- | :--- |
+| when | Cap masa atau Jenis tarikh | Masa semasa `new Date()` | Tarikh yang ditentukan |
+| type | 'year', 'month', 'week', 'day', 'date', 'hour', 'minute', 'second' | 'day' | Jenis julat yang hendak dikembalikan |
+
+Contoh:
+```js
+export function search() {
+  const [dayStart, dayEnd] = this.utils.getDateTimeRange();
+  console.log( `dayStart: ${dayStart}, dayEnd: ${dayEnd}` );
+  // Cetak Cap masa permulaan dan akhir bagi hari semasa
+
+  const [monthStart, monthEnd] = this.utils.getDateTimeRange(new Date(), 'month');
+  console.log( `monthStart: ${monthStart}, dayEnd: ${monthEnd}` );
+  // Cetak Cap masa permulaan dan akhir bagi bulan semasa
+}
+```
+
+### this.utils.getLocale()
+Dapatkan lokal halaman semasa.
+
+Contoh:
+```js
+export function locale() {
+  const locale = this.utils.getLocale();
+
+  console.log( `locale: ${locale}` );
+  // Output: locale: zh_CN
+}
+```
+
+### this.utils.getLoginUserId()
+Dapatkan ID pengguna yang telah log masuk.
+
+Contoh:
+```js
+export function getUserInfo() {
+  const userId = this.utils.getLoginUserId();
+  console.log( `userId: ${userId}` );
+  // Output: userId: 43314767738888
+}
+```
+
+### this.utils.getLoginUserName()
+Dapatkan Nama pengguna yang telah log masuk.
+
+Contoh:
+```js
+export function getUserInfo() {
+  const userName = this.utils.getLoginUserName();
+  console.log( `userName: ${userName}` );
+  // Output: userName: John Smith
+}
+```
+
+### this.utils.isMobile()
+Semak sama ada persekitaran semasa ialah peranti mudah alih.
+
+Contoh:
+```js
+export function someFunctionName() {
+  console.log('isMobile', this.utils.isMobile());
+}
+```
+
+### this.utils.isSubmissionPage()
+Semak sama ada halaman semasa ialah halaman penyerahan data.
+
+Contoh:
+```js
+export function someFunctionName() {
+  console.log('isSubmissionPage', this.utils.isSubmissionPage());
+}
+```
+
+### this.utils.isViewPage()
+Semak sama ada halaman semasa ialah halaman paparan data.
+
+Contoh:
+```js
+export function someFunctionName() {
+  console.log('isViewPage', this.utils.isViewPage());
+}
+```
+
+### this.utils.loadScript()
+Muatkan skrip jauh secara dinamik.
+
+Contoh:
+```js
+export function didMount() {
+  this.utils.loadScript('https://g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js').then(() => {
+    var qrcode = new QRCode(document.getElementById('qrcode'), {
+      text: "http://jindo.dev.naver.com/collie",
+      width: 128,
+      height: 128,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+  });
+}
+```
+
+### this.utils.openPage()
+Buka satu halaman baharu.
+
+Dalam persekitaran DingTalk, API DingTalk digunakan untuk membuka halaman baharu bagi pengalaman yang lebih lancar.
+
+Contoh:
+```js
+export function someFunctionName() {
+  this.utils.openPage('/workbench');
+}
+```
+
+### this.utils.previewImage()
+Pratonton satu Gambar. API ini menyediakan pengalaman Pratonton Gambar yang ringkas, seperti yang ditunjukkan di bawah:
+
+Contoh:
+```js
+export function previewImg() {
+  this.utils.previewImage({ current: 'https://img.alicdn.com/tfs/TB1JUnZ2GL7gK0jSZFBXXXZZpXa-260-192.png_.webp' });
+}
+```
+
+### this.utils.toast()
+Paparkan mesej ringkas. Berbanding dengan Dialog, toast lebih ringkas dan hilang secara automatik selepas kelewatan yang singkat, seperti yang ditunjukkan di bawah:
+
+Parameter:
+
+| Parameter | Nilai | Lalai | Penerangan |
+| :--- | :--- | :--- | :--- |
+| type | 'success', 'warning', 'error', 'notice', 'help', 'loading' | 'notice' | - |
+| title | (String) | - | - |
+| size | 'medium', 'large' | 'medium' | - |
+| duration | (Number) | - | Diabaikan apabila type ialah loading |
+
+Contoh:
+```js
+export function popToast(){
+  this.utils.toast({
+    title: 'success', 
+    type: 'success', 
+    size: 'large', 
+  })
+}
+
+// Kaedah close boleh dipanggil secara manual
+export function showLoadingToast() {
+  // Tangkap nilai pulangan, iaitu satu fungsi close
+  const close = this.utils.toast({
+    title: 'Sedang Memuatkan', 
+    type: 'loading', 
+    size: 'large', 
+  });
+  
+  // Panggil fungsi close pada waktu yang sesuai
+  setTimeout(close, 3000);
+}
+```
+
+## API Penghalaan
+YiDA menyediakan API untuk mendapatkan maklumat penghalaan dan menavigasi antara halaman. API ini dibina berasaskan [react-router](https://reactrouter.com/), jadi API navigasi sebahagian besarnya konsisten dengan API react-router. YiDA juga menawarkan beberapa lanjutan penghalaan tambahan.
+
+### this.utils.router.push()
+Navigasi ke halaman baharu dan tolak (push) entri tersebut ke atas timbunan penghalaan, supaya pengguna boleh kembali melalui butang Kembali pelayar. Parameter `push` diterangkan di bawah:
+
+```typescript
+function push(path: string, params?: object, blank?: boolean, isUrl?: boolean, type?: string) => void;
+```
+
+| Parameter | Jenis | Wajib | Penerangan |
+| :--- | :--- | :--- | :--- |
+| path | string | Ya | Alamat sasaran. Ia boleh berupa URL penuh, serpihan URL, atau string yang dibentuk daripada pageID. Jika slug ditakrifkan, slug tersebut (alias halaman, belum boleh dikonfigurasikan lagi dalam YiDA) diutamakan.<br/> Apabila `isUrl` ialah `true`, nilai tersebut dihuraikan sebagai URL; jika tidak, ia dihuraikan sebagai `pageId` untuk navigasi antara halaman dalaman. |
+| params | object | Tidak | Parameter query yang dilampirkan pada alamat sasaran. `{q: 'a', r: 'b'}` bersamaan dengan `?q=a&r=b`. |
+| blank | boolean | Tidak | Sama ada untuk dibuka dalam halaman baharu. Lalai: `false`. |
+| isUrl | boolean | Tidak | Sama ada path ialah satu `url`. Lalai: `false`. |
+| type | string | Tidak | Nilai Pilihan: `push` atau `replace`. Navigasi menggunakan semantik push atau replace. |
+
+Contoh:
+```js
+export function pushUrl() {
+  // Navigasi ke halaman dengan parameter fromSource yang disuntik. URL akhir: https://www.yidaapps.com?formSource=customPage
+  this.utils.router.push('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.replace()
+Ganti halaman semasa. Berbeza dengan `router.push`, API ini menggantikan halaman semasa dan bukannya menolak (push) halaman baharu, jadi ia tidak boleh dibalikkan melalui butang Kembali pelayar. Bersamaan dengan:
+
+```js
+this.utils.router.push(path, params, false, false, 'replace');
+```
+
+Contoh:
+```js
+export function replaceUrl() {
+  // Navigasi ke halaman dengan parameter fromSource yang disuntik
+  this.utils.router.replace('https://www.yidaapps.com', {fromSource: 'customPage'});
+}
+```
+
+### this.utils.router.getQuery()
+Dapatkan parameter URL bagi halaman semasa. Apabila `key` diberikan, kembalikan nilai yang sepadan; jika tidak, kembalikan semua parameter URL. Parameter `getQuery`:
+```typescript
+function getQuery(key?: string, queryStr?: string) => Record<string, string> | string | undefined;
+```
+
+| Parameter | Jenis | Wajib | Penerangan |
+| :--- | :--- | :--- | :--- |
+| key | string | Tidak | Apabila key diberikan, kembalikan nilai yang sepadan; jika tidak, kembalikan keseluruhan object. |
+| queryStr | string | Tidak | Lalai: `location.search + location.hash`, dengan `hash` mengatasi `search`. String query tersuai dalam bentuk `'?a=1&b=2'` juga disokong. |
+
+Contoh:
+```js
+export function getQuery() {
+  // Dapatkan parameter fromSource daripada URL
+  const fromSource = this.utils.router.getQuery('fromSource');
+  console.log( `fromSource: ${fromSource}` );
+}
+```
+
+### this.utils.router.stringifyQuery()
+Siri-kan (serialize) parameter URL, menukar satu object kepada string query URL.
+
+Contoh:
+```js
+export function stringifyQuery() {
+  // Siri-kan satu object kepada parameter query URL dan cetak melalui console
+  const params = {
+    name: 'yida', 
+    gender: 'm'
+  };
+  const urlStr = this.utils.router.stringifyQuery(params);
+  console.log( `urlParams: ${urlStr}` );
+  // Output: urlParams: name=yida&gender='m'
+}
+```
+
+## API Komponen Umum
+Sebelum membincangkan API khusus komponen, beberapa [konsep](/open/yida/guide/keywords) perlu diperkenalkan terlebih dahulu:
+* Pengecam unik komponen (fieldId) — YiDA memberikan pengecam unik kepada setiap Komponen untuk membezakan instans Komponen. Pengecam ini boleh dilihat dalam panel sifat Komponen.
+* Sifat komponen (prop) — Dalam YiDA, setiap Komponen mendedahkan sifat untuk membolehkan pelbagai tingkah laku (serupa dengan React props). Tuding kursor ke atas kawalan dalam panel sifat Komponen untuk melihat nama sifat yang sepadan.
+
+API Komponen Umum terpakai kepada setiap Komponen yang ditawarkan oleh YiDA, dan digunakan terutamanya untuk membaca atau menetapkan sifat Komponen.
+### this.$(fieldId).get(prop)
+Cari Komponen mengikut fieldId dan baca salah satu nilai sifatnya. `fieldId` ialah pengecam Komponen dan `prop` ialah nama sifat Komponen.
+
+**Perhatian: Jangan baca nilai sifat menggunakan `this.$(fieldId).xxx`. Keserasian tidak dijamin dalam kemas kini akan datang, dan kod sedemikian mungkin berhenti berfungsi.**
+
+Contoh:
+```js
+export function getAttribute(){
+  // Dapatkan sifat content bagi komponen Text dan cetak dalam console
+  const content = this.$('text_kyz78exo').get('content')
+  console.log( `text content: ${content}` );
+}
+```
+
+### this.$(fieldId).set(prop, value)
+Cari Komponen mengikut fieldId dan tetapkan salah satu nilai sifatnya. `fieldId` ialah pengecam Komponen, `prop` ialah nama sifat, dan `value` ialah nilai yang hendak ditetapkan.
+
+**Perhatian: Jangan tetapkan nilai sifat menggunakan `this.$(fieldId).xxx = xxx`. Keserasian tidak dijamin dalam kemas kini akan datang, dan kod sedemikian mungkin berhenti berfungsi.**
+
+Contoh:
+```js
+export function setAttribute(){
+  // Tetapkan sifat maxLine bagi komponen Text
+  this.$('text_kyz78exo').set('maxLine', 5);
+}
+```
+
+## API Komponen Borang
+Komponen borang ialah jenis Komponen yang paling penting pada platform YiDA. Ia biasanya digunakan untuk mengumpul Data — contohnya, medan teks, pilihan tunggal, Pilih Banyak, dan pilihan dropdown. Bahagian ini merangkumi API yang berkaitan dengan komponen borang.
+
+### this.$(fieldId)
+Dapatkan satu instans Komponen, dengan `fieldId` ialah pengecam unik komponen. Sebelum memanggil satu API Komponen, dapatkan instans Komponen melalui `this.$(fieldId)` terlebih dahulu.
+
+**Perhatian: Jangan akses API atau sifat yang tidak didokumenkan melalui `this.$(fieldId).xxx`. Apa-apa yang tidak didokumenkan adalah pelaksanaan dalaman peribadi. Keserasian tidak dijamin dalam kemas kini akan datang, dan kod sedemikian mungkin berhenti berfungsi.**
+
+### this.$(fieldId).getValue()
+Dapatkan nilai input bagi komponen borang yang ditentukan.
+
+Contoh:
+```js
+export function getValue(){
+  // Dapatkan input pengguna daripada medan teks dan cetak dalam console
+  const value = this.$('textField_kyz78exp').getValue();
+  console.log( `input value: ${value}` );
+}
+```
+
+### this.$(fieldId).setValue()
+Tetapkan nilai input bagi komponen borang yang ditentukan. Parameter `setValue`:
+```typescript
+interface IOptions {
+  doNotValidate: boolean; // Sama ada untuk melangkau pengesahan automatik. Lalai: false
+  formatted: boolean; // Sama ada nilai telah diformat. Lalai: false
+  triggerChange: boolean; // Sama ada untuk mencetuskan Peristiwa change komponen. Lalai: true
+};
+
+/**
+ * @param {any} value  Nilai borang yang hendak ditetapkan
+ * @param {IOptions} [options] Pilihan konfigurasi, Pilihan
+ */
+function setValue(value: any, options?: IOptions) => void;
+```
+
+Contoh:
+```js
+export function setValue(){
+  // Tetapkan nilai medan teks kepada "hello world"
+   this.$('textField_kyz78exp').setValue('hello world');
+}
+```
+
+### this.$(fieldId).reset()
+Tetapkan Semula nilai input bagi komponen borang yang ditentukan. Parameter `reset`:
+```typescript
+/**
+ * @param {boolean} toDefault Sama ada untuk menetapkan semula kepada nilai Lalai komponen. Lalai: true
+ */
+function reset(toDefault?: boolean) => void;
+
+```
+
+Contoh:
+```js
+export function reset() {
+  // Tetapkan semula nilai medan teks
+   this.$('textField_kyz78exp').reset();
+}
+```
+
+### this.$(fieldId).getBehavior()
+Dapatkan keadaan semasa bagi komponen borang yang ditentukan. Kemungkinan keadaan termasuk:
+* **NORMAL** — keadaan normal (boleh disunting).
+* **READONLY** — keadaan Baca Sahaja.
+* **DISABLED** — keadaan Dinyahaktifkan.
+* **HIDDEN** — keadaan tersembunyi.
+
+Contoh:
+```js
+export function getBehavior() {
+  // Dapatkan keadaan medan teks dan cetak
+  const behavior = this.$('textField_kyz78exp').getBehavior();
+  console.log( `text behavior: ${behavior}` );
+}
+```
+
+### this.$(fieldId).setBehavior()
+Tetapkan keadaan bagi komponen borang yang ditentukan. Keadaan yang tersedia diterangkan dalam bahagian `getBehavior`.
+
+Contoh:
+```js
+export function setBehavior() {
+  // Tetapkan keadaan medan teks kepada DISABLED
+  this.$('textField_kyz78exp').setBehavior('DISABLED');
+}
+```
+
+### this.$(fieldId).resetBehavior()
+Tetapkan Semula keadaan bagi komponen borang yang ditentukan.
+
+Contoh:
+```js
+export function resetBehavior() {
+  // Tetapkan semula keadaan medan teks
+  this.$('textField_kyz78exp').resetBehavior();
+}
+```
+
+### this.$(fieldId).validate()
+Jalankan pengesahan sekali ke atas komponen borang yang ditentukan. Parameter `validate`:
+```typescript
+/**
+ * @param {Array|null} errors Mesej ralat, atau null jika tiada ralat
+ * @param {Object} values Nilai komponen borang
+ */
+function ValidateCallback(errors: string[] | null, values: object | null) => void
+
+/**
+ * @param {Function} callback Callback pengesahan, Pilihan
+ */
+function validate(callback?: ValidateCallback) => void;
+```
+
+Contoh:
+```js
+export function validate() {
+  // Sahkan medan teks. Jika gagal, cetak errors dan values dalam console.
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+Apabila peraturan pengesahan medan teks ialah Nombor Telefon dan pengesahan gagal, struktur berikut akan dicetak:
+```json
+{
+  "errors": {
+    "textField_kyz78exp": {
+      "errors": [
+        "The text field is not a valid phone number format"
+      ]
+    }
+  }, 
+  "values": {
+    "textField_kyz78exp": "33"
+  }
+}
+```
+
+### this.$(fieldId).disableValid()
+Nyahaktifkan pengesahan pada komponen borang.
+
+Contoh:
+```js
+export function disableValid() {
+  this.$('textField_kyz78exp').disableValid();
+}
+```
+
+### this.$(fieldId).enableValid()
+Aktifkan pengesahan pada komponen borang. Parameter `enableValid`:
+```typescript
+/**
+ * @param {boolean} doValidate Sama ada untuk menjalankan pengesahan serta-merta. Pilihan. Lalai: false
+ */
+function enableValid(doValidate?: boolean) => void;
+```
+
+Contoh:
+```js
+export function enableValid() {
+  // Aktifkan pengesahan pada medan teks dan jalankan serta-merta
+  this.$('textField_kyz78exp').enableValid(true);
+}
+```
+
+### this.$(fieldId).setValidation()
+Tetapkan peraturan pengesahan pada komponen borang. Parameter `setValidation`:
+
+```typescript
+interface IRule {
+  type: string; // Jenis pengesahan
+  param: any; // Parameter untuk jenis pengesahan
+  message: string; // Mesej ralat
+}
+
+/**
+ * @param {IRule[]} rules Peraturan pengesahan. Wajib.
+ * @param {boolean} [doValidate] Sama ada untuk menjalankan pengesahan serta-merta. Pilihan. Lalai: false
+ */
+function setValidation(rules: IRule[], doValidate?: boolean) => void;
+```
+
+Jenis pengesahan yang disokong oleh YiDA:
+
+| Peraturan pengesahan yang disokong | Atribut |
+| :--- | :--- |
+| Wajib | `{"type": "required"}` |
+| Panjang minimum | `{"type": "minLength", "param": "23" }` |
+| Panjang maksimum | `{"type": "maxLength", "param": "23" }` |
+| Mel | `{"type": "email"}` |
+| Telefon | `{"type": "mobile"}` |
+| URL | `{"type": "url"}` |
+| Nilai minimum | `{"type": "minValue", "param": "3"}` |
+| Nilai maksimum | `{"type": "maxValue", "param": "3"}` |
+| Fungsi Tersuai | `{"type": "customValidate", "param": (value, rule) => { return ture; }}` |
+
+Contoh:
+```js
+export function setValidation() {
+  // Tetapkan peraturan pengesahan pada medan teks: Wajib, panjang maksimum 10, dan hanya nombor sahaja
+  this.$('textField_kyz78exp').setValidation([{
+    type: 'required'
+  }, {
+    type: 'maxLength', 
+    param: '10'
+  }, {
+    type: 'customValidate', 
+    param: (value, rule) => {
+      if(/^\d*$/.test(value)) {
+        return true;
+      }
+
+      return rule.message;
+    }, 
+    message: 'Hanya nombor dibenarkan'
+  }]);
+}
+```
+
+### this.$(fieldId).resetValidation()
+Tetapkan Semula peraturan pengesahan pada komponen borang. Gunakan selepas `setValidation` untuk memulihkan peraturan sebelumnya. Parameter `resetValidation`:
+```typescript
+/**
+ * @param {boolean} [doValidate] Sama ada untuk menjalankan pengesahan serta-merta. Pilihan. Lalai: false
+ */
+function resetValidation(doValidate?: boolean) => void;
+```
+
+Contoh:
+```js
+export function resetValiation() {
+  // Tetapkan semula peraturan pengesahan medan teks dan jalankan pengesahan serta-merta
+  this.$('textField_kyz78exp').resetValidation(true);
+}
+```
+
+## API Komponen Dialog
+YiDA menyediakan komponen Dialog untuk memaparkan kandungan dalam tetingkap dialog, berserta API untuk mengawal tingkah laku Dialog.
+
+### this.$(fieldId).show()
+Paparkan Dialog yang ditentukan. API ini menerima satu callback yang dicetuskan selepas Dialog dipaparkan.
+
+Contoh:
+```js
+export function openDialog() {
+  this.$('dialog_kyz78exr').show(() => {
+    console.log('Dialog is open');
+  });
+}
+```
+
+### this.$(fieldId).hide()
+Tutup Dialog yang ditentukan.
+
+Contoh:
+```js
+export function closeDialog() {
+  this.$('dialog_kyz78exr').hide();
+}
+```

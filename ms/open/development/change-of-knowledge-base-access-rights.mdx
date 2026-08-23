@@ -1,0 +1,244 @@
+---
+title: "Tukar kebenaran Knowledge Base"
+description: "Menerangkan cara menukar kebenaran pada dokumen, fail, dan folder dalam Knowledge Base, merangkumi nota ciri dan kebenaran serta aliran kerja tambah, ubah suai, dan padam."
+---
+
+Dokumen ini menerangkan cara menukar kebenaran untuk dokumen, fail, atau folder dalam Knowledge Base.
+
+## Gambaran keseluruhan
+
+Dokumen ini menerangkan cara menukar kebenaran untuk dokumen, fail, atau folder dalam Knowledge Base, termasuk:
+
+- **Tambah kebenaran** — Berikan pengguna akses kepada fail atau folder.
+- **Padam kebenaran** — Tarik balik akses pengguna kepada fail atau folder.
+- **Ubah suai kebenaran** — Tukar peranan kebenaran pengguna pada fail atau folder.
+- **Tetapkan mod pewarisan kebenaran** — Kawal sama ada fail atau folder mewarisi kebenaran daripada nod induknya.
+- **Dapatkan mod pewarisan kebenaran** — Tanya mod pewarisan kebenaran semasa bagi fail atau folder.
+
+> **Konsep utama**: Semua operasi kebenaran adalah berdasarkan `dentryUuid` fail (pengecam unik fail). Pengendali mesti mempunyai keupayaan urus kebenaran pada fail sasaran.
+
+## Gambaran keseluruhan kebenaran
+
+Berikut menerangkan jenis pengguna dan peranan kebenaran yang berbeza, beserta keupayaan yang diberikan oleh setiap peranan.
+
+### Peranan kebenaran (roleId)
+
+Apabila menukar kebenaran, anda perlu menentukan peranan kebenaran:
+
+| roleId | Nama peranan | Keupayaan |
+| --- | --- | --- |
+| **OWNER** | Pemilik | Kebenaran tertinggi. Baca, tulis, urus kebenaran, dan berikan kebenaran. |
+| **MANAGER** | Pengurus | Baca, tulis, dan urus kebenaran (tidak boleh memberikan kebenaran). |
+| **EDITOR** | Editor | Papar, edit, muat turun, dan tambah. |
+| **DOWNLOADER** | Pemapar dengan muat turun | Papar dan muat turun. |
+| **READER** | Hanya paparan | Hanya boleh papar. Tidak boleh muat turun. |
+
+### Jenis ahli (members.type)
+
+| Nilai type | Penerangan | Maksud members.id |
+| --- | --- | --- |
+| **USER** | Pengguna | userId pekerja |
+| **ORG** | Organisasi | ID organisasi |
+| **DEPT** | Jabatan | ID jabatan |
+| **TAG** | Tag tersuai | ID tag |
+| **CONVERSATION** | Perbualan | ID perbualan |
+
+## Pelaksanaan: Tambah kebenaran
+
+Panggil API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` untuk memberikan ahli yang ditentukan akses kepada fail atau folder.
+
+<Note>
+Untuk butiran API, lihat dokumen [Tambah kebenaran](/open/development/add-permissions-file). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+</Note>
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengecam unik bagi fail atau folder sasaran. Dapatkan melalui API [Carian Fail](/open/development/search-for-files).
+- `unionId` (Query): unionId pengendali. Dapatkan dengan memanggil API [Tanya butiran pengguna](/open/development/query-user-details).
+- `roleId` (Body): Peranan kebenaran yang diberikan, contohnya **EDITOR**.
+- `members` (Body): Senarai ahli yang diberi kebenaran. Untuk setiap ahli, nyatakan `type` (jenis ahli) dan `id` (ID ahli).
+
+**Contoh HTTP**:
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Pelaksanaan: Ubah suai kebenaran
+
+Panggil API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions` untuk menukar peranan kebenaran ahli yang ditentukan kepada peranan baharu.
+
+**Sekatan penting semasa menurunkan kebenaran**: Jika kebenaran semasa seorang ahli **diwarisi daripada nod induk**, dan peranan yang diwarisi itu **lebih tinggi daripada** peranan sasaran yang ingin anda tetapkan, pengubahsuaian tidak akan berkuat kuasa.
+
+- **Contoh**: Jika folder induk memberikan kebenaran **EDITOR** kepada seorang pengguna, mengubah suai pengguna tersebut kepada **READER** pada subfolder akan gagal kerana kebenaran **EDITOR** yang diwarisi masih berkuat kuasa.
+- **Penyelesaian**: Panggil dahulu API [Tetapkan mod pewarisan kebenaran](/open/development/set-permission-inheritance-mode) pada fail atau folder tersebut, tetapkan mod pewarisan kepada **BREAK** untuk menghentikan pewarisan kebenaran induk, dan kemudian ubah suai kebenaran tersebut.
+
+<Note>
+Untuk butiran API, lihat dokumen [Ubah suai kebenaran](/open/development/modify-permissions-file). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+</Note>
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengecam unik bagi fail atau folder sasaran. Dapatkan melalui API [Carian Fail](/open/development/search-for-files).
+- `unionId` (Query): unionId pengendali. Dapatkan dengan memanggil API [Tanya butiran pengguna](/open/development/query-user-details).
+- `roleId` (Body): Peranan kebenaran sasaran selepas pengubahsuaian (contohnya, menukar daripada **EDITOR** kepada **READER**).
+- `members` (Body): Senarai ahli yang kebenarannya akan diubah suai.
+
+**Contoh HTTP**:
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "READER",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Pelaksanaan: Padam kebenaran
+
+Panggil API `POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove` untuk mengalih keluar akses ahli yang ditentukan kepada fail atau folder.
+
+<Note>
+Untuk butiran API, lihat dokumen [Padam kebenaran](/open/development/delete-permissions-file). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+</Note>
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengecam unik bagi fail atau folder sasaran. Dapatkan melalui API [Carian Fail](/open/development/search-for-files).
+- `unionId` (Query): unionId pengendali. Dapatkan dengan memanggil API [Tanya butiran pengguna](/open/development/query-user-details).
+- `roleId` (Body): Peranan kebenaran yang akan dipadam (mesti sepadan dengan peranan yang sedang dipegang oleh ahli tersebut).
+- `members` (Body): Senarai ahli yang kebenarannya akan dipadam.
+
+**Contoh HTTP**:
+
+```http
+POST /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/remove?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "roleId": "EDITOR",
+  "members": [
+    {
+      "type": "USER",
+      "id": "employeeUserId",
+      "corpId": "organizationCorpId"
+    }
+  ]
+}
+```
+
+## Pelaksanaan: Tetapkan mod pewarisan kebenaran
+
+Panggil API `PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` untuk mengawal sama ada fail atau folder mewarisi kebenaran daripada nod induknya.
+
+### Dua mod pewarisan
+
+- **PASS_ON** (Teruskan): Nod semasa mewarisi semua kebenaran daripada nod induknya. Bagi ahli yang sama, peranan tertinggi akan digunakan. (**Mod lalai**)
+- **BREAK** (Putuskan): Pewarisan kebenaran diputuskan pada nod semasa, dan nod tersebut tidak lagi mewarisi kebenaran induk. Gunakan mod ini apabila anda memerlukan kebenaran bebas pada sesuatu nod.
+
+### Nota
+
+- Mod **BREAK** tidak boleh digunakan pada peranan **OWNER** atau **MANAGER**.
+- Untuk butiran API, lihat dokumen [Tetapkan mod pewarisan kebenaran](/open/development/set-permission-inheritance-mode). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengecam unik bagi fail atau folder sasaran. Dapatkan melalui API [Carian Fail](/open/development/search-for-files).
+- `unionId` (Query): unionId pengendali. Dapatkan dengan memanggil API [Tanya butiran pengguna](/open/development/query-user-details).
+- `inheritance` (Body): Mod pewarisan, sama ada **PASS_ON** atau **BREAK**.
+
+**Contoh HTTP**:
+
+```http
+PUT /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+
+{
+  "inheritance": "BREAK"
+}
+```
+
+## Pelaksanaan: Dapatkan mod pewarisan kebenaran
+
+Panggil API `GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances` untuk menanya mod pewarisan kebenaran semasa bagi fail atau folder.
+
+### Nota
+
+- API akan mengembalikan medan `inheritance`, dengan nilai **PASS_ON** (Teruskan) atau **BREAK** (Putuskan).
+- Untuk butiran API, lihat dokumen [Dapatkan mod pewarisan kebenaran](/open/development/get-permission-inheritance-mode). Untuk cara memanggil API, lihat dokumentasi tentang memanggil Server API.
+
+### Parameter wajib
+
+- `dentryUuid` (Path): Pengecam unik bagi fail atau folder sasaran. Dapatkan melalui API [Carian Fail](/open/development/search-for-files).
+- `unionId` (Query): unionId pengendali. Dapatkan dengan memanggil API [Tanya butiran pengguna](/open/development/query-user-details).
+
+**Contoh HTTP**:
+
+```http
+GET /v2.0/storage/spaces/dentries/{dentryUuid}/permissions/inheritances?unionId=operatorUnionId HTTP/1.1
+Host: api.dingtalk.io
+x-acs-dingtalk-access-token: access_token
+Content-Type: application/json
+```
+
+## Senario biasa dan langkah-langkah
+
+### Senario 1: Berikan kebenaran edit pada fail kepada seorang pengguna
+
+1. Panggil API [Carian Fail](/open/development/search-for-files) untuk mendapatkan `dentryUuid` fail sasaran.
+2. Panggil API [Tanya butiran pengguna](/open/development/query-user-details) untuk mendapatkan `userId` pengguna sasaran dan `unionId` pengendali.
+3. Panggil API [Tambah kebenaran](/open/development/add-permissions-file) dengan `roleId = "EDITOR"`, `members[0].type = "USER"`, dan `members[0].id = userId pengguna sasaran`.
+
+### Senario 2: Turunkan kebenaran pengguna daripada Editor kepada Baca Sahaja
+
+1. Panggil API [Carian Fail](/open/development/search-for-files) untuk mendapatkan `dentryUuid` fail sasaran.
+2. Panggil API [Tanya butiran pengguna](/open/development/query-user-details) untuk mendapatkan `userId` pengguna sasaran.
+3. Panggil API [Ubah suai kebenaran](/open/development/modify-permissions-file) dengan `roleId = "READER"`, dan nyatakan pengguna sasaran dalam `members`.
+
+### Senario 3: Alih keluar semua kebenaran seorang pengguna pada fail
+
+1. Panggil API [Carian Fail](/open/development/search-for-files) untuk mendapatkan `dentryUuid` fail sasaran.
+2. Panggil API [Tanya butiran pengguna](/open/development/query-user-details) untuk mendapatkan `userId` pengguna sasaran.
+3. Panggil API [Padam kebenaran](/open/development/delete-permissions-file) dengan `roleId` ditetapkan kepada peranan kebenaran yang sedang dipegang oleh pengguna tersebut, dan nyatakan pengguna sasaran dalam `members`.
+
+### Senario 4: Tetapkan kebenaran bebas untuk subfolder (tanpa mewarisi daripada folder induk)
+
+1. Panggil API [Carian Fail](/open/development/search-for-files) untuk mendapatkan `dentryUuid` subfolder.
+2. Panggil API [Tetapkan mod pewarisan kebenaran](/open/development/set-permission-inheritance-mode) dengan `inheritance = "BREAK"` untuk memutuskan pewarisan kebenaran.
+3. Panggil API [Tambah kebenaran](/open/development/add-permissions-file) untuk konfigurasikan ahli dan peranan kebenaran yang diperlukan untuk folder tersebut secara bebas.
+
+## Nota
+
+- Pengendali (`unionId`) mesti mempunyai keupayaan urus kebenaran pada fail sasaran. Jika tidak, ralat kebenaran tidak mencukupi akan dikembalikan.
+- Semasa memadam kebenaran, `roleId` mesti sepadan dengan peranan kebenaran yang sedang dipegang oleh ahli tersebut. Jika tidak, operasi akan menjadi tidak sah.
+- Pewarisan peranan **OWNER** dan **MANAGER** tidak boleh diputuskan menggunakan mod **BREAK**.
+- Senarai `members` menyokong sehingga 30 ahli setiap panggilan. Untuk ahli yang lebih banyak, hantar permintaan secara berkumpulan.
+- Pada masa ini, semua API kebenaran hanya disokong oleh apl dalaman. Apl pihak ketiga tidak disokong.
