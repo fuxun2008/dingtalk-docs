@@ -74,9 +74,9 @@ class Issue:
 
 
 def file_lang(rel: Path) -> str:
-    """返回 'en' / 'zh' / 'ja' / 'id'。"""
+    """返回 'en' / 'zh' / 'ja' / 'id' / 'ms'。"""
     first = rel.parts[0] if rel.parts else ""
-    if first in ("zh", "ja", "id"):
+    if first in ("zh", "ja", "id", "ms"):
         return first
     return "en"
 
@@ -364,7 +364,7 @@ def write_reports(issues: list[Issue], applied: dict[str, int], scanned: int, mo
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="跨语言链接污染清理")
-    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id"])
+    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id", "ms"])
     p.add_argument("--apply", action="store_true", help="实际写盘修复（默认 dry-run）")
     p.add_argument("--limit", type=int, default=0)
     return p.parse_args()

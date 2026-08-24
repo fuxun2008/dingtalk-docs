@@ -55,6 +55,7 @@ from translate_mdx_en2id import (  # noqa: E402
     strip_code_fence_wrapper,
 )
 from translate_mdx_en2ja import load_en2ja_glossary  # noqa: E402
+from translate_mdx_en2ms import load_en2ms_glossary  # noqa: E402
 
 OUTPUT_DIR = REPO_ROOT / "scripts" / "output" / "eval_docs"
 
@@ -140,8 +141,43 @@ en(英文原文片段,≤120 字)、id(现译片段,≤120 字,此处放日文�
 overall = 4 维加权平均(accuracy 0.35 / localization 0.30 / fluency 0.20 / terminology 0.15),保留 1 位小数。"""
 
 
+# 马来语评审 rubric — 与 id 版同构,判据换为马来语本地化标准
+JUDGE_SYSTEM_MS = """你是资深的马来语 (Bahasa Melayu, bahasa baku) 技术文档本地化质量评审专家,母语级马来语 + 精通英文技术文档。
+你的任务:拿到「英文母版」和「马来语译文」,严格评审译文质量,给出 4 个维度的 0-5 分打分,并逐条定位具体问题。
+
+评审对象是钉钉国际版帮助中心的官方文档,面向马来西亚企业用户与 IT 管理员,要求母语级流畅的标准马来语(bahasa baku),而非印尼语。
+
+【4 个评分维度(每个 0-5 分,可给 0.5)】
+1. accuracy 准确性:译文是否忠实传达英文原意。扣分项:漏译、错译、增译、语义偏移、否定/条件/数量译反、指代错误。
+2. localization 本地化程度:是否地道标准马来语而非「英文直译腔」或「印尼语」。判据:
+   - 通用 IT 术语用马来西亚主流译法:Tetapan(设置)/Ciri(功能)/Kebenaran(权限)/Fail(文件)/Muat turun(下载)/Muat naik(上传,非印尼语 Unggah)/Log masuk(登录)/Log keluar(登出);
+   - 技术缩写保持英文(API/SDK/URL/JSON/SSO/OAuth);品牌词不译(DingTalk/YiDA/AI Table…);
+   - 马来西亚拼写与用词习惯(非印尼语变体:用 anda 非 kamu,boleh/tidak boleh 等);
+   - 数字半角;句末标点规范。
+3. fluency 流畅度:马来语母语可读性——语序自然、搭配地道、无语法错误、无印尼语混入。
+4. terminology 术语一致性:命中项目词库的术语是否按规定译法(见 user message 里的「命中术语 en→ms 对照表」);同一术语全文是否统一。
+
+【issues 逐条定位(最多 12 条,按 severity 降序)】
+每条:severity(high/medium/low)、dimension(accuracy/localization/fluency/terminology)、
+en(英文原文片段,≤120 字)、id(现译片段,≤120 字,此处放马来语译文)、suggestion(建议改法,给出具体马来语)、note(一句话说明为何是问题)。
+- 只报真实问题;译文若确实高质量,issues 可为空数组,不要硬凑。
+- 代码块内的 API 契约(字段名/方法/URL/状态码)本就应保持英文,**不要**报成问题。
+- 印尼语混入(如 Unggah 而非 Muat naik、kamu 而非 anda)按 localization 问题报出。
+
+【输出格式(严格 JSON,第一个字符必须是 `{`,不要 markdown 代码围栏,不要任何前后缀说明)】
+{
+  "scores": {"accuracy": 4, "localization": 3, "fluency": 4, "terminology": 5},
+  "overall": 4.0,
+  "summary": "一句话总评(中文)",
+  "issues": [
+    {"severity": "high", "dimension": "accuracy", "en": "...", "id": "...", "suggestion": "...", "note": "..."}
+  ]
+}
+overall = 4 维加权平均(accuracy 0.35 / localization 0.30 / fluency 0.20 / terminology 0.15),保留 1 位小数。"""
+
+
 def build_judge_user_message(en_src: str, id_src: str, hits: dict[str, str], lang: str = "id") -> str:
-    tgt_label = {"id": "印尼语译文", "ja": "日文译文"}.get(lang, f"{lang} 译文")
+    tgt_label = {"id": "印尼语译文", "ja": "日文译文", "ms": "马来语译文"}.get(lang, f"{lang} 译文")
     parts: list[str] = []
     if hits:
         terms_json = json.dumps(hits, ensure_ascii=False, indent=2)
@@ -410,6 +446,9 @@ async def main_async(args: argparse.Namespace) -> int:
     if args.lang == "ja":
         glossary = load_en2ja_glossary()
         judge_system = JUDGE_SYSTEM_JA
+    elif args.lang == "ms":
+        glossary = load_en2ms_glossary()
+        judge_system = JUDGE_SYSTEM_MS
     else:
         glossary = load_en2id_glossary()
         judge_system = JUDGE_SYSTEM

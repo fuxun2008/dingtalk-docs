@@ -1,0 +1,191 @@
+---
+title: "Komponen Pokok"
+description: "Ketahui cara menggunakan komponen pokok untuk memaparkan kategori dan subkategori, termasuk mencipta borang biasa, mengkonfigurasi Halaman tersuai, menyediakan remote API, dan mengikat pembolehubah. Gunakan komponen ini apabila anda perlu memaparkan data hierarki."
+polished: true
+---
+
+| **Ciri** | **Pelan Percuma** | **Edisi Basic** | **Edisi Profesional** | **Edisi Dedicated** |
+|---|---|---|---|---|
+| Komponen pokok | Tidak disokong | Tidak disokong | Disokong | Disokong |
+
+## 1. Kes Penggunaan
+
+Untuk melihat subkategori di bawah sesuatu kategori, tambahkan komponen pokok pada Halaman tersuai.
+
+<Note>
+Untuk atribut, penggunaan, dan contoh komponen, lihat [**Rujukan komponen pokok**](/ms/open/yida/components/advanced/tree).
+</Note>
+
+## 3. Prosedur
+
+### 3.1 Cipta Borang Biasa
+
+Cipta borang biasa dan tambahkan beberapa komponen Teks satu baris. Edit setiap Tajuk dalam panel Atribut di sebelah kanan, kemudian klik Simpan.
+
+### 3.2 Cipta Halaman Tersuai
+
+Pada halaman pemilihan Templat, klik Langkau untuk membuka editor Halaman tersuai. Seret komponen pokok dan komponen butang ke atas kanvas.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i3/O1CN01Chhm858bpLG3h6f4_!!6000000003180-2-tps-1820-902.png)
+</Frame>
+
+### 3.3 Cipta Remote API
+
+Pada Halaman tersuai, klik Sumber Data di sebelah kiri dan cipta remote API baharu. Konfigurasikan nama, URL Permintaan, Parameter permintaan, dan pemprosesan datanya.
+
+URL Permintaan: [API platform YiDA (boleh dipanggil terus daripada Sumber data halaman)](/ms/yida/developer-features/aql605)
+
+Contoh: [https://www.yidaapps.com/dingtalk/web/](https://www.yidaapps.com/dingtalk/web/)APP-XXXXXX/v1/form/searchFormDatas.json
+
+Parameter permintaan `formUuid` boleh didapati dalam Tetapan aplikasi di penjuru kanan atas Laman Utama. Setiap borang mempunyai ID Unik — salin dan tampalkannya ke dalam Parameter permintaan.
+
+Dalam bahagian pemprosesan data, cari kod di bawah fungsi Callback penyempurnaan permintaan dan kemas kini pengecam selepas `dataMap`. Pengecam ini berasal daripada komponen Teks satu baris pada borang. Tampalkannya, kemudian klik Simpan.
+
+```javascript
+function didFetch(content) {
+  const data = content.data.map(item => {
+    let dataMap = item.formData;
+    return {
+      label: dataMap['textField_kplzoi0z'],
+      key: dataMap['textField_kplzoi0z'],
+      children: [{
+        label: dataMap['textField_kplzoi10'],
+        key: dataMap['textField_kplzoi10'],
+        children: [{
+          label: dataMap['textField_kplzoi11'],
+          key: dataMap['textField_kplzoi11']
+        }]
+      }]
+
+    }
+  })
+  content = data;
+  console.log("item=====>", data)
+
+  function findItem(item, arr) {
+    console.log("item........", item)
+    console.log("arr........", arr)
+    return arr.findIndex(value => value.key === item.key);
+  }
+
+  function recursion(arr) {
+    console.log("Menyahduplikasi entri", arr)
+    const newArr = [];
+    arr.forEach((item) => {
+      let index = findItem(item, newArr);
+      if (index !== -1) {
+
+      } else {
+        newArr.push(item);
+      }
+    })
+    return newArr;
+  }
+
+  let newArr = recursion(content);
+  console.log("newArr========>", newArr)
+  content = newArr;
+
+  console.log("content========>", content)
+  // return item;
+
+  // console.log('data:', data)
+  // this.setState({
+  //   tree: data
+  // })
+  return content; // Penting: kandungan mesti dikembalikan
+}
+```
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i3/O1CN01F6oLUEtTZWL3hMGr_!!6000000003269-2-tps-1822-903.png)
+</Frame>
+
+Klik panel tindakan JS di sebelah kiri dan tampalkan kod berikut.
+
+```javascript
+export function onEditFinish(key, label, node) {
+  console.log('key: ', key, ' label: ', label, ' node: ', node);
+}
+/**
+* onSelect Pokok
+* @param selectedKeys array kunci nod yang dipilih
+* @param extra parameter tambahan
+*/
+export function onSelect(selectedKeys, extra) {
+
+  console.log('Array kunci nod yang dipilih: ', selectedKeys, ' Parameter tambahan: ', extra);
+}
+
+/**
+ * onItemClick menu
+ * Untuk konfigurasi parameter, lihat: https://fusion.design/pc/component/menu
+ */
+export function onItemClick(key, item, event) {
+  console.log(key, item, event);
+}
+
+/**
+* onClick butang
+*/
+export function onClic() {
+  console.log(this.$('tree_kne7wdg0').get('dataSource'));
+}
+
+/**
+* onClick butang
+*/
+export function onClick(){
+  console.log('onClick');
+}
+```
+
+### 3.4 Ikat Pembolehubah
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN01NBsXn0bMI3F2Nf2N_!!6000000003115-2-tps-1173-794.png)
+</Frame>
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i3/O1CN01stH4jalXnVD3i76V_!!6000000001792-2-tps-1828-923.png)
+</Frame>
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN01NBsXn0bMI3F2Nf2N_!!6000000003115-2-tps-1173-794.png)
+</Frame>
+
+Klik Data Nod di sebelah kanan, pilih pembolehubah daripada remote API yang baru anda cipta, kemudian klik Sahkan.
+
+Dalam panel tindakan Cipta di penjuru kanan bawah, konfigurasikan tindakan tersebut. Di sini, pilih tindakan yang akan dijalankan apabila penyuntingan nod selesai.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN01bVlouSksjsL3gr3E_!!6000000006576-2-tps-1818-898.png)
+</Frame>
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN01F0yT2OM3gTD3jN9L_!!6000000004328-2-tps-1838-921.png)
+</Frame>
+
+### 3.5 Tambah Komponen Butang Baharu
+
+Pilih komponen butang. Dalam panel tindakan Cipta di penjuru kanan bawah, pilih tindakan terbina dalam Buka URL. Tetapkan URL kepada halaman bagi borang Teks satu baris yang telah anda konfigurasikan sebelum ini (ia mestilah halaman untuk melihat atau menambah data).
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN01vtr5uiSqR0E2kC4p_!!6000000002498-2-tps-1352-835.png)
+</Frame>
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN0150XiAq1yZeC25mlm_!!6000000005890-2-tps-1031-755.png)
+</Frame>
+
+
+Klik Simpan dan kembali ke Laman Utama. Anda kini boleh menguji konfigurasi tersebut — komponen pokok sudah sedia untuk digunakan.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i1/O1CN010k3f2xuVTiD3irvS_!!6000000000843-2-tps-1834-900.png)
+</Frame>
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i3/O1CN01seM9K8Kb6HF25mlm_!!6000000003073-2-tps-1031-755.png)
+</Frame>

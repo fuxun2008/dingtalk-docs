@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MAPPING = ROOT / "scripts" / "output" / "docs-titles" / "title-mapping.json"
 
-LANG_PREFIX = {"en": "", "zh": "zh/", "ja": "ja/", "id": "id/"}
+LANG_PREFIX = {"en": "", "zh": "zh/", "ja": "ja/", "id": "id/", "ms": "ms/"}
 FM_RE = re.compile(r"^---\n(.*?)\n---", re.S)
 TITLE_LINE_RE = re.compile(r"^title:.*$", re.M)
 

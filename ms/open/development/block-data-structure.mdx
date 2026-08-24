@@ -1,0 +1,446 @@
+---
+title: "Struktur data elemen blok"
+description: "Pelajari struktur pokok dan peraturan penyarangan elemen blok dokumen DingTalk, meliputi InlineElement, struktur data biasa dan senarai enum Emoji lengkap."
+---
+
+Dokumen dalam talian ialah struktur pokok yang terdiri daripada pelbagai elemen blok. Jenis BlockElement yang berbeza boleh menyarangkan jenis elemen yang berbeza di dalamnya. Contohnya, blok Callout boleh menyarangkan mana-mana `BlockElement`, manakala blok Paragraph hanya boleh menyarangkan InlineElement.
+
+Struktur data bagi satu elemen blok adalah seperti berikut:
+
+```json
+{
+  "blockType": enum(BlockType),             // Jenis elemen blok. Lihat enum `BlockType` di bahagian bawah dokumen ini.
+  /**
+   * Berikut adalah semua jenis Block yang disokong, seperti Heading dan Paragraph.
+   * Setiap jenis Block mempunyai property sendiri.
+  */
+  "blockquote": Object(Callout),
+  "callout": Object(Callout),
+  "columns": Object(Columns),
+  "heading": Object(Heading),
+  "paragraph": Object(Paragraph),
+  "orderedList": Object(OrderedList)
+  "unorderedList": Object(UnorderedList),
+  "table": Object(Table),
+  // Setiap jenis Block menyokong BlockChildren tersendiri. Lihat penerangan `children` di bawah setiap jenis Block.
+
+  "children": BlockChildren[ ],
+
+}
+```
+
+## Struktur data elemen blok
+
+Dokumen dalam talian ialah struktur pokok yang terdiri daripada pelbagai **elemen blok**. Jenis elemen blok yang berbeza menyokong jenis elemen anak bersarang yang berbeza:
+
+- `children` bagi `callout` dan `columns` mestilah merupakan **array BlockElement**.
+- `children` bagi `paragraph`, `heading`, `orderedList`, `unorderedList`, dan `blockquote` mestilah merupakan **array InlineElement**.
+- `table` pada masa ini tidak menyokong penetapan `children`.
+
+### Enum BlockType
+
+| Nilai enum | Penerangan |
+| --- | --- |
+| paragraph | Blok perenggan. |
+| heading | Blok tajuk. |
+| blockquote | Blok petik. |
+| callout | Blok callout. |
+| columns | Blok lajur. |
+| orderedList | Blok senarai bernombor. |
+| unorderedList | Blok senarai berbulet. |
+| table | Blok jadual hamparan. |
+| tableRow | Blok baris jadual (anak bagi blok table). |
+| tableCell | Blok sel jadual (anak bagi blok table). |
+
+> Jenis elemen yang tidak disokong akan mengembalikan `Undefined` secara seragam.
+
+### Perenggan
+
+```json
+{
+  "blockType": "paragraph",
+  "paragraph": {
+    "text": "Kandungan teks perenggan",
+    "indent": { "left": 32 },
+    "folded": false
+  },
+  "children": [InlineElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| text | string | Tidak | Kandungan teks bagi perenggan. |
+| indent | object(Indent) | Tidak | Nilai inden. `left` mestilah integer yang lebih besar daripada 0. |
+| folded | boolean | Tidak | Sama ada untuk melipat perenggan (melipat elemen blok dengan nilai inden yang lebih besar daripada perenggan semasa). |
+
+- `children`: **array InlineElement**.
+- Objek `paragraph` **tidak boleh ditinggalkan**. Apabila kandungan kosong, hantar `{}`.
+
+### Tajuk
+
+```json
+{
+  "blockType": "heading",
+  "heading": {
+    "level": 1,
+    "text": "Tajuk tahap 1"
+  },
+  "children": [InlineElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| text | string | Tidak | Kandungan teks bagi tajuk. |
+| level | integer(enum) | Tidak | Tahap tajuk. Julat nilai: `1` hingga `6`. 1 menunjukkan tajuk tahap 1. |
+
+- `children`: **array InlineElement**.
+
+### Petik
+
+```json
+{
+  "blockType": "blockquote",
+  "blockquote": {
+    "text": "Kandungan petikan",
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| text | string | Tidak | Teks di dalam petikan. |
+| indent | object(Indent) | Tidak | Nilai inden khusus. |
+
+- `children`: **array InlineElement**.
+
+### Blok Callout
+
+```json
+{
+  "blockType": "callout",
+  "callout": {
+    "sticker": "灯泡",  // Mentol
+    "showstk": true,
+    "color": "#333333",
+    "border": "#FFD700",
+    "bgcolor": "#FFF9C4"
+  },
+  "children": [BlockElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| sticker | string(enum Emoji) | Tidak | Kod Emoji. Lihat [Nilai enum Emoji](/ms/open/development/enumeration-values-of-emojis). |
+| showstk | boolean | Tidak | Sama ada untuk memaparkan emoji. |
+| color | string | Tidak | Warna teks. |
+| border | string | Tidak | Warna sempadan. |
+| bgcolor | string | Tidak | Warna latar belakang. |
+
+- `children`: **array BlockElement** (InlineElement tidak dibenarkan).
+
+### Lajur
+
+```json
+{
+  "blockType": "columns",
+  "columns": {
+    "size": 2,
+    "noFill": false
+  },
+  "children": [BlockElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| size | number | Tidak | Bilangan lajur. |
+| noFill | boolean | Tidak | Sama ada untuk mengisi warna latar belakang secara automatik. |
+
+- `children`: **array BlockElement** (InlineElement tidak dibenarkan).
+
+### Senarai Bernombor
+
+```json
+{
+  "blockType": "orderedList",
+  "orderedList": {
+    "list": {
+      "listId": "list-001",
+      "level": 0,
+      "listStyleType": "decimal",
+      "listStyle": {
+        "format": "decimal",
+        "text": "%1.",
+        "align": "left"
+      },
+      "symbolStyle": {
+        "bold": false
+      }
+    },
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| list | object(ListObject) | Ya | Atribut khusus bagi senarai bernombor. Lihat [ListObject](#e6621bc176irg). |
+| indent | object(Indent) | Tidak | Nilai inden. `left` mestilah integer yang lebih besar daripada 0. |
+
+- `children`: **array InlineElement**.
+
+### Senarai Berbulet
+
+```json
+{
+  "blockType": "unorderedList",
+  "unorderedList": {
+    "list": {
+      "listId": "list-002",
+      "level": 0,
+      "listStyleType": "disc",
+      "listStyle": {
+        "format": "disc",
+        "text": "%1",
+        "align": "left"
+      },
+      "symbolStyle": {
+        "bold": false
+      }
+    },
+    "indent": { "left": 32 }
+  },
+  "children": [InlineElement]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| list | object(ListObject) | Ya | Atribut khusus bagi senarai berbulet. Lihat [ListObject](#e6621bc176irg). |
+| indent | object(Indent) | Tidak | Nilai inden. `left` mestilah integer yang lebih besar daripada 0. |
+
+- `children`: **array InlineElement**.
+
+### Jadual Hamparan
+
+```json
+{
+  "blockType": "table",
+  "table": {
+    "rolSize": 3,
+    "colSize": 4,
+    "cells": [
+      ["Row1-Col1", "Row1-Col2", "Row1-Col3", "Row1-Col4"],
+      ["Row2-Col1", "Row2-Col2", "Row2-Col3", "Row2-Col4"],
+      ["Row3-Col1", "Row3-Col2", "Row3-Col3", "Row3-Col4"]
+    ]
+  }
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| rolSize | number | Ya | Bilangan baris. |
+| colSize | number | Ya | Bilangan lajur. |
+| cells | String[][] | Tidak | Kandungan teks sel. Array String dua dimensi. |
+
+- `children`: **Tidak disokong**. Penetapan children pada masa ini tidak dibenarkan.
+
+## Struktur data InlineElement
+
+Elemen inline digunakan dalam `children` bagi elemen blok berasaskan teks (perenggan, tajuk, senarai, dan sebagainya).
+
+### Enum InlineType
+
+| Nilai enum | Penerangan |
+| --- | --- |
+| text | Teks. |
+| sticker | Emoji. |
+| image | Gambar. |
+| link | Pautan. |
+
+### Teks
+
+```json
+{
+  "text": "Teks merah tebal",
+  "sz": 16,
+  "color": "red",
+  "highlight": "yellow",
+  "bold": true,
+  "italic": false,
+  "stike": false,
+  "underline": false,
+  "fonts": "monospace"
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| text | string | Ya | Kandungan teks. |
+| sz | number | Tidak | Saiz fon (unit lalai: px). |
+| color | string | Tidak | Warna teks. |
+| highlight | string | Tidak | Warna latar belakang sorotan. |
+| bold | boolean | Tidak | Sama ada untuk menggunakan tebal. |
+| italic | boolean | Tidak | Sama ada untuk menggunakan condong. |
+| stike | boolean | Tidak | Sama ada untuk menggunakan coretan. |
+| underline | boolean | Tidak | Sama ada untuk menggunakan garis bawah. |
+| fonts | string(enum Fonts) | Tidak | Fon. Nilai enum:   - **monospace**: fon monospace - **STSong**: STSong - **Microsoft YaHei**: Microsoft YaHei - **FangSong_GB2312**: FangSong GB2312 - **Helvetica**: Helvetica - **Helvetica Neue**: Helvetica Neue - **Consolas**: Consolas - **宋体**: SimSun - **Impact**: Impact - **sanrif**: sanrif - **Calibri**: Calibri |
+
+### Emoji
+
+```json
+{
+  "elementType": "sticker",
+  "properties": {
+    "code": "大笑"  // Ketawa besar
+  }
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| code | string(enum Emoji) | Ya | Kod Emoji. Lihat [Nilai enum Emoji](/ms/open/development/enumeration-values-of-emojis). |
+
+### Gambar
+
+```json
+{
+  "elementType": "image",
+  "properties": {
+    "src": "https://example.com/image.jpg"
+  }
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| src | string | Tidak | URL sumber gambar. |
+
+### Pautan
+
+```json
+{
+  "elementType": "link",
+  "properties": {
+    "href": "https://example.com"
+  },
+  "children": [
+    { "text": "Klik untuk membuka pautan" }
+  ]
+}
+```
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| href | string | Tidak | URL pautan. |
+
+- `children`: **array Text**. Apabila memasukkan pautan, `children` mesti ditetapkan dan mengandungi sekurang-kurangnya satu nod teks yang `text`-nya tidak kosong.
+
+## Struktur data biasa
+
+### Indent
+
+| Nama medan | Jenis | Wajib | Penerangan | Contoh |
+| --- | --- | --- | --- | --- |
+| left | number | Tidak | Nilai inden khusus. Mestilah integer yang lebih besar daripada 0, jika tidak ralat akan dikembalikan. | `32` |
+
+---
+
+### ListObject
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| listId | string | Tidak | ID senarai semasa. Apabila memasukkan senarai bernombor berbilang tahap, pastikan `listId` adalah konsisten merentasi kumpulan senarai berbilang tahap yang sama, jika tidak paparan akan menjadi tidak betul. |
+| level | number | Ya | Tahap senarai (bermula daripada 0). |
+| listStyleType | string | Ya | Jenis gaya senarai. |
+| listStyle | object(ListStyle) | Ya | Gaya senarai khusus. Lihat [ListStyle](#bad921c2ebc3h). |
+| symbolStyle | object(SymbolStyle) | Tidak | Gaya simbol senarai. Lihat [SymbolStyle](#b16d5427cbutg). |
+
+---
+
+### ListStyle
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| format | string | Ya | Format senarai berbucu. |
+| text | string | Ya | Teks. |
+| align | string | Ya | Penjajaran, seperti `left`, `center`, atau `right`. |
+
+---
+
+### SymbolStyle
+
+| Nama medan | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| sz | number | Tidak | Saiz fon bagi simbol senarai berbucu. |
+| shd | string | Tidak | Warna latar belakang bagi simbol senarai berbucu. |
+| fonts | string | Tidak | Format fon bagi simbol senarai berbucu. |
+| color | string | Tidak | Warna fon bagi simbol senarai berbucu. |
+| bold | boolean | Tidak | Sama ada untuk menggunakan tebal. |
+| strike | boolean | Tidak | Sama ada untuk memaparkan coretan. |
+| italic | boolean | Tidak | Sama ada untuk memaparkan condong. |
+
+---
+
+## Nilai enum Emoji (senarai lengkap kod emoji)
+
+Nilai enum berikut boleh digunakan untuk `callout.sticker` dan elemen emoji inline `sticker.properties.code`.
+
+| Emoji | Emoji | Emoji | Emoji |
+| --- | --- | --- | --- |
+| `优先级: 1`  // Keutamaan: 1 | `优先级: 2`  // Keutamaan: 2 | `优先级: 3`  // Keutamaan: 3 | `优先级: 4`  // Keutamaan: 4 |
+| `优先级: 5`  // Keutamaan: 5 | `优先级: 6`  // Keutamaan: 6 | `优先级: 7`  // Keutamaan: 7 | `进度: 未开始`  // Kemajuan: Belum bermula |
+| `进度: 20%`  // Kemajuan: 20% | `进度: 40%`  // Kemajuan: 40% | `进度: 50%`  // Kemajuan: 50% | `进度: 70%`  // Kemajuan: 70% |
+| `进度: 90%`  // Kemajuan: 90% | `进度: 已完成`  // Kemajuan: Selesai | `微笑`  // Senyum | `憨笑`  // Gelak |
+| `大笑`  // Ketawa | `加油`  // Sorak | `色`  // Liur | `偷笑`  // Ketawa senyap |
+| `跳舞`  // Menari | `捂脸哭`  // Menangis tutup muka | `笑哭`  // Ketawa sambil menangis | `流泪`  // Air mata |
+| `疑问`  // Persoalan | `傻笑`  // Gelak bodoh | `流鼻血`  // Lelehan hidung | `狗子`  // Anjing |
+| `赞`  // Jempol | `OK` | `抱拳`  // Tangan bertaut | `向上`  // Atas |
+| `向下`  // Bawah | `向左`  // Kiri | `向右`  // Kanan | `资料`  // Profil |
+| `本子`  // Buku nota | `笔记本`  // Komputer riba | `折线图`  // Garisan | `柱状图`  // Lajur |
+| `羽毛笔`  // Pena bulu | `钢笔`  // Pen | `警告`  // Amaran | `问号`  // Tanda soal |
+| `禁止`  // Dilarang | `禁行`  // Dilarang masuk | `锁`  // Kunci | `气泡`  // Buih pertuturan |
+| `沙漏`  // Jam pasir | `公文包`  // Beg bimbit | `火箭`  // Roket | `火`  // Api |
+| `奖牌`  // Pingat | `灯泡`  // Mentol | `钉子`  // Paku | `旗子`  // Bendera |
+| `茶`  // Teh | `休假`  // Cuti | `气球`  // Belon | `锦鲤`  // Ikan Koi |
+| `咖啡`  // Kopi | `奶茶`  // Teh susu | `调色板`  // Palet warna | `感谢`  // Terima kasih |
+| `打招呼`  // Lambai | `666` | `握手`  // Berjabat tangan | `胜利`  // Kemenangan |
+| `一点点`  // Sedikit | `鼓掌`  // Bertepuk tangan | `送花花`  // Hantar bunga | `比心`  // Hati jari |
+| `加一`  // +1 | `100分`  // 100 mata | `KPI` | `对勾`  // Semak |
+| `爱心`  // Hati | `可爱`  // Comel | `发呆`  // Tercengang | `老板`  // Bos |
+| `害羞`  // Malu | `闭嘴`  // Diam | `睡`  // Tidur | `大哭`  // Menangis teresak-esak |
+| `尴尬`  // Janggal | `调皮`  // Nakal | `惊讶`  // Terkejut | `流汗`  // Berpeluh |
+| `广播`  // Siaran | `自信`  // Yakin | `你强`  // Anda hebat | `怒吼`  // Menggeram |
+| `惊愕`  // Terperanjat | `快哭了`  // Hampir menangis | `无聊`  // Bosan | `吐`  // Muntah |
+| `算账`  // Kira bil | `晕`  // Pening | `摸摸`  // Belai | `飞吻`  // Hantar ciuman |
+| `鄙视`  // Memandang rendah | `嘘`  // Diam | `思考`  // Berfikir | `亲亲`  // Cium |
+| `感冒`  // Selesema | `对不起`  // Maaf | `再见`  // Selamat tinggal | `投降`  // Menyerah |
+| `哼`  // Hmph | `欠扁`  // Mencari nahas | `坏笑`  // Senyum sinis | `拜托`  // Tolonglah |
+| `可怜`  // Kasihan | `舒服`  // Selesa | `爱意`  // Kasih sayang | `财迷`  // Gila wang |
+| `迷惑`  // Keliru | `PK` | `委屈`  // Berkecil hati | `灵感`  // Inspirasi |
+| `天使`  // Malaikat | `鬼脸`  // Muka hantu | `凄凉`  // Sunyi sepi | `郁闷`  // Muram |
+| `吃瓜`  // Menonton drama | `嘿嘿`  // Hehe | `抠鼻`  // Kesek hidung | `呲牙`  // Gelak bergigi |
+| `彩虹`  // Pelangi | `耶`  // Yeay | `捂眼睛`  // Tutup mata | `推眼镜`  // Naikkan cermin mata |
+| `暗中观察`  // Mengintai diam-diam | `开心`  // Gembira | `惊喜`  // Kejutan | `回头`  // Menoleh |
+| `发怒`  // Marah | `忍者`  // Ninja | `衰`  // Malang | `脑暴`  // Sumbang saran |
+| `冷笑`  // Ketawa sinis | `黑眼圈`  // Kelim mata | `恭喜`  // Tahniah | `费解`  // Sukar difahami |
+| `收到`  // Diterima | `炸弹`  // Bom | `白眼`  // Jelirkan mata | `一团乱麻`  // Kusut-masai |
+| `无奈`  // Tidak berdaya | `敲打`  // Ketuk | `专注`  // Fokus | `忙疯了`  // Sangat sibuk |
+| `鞠躬`  // Tunduk hormat | `摊手`  // Angkat bahu | `抱抱`  // Peluk | `举手`  // Angkat tangan |
+| `跪了`  // Melutut | `猫咪`  // Kucing | `二哈`  // Husky | `三多`  // Sanduo |
+| `承让`  // Anda mengalah | `撒花`  // Konfeti | `邮件`  // Mel | `文档`  // Dokumen |
+| `演示`  // Persembahan | `表格`  // Jadual hamparan | `生日快乐`  // Selamat hari lahir | `心碎`  // Hati hancur |
+| `红包`  // Angpau | `嘴唇`  // Bibir | `鲜花`  // Bunga segar | `残花`  // Bunga layu |
+| `干杯`  // Minum | `出差`  // Perjalanan perniagaan | `时间`  // Masa | `福`  // Tuah |
+| `月饼`  // Kuih bulan | `礼物`  // Hadiah | `幼苗`  // Anak benih | `烟花`  // Bunga api |
+| `灯笼`  // Tanglung | `爆竹`  // Mercun | `鸡腿`  // Peha ayam | `高铁`  // Keretapi laju |
+| `三连`  // Gabungan tiga | `OKR` | `Done` |  |
+
+---

@@ -1,0 +1,171 @@
+---
+title: "Muat naik, pratonton, dan muat turun fail dalam Drive"
+description: "Panduan langkah demi langkah memuat naik, pratonton, dan muat turun fail dalam Drive DingTalk melalui Document API dan File API, meliputi prasyarat, penciptaan aplikasi, dan konfigurasi aplikasi web."
+---
+
+Dokumen ini menerangkan cara memuat naik, pratonton, dan muat turun fail dalam Drive melalui Document API dan File API. Ia membantu pembangun memahami dan mengintegrasikan keupayaan API berkaitan Drive dengan cepat.
+
+## Gambaran keseluruhan
+
+### Apa yang akan anda pelajari
+
+Tutorial ini membimbing anda melalui langkah-langkah dan contoh untuk membantu pembangun organisasi memuat naik, memuat turun, dan pratonton fail dalam Drive dengan cepat.
+
+### Objektif pembelajaran
+
+Membantu pembangun membina aplikasi mereka sendiri dengan cepat dan mengintegrasikan keupayaan muat naik, pratonton, dan muat turun fail Drive dengan memanggil API asas DingTalk.
+
+### Khalayak sasaran
+
+Semua pembangun DingTalk.
+
+## Prasyarat
+
+- Anda telah memperoleh kebenaran pembangun.
+- Anda telah memasang IDE atau alat pembangunan lain.
+- Anda telah mencipta folder bernama "Test Folder" dalam Drive khusus untuk tujuan ujian.
+- Anda telah memasang [Node.js](https://nodejs.org/en/download) dan melengkapkan [konfigurasi persekitaran](https://m.runoob.com/nodejs/nodejs-install-setup.html).
+- Anda telah memasang [Maven](https://maven.apache.org/) dan melengkapkan [konfigurasi persekitaran](https://maven.apache.org/install.html).
+- Anda telah memasang [JDK](https://www.oracle.com/java/technologies/downloads/?er=221886) dan melengkapkan [konfigurasi persekitaran](https://docs.oracle.com/en/java/javase/24/install/overview-jdk-installation.html).
+
+## Proses pembangunan
+
+1. Gunakan log masuk senyap untuk mendapatkan nama dan peranan pengguna yang sedang log masuk. Untuk log masuk, rujuk log masuk senyap untuk aplikasi web (aplikasi mikro H5).
+2. Muat naik fail ke Drive.
+
+   1. Panggil API [Carian Fail](/ms/open/development/search-for-files) untuk mencari folder bernama "Test Folder" dalam Drive dan kembalikan `dentryUuid` folder tersebut.
+
+### Nota
+
+      Sebelum memanggil API ini, pastikan hanya terdapat satu folder bernama "Test Folder" dalam Drive. Jika tidak, ralat mungkin berlaku.
+   2. Panggil API [Get File Upload Information](/ms/open/development/obtain-file-upload-informations) dengan `dentryUuid` untuk mendapatkan maklumat muat naik fail, termasuk nilai parameter `resourceUrls` dan `headers`.
+   3. Muat naik fail menggunakan kaedah tandatangan permintaan header OSS. Untuk butiran, rujuk langkah 2 dalam API [Get File Upload Information](/ms/open/development/obtain-file-upload-informations).
+   4. Panggil API [Submit File](/ms/open/development/submittal-file) untuk menghantar fail ke Drive dan mendapatkan nilai parameter `spaceId`, `parentId`, `path`, dan `uuid` yang dikembalikan.
+3. Pratonton fail dalam Drive.
+
+   1. Gunakan `uuid` yang diperoleh daripada penghantaran terakhir semasa muat naik fail untuk membina URL dan membuka fail untuk pratonton.
+4. Muat turun fail daripada Drive.
+
+   1. Panggil API [Get Space List](/ms/open/development/queries-a-space-list) untuk mendapatkan maklumat ruang Drive, termasuk `spaceId`.
+   2. Panggil API [Get File or Folder List](/ms/open/development/get-a-list-of-files-or-folders) dengan `spaceId` untuk mendapatkan `fileId` dan nama fail `name`.
+   3. Panggil API [Get File Download Information](/ms/open/development/obtains-the-download-information-about-a-file) dengan `fileId` dan `name` untuk mendapatkan maklumat muat turun fail, termasuk nilai parameter `internalResourceUrls` dan `headers`.
+   4. Gunakan maklumat di atas untuk melaksanakan muat turun. Untuk kod muat turun, rujuk langkah 2 [Get File Download Information](/ms/open/development/obtains-the-download-information-about-a-file).
+
+      Nota
+
+### Nota
+
+      Laluan fail ialah laluan projek semasa ditambah dengan nama fail. Oleh itu, selepas fail dimuat turun, ia disimpan secara automatik ke direktori projek. Semak mengikutnya.
+
+## Langkah 1: Cipta aplikasi
+
+1. Log masuk ke [Developer Console](https://open-dev.dingtalk.io/#/).
+2. Klik **App Development** > **Internal App** > **DingTalk App** > **Create App**.
+
+3. Masukkan maklumat aplikasi.
+
+   | **Item** | **Wajib** | **Penerangan** |
+   | --- | --- | --- |
+   | Nama aplikasi | Ya | Masukkan nama aplikasi. Panjang minimum ialah 2 aksara. |
+   | Penerangan aplikasi | Ya | Terangkan secara ringkas produk atau perkhidmatan yang disediakan oleh aplikasi. Panjang minimum ialah 4 aksara. |
+   | **Ikon aplikasi** | Tidak | Muat naik ikon aplikasi. Ikon mesti dalam format JPG/PNG, sekurang-kurangnya 240 px \* 240 px, dengan nisbah bidang 1:1, tanpa bucu bulat, dan tidak melebihi 2 MB. |
+4. Klik **Save** untuk masuk ke halaman butiran aplikasi.
+
+   Selepas penciptaan, klik **Basic Information** > **Credentials and Basic Information** untuk melihat Client ID, Client Secret, dan Agent ID aplikasi tersebut.
+
+## Langkah 2: Konfigurasikan aplikasi web
+
+1. Pada halaman butiran aplikasi, klik **App Capabilities** > **Add App Capability**.
+2. Pilih Add web app.
+3. Konfigurasikan maklumat aplikasi web (H5):
+
+   | **Item** | **Penerangan** |
+   | --- | --- |
+   | URL halaman utama aplikasi | Masukkan URL halaman utama aplikasi. Contoh ini menggunakan `http://localhost:5173?corpid=$CORPID$` untuk ujian seterusnya. Contoh ini hanya untuk ujian tempatan. gambar |
+   | URL halaman utama PC |
+4. Selepas konfigurasi, klik **Save**.
+
+## Langkah 3: Tambah kebenaran API
+
+Untuk ujian formal, tambah kebenaran berikut:
+
+- Kebenaran Carian Fail: `Storage.Dentry.Search`
+- Kebenaran baca maklumat muat naik fail storan organisasi: `Storage.UploadInfo.Read`
+- Kebenaran tulis fail storan organisasi: `Storage.File.Write`
+- Kebenaran baca ruang aplikasi Drive: `Drive.Space.Read`
+- Kebenaran baca fail storan organisasi: `Storage.File.Read`
+- Kebenaran baca maklumat muat turun fail storan organisasi: `Storage.DownloadInfo.Read`
+
+## Langkah 4: Lepaskan aplikasi
+
+1. Selepas konfigurasi aplikasi, anda perlu melepaskan aplikasi tersebut. Pada halaman butiran aplikasi, klik **App Release** > **Version Management and Release**.
+
+2. Klik **Create New Version** untuk masuk ke halaman butiran versi.
+3. Konfigurasikan maklumat versi:
+
+   | **Item** | **Penerangan** |
+   | --- | --- |
+   | Nombor versi aplikasi | Masukkan nombor versi aplikasi. Gunakan versi lalai. |
+   | Penerangan versi | Masukkan penerangan versi. Sesuaikan mengikut keperluan. |
+   | Kandungan untuk dilepaskan | Keupayaan aplikasi yang dipaparkan pada workbench: - Pilih web app |
+
+   Selepas konfigurasi, klik Save di bahagian bawah.
+4. Pada halaman dialog berjaya, klik Publish terus.
+
+   > *Jika anda bukan Admin Organisasi, melepaskan aplikasi memerlukan kelulusan daripada Admin Organisasi. Melepaskan untuk dilihat oleh diri sendiri sahaja tidak memerlukan kelulusan admin.*
+
+## Langkah 5: Bina perkhidmatan
+
+1. Pastikan anda telah melengkapkan langkah-langkah di atas dan memperoleh maklumat parameter yang diperlukan untuk menjalankan demo di bawah.
+2. Muat turun demo [file-demo.zip](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250807/zkuhco/file-demo.zip).
+3. Buka IDE dan import demo yang telah dimuat turun.
+
+   > Kod contoh dibahagikan kepada backend (direktori kod backend) dan frontend (direktori kod frontend).
+
+4. Buka direktori kod backend. Dalam direktori resources, edit fail `application.properties` dan masukkan parameter `clientId (Client ID aplikasi)` dan `clientSecret (Client Secret aplikasi)`.
+
+5. Klik untuk memulakan perkhidmatan backend.
+
+   **Nota**
+   - Sebelum memulakan perkhidmatan backend, pastikan Maven dan JDK dipasang dengan betul dan persekitaran berkaitan telah dikonfigurasikan. Jika ini kali pertama anda memasang IDE, ubah suai fail konfigurasi berkaitan dalam IDE.
+   - Pastikan port 5173 dan 8080 tidak sedang digunakan.
+
+6. Buka direktori kod frontend, edit `vite.config.ts`, dan masukkan `clientId (Client ID aplikasi)` yang betul.
+
+7. Klik fail projek frontend, klik kanan, dan pilih **Terminal** untuk membukanya.
+
+8. Dalam tetingkap terminal, jalankan arahan berikut:
+
+   1. `npm install`
+   2. `npm run dev`
+
+      > Nota: Pada Windows, gunakan `npm run dev:raw` untuk memulakan.
+9. Perkhidmatan frontend dan backend kini telah berjaya dimulakan.
+
+## Langkah 6: Uji aplikasi
+
+1. Log masuk ke DingTalk Bahagian klien dan pilih organisasi tempat aplikasi berada.
+
+2. Klik **Workbench** > **Add**, cari aplikasi organisasi yang telah anda cipta di atas, dan tambahkannya.
+
+3. Buka aplikasi dan klik **Select Local File** untuk memuat naik fail tempatan ke Drive.
+
+   Selepas memilih fail, klik **Submit**. Pada halaman pengesahan maklumat fail, anda boleh melihat ID pengguna, Nama Fail, dan Saiz Fail.
+
+4. Selepas muat naik berjaya, hasilnya ditunjukkan seperti di bawah:
+
+### Nota
+
+   Anda boleh klik pautan untuk membuka fail secara terus, atau klik butang **Open File** untuk melihat fail.
+
+   Selepas muat naik berjaya, anda boleh melihat fail yang dimuat naik dalam "Test Folder" di Drive.
+
+5. Klik butang muat turun fail untuk memuat turun fail.
+
+### Penting
+
+   Jika mesej ralat "**auth level of org is not enough**" muncul semasa muat turun fail, ini menunjukkan tahap pengesahan organisasi semasa terlalu rendah dan perlu dinaik taraf sebelum digunakan. Untuk butiran, rujuk penerangan Kod ralat dalam API [Get File Download Information](/ms/open/development/obtains-the-download-information-about-a-file).
+
+   Selepas muat turun berjaya, anda boleh melihat fail yang dimuat turun dalam direktori projek.
+
+6. Anda kini telah melengkapkan semua operasi untuk memuat naik, pratonton, dan muat turun fail dalam Drive.

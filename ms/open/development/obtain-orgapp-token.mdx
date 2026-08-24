@@ -1,0 +1,122 @@
+---
+title: "Dapatkan access_token untuk aplikasi dalaman"
+description: "Aplikasi dalaman memanggil API ini untuk mendapatkan access_token. Apabila memanggil API bahagian pelayan untuk mengakses sumber aplikasi, anda perlu menggunakan access_token untuk mengesahkan dan memberi kuasa kepada identiti pemanggil."
+---
+
+<Note>
+API ini adalah versi lama. Untuk aplikasi yang baru diintegrasikan, kami mengesyorkan penggunaan API [Dapatkan access token untuk aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app) untuk mendapatkan kelayakan akses.
+</Note>
+
+## Penerangan panggilan API
+
+API ini digunakan untuk mendapatkan kelayakan akses yang diperlukan oleh aplikasi dalaman untuk memanggil keupayaan terbuka DingTalk. Perhatikan perkara berikut semasa menggunakannya:
+
+- Panggil API ini untuk mendapatkan access_token sebelum aplikasi dimulakan atau sebelum anda memanggil sesuatu API buat kali pertama.
+- Cache access_token anda sendiri dan simpan secara berasingan mengikut dimensi aplikasi, kerana access_token bagi setiap aplikasi dalaman adalah bebas antara satu sama lain.
+- Kami mengesyorkan agar masa tamat tempoh cache ditetapkan sedikit kurang daripada 7200 saat (contohnya, 7000 saat) untuk melaksanakan mekanisme muat semula automatik dan mengelakkan ketidaksahan kelayakan akibat sisihan masa.
+- Jangan panggil API ini secara kerap untuk mendapatkan kelayakan. Jika tidak, dasar had kadar mungkin akan dicetuskan dan menjejaskan kestabilan perkhidmatan.
+
+## Permintaan
+
+| **Maklumat asas** | |
+| --- | --- |
+| URL HTTP | https://oapi.dingtalk.io/gettoken |
+| Kaedah HTTP | GET |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman |
+| Keperluan kebenaran | permission-qyapi_base-Kebenaran asas diperlukan untuk memanggil API perusahaan |
+
+### Parameter pertanyaan
+
+| Nama | Jenis | Wajib | Contoh | Penerangan |
+| --- | --- | --- | --- | --- |
+| appkey | String | Ya | dingeqqpkv3xxxxxx | Client ID (dahulunya AppKey) bagi aplikasi dalaman yang telah dicipta. Untuk cara mendapatkannya, rujuk dokumen [Client ID/Client Secret](/ms/open/dingstart/basic-concepts-beta). |
+| appsecret | String | Ya | GT-lsu-taDAxxxsTsxxxx | Client Secret (dahulunya AppSecret) bagi aplikasi dalaman yang telah dicipta. Untuk cara mendapatkannya, rujuk dokumen [Client ID/Client Secret](/ms/open/dingstart/basic-concepts-beta).  **Nota**  Simpan Client Secret dengan selamat dan elakkan daripada bocor. |
+
+### Contoh permintaan
+
+```curl
+curl 'https://oapi.dingtalk.io/gettoken?appkey=dingeqqpkv3xxxxxx&appsecret=GT-lsu-taDAxxxsTsxxxx'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.setAppkey("dingeqqpkv3xxxxxx");
+req.setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+req.setHttpMethod("GET");
+OapiGettokenResponse rsp = client.execute(req);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiGettokenRequest("https://oapi.dingtalk.io/gettoken")
+
+req.appkey="dingeqqpkv3xxxxxx"
+req.appsecret="GT-lsu-taDAxxxsTsxxxx"
+try:
+  resp= req.getResponse()
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_GET, DingTalkConstant::$FORMAT_JSON);
+$req = new OapiGettokenRequest;
+$req->setAppkey("dingeqqpkv3xxxxxx");
+$req->setAppsecret("GT-lsu-taDAxxxsTsxxxx");
+$resp = $c->execute($req, null, "https://oapi.dingtalk.io/gettoken");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+OapiGettokenRequest req = new OapiGettokenRequest();
+req.Appkey = "dingeqqpkv3xxxxxx";
+req.Appsecret = "GT-lsu-taDAxxxsTsxxxx";
+req.SetHttpMethod("GET");
+OapiGettokenResponse rsp = client.Execute(req);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Contoh | Penerangan |
+| --- | --- | --- | --- |
+| errcode | Nombor | 0 | Kod pemulangan. |
+| errmsg | String | ok | Penerangan kod pemulangan. |
+| access_token | String | 797ce303b1xxxxxxfd9e93e9c15a2d34 | access_token yang dijana. |
+| expires_in | Nombor | 7200 | Masa tamat tempoh access_token, dalam saat. Tempoh sah adalah 7200 saat (2 jam). Mendapatkannya berulang kali dalam tempoh sah akan memulangkan hasil yang sama dan memperbaharuinya secara automatik. Selepas ia tamat tempoh, mendapatkannya akan memulangkan access_token yang baharu. |
+
+### Contoh respons
+
+```json
+{
+  "errcode": 0,
+  "access_token": "797ce303b1xxxxxxfd9e93e9c15a2d34",
+  "errmsg": "ok",
+  "expires_in": 7200
+}
+```
+
+### Kod ralat
+
+Jika ralat dikembalikan semasa anda memanggil API ini, rujuk dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1) untuk penyelesaian berdasarkan mesej ralat.
+
+| Kod ralat (errcode) | Mesej ralat (errmsg) | Penyelesaian |
+| --- | --- | --- |
+| 40089 | Invalid appkey or appsecret | Semak sama ada appkey dan appsecret adalah betul. |
+| 90002 | The appkey parameter is empty | Semak sama ada parameter appkey telah diisi. |
+| 90003 | The appsecret parameter is empty | Semak sama ada parameter appsecret telah diisi. |

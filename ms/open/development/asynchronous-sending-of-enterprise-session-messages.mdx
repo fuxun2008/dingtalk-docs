@@ -1,0 +1,174 @@
+---
+title: "Hantar Notifikasi Kerja"
+description: "Panggil API ini untuk menghantar mesej Notifikasi Kerja kepada pengguna yang ditetapkan, dengan pembinaan Parameter permintaan dan butiran medan Respons."
+---
+
+Panggil API ini untuk menghantar mesej Notifikasi Kerja.
+
+## Penerangan panggilan API
+
+Notifikasi Kerja ialah mesej yang ditolak kepada Pekerja bagi pihak aplikasi, seperti ucapan hari lahir atau peringatan onboarding. Anda boleh menghantar teks, suara, pautan dan lain-lain. Untuk jenis mesej dan contoh, rujuk [Jenis notifikasi mesej](/ms/open/development/message-types-and-data-format).
+
+<Note>
+Jika panggilan API berjaya tetapi penerima tidak menerima mesej tersebut, panggil [Dapatkan hasil penghantaran mesej secara asinkron kepada organisasi](/ms/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) untuk menyoal hasilnya dan bandingkan dengan kod ralat yang disenaraikan dalam dokumentasi.
+</Note>
+
+### Kes penggunaan
+
+### Penting
+
+- Senario yang sesuai: Sesuai untuk menghantar mesej jenis notifikasi, tidak termasuk tugas Kelulusan.
+- Senario yang tidak sesuai: Apabila anda perlu menghantar peringatan notifikasi jenis tugas kepada pekerja, seperti tugas Kelulusan, API ini tidak dapat memenuhi keperluan tersebut. Untuk senario sedemikian, gunakan API Cipta Tugasan sebagai gantinya.
+
+### Had kadar
+
+### Selepas had berikut melebihi, API akan mengembalikan kejayaan, tetapi pengguna tidak akan menerima mesej tersebut.
+
+<Note>
+Untuk sekatan terperinci, rujuk [Had kadar API](/ms/open/development/call-frequency-limit).
+</Note>
+
+- Aplikasi dalaman boleh menghantar mesej kepada maksimum 5,000 penerima setiap panggilan, manakala Aplikasi perusahaan pihak ketiga boleh menghantar mesej kepada maksimum 1,000 penerima setiap panggilan.
+- Hanya satu notifikasi mesej dengan kandungan yang sama boleh dihantar kepada Pekerja yang sama setiap hari.
+- Aplikasi dalaman boleh menghantar sehingga 500 notifikasi mesej setiap Pekerja setiap hari, dan Aplikasi perusahaan pihak ketiga boleh menghantar sehingga 100.
+- Apabila Aplikasi dalaman atau Aplikasi perusahaan pihak ketiga menghantar mesej, sehingga 5,000 penerima boleh menerima mesej setiap minit.
+
+## Permintaan
+
+| **Maklumat asas** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2 |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman, appType-Aplikasi perusahaan pihak ketiga |
+| Keperluan kebenaran | permission-qyapi_base-Kebenaran asas diperlukan untuk memanggil API perusahaan |
+
+### Parameter pertanyaan
+
+| Nama | Jenis | Wajib | Contoh | Penerangan |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kelayakan aplikasi yang digunakan untuk memanggil API ini.   - Untuk Aplikasi dalaman, dapatkannya melalui API untuk mendapatkan [access_token Aplikasi dalaman](/ms/open/development/obtain-orgapp-token). - Untuk Aplikasi perusahaan pihak ketiga, dapatkannya melalui API untuk mendapatkan access_token perusahaan pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Contoh | Penerangan |
+| --- | --- | --- | --- | --- |
+| agent_id | Long | Ya | 123L | Agent ID aplikasi mikro yang digunakan untuk menghantar mesej.   - Untuk Aplikasi dalaman, lihat pada halaman butiran aplikasi dalam [Bahagian Belakang Pembangun](https://open-dev.dingtalk.io/#/appMgr/inner/h5/836390886/1). - Untuk Aplikasi perusahaan pihak ketiga, dapatkannya dengan memanggil API untuk mendapatkan maklumat kebenaran perusahaan. |
+| userid_list | String | Tidak | user123,user456 | Senarai ID pengguna penerima. Panjang maksimum ialah 100. |
+| dept_id_list | String | Tidak | 123,345 | Senarai ID jabatan penerima. Panjang maksimum ialah 20.  Apabila penerima ialah ID jabatan, semua pengguna dalam sub-jabatannya turut disertakan. |
+| to_all_user | Boolean | Tidak | false | Sama ada untuk menghantar mesej kepada semua pengguna dalam Organisasi Anda.  **Nota**  Apabila ditetapkan kepada false, anda perlu menentukan nilai sama ada userid_list atau dept_id_list. |
+| msg | JSON Object | Ya | `{"msgtype":"text","text":{"content":"Please submit the daily report."}}` | Kandungan mesej, dengan panjang maksimum 2,048 bait. [Jenis notifikasi mesej](/ms/open/development/message-types-and-data-format) berikut disokong. Nilai msgtype yang tersedia:  **Penting**  Berbilang jenis mesej tidak boleh dihantar dalam satu panggilan.   - text: Mesej teks - image: Mesej imej - voice: Mesej suara - file: Mesej fail - link: Mesej pautan - oa: Mesej OA  **Nota**  Mesej OA menyokong penetapan teks status dan warna mesej melalui parameter `status_bar`. Selepas menghantar, anda boleh mengemas kini status dan warna mesej dengan memanggil API [Kemas kini bar status Notifikasi Kerja](/ms/open/development/update-work-notification-status-bar). - markdown: Mesej Markdown - action_card: Mesej kad |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=7e0a4xxxx31351' \
+-d 'agent_id=123' \
+-d 'dept_id_list=123%2C456' \
+-d 'msg=%7B+++%5C%22msgtype%5C%22%3A+%5C%22text%5C%22%2C+%5C%22text%5C%22%3A+%7B+++++%5C%22content%5C%22%3A+%5C%22Leave+request+from+John%5C%22+++%7D+%7D' \
+-d 'to_all_user=false' \
+-d 'userid_list=123%2C456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+OapiMessageCorpconversationAsyncsendV2Request request = new OapiMessageCorpconversationAsyncsendV2Request();
+request.setAgentId(2839445214L);
+request.setUseridList("0147282552401293909,manager4974");
+request.setToAllUser(false);
+OapiMessageCorpconversationAsyncsendV2Request.Msg msg = new OapiMessageCorpconversationAsyncsendV2Request.Msg();
+msg.setMsgtype("text");
+OapiMessageCorpconversationAsyncsendV2Request.Text text = new OapiMessageCorpconversationAsyncsendV2Request.Text();
+text.setContent("test123");
+msg.setText(text);
+request.setMsg(msg);
+OapiMessageCorpconversationAsyncsendV2Response rsp = client.execute(request, accessToken);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiMessageCorpconversationAsyncsendV2Request("https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2")
+
+req.agent_id=123
+req.userid_list="123,456"
+req.dept_id_list="123,456"
+req.to_all_user=false
+req.msg="{\"msgtype\":\"text\",\"text\": {\"content\": \"Leave request from John\"}}"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiMessageCorpconversationAsyncsendV2Request;
+$req->setAgentId("123");
+$req->setUseridList("123,456");
+$req->setDeptIdList("123,456");
+$req->setToAllUser("false");
+$msg = new Msg;
+$msg->msgtype="text";
+$text = new Text;
+$text->content="123";
+$msg->text = $text;
+$req->setMsg($msg);
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/message/corpconversation/asyncsend_v2");
+OapiMessageCorpconversationAsyncsendV2Request req = new OapiMessageCorpconversationAsyncsendV2Request();
+req.AgentId = 123L;
+req.UseridList = "123,456";
+req.DeptIdList = "123,456";
+req.ToAllUser = false;
+OapiMessageCorpconversationAsyncsendV2Request.MsgDomain obj1 = new OapiMessageCorpconversationAsyncsendV2Request.MsgDomain();
+obj1.Msgtype = "text";
+OapiMessageCorpconversationAsyncsendV2Request.TextDomain obj2 = new OapiMessageCorpconversationAsyncsendV2Request.TextDomain();
+obj2.Content = "123";
+obj1.Text= obj2;
+req.Msg_ = obj1;
+OapiMessageCorpconversationAsyncsendV2Response rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Contoh | Penerangan |
+| --- | --- | --- | --- |
+| request_id | String | 4jzllmte0wau | ID permintaan. |
+| errmsg | String | ok | Penerangan kod pemulangan.  **Penting**  Jika panggilan API berjaya tetapi penerima tidak menerima mesej tersebut, panggil [Dapatkan hasil penghantaran mesej secara asinkron kepada organisasi](/ms/open/development/gets-the-result-of-sending-messages-asynchronously-to-the-enterprise) untuk menyoal hasilnya dan bandingkan dengan kod ralat yang disenaraikan dalam dokumentasi. |
+| errcode | Number | 0 | Kod pemulangan. |
+| task_id | Number | 256271667526 | ID tugas penghantaran asinkron yang dicipta. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode":0,
+  "task_id":256271667526,
+  "request_id":"4jzllmte0wau"
+}
+```
+
+### Kod ralat
+
+Jika ralat dikembalikan apabila anda memanggil API ini, cari penyelesaian dalam dokumentasi [Kod ralat global](/ms/open/development/server-api-error-codes-1) berdasarkan mesej ralat tersebut.

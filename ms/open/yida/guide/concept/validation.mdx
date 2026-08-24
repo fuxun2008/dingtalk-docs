@@ -1,0 +1,97 @@
+---
+title: "Pengesahan Borang"
+description: "Ketahui cara mengesahkan data borang di YiDA menggunakan peraturan pengesahan terbina dalam bagi setiap komponen borang serta fungsi pengesahan tersuai untuk memastikan integriti data yang dihantar."
+polished: true
+---
+
+Borang merupakan senario paling biasa dalam YiDA. Semasa bekerja dengan Borang, anda sering perlu mengesahkan Medan. Selain peraturan pengesahan terbina dalam untuk pelbagai komponen borang, platform YiDA turut menyediakan keupayaan pengesahan medan tersuai, membantu anda menguruskan data Borang dan mengelakkan data tidak sah daripada dihantar.
+
+Apabila data yang dihantar gagal pengesahan, Mesej ralat akan dipaparkan di bawah Medan tersebut dan penghantaran akan disekat, seperti ditunjukkan di bawah:
+
+## Tetapan pengesahan
+
+Platform YiDA menyediakan dua pendekatan pengesahan borang:
+
+### Peraturan pengesahan terbina dalam
+
+YiDA menyediakan peraturan pengesahan terbina dalam yang biasa digunakan untuk setiap komponen borang. Anda hanya perlu mengonfigurasikan dan mengaktifkan peraturan tersebut untuk menggunakannya. Sebagai contoh, tetapan umur minimum yang ditunjukkan di atas boleh dilaksanakan dengan mudah menggunakan konfigurasi berikut:
+
+### Peraturan pengesahan tersuai
+
+Kaedah pengesahan medan terbina dalam mungkin tidak merangkumi setiap senario. Untuk menangani perkara ini, YiDA menyediakan tetapan peraturan Tersuai untuk setiap komponen borang, membolehkan anda mengawal hasil pengesahan menggunakan fungsi. Fungsi peraturan pengesahan tersuai ditakrifkan seperti berikut:
+
+```ts
+// value ialah nilai semasa Medan; mengembalikan boolean yang menunjukkan sama ada pengesahan berjaya
+function validateRule(value: any): boolean;
+```
+
+Sebagai contoh, untuk mengesahkan sama ada Kandungan Medan input teks bermula dengan "Hangzhou", gunakan kod berikut:
+
+```js
+// Sama ada nilai bermula dengan "Hangzhou"
+function validateRule(value) {
+  if (/^Hangzhou/.test(value)) {
+    return true;
+  }
+  return false;
+```
+
+## API
+Selain dicetuskan semasa penghantaran Borang, pengesahan borang juga boleh dicetuskan secara manual melalui [frontend API](/ms/open/yida/api/yidaAPI#thisfieldidvalidate), seperti ditunjukkan di bawah:
+
+```js
+export function validate() {
+  // Sahkan komponen Medan input teks; cetak ralat dan nilai ke konsol jika pengesahan gagal
+  this.$('textField_kyz78exp').validate((errors, values) => {
+    console.log(JSON.stringify({errors, values}, null, 2));
+  });
+}
+```
+
+## Pengesahan tersuai biasa
+### Pengesahan nombor kad bank
+#### Pengesahan panjang nombor kad
+Nombor kad mestilah 16 atau 19 digit.
+
+```js
+function validateRule(value) {
+  return value && /^([0-9]{16}|[0-9]{19})$/.test(value);
+}
+```
+
+#### Pengesahan nombor kad
+Menggunakan [**algoritma Luhn**](https://baike.baidu.com/item/Luhn%E7%AE%97%E6%B3%95/22799984) untuk pengesahan.
+
+```js
+function validateRule(value) {
+  if (value && /^([0-9]{16}|[0-9]{19})$/.test(value)) {
+    let total = 0;
+    value.split('').reverse().forEach((item, idx) => {
+      const num = parseInt(item, 10);
+      total += idx % 2 ? 2 * num - (num > 4 ? 9 : 0) : num;
+    });
+    if (total === 0) {
+      return false;
+    }
+    return total % 10 === 0;
+  }
+  return false;
+}
+```
+
+### Pengesahan nombor kad pengenalan
+
+```js
+function validateRule(value) {
+  if (value && value.length === 18) {
+    const coeff = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    const laststr = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'];
+    let total = 0;
+    for(let i = 0; i < 17; ++ i) {
+      total+= parseInt(value[i], 10) * coeff[i];
+    }
+    return value[17] === laststr[total % 11];
+  }
+  return false;
+}
+```

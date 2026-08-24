@@ -1,0 +1,101 @@
+---
+title: "Tetapan Keselamatan untuk Bot tersuai"
+description: "Memperkenalkan tiga tetapan keselamatan untuk Bot tersuai — senarai kata kunci dibenarkan, tandatangan, dan julat alamat IP — berserta prasyarat dan maklumat latar belakang."
+---
+
+Rujuk dokumen ini untuk mengetahui tentang tetapan keselamatan bagi Bot tersuai.
+
+## Latar belakang
+
+Untuk memastikan keselamatan Bot tersuai, kami menyediakan tiga langkah perlindungan untuk melindungi operasi Bot tersuai anda. Langkah-langkah ini termasuk **Kata kunci tersuai**, **Tandatangani permintaan** (penyulitan dengan tandatangan), dan alamat IP (julat). Kaedah-kaedah ini melindungi bot anda dengan berkesan daripada serangan berniat jahat.
+
+## Prasyarat
+
+Lengkapkan prosedur [Cipta Bot tersuai](/ms/open/dingstart/custom-bot-creation-and-installation).
+
+## Kata kunci tersuai
+
+Anda boleh mengkonfigurasikan sehingga 10 kata kunci. Sesuatu mesej mesti mengandungi sekurang-kurangnya satu daripada kata kunci ini untuk berjaya dihantar.
+
+Sebagai contoh, jika anda menambah kata kunci tersuai **amaran pemantauan**, mesej yang dihantar oleh bot ini mesti mengandungi frasa **amaran pemantauan** untuk berjaya dihantar.
+
+## Tandatangani permintaan
+
+Kaedah Tandatangani permintaan membolehkan Pengesahan Keselamatan dua hala antara DingTalk Bot dan pembangun untuk mengesahkan Keselamatan. Langkah-langkah pengiraan tandatangan adalah seperti berikut:
+
+1. Gunakan Cap masa dan secret sebagai string tandatangan. Kira Tandatangan menggunakan algoritma HmacSHA256, kodkan hasilnya dengan Base64, kemudian urlEncode parameter tandatangan untuk mendapatkan tandatangan akhir. Pengekodan UTF-8 diperlukan.
+
+   | **Parameter** | **Penerangan** |
+   | --- | --- |
+   | timestamp | Cap masa sistem semasa bagi perkhidmatan pembangun, dalam milisaat. Perbezaan dengan masa panggilan permintaan tidak boleh melebihi 1 jam. |
+   | secret | Secret. String yang bermula dengan SEC yang dipaparkan di bawah bahagian Tandatangani permintaan pada Halaman Tetapan Keselamatan bot. |
+
+   - Contoh kod pengiraan tandatangan (Java)
+
+     ```java lines
+     import javax.crypto.Mac;
+     import javax.crypto.spec.SecretKeySpec;
+     import org.apache.commons.codec.binary.Base64;
+     import java.net.URLEncoder;
+
+     public class Test{
+         public static void main(String[] args) throws Exception{
+             Long timestamp = System.currentTimeMillis();
+             String secret = "this is secret";
+
+             String stringToSign = timestamp + "\n" + secret;
+             Mac mac = Mac.getInstance("HmacSHA256");
+             mac.init(new SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256"));
+             byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+             String sign = URLEncoder.encode(new String(Base64.encodeBase64(signData)),"UTF-8");
+             System.out.println(sign);
+         }
+
+     }
+     ```
+   - Contoh kod pengiraan tandatangan (Python)
+
+     ```python lines
+     #python 3.8
+     import time
+     import hmac
+     import hashlib
+     import base64
+     import urllib.parse
+
+     timestamp = str(round(time.time() * 1000))
+     secret = 'this is secret'
+     secret_enc = secret.encode('utf-8')
+     string_to_sign = '{}\n{}'.format(timestamp, secret)
+     string_to_sign_enc = string_to_sign.encode('utf-8')
+     hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
+     sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+     print(timestamp)
+     print(sign)
+     ```
+2. Dapatkan Cap masa sistem semasa dan nilai sign yang disulitkan daripada perkhidmatan pembangun, kemudian tambahkan timestamp dan sign pada URL.
+
+   ```text
+   https://oapi.dingtalk.io/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+   ```
+
+   | Parameter | Penerangan |
+   | --- | --- |
+   | timestamp | Cap masa yang digunakan oleh pembangun untuk mengira nilai sign. |
+   | sign | Nilai tandatangan yang diperoleh dalam Langkah 1. |
+
+   Untuk butiran lanjut, lihat Hantar mesej Sembang Kumpulan dengan Bot tersuai.
+
+## Alamat IP (julat)
+
+Selepas dikonfigurasikan, hanya permintaan daripada alamat IP dalam julat yang ditetapkan akan diproses. Dua kaedah konfigurasi disokong: alamat IP dan julat alamat IP. Senarai Dibenarkan IPv6 belum lagi disokong. Format-formatnya adalah seperti berikut:
+
+| Format | Penerangan |
+| --- | --- |
+| 1.1.1.1 | Alamat IP awam keluar pembangun (bukan alamat LAN). |
+| 1.1.1.0/24 | Segmen rangkaian yang dinyatakan dalam notasi CIDR. |
+
+## Dokumen berkaitan
+
+- Hantar mesej Sembang Kumpulan dengan Bot tersuai
+- [OpenAPI untuk menghantar mesej kumpulan dengan Bot tersuai](/ms/open/development/custom-robots-send-group-messages)

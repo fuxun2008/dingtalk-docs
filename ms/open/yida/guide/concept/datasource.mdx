@@ -1,0 +1,201 @@
+---
+title: "Remote API"
+description: "Ketahui cara konfigurasi dan aliran kerja Remote API YiDA di DingTalk — daripada URL permintaan, parameter, hingga fungsi pemprosesan data dan panggilan manual — untuk interaksi data tak segerak dengan pelayan."
+polished: true
+---
+
+Pembangunan sistem semestinya melibatkan penghantaran permintaan HTTP untuk mendapatkan data daripada pelayan atau melaksanakan operasi tak segerak. YiDA menyediakan ciri Remote API untuk panggilan antara muka tak segerak.
+
+## Cipta Sumber Data jauh
+
+Tambah konfigurasi Remote API melalui panel Sumber Data.
+
+Sumber Data jauh mengandungi item konfigurasi berikut:
+
+* **Nama** — Pengecam unik bagi Remote API tersebut. Ikut peraturan penamaan pemboleh ubah JavaScript.
+* **Description** — Menerangkan Remote API tersebut. Penerangan ini akan dipaparkan semasa pengikatan pemboleh ubah.
+* **Auto-load** — Sumber Data yang mengaktifkan **Auto-load** akan memanggil antara muka jauh sebelum Halaman dipaparkan, dan data yang dipulangkan terus ditetapkan kepada pemboleh ubah global yang dinamakan sempena Remote API tersebut. Halaman hanya mula dipaparkan selepas semua Sumber Data yang berautoload selesai dimuatkan.
+* **Loading Mode** — YiDA menyediakan dua mod pemuatan berikut (mod lalai ialah pemuatan selari):
+  * Serial — Semua Sumber Data serial dijalankan dari atas ke bawah. Jika terdapat kebergantungan, letakkan Sumber Data yang bergantung di atas Sumber Data yang bergantung kepadanya.
+  * Selari — Semua Sumber Data selari dijalankan serentak.
+* **Request URL** — URL akses bagi Remote API tersebut. Untuk OpenAPI yang disediakan oleh YiDA, gunakan laluan relatif. Antara muka daripada perkhidmatan pihak ketiga mesti menyokong akses cross-origin.
+* **Kaedah HTTP** — YiDA menyokong kaedah permintaan tak segerak umum berikut: JSONP, GET, POST, PUT, dan DELETE.
+* **Parameter permintaan** — Menetapkan parameter permintaan bagi permintaan tak segerak tersebut. Konfigurasi statik dan pengikatan pemboleh ubah kedua-duanya disokong.
+* **Send Request** — Menerima nilai boolean yang menentukan sama ada permintaan dihantar. Anda juga boleh memasukkan ungkapan pemboleh ubah untuk mengawal tingkah laku ini.
+* **Data Processing** — YiDA menyediakan empat kategori fungsi pemprosesan data untuk peringkat yang berbeza:
+  * **willFetch** — Pelaksana pra-permintaan. Gunakan willFetch untuk mengubah suai parameter permintaan sebelum permintaan dihantar. Contoh:
+  ```js
+  function willFetch(vars, config) {
+    // Ubah suai parameter query melalui vars.data
+    // Ubah suai header melalui config.header
+    // Ubah suai URL melalui config.url
+    vars.data.a = 1; // Tetapkan parameter "a" dalam permintaan kepada 1
+    config.url = 'https://www.taobao.com'; // Tukar URL permintaan kepada Taobao
+    config.header['Content-Type'] = 'application/json'; // Ubah suai Content-Type
+    console.log(vars, config); // Lihat parameter lain yang boleh diubah suai.
+  }
+  ```
+
+  * **fit** — Menyesuaikan data yang dipulangkan. Gunakan fit untuk membentuk semula respons asal kepada format data yang dijangkakan. Contoh:
+  ```js
+  // Secara lalai, YiDA hanya mengendalikan respons dalam format berikut. Jika antara muka tak segerak memulangkan struktur lain, gunakan fit untuk menukarnya.
+  //{
+  //    content: [], // Medan "content" membawa data; tiada had ke atas struktur datanya.
+  //    success: true, // "success" menunjukkan sama ada permintaan berjaya.
+  //}
+  function fit(response) {
+    const content = (response.content !== undefined) ? response.content : response;
+    const error = {
+      message: response.errorMsg ||
+        (response.errors && response.errors[0] && response.errors[0].msg) ||
+        response.content || 'Remote Data Source request failed, success is false',
+    };
+    let success = true;
+    if (response.success !== undefined) {
+      success = response.success;
+    } else if (response.hasError !== undefined) {
+      success = !response.hasError;
+    }
+    return {
+      content,
+      success,
+      error,
+    };
+  }
+  ```
+
+  * **didFetch** — Callback pasca-permintaan. Gunakan didFetch untuk mengubah suai data yang diterima. Berbeza dengan fit, ia hanya berjalan apabila nilai success yang dipulangkan ialah true. Contoh:
+  ```js
+  function didFetch(content) {
+      content.b = 1; // Tetapkan medan "b" dalam data yang dipulangkan kepada 1
+      return content; // Penting: content mesti dipulangkan
+  }
+  ```
+
+  * **onError** — Pelaksana ralat. onError menangkap ralat daripada Sumber Data jauh dan berjalan apabila nilai success yang dipulangkan ialah false. Contoh:
+  ```js
+  function onError(error) {
+    console.log(error);
+  }
+  ```
+
+* **Default Data** — Menetapkan data lalai untuk antara muka tersebut. Jika antara muka tidak memulangkan sebarang data atau permintaan gagal, data lalai ini akan dipulangkan sebagai gantinya.
+
+## API
+
+Remote API YiDA menyediakan dua kaedah berikut:
+
+### this.dataSourceMap.xxx.load()
+
+Memanggil Remote API tertentu secara manual, dengan xxx sebagai nama Sumber Data yang ditetapkan dalam panel Sumber Data. Anda juga boleh menghantar parameter permintaan; parameter ini akan digabungkan dengan parameter yang dikonfigurasikan dalam Sumber Data dan dihantar bersama permintaan tersebut. Kaedah load memulangkan Promise.
+
+Contoh:
+
+```js
+export function fetchData() {
+  // Panggil Remote API getDataList yang dikonfigurasikan dalam Sumber Data, dengan menghantar pageSize dan page.
+  // Jika berjaya, cetak hasilnya ke konsol. Jika gagal, papar makluman toast.
+  this.dataSourceMap.getDataList.load({
+    pageSize: 10,
+    page: this.state.currentPage
+  }).then((res) => {
+    if (res) {
+      console.log('fetchData', res);
+    }
+  }).catch((err) => {
+    this.utils.toast({
+      type: 'error',
+      title: 'Request failed!'
+    })；
+  });
+}
+```
+
+### this.reloadDataSource()
+
+Menghantar semula permintaan bagi semua Remote API yang mempunyai tetapan auto-load bernilai true.
+
+Contoh:
+
+```js
+export function reload() {
+  // Minta semula semua permintaan Sumber Data awal
+  this.reloadDataSource();
+}
+
+```
+
+## Kes Penggunaan
+
+Sumber Data jauh digunakan secara meluas dalam pembangunan sistem, bertindak sebagai jambatan antara Halaman bahagian hadapan dan perkhidmatan bahagian belakang. Di platform YiDA, dua kes penggunaan paling lazim adalah seperti berikut.
+
+### Sumber Data berautoload
+
+Sesetengah data mesti dimuatkan secara automatik apabila pengguna membuka satu Halaman dan dipaparkan pada Halaman tersebut — contohnya, dalam senario "Tugasan Belum Selesai Saya".
+
+* Konfigurasikan Sumber Data berautoload untuk memuatkan Tugasan (To-Do). (Sumber Data berautoload akan memasangkan hasil yang dipulangkan kepada pemboleh ubah global yang namanya sepadan dengan nama Sumber Data.) Lihat di bawah:
+
+  Fungsi pemprosesan data didFetch juga dikonfigurasikan untuk menukar data yang dipulangkan kepada struktur yang lebih bermakna:
+
+  ```js
+  function didFetch(content) {
+    return (content.data || []).map(item => {
+      return {
+        id: item.formInstId,
+        content: item.formData.textField_kymq5pdi,
+        done: item.formData.radioField_kymq5pdj
+      }
+    });
+  }
+  ```
+
+* Seterusnya, gunakan Komponen Spreadsheet untuk memaparkan data Tugasan yang dimuatkan secara automatik, seperti ditunjukkan di bawah:
+  * Ikat pemboleh ubah Sumber Data Spreadsheet kepada state.todoList.
+
+  * Tetapkan pemetaan Medan Spreadsheet dan Jenis yang berkaitan.
+
+* Akhir sekali, klik butang **Pratonton** dalam pereka bentuk untuk melihat Tugasan dipaparkan dalam Spreadsheet.
+
+### Sumber Data dimuatkan secara manual
+
+Kadangkala Sumber Data perlu dipanggil secara manual melalui pengendalian acara sebagai respons kepada interaksi pengguna — contohnya, memanggil Remote API untuk memadam Tugasan apabila pengguna klik Butang Padam.
+
+* Pertama, konfigurasikan Remote API untuk memadam tugasan, seperti ditunjukkan di bawah:
+
+  Fungsi pemprosesan data didFetch juga dikonfigurasikan untuk antara muka ini. Apabila permintaan berjaya, notifikasi Mesej memaklumkan Pengguna bahawa pemadaman berjaya, dan API reloadDataSource dipanggil untuk memuat semula Senarai tugasan dengan mencetuskan semula permintaan auto-load:
+
+  ```js
+  function didFetch(content) {
+    // Maklumkan pengguna bahawa pemadaman berjaya
+    this.utils.toast({
+      title: 'delete Success!',
+    });
+    // Cetuskan semula permintaan auto-load untuk memuat semula senarai tugasan
+    this.reloadDataSource();
+    return content; // Penting: content mesti dipulangkan
+  }
+  ```
+
+* Seterusnya, tambah item Tindakan Padam pada Spreadsheet. Apabila Pengguna klik item Padam, Remote API dipanggil secara manual untuk melaksanakan pemadaman, seperti ditunjukkan di bawah:
+  * Tetapkan Atribut lajur Tindakan Spreadsheet.
+
+  * Tambah item Tindakan.
+
+  * Tetapkan Tajuk item Tindakan dan ikat Tindakan kepadanya dalam fungsi callback.
+
+  * Laksanakan fungsi onDelete untuk memuatkan Sumber Data secara manual dan melaksanakan pemadaman:
+
+  ```js
+  export function onDelete(rowData) {
+    this.dataSourceMap.del.load({
+      formInstId: rowData.id
+    });
+  }
+  ```
+
+* Akhir sekali, klik butang **Pratonton** dalam pereka bentuk. Item Tindakan Padam akan dipaparkan dalam lajur Tindakan Spreadsheet. Klik Butang Padam akan melaksanakan pemadaman dan memuat semula Senarai.
+
+<Tip>
+Contoh di atas menggunakan beberapa antara muka terbuka yang disediakan oleh platform YiDA untuk membuat pertanyaan dan memadam data. Untuk lebih banyak antara muka terbuka YiDA, lihat [dokumentasi OpenAPI](/ms/open/yida/api/openAPI).
+
+</Tip>

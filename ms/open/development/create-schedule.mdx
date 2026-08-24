@@ -1,0 +1,1161 @@
+---
+title: "Acara Baharu"
+description: "Panggil API ini untuk mencipta acara baharu dalam kalendar tertentu di DingTalk, lengkap dengan nota penggunaan, parameter permintaan dan rujukan medan respons."
+---
+
+Panggil API ini untuk mencipta acara.
+
+## Penerangan panggilan API
+
+- Setiap operasi Peserta acara menyokong sehingga 500 pengguna, dan satu acara menyokong sehingga 5,000 peserta secara keseluruhan.
+- Untuk menambah atau membuang peserta acara, kami syorkan menggunakan API [Add event attendee](/ms/open/development/add-schedule-participant#) dan [Remove event attendee](/ms/open/development/delete-schedule-participant#).
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | `https://api.dingtalk.io/v1.0/calendar/users/{userId}/calendars/{calendarId}/events` |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga　appType-Aplikasi peribadi pihak ketiga |
+| Kebenaran yang diperlukan | permission-Calendar.Event.Write-Kebenaran Tulis untuk acara dalam aplikasi Calendar |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-client-token | String | Tidak | Semakan idempotensi.    - `x-client-token` yang sama mewakili permintaan yang sama. - Tamat tempoh selepas 1 hari. |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkan seperti berikut:   - Untuk aplikasi dalaman, panggil API [Obtain the access token of an internal app](/ms/open/development/obtain-the-access-token-of-an-internal-app#). - Untuk aplikasi perusahaan pihak ketiga, panggil API [Obtain the access token of an authorized enterprise (Marketplace app)](https://open.dingtalk.com/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#). - Untuk aplikasi peribadi pihak ketiga, panggil API [Obtain the user token](/ms/open/development/obtain-user-token#). |
+
+### Parameter laluan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| userId | String | Ya | unionId penganjur acara.   - Untuk aplikasi dalaman dan aplikasi perusahaan pihak ketiga, panggil API [Query user details](/ms/open/development/query-user-details#) untuk mendapatkan nilai unionid. - Untuk aplikasi peribadi pihak ketiga, panggil API [Obtain the profile of a user in Contacts](/ms/open/development/dingtalk-retrieve-user-information#) untuk mendapatkan nilai unionId. |
+| calendarId | String | Ya | ID kalendar tempat acara ini berada. Sentiasa ditetapkan kepada **primary**, yang mewakili kalendar utama pengguna. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| summary | String | Ya | Tajuk acara. Maksimum 2,048 aksara. |
+| description | String | Tidak | Penerangan acara. Maksimum 5,000 aksara. |
+| start | Object | Ya | Masa mula acara. |
+| date | String | Tidak | Tarikh mula acara dalam format yyyy-MM-dd.    - Wajib untuk acara sepanjang hari. - Mesti dibiarkan kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Tidak | Masa mula acara dalam format tarikh-masa ISO-8601.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Tidak | Zon waktu bagi masa mula acara, dalam format nama pangkalan data TZ.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| end | Object | Tidak | Masa tamat acara. |
+| date | String | Tidak | Tarikh tamat acara dalam format yyyy-MM-dd.    - Untuk acara sepanjang hari:    - Wajib.   - Tetapkan tarikh tamat kepada T+1.   Contohnya, untuk acara sepanjang hari pada **2024-06-01** dengan tarikh mula **2024-06-01**, tetapkan tarikh tamat kepada **2024-06-02**.   - Mesti dibiarkan kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Tidak | Masa tamat acara dalam format tarikh-masa ISO-8601.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Tidak | Zon waktu bagi masa tamat acara. Mesti sama dengan zon waktu masa mula, dalam format nama pangkalan data TZ.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| isAllDay | Boolean | Tidak | Sama ada acara ini sepanjang hari.   - **true**: Ya. - **false**: Tidak. |
+| recurrence | Object | Tidak | Peraturan Pengulangan acara. |
+| pattern | Object | Tidak | Corak pengulangan. |
+| type | String | Tidak | Jenis corak pengulangan.   - **daily**: Berulang setiap **interval** hari. - **weekly**: Berulang pada **daysOfWeek** setiap **interval** minggu. - **absoluteMonthly**: Berulang pada hari **dayOfMonth** setiap **interval** bulan. - **relativeMonthly**: Berulang pada **daysOfWeek** minggu ke-**index** setiap **interval** bulan. - **absoluteYearly**: Berulang setiap **interval** tahun. |
+| dayOfMonth | Integer | Tidak | Apabila **type** ditetapkan kepada **absoluteMonthly**, menetapkan hari dalam bulan. |
+| daysOfWeek | String | Tidak | Perkataan Bahasa Inggeris huruf kecil untuk menetapkan hari dalam minggu. Pisahkan berbilang nilai dengan koma. |
+| index | String | Tidak | Apabila **type** ditetapkan kepada **relativeMonthly**, menetapkan minggu ke berapa dalam bulan.   - **first**: Minggu pertama. - **second**: Minggu kedua. - **third**: Minggu ketiga. - **fourth**: Minggu keempat. - **last**: Minggu terakhir. |
+| interval | Integer | Tidak | Selang pengulangan. Unit berbeza mengikut jenis.    Contohnya:   - Apabila **type** ialah **daily**, menunjukkan selang N hari. - Apabila **type** ialah **absoluteYearly**, menunjukkan selang N tahun. |
+| firstDayOfWeek | String | Tidak | Hari pertama dalam minggu. Nilai sah: sunday, monday, tuesday, wednesday, thursday, friday, saturday. Nilai Lalai: "sunday". |
+| range | Object | Tidak | Julat pengulangan. |
+| type | String | Tidak | Jenis julat pengulangan.   - **noEnd**: Tidak pernah tamat. - **endDate**: Tamat pada tarikh yang ditetapkan. - **numbered**: Tamat selepas bilangan pengulangan yang ditetapkan. |
+| endDate | String | Tidak | Tarikh tamat pengulangan.    **endDate** dan **numberOfOccurrences** tidak boleh ditetapkan pada masa yang sama. |
+| numberOfOccurrences | Integer | Tidak | Bilangan pengulangan.    **endDate** dan **numberOfOccurrences** tidak boleh ditetapkan pada masa yang sama. |
+| attendees | Array | Tidak | Senarai Peserta acara. Menyokong sehingga 500 peserta. |
+| id | String | Tidak | unionId pengguna.   - Untuk aplikasi dalaman dan aplikasi perusahaan pihak ketiga, panggil API [Query user details](/ms/open/development/query-user-details#) untuk mendapatkan nilai unionid. - Untuk aplikasi peribadi pihak ketiga, panggil API [Obtain the profile of a user in Contacts](/ms/open/development/dingtalk-retrieve-user-information#) untuk mendapatkan nilai unionId. |
+| isOptional | Boolean | Tidak | Sama ada peserta ini pilihan.   - **true**: Ya. - **false**: Tidak. |
+| location | Object | Tidak | Lokasi acara. |
+| displayName | String | Tidak | Nama Lokasi acara. |
+| reminders | Array | Tidak | Peringatan acara. Berbilang Peringatan boleh ditambah.   - Jika tidak dinyatakan, masa Peringatan lalai ialah 15 minit sebelumnya acara bermula. - Menghantar tatasusunan kosong bermaksud tiada Peringatan akan dicipta. |
+| method | String | Tidak | Kaedah Peringatan.   - **dingtalk**: Peringatan dalam-DingTalk. |
+| minutes | Integer | Tidak | Menghantar Peringatan N minit sebelum acara bermula. |
+| onlineMeetingInfo | Object | Tidak | Mencipta mesyuarat dalam talian bersama acara. |
+| type | String | Tidak | Jenis mesyuarat dalam talian.   - **dingtalk**: DingTalk Video Meeting. |
+| extra | `Map<String, String>` | Tidak | Suis keupayaan lanjutan dalam format JSON. Pilihan. Atribut ditakrifkan seperti berikut.   - **noPushNotification**: Sama ada menghantar Notifikasi tolak DingTalk kepada pengguna berkaitan semasa mencipta acara.    - **true**: Jangan hantar.   - **false**: Hantar. - **noChatNotification**: Sama ada menghantar kad Mesej Terus kepada peserta semasa mencipta acara.    - **true**: Jangan hantar.   - **false**: Hantar. |
+| uiConfigs | Array | Tidak | Konfigurasi UI yang mengawal paparan komponen pada halaman butiran acara. |
+| uiName | String | Tidak | Nama komponen. Nilai sah (dikemas kini secara berterusan):   - **updateEventButton**: Butang Edit Acara. - **deleteEventButton**: Butang Padam Acara. - **transferEventButton**: Butang serahkan acara. - **attendee**: Bahagian Peserta. - **comment**: Bahagian Komen acara. |
+| uiStatus | String | Tidak | Status komponen. Nilai sah:   - **hide**: Tersembunyi. - **disable**: Dinyahaktifkan (disokong pada halaman butiran baharu; tidak disokong pada versi lama, di mana komponen akan disembunyikan).    Komponen butang: tidak boleh diklik.   Komponen bahagian: tidak boleh berinteraksi. Contohnya, jika bahagian Komen ditetapkan kepada disable, Komen tidak boleh ditulis, tetapi Komen sedia ada masih boleh dilihat. - **enable**: Tersedia (status Lalai). |
+| richTextDescription | Object | Tidak | Penerangan Teks Kaya. |
+| text | String | Tidak | Kandungan penerangan Teks Kaya. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/calendar/users/iiiP35sJadba8aBSgjrwPRKgiEiF/calendars/primary/events HTTP/1.1
+Host:api.dingtalk.io
+x-client-token:******
+x-acs-dingtalk-access-token:cnNTbW1YbU9sL2p6aFJZdEgvdlQrQT01
+Content-Type:application/json
+
+{
+  "summary" : "acara ujian",
+  "description" : "sesuatu tentang acara ini",
+  "start" : {
+    "date" : "2021-09-20",
+    "dateTime" : "2021-09-20T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "end" : {
+    "date" : "2020-09-21",
+    "dateTime" : "2021-09-20T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "isAllDay" : false,
+  "recurrence" : {
+    "pattern" : {
+      "type" : "daily",
+      "dayOfMonth" : 1,
+      "daysOfWeek" : "monday",
+      "index" : "last",
+      "interval" : 1,
+      "firstDayOfWeek" : "monday"
+    },
+    "range" : {
+      "type" : "endDate",
+      "endDate" : "2021-12-31T10:15:30+08:00",
+      "numberOfOccurrences" : 5
+    }
+  },
+  "attendees" : [ {
+    "id" : "iiiP35sJxxx",
+    "isOptional" : false
+  } ],
+  "location" : {
+    "displayName" : "dingtalk"
+  },
+  "reminders" : [ {
+    "method" : "dingtalk",
+    "minutes" : 15
+  } ],
+  "onlineMeetingInfo" : {
+    "type" : "dingtalk"
+  },
+ "extra" : {
+    {"noChatNotification": "true", "noPushNotification": "true" }
+  },
+  "uiConfigs" : [ {
+    "uiName" : "updateEventButton",
+    "uiStatus" : "hide"
+  } ],
+  "richTextDescription" : {
+    "text" : "<div class=\\\"__aliyun_email_body_block\\\"><div  style=\\\"clear:both;\\\"><span  style=\\\"text-decoration:line-through;\\\">Contoh teks coretan</span></div><div  style=\\\"clear:both;\\\"><span  style=\\\"color:#ff0000;\\\">Contoh teks merah</span></div><div  style=\\\"clear:both;\\\"><span  style=\\\"text-decoration:underline;\\\">Contoh teks bergaris bawah</span></div><div  style=\\\"clear:both;\\\"><span  style=\\\"font-weight:700;\\\">Contoh teks tebal</span></div><div  style=\\\"clear:both;\\\"><span  style=\\\"font-weight:700;font-style:italic;\\\">Contoh teks tebal condong</span></div></div>"
+  }
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Initialize the account Client with a Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkcalendar_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkcalendar_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkcalendar_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventHeaders createEventHeaders = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventHeaders();
+        createEventHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRichTextDescription richTextDescription = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRichTextDescription()
+                .setText("<div class=\"__aliyun_email_body_block\"><div  style=\"clear:both;\"><span  style=\"text-decoration:line-through;\">Contoh teks coretan</span></div><div  style=\"clear:both;\"><span  style=\"color:#ff0000;\">Contoh teks merah</span></div><div  style=\"clear:both;\"><span  style=\"text-decoration:underline;\">Contoh teks bergaris bawah</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;\">Contoh teks tebal</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;font-style:italic;\">Contoh teks tebal condong</span></div></div>");
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestUiConfigs uiConfigs0 = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestUiConfigs()
+                .setUiName("updateEventButton")
+                .setUiStatus("hide");
+       java.util.Map<String, String> extra = TeaConverter.buildMap(
+                new TeaPair("noChatNotification", "true"),
+                new TeaPair("noPushNotification","true")
+        );
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestOnlineMeetingInfo onlineMeetingInfo = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestOnlineMeetingInfo()
+                .setType("dingtalk");
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestReminders reminders0 = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestReminders()
+                .setMethod("dingtalk")
+                .setMinutes(15);
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestLocation location = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestLocation()
+                .setDisplayName("dingtalk");
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestAttendees attendees0 = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestAttendees()
+                .setId("iiiP35sJxxx")
+                .setIsOptional(false);
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRecurrenceRange recurrenceRange = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRecurrenceRange()
+                .setType("endDate")
+                .setEndDate("2021-12-31T10:15:30+08:00")
+                .setNumberOfOccurrences(5);
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRecurrencePattern recurrencePattern = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRecurrencePattern()
+                .setType("daily")
+                .setDayOfMonth(1)
+                .setDaysOfWeek("monday")
+                .setIndex("last")
+                .setInterval(1)
+                .setFirstDayOfWeek("monday");
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRecurrence recurrence = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestRecurrence()
+                .setPattern(recurrencePattern)
+                .setRange(recurrenceRange);
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestEnd end = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestEnd()
+                .setDate("2020-09-21")
+                .setDateTime("2021-09-20T10:15:30+08:00")
+                .setTimeZone("Asia/Shanghai");
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestStart start = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest.CreateEventRequestStart()
+                .setDate("2021-09-20")
+                .setDateTime("2021-09-20T10:15:30+08:00")
+                .setTimeZone("Asia/Shanghai");
+        com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest createEventRequest = new com.aliyun.dingtalkcalendar_1_0.models.CreateEventRequest()
+                .setSummary("test event")
+                .setDescription("something about this event")
+                .setStart(start)
+                .setEnd(end)
+                .setIsAllDay(false)
+                .setRecurrence(recurrence)
+                .setAttendees(java.util.Arrays.asList(
+                    attendees0
+                ))
+                .setLocation(location)
+                .setReminders(java.util.Arrays.asList(
+                    reminders0
+                ))
+                .setOnlineMeetingInfo(onlineMeetingInfo)
+                .setExtra(extra)
+                .setUiConfigs(java.util.Arrays.asList(
+                    uiConfigs0
+                ))
+                .setRichTextDescription(richTextDescription);
+        try {
+            client.createEventWithOptions("iiiP35sJadba8aBSgjrwPRKgiEiF", "primary", createEventRequest, createEventHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.calendar_1_0.client import Client as dingtalkcalendar_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.calendar_1_0 import models as dingtalkcalendar__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkcalendar_1_0Client:
+        """
+        Initialize the account Client with a Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkcalendar_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_event_headers = dingtalkcalendar__1__0_models.CreateEventHeaders()
+        create_event_headers.x_acs_dingtalk_access_token = '<your access token>'
+        rich_text_description = dingtalkcalendar__1__0_models.CreateEventRequestRichTextDescription(
+            text='<div class="__aliyun_email_body_block"><div  style="clear:both;"><span  style="text-decoration:line-through;">Contoh teks coretan</span></div><div  style="clear:both;"><span  style="color:#ff0000;">Contoh teks merah</span></div><div  style="clear:both;"><span  style="text-decoration:underline;">Contoh teks bergaris bawah</span></div><div  style="clear:both;"><span  style="font-weight:700;">Contoh teks tebal</span></div><div  style="clear:both;"><span  style="font-weight:700;font-style:italic;">Contoh teks tebal condong</span></div></div>'
+        )
+        ui_configs_0 = dingtalkcalendar__1__0_models.CreateEventRequestUiConfigs(
+            ui_name='updateEventButton',
+            ui_status='hide'
+        )
+        extra = {
+            'noChatNotification': 'true', 
+            'noPushNotification': 'true'
+        }
+        online_meeting_info = dingtalkcalendar__1__0_models.CreateEventRequestOnlineMeetingInfo(
+            type='dingtalk'
+        )
+        reminders_0 = dingtalkcalendar__1__0_models.CreateEventRequestReminders(
+            method='dingtalk',
+            minutes=15
+        )
+        location = dingtalkcalendar__1__0_models.CreateEventRequestLocation(
+            display_name='dingtalk'
+        )
+        attendees_0 = dingtalkcalendar__1__0_models.CreateEventRequestAttendees(
+            id='iiiP35sJxxx',
+            is_optional=False
+        )
+        recurrence_range = dingtalkcalendar__1__0_models.CreateEventRequestRecurrenceRange(
+            type='endDate',
+            end_date='2021-12-31T10:15:30+08:00',
+            number_of_occurrences=5
+        )
+        recurrence_pattern = dingtalkcalendar__1__0_models.CreateEventRequestRecurrencePattern(
+            type='daily',
+            day_of_month=1,
+            days_of_week='monday',
+            index='last',
+            interval=1,
+            first_day_of_week='monday'
+        )
+        recurrence = dingtalkcalendar__1__0_models.CreateEventRequestRecurrence(
+            pattern=recurrence_pattern,
+            range=recurrence_range
+        )
+        end = dingtalkcalendar__1__0_models.CreateEventRequestEnd(
+            date='2020-09-21',
+            date_time='2021-09-20T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        start = dingtalkcalendar__1__0_models.CreateEventRequestStart(
+            date='2021-09-20',
+            date_time='2021-09-20T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        create_event_request = dingtalkcalendar__1__0_models.CreateEventRequest(
+            summary='test event',
+            description='something about this event',
+            start=start,
+            end=end,
+            is_all_day=False,
+            recurrence=recurrence,
+            attendees=[
+                attendees_0
+            ],
+            location=location,
+            reminders=[
+                reminders_0
+            ],
+            online_meeting_info=online_meeting_info,
+            extra=extra,
+            ui_configs=[
+                ui_configs_0
+            ],
+            rich_text_description=rich_text_description
+        )
+        try:
+            client.create_event_with_options('iiiP35sJadba8aBSgjrwPRKgiEiF', 'primary', create_event_request, create_event_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message, yang membantu mengesan punca isu
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_event_headers = dingtalkcalendar__1__0_models.CreateEventHeaders()
+        create_event_headers.x_acs_dingtalk_access_token = '<your access token>'
+        rich_text_description = dingtalkcalendar__1__0_models.CreateEventRequestRichTextDescription(
+            text='<div class="__aliyun_email_body_block"><div  style="clear:both;"><span  style="text-decoration:line-through;">Contoh teks coretan</span></div><div  style="clear:both;"><span  style="color:#ff0000;">Contoh teks merah</span></div><div  style="clear:both;"><span  style="text-decoration:underline;">Contoh teks bergaris bawah</span></div><div  style="clear:both;"><span  style="font-weight:700;">Contoh teks tebal</span></div><div  style="clear:both;"><span  style="font-weight:700;font-style:italic;">Contoh teks tebal condong</span></div></div>'
+        )
+        ui_configs_0 = dingtalkcalendar__1__0_models.CreateEventRequestUiConfigs(
+            ui_name='updateEventButton',
+            ui_status='hide'
+        )
+        extra = {
+            'key': 'noPushNotification'
+        }
+        online_meeting_info = dingtalkcalendar__1__0_models.CreateEventRequestOnlineMeetingInfo(
+            type='dingtalk'
+        )
+        reminders_0 = dingtalkcalendar__1__0_models.CreateEventRequestReminders(
+            method='dingtalk',
+            minutes=15
+        )
+        location = dingtalkcalendar__1__0_models.CreateEventRequestLocation(
+            display_name='dingtalk'
+        )
+        attendees_0 = dingtalkcalendar__1__0_models.CreateEventRequestAttendees(
+            id='iiiP35sJxxx',
+            is_optional=False
+        )
+        recurrence_range = dingtalkcalendar__1__0_models.CreateEventRequestRecurrenceRange(
+            type='endDate',
+            end_date='2021-12-31T10:15:30+08:00',
+            number_of_occurrences=5
+        )
+        recurrence_pattern = dingtalkcalendar__1__0_models.CreateEventRequestRecurrencePattern(
+            type='daily',
+            day_of_month=1,
+            days_of_week='monday',
+            index='last',
+            interval=1,
+            first_day_of_week='monday'
+        )
+        recurrence = dingtalkcalendar__1__0_models.CreateEventRequestRecurrence(
+            pattern=recurrence_pattern,
+            range=recurrence_range
+        )
+        end = dingtalkcalendar__1__0_models.CreateEventRequestEnd(
+            date='2020-09-21',
+            date_time='2021-09-20T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        start = dingtalkcalendar__1__0_models.CreateEventRequestStart(
+            date='2021-09-20',
+            date_time='2021-09-20T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        create_event_request = dingtalkcalendar__1__0_models.CreateEventRequest(
+            summary='test event',
+            description='something about this event',
+            start=start,
+            end=end,
+            is_all_day=False,
+            recurrence=recurrence,
+            attendees=[
+                attendees_0
+            ],
+            location=location,
+            reminders=[
+                reminders_0
+            ],
+            online_meeting_info=online_meeting_info,
+            extra=extra,
+            ui_configs=[
+                ui_configs_0
+            ],
+            rich_text_description=rich_text_description
+        )
+        try:
+            await client.create_event_with_options_async('iiiP35sJadba8aBSgjrwPRKgiEiF', 'primary', create_event_request, create_event_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message, yang membantu mengesan punca isu
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```xml
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\richTextDescription;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\uiConfigs;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\onlineMeetingInfo;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\reminders;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\location;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\attendees;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\recurrence\range;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\recurrence\pattern;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\recurrence;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\end;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest\start;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\CreateEventRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Initialize the account Client with a Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $createEventHeaders = new CreateEventHeaders([]);
+        $createEventHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $richTextDescription = new richTextDescription([
+            "text" => "<div class=\"__aliyun_email_body_block\"><div  style=\"clear:both;\"><span  style=\"text-decoration:line-through;\">Contoh teks coretan</span></div><div  style=\"clear:both;\"><span  style=\"color:#ff0000;\">Contoh teks merah</span></div><div  style=\"clear:both;\"><span  style=\"text-decoration:underline;\">Contoh teks bergaris bawah</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;\">Contoh teks tebal</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;font-style:italic;\">Contoh teks tebal condong</span></div></div>"
+        ]);
+        $uiConfigs0 = new uiConfigs([
+            "uiName" => "updateEventButton",
+            "uiStatus" => "hide"
+        ]);
+        $extra = [
+            "noChatNotification" => "true”,
+            "noPushNotification" => "true"
+        ];
+        $onlineMeetingInfo = new onlineMeetingInfo([
+            "type" => "dingtalk"
+        ]);
+        $reminders0 = new reminders([
+            "method" => "dingtalk",
+            "minutes" => 15
+        ]);
+        $location = new location([
+            "displayName" => "dingtalk"
+        ]);
+        $attendees0 = new attendees([
+            "id" => "iiiP35sJxxx",
+            "isOptional" => false
+        ]);
+        $recurrenceRange = new range([
+            "type" => "endDate",
+            "endDate" => "2021-12-31T10:15:30+08:00",
+            "numberOfOccurrences" => 5
+        ]);
+        $recurrencePattern = new pattern([
+            "type" => "daily",
+            "dayOfMonth" => 1,
+            "daysOfWeek" => "monday",
+            "index" => "last",
+            "interval" => 1,
+            "firstDayOfWeek" => "monday"
+        ]);
+        $recurrence = new recurrence([
+            "pattern" => $recurrencePattern,
+            "range" => $recurrenceRange
+        ]);
+        $end = new end([
+            "date" => "2020-09-21",
+            "dateTime" => "2021-09-20T10:15:30+08:00",
+            "timeZone" => "Asia/Shanghai"
+        ]);
+        $start = new start([
+            "date" => "2021-09-20",
+            "dateTime" => "2021-09-20T10:15:30+08:00",
+            "timeZone" => "Asia/Shanghai"
+        ]);
+        $createEventRequest = new CreateEventRequest([
+            "summary" => "test event",
+            "description" => "something about this event",
+            "start" => $start,
+            "end" => $end,
+            "isAllDay" => false,
+            "recurrence" => $recurrence,
+            "attendees" => [
+                $attendees0
+            ],
+            "location" => $location,
+            "reminders" => [
+                $reminders0
+            ],
+            "onlineMeetingInfo" => $onlineMeetingInfo,
+            "extra" => $extra,
+            "uiConfigs" => [
+                $uiConfigs0
+            ],
+            "richTextDescription" => $richTextDescription
+        ]);
+        try {
+            $client->createEventWithOptions("iiiP35sJadba8aBSgjrwPRKgiEiF", "primary", $createEventRequest, $createEventHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkcalendar_1_0  "github.com/alibabacloud-go/dingtalk/calendar_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Initialize the account Client with a Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkcalendar_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkcalendar_1_0.Client{}
+  _result, _err = dingtalkcalendar_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  createEventHeaders := &dingtalkcalendar_1_0.CreateEventHeaders{}
+  createEventHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  richTextDescription := &dingtalkcalendar_1_0.CreateEventRequestRichTextDescription{
+    Text: tea.String("<div class=\"__aliyun_email_body_block\"><div  style=\"clear:both;\"><span  style=\"text-decoration:line-through;\">Contoh teks coretan</span></div><div  style=\"clear:both;\"><span  style=\"color:#ff0000;\">Contoh teks merah</span></div><div  style=\"clear:both;\"><span  style=\"text-decoration:underline;\">Contoh teks bergaris bawah</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;\">Contoh teks tebal</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;font-style:italic;\">Contoh teks tebal condong</span></div></div>"),
+  }
+  uiConfigs0 := &dingtalkcalendar_1_0.CreateEventRequestUiConfigs{
+    UiName: tea.String("updateEventButton"),
+    UiStatus: tea.String("hide"),
+  }
+  extra := map[string]*string{
+    "noChatNotification": tea.String("true"),
+    "noPushNotification": tea.String("true"),
+  }
+  onlineMeetingInfo := &dingtalkcalendar_1_0.CreateEventRequestOnlineMeetingInfo{
+    Type: tea.String("dingtalk"),
+  }
+  reminders0 := &dingtalkcalendar_1_0.CreateEventRequestReminders{
+    Method: tea.String("dingtalk"),
+    Minutes: tea.Int32(15),
+  }
+  location := &dingtalkcalendar_1_0.CreateEventRequestLocation{
+    DisplayName: tea.String("dingtalk"),
+  }
+  attendees0 := &dingtalkcalendar_1_0.CreateEventRequestAttendees{
+    Id: tea.String("iiiP35sJxxx"),
+    IsOptional: tea.Bool(false),
+  }
+  recurrenceRange := &dingtalkcalendar_1_0.CreateEventRequestRecurrenceRange{
+    Type: tea.String("endDate"),
+    EndDate: tea.String("2021-12-31T10:15:30+08:00"),
+    NumberOfOccurrences: tea.Int32(5),
+  }
+  recurrencePattern := &dingtalkcalendar_1_0.CreateEventRequestRecurrencePattern{
+    Type: tea.String("daily"),
+    DayOfMonth: tea.Int32(1),
+    DaysOfWeek: tea.String("monday"),
+    Index: tea.String("last"),
+    Interval: tea.Int32(1),
+    FirstDayOfWeek: tea.String("monday"),
+  }
+  recurrence := &dingtalkcalendar_1_0.CreateEventRequestRecurrence{
+    Pattern: recurrencePattern,
+    Range: recurrenceRange,
+  }
+  end := &dingtalkcalendar_1_0.CreateEventRequestEnd{
+    Date: tea.String("2020-09-21"),
+    DateTime: tea.String("2021-09-20T10:15:30+08:00"),
+    TimeZone: tea.String("Asia/Shanghai"),
+  }
+  start := &dingtalkcalendar_1_0.CreateEventRequestStart{
+    Date: tea.String("2021-09-20"),
+    DateTime: tea.String("2021-09-20T10:15:30+08:00"),
+    TimeZone: tea.String("Asia/Shanghai"),
+  }
+  createEventRequest := &dingtalkcalendar_1_0.CreateEventRequest{
+    Summary: tea.String("test event"),
+    Description: tea.String("something about this event"),
+    Start: start,
+    End: end,
+    IsAllDay: tea.Bool(false),
+    Recurrence: recurrence,
+    Attendees: []*dingtalkcalendar_1_0.CreateEventRequestAttendees{attendees0},
+    Location: location,
+    Reminders: []*dingtalkcalendar_1_0.CreateEventRequestReminders{reminders0},
+    OnlineMeetingInfo: onlineMeetingInfo,
+    Extra: extra,
+    UiConfigs: []*dingtalkcalendar_1_0.CreateEventRequestUiConfigs{uiConfigs0},
+    RichTextDescription: richTextDescription,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.CreateEventWithOptions(tea.String("iiiP35sJadba8aBSgjrwPRKgiEiF"), tea.String("primary"), createEventRequest, createEventHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkcalendar_1_0, * as $dingtalkcalendar_1_0 from '@alicloud/dingtalk/calendar_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Initialize the account Client with a Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkcalendar_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkcalendar_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let createEventHeaders = new $dingtalkcalendar_1_0.CreateEventHeaders({ });
+    createEventHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let richTextDescription = new $dingtalkcalendar_1_0.CreateEventRequestRichTextDescription({
+      text: "<div class=\"__aliyun_email_body_block\"><div  style=\"clear:both;\"><span  style=\"text-decoration:line-through;\">Contoh teks coretan</span></div><div  style=\"clear:both;\"><span  style=\"color:#ff0000;\">Contoh teks merah</span></div><div  style=\"clear:both;\"><span  style=\"text-decoration:underline;\">Contoh teks bergaris bawah</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;\">Contoh teks tebal</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;font-style:italic;\">Contoh teks tebal condong</span></div></div>",
+    });
+    let uiConfigs0 = new $dingtalkcalendar_1_0.CreateEventRequestUiConfigs({
+      uiName: "updateEventButton",
+      uiStatus: "hide",
+    });
+    let extra = {
+      noChatNotification: "true",
+      noPushNotification: "true",
+    };
+    let onlineMeetingInfo = new $dingtalkcalendar_1_0.CreateEventRequestOnlineMeetingInfo({
+      type: "dingtalk",
+    });
+    let reminders0 = new $dingtalkcalendar_1_0.CreateEventRequestReminders({
+      method: "dingtalk",
+      minutes: 15,
+    });
+    let location = new $dingtalkcalendar_1_0.CreateEventRequestLocation({
+      displayName: "dingtalk",
+    });
+    let attendees0 = new $dingtalkcalendar_1_0.CreateEventRequestAttendees({
+      id: "iiiP35sJxxx",
+      isOptional: false,
+    });
+    let recurrenceRange = new $dingtalkcalendar_1_0.CreateEventRequestRecurrenceRange({
+      type: "endDate",
+      endDate: "2021-12-31T10:15:30+08:00",
+      numberOfOccurrences: 5,
+    });
+    let recurrencePattern = new $dingtalkcalendar_1_0.CreateEventRequestRecurrencePattern({
+      type: "daily",
+      dayOfMonth: 1,
+      daysOfWeek: "monday",
+      index: "last",
+      interval: 1,
+      firstDayOfWeek: "monday",
+    });
+    let recurrence = new $dingtalkcalendar_1_0.CreateEventRequestRecurrence({
+      pattern: recurrencePattern,
+      range: recurrenceRange,
+    });
+    let end = new $dingtalkcalendar_1_0.CreateEventRequestEnd({
+      date: "2020-09-21",
+      dateTime: "2021-09-20T10:15:30+08:00",
+      timeZone: "Asia/Shanghai",
+    });
+    let start = new $dingtalkcalendar_1_0.CreateEventRequestStart({
+      date: "2021-09-20",
+      dateTime: "2021-09-20T10:15:30+08:00",
+      timeZone: "Asia/Shanghai",
+    });
+    let createEventRequest = new $dingtalkcalendar_1_0.CreateEventRequest({
+      summary: "test event",
+      description: "something about this event",
+      start: start,
+      end: end,
+      isAllDay: false,
+      recurrence: recurrence,
+      attendees: [
+        attendees0
+      ],
+      location: location,
+      reminders: [
+        reminders0
+      ],
+      onlineMeetingInfo: onlineMeetingInfo,
+      extra: extra,
+      uiConfigs: [
+        uiConfigs0
+      ],
+      richTextDescription: richTextDescription,
+    });
+    try {
+      await client.createEventWithOptions("iiiP35sJadba8aBSgjrwPRKgiEiF", "primary", createEventRequest, createEventHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Initialize the account Client with a Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventHeaders createEventHeaders = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventHeaders();
+            createEventHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRichTextDescription richTextDescription = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRichTextDescription
+            {
+                Text = "<div class=\"__aliyun_email_body_block\"><div  style=\"clear:both;\"><span  style=\"text-decoration:line-through;\">Contoh teks coretan</span></div><div  style=\"clear:both;\"><span  style=\"color:#ff0000;\">Contoh teks merah</span></div><div  style=\"clear:both;\"><span  style=\"text-decoration:underline;\">Contoh teks bergaris bawah</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;\">Contoh teks tebal</span></div><div  style=\"clear:both;\"><span  style=\"font-weight:700;font-style:italic;\">Contoh teks tebal condong</span></div></div>",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestUiConfigs uiConfigs0 = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestUiConfigs
+            {
+                UiName = "updateEventButton",
+                UiStatus = "hide",
+            };
+            Dictionary<string, string> extra = new Dictionary<string, string>
+            {
+                {"noChatNotification", “true”},
+                {"noPushNotification", "true"},
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestOnlineMeetingInfo onlineMeetingInfo = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestOnlineMeetingInfo
+            {
+                Type = "dingtalk",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestReminders reminders0 = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestReminders
+            {
+                Method = "dingtalk",
+                Minutes = 15,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestLocation location = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestLocation
+            {
+                DisplayName = "dingtalk",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestAttendees attendees0 = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestAttendees
+            {
+                Id = "iiiP35sJxxx",
+                IsOptional = false,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRecurrence.CreateEventRequestRecurrenceRange recurrenceRange = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRecurrence.CreateEventRequestRecurrenceRange
+            {
+                Type = "endDate",
+                EndDate = "2021-12-31T10:15:30+08:00",
+                NumberOfOccurrences = 5,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRecurrence.CreateEventRequestRecurrencePattern recurrencePattern = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRecurrence.CreateEventRequestRecurrencePattern
+            {
+                Type = "daily",
+                DayOfMonth = 1,
+                DaysOfWeek = "monday",
+                Index = "last",
+                Interval = 1,
+                FirstDayOfWeek = "monday",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRecurrence recurrence = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestRecurrence
+            {
+                Pattern = recurrencePattern,
+                Range = recurrenceRange,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestEnd end = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestEnd
+            {
+                Date = "2020-09-21",
+                DateTime = "2021-09-20T10:15:30+08:00",
+                TimeZone = "Asia/Shanghai",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestStart start = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestStart
+            {
+                Date = "2021-09-20",
+                DateTime = "2021-09-20T10:15:30+08:00",
+                TimeZone = "Asia/Shanghai",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest createEventRequest = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest
+            {
+                Summary = "test event",
+                Description = "something about this event",
+                Start = start,
+                End = end,
+                IsAllDay = false,
+                Recurrence = recurrence,
+                Attendees = new List<AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestAttendees>
+                {
+                    attendees0
+                },
+                Location = location,
+                Reminders = new List<AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestReminders>
+                {
+                    reminders0
+                },
+                OnlineMeetingInfo = onlineMeetingInfo,
+                Extra = extra,
+                UiConfigs = new List<AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.CreateEventRequest.CreateEventRequestUiConfigs>
+                {
+                    uiConfigs0
+                },
+                RichTextDescription = richTextDescription,
+            };
+            try
+            {
+                client.CreateEventWithOptions("iiiP35sJadba8aBSgjrwPRKgiEiF", "primary", createEventRequest, createEventHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message, yang membantu mengesan punca isu
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| id | String | ID acara. |
+| summary | String | Tajuk acara. |
+| description | String | Penerangan acara. |
+| start | Object | Masa mula acara. |
+| date | String | Tarikh mula acara dalam format yyyy-MM-dd.    - Wajib untuk acara sepanjang hari. - Mesti dibiarkan kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Masa mula acara dalam format tarikh-masa ISO-8601.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Zon waktu bagi masa mula acara, dalam format nama pangkalan data TZ.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| end | Object | Masa tamat acara. |
+| date | String | Tarikh tamat acara dalam format yyyy-MM-dd.    - Wajib untuk acara sepanjang hari. - Mesti dibiarkan kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Masa tamat acara dalam format tarikh-masa ISO-8601.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Zon waktu bagi masa tamat acara. Mesti sama dengan zon waktu masa mula, dalam format nama pangkalan data TZ.    - Mesti dibiarkan kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| isAllDay | Boolean | Sama ada acara ini sepanjang hari.   - **true**: Ya. - **false**: Tidak. |
+| recurrence | Object | Peraturan Pengulangan acara. |
+| pattern | Object | Corak pengulangan. |
+| type | String | Jenis corak pengulangan.   - **daily**: Berulang setiap **interval** hari. - **weekly**: Berulang pada **daysOfWeek** setiap **interval** minggu. - **absoluteMonthly**: Berulang pada hari **dayOfMonth** setiap **interval** bulan. - **relativeMonthly**: Berulang pada **daysOfWeek** minggu ke-**index** setiap **interval** bulan. - **absoluteYearly**: Berulang setiap **interval** tahun. |
+| dayOfMonth | Integer | Apabila **type** ditetapkan kepada **absoluteMonthly**, menetapkan hari dalam bulan. |
+| daysOfWeek | String | Perkataan Bahasa Inggeris huruf kecil untuk menetapkan hari dalam minggu. Pisahkan berbilang nilai dengan koma. |
+| index | String | Apabila **type** ditetapkan kepada **relativeMonthly**, menetapkan minggu ke berapa dalam bulan.   - **first**: Minggu pertama. - **second**: Minggu kedua. - **third**: Minggu ketiga. - **fourth**: Minggu keempat. - **last**: Minggu terakhir. |
+| interval | Integer | Selang pengulangan. Unit berbeza mengikut jenis.    Contohnya:   - Apabila **type** ialah **daily**, menunjukkan selang N hari. - Apabila **type** ialah **absoluteYearly**, menunjukkan selang N tahun. |
+| firstDayOfWeek | String | Hari pertama dalam minggu. Nilai sah: sunday, monday, tuesday, wednesday, thursday, friday, saturday. Nilai Lalai: "sunday". |
+| range | Object | Julat pengulangan. |
+| type | String | Jenis julat pengulangan.   - **noEnd**: Tidak pernah tamat. - **endDate**: Tamat pada tarikh yang ditetapkan. - **numbered**: Tamat selepas bilangan pengulangan yang ditetapkan. |
+| endDate | String | Tarikh tamat pengulangan. |
+| numberOfOccurrences | Integer | Bilangan pengulangan. |
+| attendees | Array | Senarai Peserta. |
+| id | String | unionId pengguna. |
+| displayName | String | Nama pengguna. |
+| responseStatus | String | Status respons Peserta.   - **needsAction**: Tiada tindakan diambil (status Lalai). - **accepted**: Diterima. - **declined**: Ditolak. - **tentative**: Diterima secara Sementara. |
+| self | Boolean | Sama ada ini pengguna yang sedang beroperasi.   - **true**: Ya. - **false**: Tidak. |
+| isOptional | Boolean | Sama ada peserta ini pilihan.   - **true**: Ya. - **false**: Tidak. |
+| organizer | Object | Penganjur acara. |
+| id | String | unionId pengguna. |
+| displayName | String | Nama pengguna. |
+| responseStatus | String | Status respons. |
+| self | Boolean | Sama ada ini pengguna semasa.   - **true**: Ya. - **false**: Tidak. |
+| location | Object | Lokasi acara. |
+| displayName | String | Nama lokasi. |
+| reminders | Array | Peringatan acara. |
+| method | String | Kaedah Peringatan.   - **dingtalk**: Peringatan dalam aplikasi. - **sms**: Peringatan SMS. - **phone**: Peringatan panggilan telefon. |
+| minutes | String | Berapa minit sebelum acara untuk menghantar Peringatan. |
+| createTime | String | Masa dicipta. |
+| updateTime | String | Masa kemas kini. |
+| onlineMeetingInfo | Object | Maklumat mesyuarat dalam talian. |
+| type | String | Jenis mesyuarat dalam talian.   - **dingtalk**: DingTalk Video Meeting. |
+| conferenceId | String | ID mesyuarat. |
+| url | String | URL untuk menyertai mesyuarat. |
+| extraInfo | Map | Maklumat lanjutan lain. |
+| uiConfigs | Array | Konfigurasi UI yang mengawal paparan komponen pada halaman butiran acara. |
+| uiName | String | Nama komponen. Nilai sah (dikemas kini secara berterusan):   - **updateEventButton**: Butang Edit Acara. - **deleteEventButton**: Butang Padam Acara. - **transferEventButton**: Butang serahkan acara. - **attendee**: Bahagian Peserta. - **comment**: Bahagian Komen acara. |
+| uiStatus | String | Status komponen. Nilai sah:   - **hide**: Tersembunyi. - **disable**: Dinyahaktifkan (disokong pada halaman butiran baharu; tidak disokong pada versi lama, di mana komponen akan disembunyikan).    Komponen butang: tidak boleh diklik.   Komponen bahagian: tidak boleh berinteraksi. Contohnya, jika bahagian Komen ditetapkan kepada disable, Komen tidak boleh ditulis, tetapi Komen sedia ada masih boleh dilihat. - **enable**: Tersedia (status Lalai). |
+| richTextDescription | Object | Penerangan Teks Kaya. |
+| text | String | Kandungan penerangan Teks Kaya. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+  "summary" : "acara tertentu",
+  "description" : "sesuatu tentang acara ini",
+  "start" : {
+    "date" : "2020-01-01",
+    "dateTime" : "2020-01-01T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "end" : {
+    "date" : "2020-01-01",
+    "dateTime" : "2020-01-01T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "isAllDay" : false,
+  "recurrence" : {
+    "pattern" : {
+      "type" : "daily",
+      "dayOfMonth" : 14,
+      "daysOfWeek" : "sunday",
+      "index" : "first",
+      "interval" : 1
+    },
+    "range" : {
+      "type" : "noEnd",
+      "endDate" : "2020-01-01T10:15:30+08:00",
+      "numberOfOccurrences" : 5
+    }
+  },
+  "attendees" : [ {
+    "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+    "displayName" : "jack",
+    "responseStatus" : "accepted",
+    "self" : false,
+    "isOptional" : false
+  } ],
+  "organizer" : {
+    "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+    "displayName" : "tony",
+    "responseStatus" : "accepted",
+    "self" : false
+  },
+  "location" : {
+    "displayName" : "room 1-2-3"
+  },
+  "reminders" : [ {
+    "method" : "dingtalk",
+    "minutes" : "15"
+  } ],
+  "createTime" : "2020-01-01T10:15:30+08:00",
+  "updateTime" : "2020-01-01T10:15:30+08:00",
+  "onlineMeetingInfo" : {
+    "type" : "dingtalk",
+    "conferenceId" : "123",
+    "url" : "http://meeting"
+  },
+  "uiConfigs" : [ {
+    "uiName" : "updateEventButton",
+    "uiStatus" : "hide"
+  } ]
+}
+```
+
+### Kod ralat
+
+Jika ralat berlaku semasa memanggil API ini, rujuk dokumen [Global error codes](/ms/open/development/server-api-error-codes-1) untuk mencari penyelesaian berdasarkan Mesej ralat.
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | invalidParameter | forwardErrorMessage | Parameter tidak sah. |
+| 400 | invalidParameter | CalendarId cannot be blank | ID kalendar tidak boleh kosong. |
+| 400 | invalidParameter | Event must be provided. | Acara tidak boleh kosong. |
+| 400 | invalidParameter | Event summary cannot be blank | Tajuk acara tidak boleh kosong. |
+| 400 | invalidParameter | Event start time not set. | Masa mula acara tidak ditetapkan. |
+| 400 | invalidParameter | Event end time not set. | Masa tamat acara tidak ditetapkan. |
+| 400 | invalidParameter | Recurrence range numberOfOccurrences must between [1, 99] | numberOfOccurrences mesti dalam julat [1, 99]. |
+| 400 | invalidParameter | Recurrence interval must between [1, 365] | interval mesti dalam julat [1, 365]. |
+| 400 | permissionDeny | permissionDeny | Pengguna tidak berada dalam skop yang dibenarkan. |
+| 400 | idempotencyProcessing | Idempotency processing | Permintaan idempoten sedang diproses. |
+| 400 | flowLimit | current user can not create events exceed 100 per day | Setiap pengguna dihadkan kepada mencipta 100 acara sehari. |
+| 404 | itemNotFound | forwardErrorMessage | Acara yang dinyatakan tidak dapat ditemui. |

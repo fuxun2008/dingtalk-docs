@@ -1,0 +1,232 @@
+---
+title: "Cipta, tanya, ubah suai, dan urus sembang kumpulan"
+description: "Gunakan aplikasi dalaman untuk mencipta, menyoal, mengubah suai, dan menguruskan Sembang Kumpulan melalui API kumpulan, meliputi kelayakan, kebenaran, dan pengambilan access_token."
+---
+
+Dokumen ini menerangkan cara memanggil API Sembang Kumpulan untuk melaksanakan operasi Sembang Kumpulan. Mula-mula, cipta aplikasi dalaman. Kemudian, gunakan API Sembang Kumpulan untuk mencipta Sembang Kumpulan, mendapatkan maklumat Sembang Kumpulan, menguruskan Sembang Kumpulan, dan mengubah suai Sembang Kumpulan.
+
+## Gambaran keseluruhan proses
+
+Langkah 1: Dapatkan client ID dan Client Secret aplikasi.
+
+Langkah 3: Dapatkan kelayakan akses aplikasi dengan mengikut [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app).
+
+Langkah 4: Panggil API Sembang Kumpulan bahagian pelayan.
+
+1. Panggil Server API untuk mencipta Sembang Kumpulan bagi mencipta Sembang Kumpulan dan mendapatkan `chatId`-nya.
+2. Berdasarkan `chatId`, panggil Server API [Tanya maklumat Sembang Kumpulan](/ms/open/development/obtain-a-group-session) untuk mendapatkan maklumat Sembang Kumpulan.
+3. Urus Sembang Kumpulan dengan menggunakan chatId-nya.
+
+   - Berdasarkan `chatId`, panggil Server API baharu [Dapatkan OpenConversationId Sembang Kumpulan](/ms/open/development/obtain-group-openconversationid) untuk mendapatkan `openConversationId`.
+
+     - Berdasarkan `openConversationId`, panggil Server API baharu untuk menetapkan pentadbir kumpulan secara pukal bagi menetapkan pentadbir kumpulan secara pukal.
+   - Berdasarkan `chatId`, panggil Server API untuk mengemas kini pentadbir kumpulan bagi menetapkan pentadbir kumpulan.
+   - Berdasarkan `chatId`, panggil Server API [Lumpuhkan Sembang Peribadi](/ms/open/development/set-private-chat) untuk mengawal sama ada Ahli kumpulan boleh bersembang secara peribadi.
+   - Berdasarkan `chatId`, panggil Server API [Kemas kini nama panggilan kumpulan bagi ahli kumpulan](/ms/open/development/set-a-group-nickname) untuk menetapkan nama panggilan ahli kumpulan.
+   - Berdasarkan `chatId`, panggil Server API [Dapatkan pautan Kod QR sertai sembang](/ms/open/development/obtain-a-qr-code-link). Pengguna lain dalam Organisasi Anda boleh mengklik pautan untuk memohon menyertai Sembang Kumpulan.
+4. Berdasarkan `chatId`, panggil Server API untuk mengemas kini Sembang Kumpulan bagi mengubah suai maklumat Sembang Kumpulan.
+
+## Prasyarat
+
+Selesaikan proses [Penciptaan dan konfigurasi aplikasi](/ms/open/dingstart/create-application).
+
+## Langkah 1: Dapatkan kelayakan aplikasi
+
+1. Pilih aplikasi sasaran, pergi ke halaman butiran aplikasi, dan klik **Maklumat Asas** > **Kelayakan dan Maklumat Asas**.
+2. Dapatkan client ID dan Client Secret aplikasi.
+
+## Langkah 2: Tambah kebenaran API
+
+Klik **Konfigurasi Pembangunan** > **Urus kebenaran**. Dalam kotak carian kebenaran, masukkan `qyapi_chat_manage`, `qyapi_chat_read`, dan `qyapi_chat_base_read` secara berasingan, dan mohon kebenaran tersebut.
+
+## Langkah 3: Dapatkan access token aplikasi
+
+<Warning>
+Untuk butiran tentang perbezaan antara Server API, lihat API lama VS API Baharu. Semua API berikut menggunakan Server API baharu. Untuk butiran muat turun SDK, lihat Muat turun SDK bahagian pelayan.
+</Warning>
+
+Berdasarkan client ID dan Client Secret yang diperoleh pada Langkah 1, dapatkan kelayakan akses aplikasi dengan mengikut [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("din*********hgn")
+                .setAppSecret("9G_O************mBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Langkah 4: Panggil API Sembang Kumpulan bahagian pelayan
+
+1. Panggil Server API untuk mencipta Sembang Kumpulan bagi mencipta Sembang Kumpulan dan mendapatkan chatId-nya.
+
+   ```java lines
+   public void createChat() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/create");
+           OapiChatCreateRequest req = new OapiChatCreateRequest();
+           req.setName("Sembang Seluruh Kakitangan");
+           req.setOwner("manager4220");
+           req.setUseridlist(Arrays.asList("userid1","userid2"));
+           OapiChatCreateResponse rsp = client.execute(req, access_token);
+           System.out.println(rsp);
+       }
+   ```
+2. Berdasarkan chatId, panggil Server API [Tanya maklumat Sembang Kumpulan](/ms/open/development/obtain-a-group-session) untuk mendapatkan maklumat Sembang Kumpulan.
+
+   ```java lines
+   public void getChatInfo() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/get");
+           OapiChatGetRequest req = new OapiChatGetRequest();
+           req.setChatid("chate39f540dxxxx");
+           req.setHttpMethod("GET");
+           OapiChatGetResponse rsp = client.execute(req, access_token);
+           System.out.println(rsp.getChatInfo());
+       }
+   ```
+3. Urus Sembang Kumpulan dengan menggunakan chatId-nya.
+
+   - Berdasarkan `chatId`, panggil Server API baharu [Dapatkan OpenConversationId Sembang Kumpulan](/ms/open/development/obtain-group-openconversationid) untuk mendapatkan `openConversationId`.
+
+     ```java lines
+     public void ConversationId() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkim_1_0.Client client = new com.aliyun.dingtalkim_1_0.Client(config);
+             ChatIdToOpenConversationIdHeaders chatIdToOpenConversationIdHeaders = new ChatIdToOpenConversationIdHeaders();
+             chatIdToOpenConversationIdHeaders.xAcsDingtalkAccessToken = "accessToken";
+             try {
+                 ChatIdToOpenConversationIdResponse response = client.chatIdToOpenConversationIdWithOptions("chatId", chatIdToOpenConversationIdHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(response.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err mengandungi atribut code dan message untuk membantu mengesan isu
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err mengandungi atribut code dan message untuk membantu mengesan isu
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+     - Berdasarkan `openConversationId`, panggil Server API baharu untuk menetapkan pentadbir kumpulan secara pukal bagi menetapkan pentadbir kumpulan secara pukal.
+
+       ```java lines
+       public void subAdministrators() throws Exception {
+               Config config = new Config();
+               config.protocol = "https";
+               config.regionId = "central";
+               com.aliyun.dingtalkim_1_0.Client client = new com.aliyun.dingtalkim_1_0.Client(config);
+               ChatSubAdminUpdateHeaders chatSubAdminUpdateHeaders = new ChatSubAdminUpdateHeaders();
+               chatSubAdminUpdateHeaders.xAcsDingtalkAccessToken = "accessToken";
+               ChatSubAdminUpdateRequest chatSubAdminUpdateRequest = new ChatSubAdminUpdateRequest()
+                       .setOpenConversationId("cid55SzIIO********=")
+                       .setUserIds(java.util.Arrays.asList(
+                               "0147********7041"
+                       ))
+                       .setRole(2);
+               try {
+                   ChatSubAdminUpdateResponse chatSubAdminUpdateResponse = client.chatSubAdminUpdateWithOptions(chatSubAdminUpdateRequest, chatSubAdminUpdateHeaders, new RuntimeOptions());
+                   System.out.println(JSON.toJSONString(chatSubAdminUpdateResponse.getBody()));
+               } catch (TeaException err) {
+                   if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                       // err mengandungi atribut code dan message untuk membantu mengesan isu
+                       System.out.println(err.code);
+                       System.out.println(err.message);
+                   }
+               } catch (Exception _err) {
+                   TeaException err = new TeaException(_err.getMessage(), _err);
+                   if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                       // err mengandungi atribut code dan message untuk membantu mengesan isu
+                       System.out.println(err.code);
+                       System.out.println(err.message);
+                   }
+               }
+           }
+       ```
+   - Berdasarkan `chatId`, panggil Server API untuk mengemas kini pentadbir kumpulan bagi menetapkan pentadbir kumpulan.
+
+     ```java lines
+     public void setChatAdmin() {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/chat/subadmin/update");
+             OapiChatSubadminUpdateRequest req = new OapiChatSubadminUpdateRequest();
+             req.setChatid("chat14432xxxx");
+             req.setUserids("userid1");
+             req.setRole(2L);
+             OapiChatSubadminUpdateResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - Berdasarkan `chatId`, panggil Server API [Lumpuhkan Sembang Peribadi](/ms/open/development/set-private-chat) untuk mengawal sama ada Ahli kumpulan boleh bersembang secara peribadi.
+
+     ```java lines
+     public void updateChatMemberFriendswitch() {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/chat/member/friendswitch/update");
+             OapiChatMemberFriendswitchUpdateRequest req = new OapiChatMemberFriendswitchUpdateRequest();
+             req.setChatid("chatdafe234xxxx");
+             req.setIsProhibit(true);
+             OapiChatMemberFriendswitchUpdateResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - Berdasarkan `chatId`, panggil Server API [Kemas kini nama panggilan kumpulan bagi ahli kumpulan](/ms/open/development/set-a-group-nickname) untuk menetapkan nama panggilan ahli kumpulan.
+
+     ```java lines
+     public void updateChatMemberNick() {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/chat/updategroupnick");
+             OapiChatUpdategroupnickRequest req = new OapiChatUpdategroupnickRequest();
+             req.setUserid("user123");
+             req.setChatid("chate39f540d572b71cf97a556d95929fxxxx");
+             req.setGroupNick("DingTalk Assistant");
+             OapiChatUpdategroupnickResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - Berdasarkan `chatId`, panggil Server API [Dapatkan pautan Kod QR sertai sembang](/ms/open/development/obtain-a-qr-code-link). Pengguna lain dalam Organisasi Anda boleh mengklik pautan untuk memohon menyertai Sembang Kumpulan.
+
+     ```java lines
+     public void getChatURL() {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/chat/qrcode/get");
+             OapiChatQrcodeGetRequest req = new OapiChatQrcodeGetRequest();
+             req.setChatid("chat32****3a");
+             req.setUserid("manager4220");
+             OapiChatQrcodeGetResponse rsp = client.execute(req, access_token);
+             System.out.println(rsp.getBody());
+         }
+     ```
+4. Berdasarkan `chatId`, panggil Server API untuk mengemas kini Sembang Kumpulan bagi mengubah suai maklumat Sembang Kumpulan.
+
+   ```java lines
+   public void updateChat() {
+           DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/chat/update");
+           OapiChatUpdateRequest req = new OapiChatUpdateRequest();
+           req.setChatid("chatxxxx");
+           req.setName("Group name 1");
+           req.setOwner("04201724372xxxx");
+           req.setOwnerType("emp");
+           req.setAddUseridlist(Arrays.asList("userid2"));
+           req.setDelUseridlist(Arrays.asList("userid1"));
+           req.setIcon("@mediaId");
+           req.setIsBan(true);
+           req.setSearchable(0L);
+           req.setValidationType(0L);
+           req.setMentionAllAuthority(0L);
+           req.setManagementType(0L);
+           req.setChatBannedType(0L);
+           req.setShowHistoryType(0L);
+           OapiChatUpdateResponse rsp = client.execute(req,access_token);
+           System.out.println(rsp.getBody());
+       }
+   ```

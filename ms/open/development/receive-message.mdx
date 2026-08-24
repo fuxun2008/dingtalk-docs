@@ -1,0 +1,251 @@
+---
+title: "Terima mesej"
+description: "Ketahui protokol penerimaan mesej Bot DingTalk, termasuk parameter header HTTP, struktur body HTTP, jenis mesej masuk yang disokong, dan format respons HTTP."
+---
+
+Apabila pengguna men@sebut Bot kumpulan atau menghantar Mesej Terus kepada Bot, DingTalk akan menghantar kandungan mesej tersebut ke endpoint perkhidmatan HTTPS pembangun Bot. Topik ini menerangkan protokol penerimaan mesej Bot.
+
+## Parameter header HTTP
+
+```json
+{
+  "Content-Type": "application/json; charset=utf-8",
+  "timestamp": "1577262236757",
+  "sign":"xxxxxxxxxx"
+}
+```
+
+| **Parameter** | **Penerangan** |
+| --- | --- |
+| timestamp | Cap masa apabila mesej dihantar, dalam milisaat. |
+| sign | Nilai tandatangan. |
+
+Pembangun perlu mengesahkan timestamp dan sign dalam header untuk menentukan sama ada permintaan tersebut adalah permintaan sah daripada DingTalk. Ini menghalang pihak berniat jahat daripada menyamar sebagai DingTalk untuk memanggil perkhidmatan HTTPS pembangun dan menghantar data. Logik pengesahan adalah seperti berikut:
+
+- Jika timestamp berbeza daripada cap masa sistem semasa melebihi 1 jam, permintaan tersebut dianggap tidak sah.
+- Jika sign tidak sepadan dengan nilai yang dikira oleh pembangun, permintaan tersebut dianggap tidak sah.
+
+Permintaan tersebut hanya dianggap sah daripada DingTalk apabila kedua-dua timestamp dan sign berjaya disahkan.
+
+### Cara mengira sign
+
+Gunakan timestamp daripada header + "\n" + appSecret Bot sebagai string yang akan ditandatangani. Kira tandatangan menggunakan algoritma HmacSHA256, kemudian lakukan pengekodan Base64 pada hasilnya untuk mendapatkan nilai tandatangan akhir.
+
+Contoh kod pengiraan tandatangan (Java)
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Base64;
+
+public class Test {
+    public static void main(String[] args) throws Exception {
+        Long timestamp = 1577262236757L;
+        String appSecret = "this is a secret";
+        String stringToSign = timestamp + "\n" + appSecret;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(appSecret.getBytes("UTF-8"), "HmacSHA256"));
+        byte[] signData = mac.doFinal(stringToSign.getBytes("UTF-8"));
+        String sign = new String(Base64.encodeBase64(signData));
+        System.out.println(sign);
+    }
+}
+```
+
+## Body HTTP
+
+```json
+{
+    "conversationId": "xxx",
+    "atUsers": [
+        {
+            "dingtalkId": "xxx",
+            "staffId":"xxx",
+            "unionId":"edxxx34"
+        }
+    ],
+    "chatbotCorpId": "dinge8a565xxxx",
+    "chatbotUserId": "$:LWCP_v1:$Cxxxxx",
+    "msgId": "msg0xxxxx",
+    "senderNick": "Ahmad",
+    "isAdmin": true,
+    "senderStaffId": "user123",
+    "sessionWebhookExpiredTime": 1613635652738,
+    "createAt": 1613630252678,
+    "senderCorpId": "dinge8a565xxxx",
+    "conversationType": "2",
+    "senderId": "$:LWCP_v1:$Ff09GIxxxxx",
+    "conversationTitle": "Bot Test-TEST",
+    "isInAtList": true,
+    "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=xxxxx",
+    "text": {
+        "content": " Helo"
+    },
+    "msgtype": "text"
+}
+```
+
+### Penerangan parameter
+
+| **Parameter** | **Wajib** | **Jenis** | **Penerangan** |
+| --- | --- | --- | --- |
+| msgtype | Ya | String | Jenis mesej. |
+| content | Ya | String | Teks mesej. |
+| msgId | Ya | String | ID mesej yang disulitkan. |
+| createAt | Ya | String | Cap masa mesej, dalam milisaat. |
+| conversationType | Ya | String | **1**: Mesej Terus  **2**: Sembang Kumpulan |
+| conversationId | Ya | String | ID perbualan. |
+| conversationTitle | Tidak | String | Tajuk perbualan. Dikembalikan hanya untuk Sembang Kumpulan. |
+| senderId | Ya | String | ID penghantar yang disulitkan.  **Nota**  Gunakan senderStaffId sebagai nilai ID pengguna penghantar. |
+| senderNick | Ya | String | Nama penghantar. |
+| senderCorpId | Tidak | String | ID Organisasi kumpulan semasa penghantar dalam Kumpulan Dalaman. |
+| sessionWebhook | Ya | String | URL Webhook perbualan semasa. |
+| sessionWebhookExpiredTime | Ya | Long | Masa tamat tempoh URL Webhook perbualan semasa. |
+| isAdmin | Tidak | boolean | Menunjukkan sama ada penghantar ialah Admin.  **Nota**  Berkuat kuasa selepas Bot diterbitkan. |
+| chatbotCorpId | Tidak | String | ID Organisasi yang disulitkan tempat Bot berada. |
+| isInAtList | Tidak | boolean | Menunjukkan sama ada pengguna berada dalam senarai @. |
+| senderStaffId | Tidak | String | ID pengguna ahli yang men@sebut Bot dalam Kumpulan Dalaman.  **Nota**  Medan ini dikembalikan hanya selepas Bot diterbitkan ke versi Produksi. |
+| senderUnionId | Tidak | String | unionId penghantar. |
+| chatbotUserId | Ya | String | ID Bot yang disulitkan. |
+| atUsers | Tidak | Array | Maklumat tentang pengguna yang di@sebut.   - **dingtalkId**: ID pengguna yang di@sebut yang disulitkan. - **staffId**: userId pengguna yang di@sebut. Medan ini kosong untuk pengguna luaran dalam sembang luaran. - **unionId**: unionid pengguna yang di@sebut. |
+
+## Jenis mesej yang disokong untuk penerimaan
+
+Bot pada masa ini menyokong penerimaan mesej teks, suara, gambar, fail, video, dan Teks Kaya. Jadual berikut menerangkan medan bagi setiap jenis mesej yang diterima oleh Bot. Selain medan jenis mesej dan Kandungan Mel, semua medan parameter lain adalah sama seperti jadual di atas.
+
+### Penting
+
+- Dalam Sembah Kumpulan: apabila Ahli kumpulan men@sebut Bot, Bot **tidak menyokong** penerimaan jenis suara, fail, atau video.
+- Dalam sembang peribadi-ke-peribadi: Bot **tidak menyokong** penerimaan jenis suara, fail, atau video.
+- Dalam sembang peribadi-ke-Bot: Bot **menyokong** penerimaan jenis suara, fail, dan video.
+
+### Mesej teks
+
+```json
+{
+  "msgtype": "text",
+  "text": {
+    "content": "Helo"
+  }
+}
+```
+
+### Penerangan parameter:
+
+| **Parameter** | **Jenis** | **Penerangan** |
+| --- | --- | --- |
+| msgtype | String | Jenis mesej:   - **text**: Mesej teks |
+| content | String | Kandungan mesej teks. |
+
+### Mesej suara
+
+```json
+{
+  "msgtype": "audio",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/+m+Nn***********geqPd7xpJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "recognition": "DingTalk, biarkan kemajuan berlaku"
+  }
+}
+```
+
+### Penerangan parameter:
+
+| **Parameter** | **Jenis** | **Penerangan** |
+| --- | --- | --- |
+| msgtype | String | Jenis mesej:   - **audio**: Mesej suara |
+| downloadCode | String | Kod muat turun fail suara. Gunakannya untuk mendapatkan fail suara binari dengan memanggil Server API [Muat turun kandungan fail yang diterima oleh Bot](/ms/open/development/download-the-file-content-of-the-robot-receiving-message) untuk mendapatkan URL muat turun sementara. |
+| recognition | String | Hasil teks pengecaman Speech-to-Text. |
+| duration | Long | Tempoh suara, dalam milisaat. |
+
+### Mesej gambar
+
+```json
+{
+  "msgtype": "picture",
+  "content": {
+    "downloadCode": "mIofN681YE3f/+m+**********8rs4RGdQAwyVs3B75N7boKf8ep0FBB122u9YY/novFAM9BQrirm4/+avZaCV+6nnZ0Zk="
+  }
+}
+```
+
+### Penerangan parameter:
+
+| **Parameter** | **Jenis** | **Penerangan** |
+| --- | --- | --- |
+| msgtype | String | Jenis mesej:   - picture: Mesej gambar |
+| downloadCode | String | Kod muat turun fail gambar. Gunakannya untuk mendapatkan fail gambar binari dengan memanggil Server API [Muat turun kandungan fail yang diterima oleh Bot](/ms/open/development/download-the-file-content-of-the-robot-receiving-message) untuk mendapatkan URL muat turun sementara. |
+
+### Mesej video
+
+```json
+{
+  "msgtype": "video",
+  "content": {
+    "duration": 4000,
+    "downloadCode": "mIofN681YE3f/****************OAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "videoType": "mp4"
+  }
+}
+```
+
+### Penerangan parameter:
+
+| **Parameter** | **Jenis** | **Penerangan** |
+| --- | --- | --- |
+| msgtype | String | Jenis mesej:   - **video**: Mesej video |
+| downloadCode | String | Kod muat turun fail video. Gunakannya untuk mendapatkan fail video binari dengan memanggil Server API [Muat turun kandungan fail yang diterima oleh Bot](/ms/open/development/download-the-file-content-of-the-robot-receiving-message) untuk mendapatkan URL muat turun sementara. |
+| videoType | String | Jenis Fail video. |
+| duration | Long | Tempoh video, dalam milisaat. |
+
+### Mesej fail
+
+```json
+{
+  "msgtype": "file",
+  "content": {
+    "downloadCode": "mIofN681YE3f*************pJF/9NbOAORDnadz0WbSwWTiYvByBeYDjbg2ecUdno/RGtZ/sqzdvoh00EWw1U6xNqLC3Bk51U+i",
+    "fileName": "DingTalk Biar Kemajuan Berlaku.pdf"
+  }
+}
+```
+
+### Penerangan parameter:
+
+| **Parameter** | **Jenis** | **Penerangan** |
+| --- | --- | --- |
+| msgtype | String | Jenis mesej:   - **video**: Mesej fail |
+| downloadCode | String | Kod muat turun fail. Gunakannya untuk mendapatkan fail binari dengan memanggil Server API [Muat turun kandungan fail yang diterima oleh Bot](/ms/open/development/download-the-file-content-of-the-robot-receiving-message) untuk mendapatkan URL muat turun sementara. |
+| fileName | String | Nama fail. |
+
+### Mesej Teks Kaya
+
+```json
+{
+  "msgtype": "richText",
+  "content": {
+    "richText": [
+      {
+        "text": "Helo"
+      },
+      {
+        "downloadCode": "mIofN681YE3f*************JkVBG2vhj4Q9TsmsNCHy0Phdd2tn/t6XxjaB6U8oEst1JVnFR2QRaLqsGyuWPhEvzhIDEpfQYEvexbwdKCCpMOVnYYbn1aMT/n3JFgb4i64X3TFXxXCdaH1+NLRM/B6kGWxJPR/egKS8syvGzaZpzVI+hHQbCjLOO/FYLor2Q==",
+        "type": "picture"
+      }
+    ]
+  }
+}
+```
+
+### Penerangan parameter:
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| msgtype | String | Ya | Jenis mesej:   - **richText**: Teks Kaya |
+| content | Object | Ya | Kandungan mesej. |
+| richText | Array | Ya | Senarai Teks Kaya.  **Nota**  Senarai mesej boleh mengandungi:   - **text:** Mesej teks - **picture**: Mesej gambar |
+
+## Format respons HTTP
+
+Pembangun boleh memilih untuk membalas dengan mesej berdasarkan keperluan perniagaan mereka. Lima [jenis mesej](/ms/open/development/robot-message-type) berikut disokong pada masa ini: text, markdown, actionCard lompat keseluruhan, actionCard lompat berasingan, dan feedCard.

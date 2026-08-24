@@ -1,0 +1,146 @@
+---
+title: "Hantar Permintaan HTTP melalui Automasi"
+description: "Ketahui cara mengintegrasikan API dan sistem pihak ketiga dalam automasi AI Table untuk menyegerakkan data, mencetuskan operasi dan membina aliran kerja bergelung tertutup."
+---
+
+# 1 Fungsi
+
+**Hantar permintaan HTTP** ialah Tindakan teras dalam automasi AI Table: push data ke satu URL untuk mencetuskan API luaran atau pertukaran data. Medan AI Table dan hasil perantaraan aliran kerja boleh disambungkan terus ke dalam Permintaan, dan Respons pula memberi input kepada langkah seterusnya — keseluruhannya membentuk automasi bergelung tertutup.
+
+Hantar permintaan ke satu URL, integrasikan dengan sistem pihak ketiga, contohnya:
+
+- Segerakkan data ke sistem dalaman — push ke ERP / CRM, tanpa pemindahan manual.
+- Scraping — bina crawler, ambil kandungan laman web, ekstrak data.
+- Integrasikan perkhidmatan pihak ketiga — pembayaran, SMS, geolokasi.
+
+# 2 Nota
+
+## 2.1 Kaedah HTTP
+
+Pilih satu kaedah (Wajib). Kaedah ini memberitahu pelayan operasi yang anda mahu lakukan.
+
+|         |                                                                                          |
+| ------- | ---------------------------------------------------------------------------------------- |
+| Kaedah | Penerangan |
+| GET     | **Ambil data daripada pelayan.** Mengembalikan sumber pada URL tersebut. Gunakan untuk baca / Carian. |
+| POST    | **Hantar data ke pelayan (borang, muat naik fail).** Isi permintaan membawa data. Biasanya untuk mencipta atau mengubah suai. |
+| PUT     | **Ganti satu sumber.** Hantar keseluruhan data baharu — digunakan untuk kemas kini penuh. |
+| PATCH   | Kemas kini sebahagian sumber. |
+| OPTIONS | Terokai kaedah yang disokong. |
+| DELETE  | Padam satu sumber. |
+
+## 2.2 Parameter
+
+### 2.2.1 GET
+
+| Jenis | Parameter | Penerangan |
+| ---- | ------ | ----------- |
+| Masuk | URL Permintaan | Termasuk laluan + rentetan pertanyaan (contohnya `https://api.example.com/data?param1=value1`). |
+| Masuk | Query | Pasangan kunci-nilai dalam URL (contohnya `?page=1&limit=10`). |
+| Masuk | Headers | Pilihan — pengesahan (contohnya `Authorization: Bearer token`). |
+| Keluar | Isi respons | Data yang dikembalikan (JSON / XML / teks). |
+
+### 2.2.2 POST / PUT / PATCH / DELETE
+
+| Jenis | Parameter | Penerangan |
+| ---- | ------ | ----------- |
+| Masuk | URL Permintaan | Laluan + query pilihan (contohnya `https://api.example.com/resource/123`). |
+| Masuk | Query | Pilihan — pasangan kunci-nilai dalam URL (contohnya `?action=update`). |
+| Masuk | Headers | Jenis kandungan (contohnya `Content-Type: application/json`) dan pengesahan. |
+| Masuk | Body | Mesti sepadan dengan jenis yang ditetapkan dalam header Content-Type. |
+| Keluar | Isi respons | Data yang dikembalikan (JSON / XML / teks). |
+| Keluar | Nilai pulangan (hanya apabila respons berbentuk JSON) | Jika Respons berbentuk JSON, ekstrak medan untuk digunakan pada langkah seterusnya (contohnya `{"id": 123, "status": "success"}`). |
+
+📌 Tentang APISecret
+
+Jika sistem sasaran anda menandatangani permintaan, isikan `apiSecret` dan sistem akan menerima header bertandatangan berikut:
+
+- x-ddpaas-signature-timestamp: \<Cap masa tandatangan>
+- x-ddpaas-signature: \<Tandatangan>
+
+Di mana \<Tandatangan> = calcSignature(apiSecret, \<Cap masa tandatangan>) dan `apiSecret` ialah kunci tandatangan yang didaftarkan terlebih dahulu.
+
+Sistem anda perlu mengira Tandatangan dengan cara ini dan menyemak sama ada ia sepadan — bagi menolak panggilan yang tidak diberi kebenaran:
+
+```java 
+public static String calcSignature(String apiSecret, long ts) {
+    try {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec key = new SecretKeySpec(apiSecret.getBytes(), "HmacSHA256");
+        mac.init(key);
+        return Base64.getEncoder()
+            .encodeToString(mac.doFinal(Long.toString(ts).getBytes()));
+    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+        log.error("sign api secret failed", e);
+    }
+}
+```
+
+### 2.2.3 Tentukan Respons (Output)
+
+- Respons HTTP diteruskan ke langkah seterusnya. Format Respons menentukan cara langkah seterusnya menghurai dan merujuk parameter ini.
+
+- **JSON** — langkah seterusnya menghurai Respons sebagai JSON berstruktur. Isikan contoh Respons supaya langkah seterusnya boleh merujuk medan tersebut.
+
+- **Teks** — langkah seterusnya merujuk keseluruhan Respons sebagai teks.
+
+- **Tiada** — langkah seterusnya tidak boleh merujuk Respons.
+
+# 3 Soalan Lazim
+
+## 3.1 Soalan Lazim
+
+- S: Peraturan kegagalan HTTP
+  - Kod status ≠ 200
+  - Ralat sistem, contohnya timeout.
+- S: Apakah punca permintaan HTTP mengalami timeout?
+
+  J: Punca — Kependaman rangkaian, Respons pelayan yang perlahan, sekatan firewall / proksi, isu DNS, atau beban lebihan pelayan.
+- S: Bolehkah permintaan HTTP automasi AI Table menggunakan IP tetap untuk senarai kebenaran IP?
+
+  J: Boleh. Kebanyakan platform membenarkan senarai kebenaran IP keluar atau pengikatan IP tetap melalui admin platform atau gateway API. Julat IP: 203.119.128.0/17, 59.82.0.0/16, 140.205.0.0/16, 106.11.0.0/16
+- S: Bolehkah saya tambah parameter query terus dalam URL?
+
+  J: Boleh — `?key1=value1&key2=value2` berfungsi untuk GET, dan untuk sesetengah POST juga (bergantung kepada pelayan).
+- S: Mengapa permintaan HTTP gagal dihurai dengan betul? Bagaimana saya mengesahkannya?
+
+   J: Punca:
+  - Format permintaan tidak sah (contohnya ralat sintaks JSON).
+  - Isu pengekodan (contohnya `Content-Type` yang salah).
+  - Endpoint pelayan telah berubah atau versi tidak sepadan.
+  - Header wajib tiada (contohnya token pengesahan).
+    Pengesahan:
+  - Ulang permintaan yang sama secara manual menggunakan Postman / curl.
+  - Semak kod status (4xx = klien, 5xx = pelayan).
+  - Aktifkan log Nyahpepijat atau tangkap dengan Wireshark.
+- S: Seperti apakah rupa Respons HTTP yang mematuhi format JSON?
+
+  J:
+  - Peraturan struktur:
+    - Mesti berupa object JSON yang sah (`{}`) atau array (`[]`).
+    - Nama medan dipetik dengan tanda petik dua (`"key"`).
+    - Jenis yang disokong: string, Nombor, boolean, object, array, `null`.
+  - Konvensyen biasa: kod status (`"code"`), mesej (`"message"`), data (`"data"`).
+- S: Berapakah bilangan maksimum parameter kunci-nilai dalam satu permintaan HTTP?
+
+  J:
+  - Tiada had tetap, tetapi dibatasi oleh:
+    - Panjang URL (disyorkan < 2048 aksara).
+    - Had penghurai pelayan (sesetengah pelayan mengehadkan bilangan parameter).
+    - Prestasi (elakkan parameter berlebihan).
+- S: Bolehkah saya merujuk data array daripada Respons HTTP pada langkah seterusnya?
+
+  J: Boleh — gelungkan (loop) data tersebut, atau susun medan semasa menghantar mesej.
+- S: Apabila menggunakan Bot tersuai kumpulan untuk menghantar mesej, kod contoh open-platform tidak berfungsi seperti sedia ada — apakah yang mungkin tidak kena?
+
+  J:
+  - Isu biasa:
+    1. URL webhook salah — placeholder tidak digantikan dengan URL atau Token sebenar yang dijana.
+    2. Kebenaran tiada — Bot tidak berada dalam kumpulan sasaran, atau tidak diberi kebenaran.
+    3. Format tidak sepadan — body tidak sepadan dengan spesifikasi API (contohnya `Content-Type` yang salah).
+    4. Tandatangan gagal — Tandatangan tiada atau salah (Cap masa / secret tidak dikira).
+    5. Rangkaian disekat — firewall atau proksi menyekat.
+  - Penyelesaian:
+    - Semak semula placeholder dalam kod contoh (contohnya `{token}`).
+    - Gunakan alat Nyahpepijat untuk memeriksa headers, body, dan Respons.
+    - Semak dokumentasi open-platform atau hubungi sokongan.

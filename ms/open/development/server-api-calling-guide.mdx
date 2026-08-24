@@ -1,0 +1,224 @@
+---
+title: "Panduan Panggilan API Langkah demi Langkah"
+description: "Membimbing pembangun melalui aliran penuh daripada mencipta aplikasi DingTalk, mengonfigurasikan kebenaran, mendapatkan access_token, hingga memanggil API butiran pengguna, disertai contoh kod dan petua nyahpepijat."
+---
+
+Panduan ini membimbing pembangun melalui keseluruhan proses memanggil API Platform Terbuka DingTalk, daripada mencipta aplikasi sehingga panggilan API berjaya. Panduan ini merangkumi langkah-langkah utama, contoh kod, perkara yang perlu diberi perhatian, serta kaedah nyahpepijat untuk membantu pembangun bermula dengan pantas dan berjaya memanggil API.
+
+<Note>
+Contoh ini berdasarkan aplikasi dalaman dan menunjukkan cara mendapatkan butiran pengguna daripada Kenalan dengan memanggil API. Pendekatan yang sama turut digunakan untuk jenis aplikasi lain.
+</Note>
+
+## Prasyarat
+
+1. **Konsep asas**: Kenali konsep asas Platform Terbuka DingTalk serta dokumentasi bagi setiap modul produk. Rujuk dokumentasi konsep asas untuk maklumat lanjut.
+2. **Had kadar API**: Kenali had kadar panggilan API. Rujuk dokumentasi kekerapan panggilan API dan had kadar untuk maklumat lanjut.
+3. **Kebenaran pembangun**: Miliki kebenaran Sub Admin dan pembangun dalam [Developer Backend](https://open-dev.dingtalk.io/?spm=dd_developers.header.unLogin.openDevBtn&hash=%23%2F#/). Anda juga boleh log masuk ke DingTalk Developer untuk mendaftar dan mengaktifkan pengguna baharu.
+4. **Dapatkan `UserId` pengguna**: Log masuk ke [Admin Console DingTalk](http://oa.dingtalk.io/) dan lihat `UserId` di bawah **Kenalan > Pengurusan pengguna**. Rujuk dokumentasi konsep asas untuk maklumat lanjut.
+
+## Langkah 1: Cipta aplikasi DingTalk
+
+1. Pergi ke [Developer Backend](https://open-dev.dingtalk.io/?spm=dd_developers.header.unLogin.openDevBtn&hash=%23%2F#/) dan klik **Pembangunan Aplikasi** > **Aplikasi DingTalk** > **Cipta aplikasi**.
+
+2. Masukkan maklumat aplikasi dan klik **Simpan**.
+
+   | **Medan** | **Wajib** | **Penerangan** |
+   | --- | --- | --- |
+   | **Nama aplikasi** | Ya | Masukkan nama aplikasi. Panjang minimum ialah 2 aksara. |
+   | **Penerangan aplikasi** | Ya | Terangkan secara ringkas produk atau perkhidmatan yang disediakan oleh aplikasi. Panjang minimum ialah 4 aksara. |
+   | **Ikon aplikasi** | Tidak | Muat naik ikon aplikasi. Ikon mestilah dalam format JPG atau PNG, sekurang-kurangnya 240 px \* 240 px, dengan nisbah bidang 1:1, tanpa bucu bulat, dan tidak melebihi 2 MB. |
+
+3. Pergi ke halaman butiran aplikasi dan lihat kelayakan aplikasi serta maklumat asas di bawah **Maklumat asas** > **Kelayakan dan maklumat asas**.
+
+4. Simpan **Client ID** dan **Client Secret** aplikasi untuk panggilan API seterusnya.
+
+### Nota
+
+   Untuk maklumat lanjut tentang cara mendapatkan **Client ID** dan **Client Secret**, rujuk dokumentasi konsep asas. Simpan kedua-duanya dengan selamat selepas diperoleh untuk mengelakkan kebocoran.
+
+## Langkah 2: Konfigurasikan kebenaran
+
+1. **Cari kebenaran yang diperlukan**: Mengikut dokumentasi API, memanggil API butiran pengguna memerlukan kebenaran `Read user information`.
+
+2. **Tambah kebenaran**: Pergi ke [Developer Backend](https://open-dev.dingtalk.io/?spm=dd_developers.header.unLogin.openDevBtn&hash=%23%2F#/), cari aplikasi yang telah anda cipta, pergi ke halaman butiran aplikasi, cari `Read user information` di bawah **Urus kebenaran**, kemudian klik **Apply now**.
+
+## Langkah 3: Dapatkan Access Token
+
+<Warning>
+Sebelum mendapatkan **Access Token**, tentukan sama ada API tersebut memerlukan [kebenaran standard](/ms/open/development/add-api-permission) atau [kebenaran sensitif](/ms/open/development/use-sensitive-permissions). Kedua-duanya mempunyai kaedah perolehan yang berbeza.
+</Warning>
+
+### API kebenaran standard
+
+#### Panggil API untuk mendapatkan Token
+
+1. Buka halaman API [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app) dan klik butang **API Debug** di sebelah kanan untuk membuka [Alat nyahpepijat bahagian pelayan](https://open.dingtalk.com/document/download/api-explorer).
+2. Dalam alat nyahpepijat, gantikan nilai `appkey` (ganti dengan **Client ID** yang anda peroleh sebelum ini) dan `appSecret` (ganti dengan **Client Secret** yang anda peroleh sebelum ini), kemudian klik **Debug**.
+
+### Penting
+
+   Anda mesti log masuk untuk menggunakan konsol nyahpepijat bahagian pelayan dan mesti mengikat aplikasi yang berkaitan.
+
+   Anda juga boleh menyalin kod di bawah dan menggunakan arahan cURL. Gantikan nilai `appkey` (dengan **Client ID** yang anda peroleh sebelum ini) dan `appSecret` (dengan **Client Secret** yang anda peroleh sebelum ini), kemudian hantar permintaan secara terus. Contoh:
+
+   ```bash
+   curl -X POST 'https://api.dingtalk.io/v1.0/oauth2/accessToken' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "appKey": "Ganti dengan Client ID yang anda peroleh sebelum ini",
+       "appSecret": "Ganti dengan Client Secret yang anda peroleh sebelum ini"
+     }'
+   ```
+
+#### Huraikan respons
+
+Selepas panggilan berjaya, nilai access token akan dijana, seperti yang ditunjukkan di bawah:
+
+```json
+{
+  "accessToken" : "fw8ef8we8f76e6f7s8dxxxx", # Kelayakan utama
+  "expireIn" : 7200 # Tempoh sah (2 jam)
+}
+```
+
+#### Cache dan muat semula
+
+- Cache `access_token` dalam pangkalan data atau memori, dan sediakan muat semula terjadual (10 minit sebelum tamat tempoh).
+- Elakkan memanggil API Token dengan kerap, jika tidak had kadar mungkin akan dicetuskan.
+
+### API kebenaran sensitif
+
+Untuk membolehkan perkongsian data dan panggilan ciri merentas organisasi, aplikasi pihak ketiga mesti melalui proses kebenaran yang ketat. Aplikasi tersebut perlu mendapatkan kebenaran penggunaan dan kebenaran akses data pengguna daripada organisasi sasaran melalui kebenaran di peringkat organisasi dan peringkat pengguna.
+
+#### Mohon kebenaran API
+
+Mohon kebenaran API mengikut dokumentasi [Gunakan kebenaran sensitif](/ms/open/development/use-sensitive-permissions).
+
+#### Integrasikan kit kebenaran
+
+Selepas memohon kebenaran sensitif, integrasikan kit kebenaran. Apabila pengguna menerima kebenaran dalam prompt, `authCode` akan dikembalikan. Kemudian panggil API [Dapatkan token pengguna](/ms/open/development/obtain-user-token) untuk menukarkannya kepada `access_token` peringkat pengguna.
+
+## Langkah 4: Panggil API butiran pengguna
+
+### API kebenaran standard
+
+Untuk mendapatkan butiran pengguna, panggil API [Tanya butiran pengguna](/ms/open/development/query-user-details). Anda boleh menggunakan SDK DingTalk atau menghantar permintaan HTTP secara terus. Pilih kaedah yang sesuai dengan keperluan anda.
+
+#### Pilihan 1: Gunakan SDK DingTalk (disyorkan)
+
+<Note>
+Sebelum menggunakan SDK DingTalk, ketahui perbezaan dalam Server API, kemudian muat turun versi SDK yang sepadan. Rujuk dokumentasi perbezaan Server API untuk maklumat lanjut.
+</Note>
+
+1. Pasang SDK (contoh Python)
+
+   ```bash
+   pip install dingtalk-sdk
+   ```
+2. Contoh kod
+
+   ```python
+   # -*- coding: utf-8 -*-
+   import dingtalk.api
+
+   req=dingtalk.api.OapiV2UserGetRequest("https://api.dingtalk.io/topapi/v2/user/get")
+
+   req.userid="zhangsan"  # Ganti dengan ID pengguna sebenar
+   req.language="zh_CN"
+   try:
+   	resp= req.getResponse(access_token)
+   	print(resp)
+   except Exception,e:
+   	print(e)
+   ```
+
+#### Pilihan 2: Hantar permintaan HTTP secara terus
+
+```bash
+curl -i 'https://api.dingtalk.io/topapi/v2/user/get' \
+  -X 'POST' \
+  -H 'Content-Type: application/json' \
+  -d '{"userid":"Ganti dengan ID pengguna sebenar","language":"zh_CN"}'
+```
+
+#### Respons berjaya
+
+Jika respons mengandungi `"errcode":"0"` dan `"errmsg":"ok"`, panggilan berjaya.
+
+```json
+{
+        "errcode":"0",
+        "result":{
+                "extension":"{\"Hobi\":\"Mengembara\",\"Umur\":\"24\"}",
+                "unionid":"z21HjQliSzpw0YWxxxxx",
+                "boss":"true",
+                "role_list":{
+                        "group_name":"Jawatan",
+                        "name":"Pengarah",
+                        "id":"100"
+                },
+                "exclusive_account":false,
+                "manager_userid":"manager240",
+                "admin":"true",
+                "remark":"Catatan",
+                "title":"Pengarah Teknikal",
+                "hired_date":"1597573616828",
+                "userid":"zhangsan",
+                "work_place":"Future Park",
+                "dept_order_list":{
+                        "dept_id":"2",
+                        "order":"1"
+                },
+                "real_authed":"true",
+                "dept_id_list":"[2,3,4]",
+                "job_number":"4",
+                "email":"test@xxx.com",
+                "leader_in_dept":{
+                        "leader":"true",
+                        "dept_id":"2"
+                },
+                "mobile":"13800138000",
+                "active":"true",
+                "org_email":"test@xxx.com",
+                "telephone":"010-86123456-2345",
+                "avatar":"xxx",
+                "hide_mobile":"false",
+                "senior":"true",
+                "name":"John",
+                "union_emp_ext":{
+                        "union_emp_map_list":{
+                                "userid":"5000",
+                                "corp_id":"dingxxx"
+                        },
+                        "userid":"500",
+                        "corp_id":"dingxxx"
+                },
+                "state_code":"86"
+        },
+        "errmsg":"ok"
+}
+```
+
+#### Pengendalian ralat
+
+- **Kebenaran tidak mencukupi**: Semak sama ada kebenaran `Read user information` telah dimohon.
+- **Pengguna tidak wujud**: Sahkan bahawa `userid` adalah sah dan tidak mengandungi kesilapan menaip.
+- **Token luput**: Muat semula `access_token` dan cuba lagi. Pastikan `access_token` adalah sah dan tidak mengandungi kesilapan menaip.
+
+### API kebenaran sensitif
+
+Selepas menukar `authCode` kepada `access_token` peringkat pengguna, panggil [Dapatkan profil pengguna daripada Kenalan](/ms/open/development/dingtalk-retrieve-user-information) untuk mendapatkan nama pengguna, unionId, dan maklumat lain.
+
+Jika API mengembalikan 200, panggilan berjaya. Responsnya adalah seperti berikut:
+
+```json
+{
+  "nick" : "zhangsan",
+  "avatarUrl" : "https://xxx",
+  "mobile" : "150xxxx9144",
+  "openId" : "123",
+  "unionId" : "z21HjQliSzpw0Yxxxx",
+  "email" : "zhangsan@example.com",
+  "stateCode" : "86"
+}
+```

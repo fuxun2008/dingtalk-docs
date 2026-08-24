@@ -35,17 +35,17 @@ IGNORE_DIRS = {
 VALID_TOP_DIRS = {
     "ai-minutes", "aitable", "approval", "attendance", "calendar", "contacts",
     "docs", "drive", "im", "mail", "meetings", "oa", "open", "yida",
-    "zh", "ja", "id",
+    "zh", "ja", "id", "ms",
 }
 
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 
 # Hreflang tags. zh maps to zh-CN (Simplified, mainland);
-# ja maps to ja-JP. en and id stay plain (no regional qualifier).
-LANG_TAGS = {"en": "en", "zh": "zh-CN", "ja": "ja-JP", "id": "id"}
+# ja maps to ja-JP. en, id, and ms stay plain (no regional qualifier).
+LANG_TAGS = {"en": "en", "zh": "zh-CN", "ja": "ja-JP", "id": "id", "ms": "ms"}
 DEFAULT_LANG = "en"  # what x-default points to
-SUPPORTED_LANGS = ("en", "zh", "ja", "id")
+SUPPORTED_LANGS = ("en", "zh", "ja", "id", "ms")
 
 # Register namespaces so ElementTree emits the expected prefixes.
 ET.register_namespace("", SITEMAP_NS)
@@ -76,7 +76,7 @@ def classify(rel_path: Path):
     and trailing "index" collapsed (so /im/index.mdx -> ("en", ["im"])).
     """
     parts = list(rel_path.parts)
-    if parts and parts[0] in ("zh", "ja", "id"):
+    if parts and parts[0] in ("zh", "ja", "id", "ms"):
         lang = parts[0]
         base_parts = parts[1:]
     else:
@@ -159,11 +159,11 @@ def build_urlset():
     # lastmod would cause spurious daily diffs. Google does not strongly
     # trust sitemap lastmod anyway.
 
-    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja/id.
+    # 1) Homepages: en first (priority 1.0 daily — primary), then zh/ja/id/ms.
     home_langs = base_lang_map.get("", {})
     if "en" in home_langs:
         emit(combined, "en", [], home_langs, is_home=True)
-    for lang in ("zh", "ja", "id"):
+    for lang in ("zh", "ja", "id", "ms"):
         if lang in home_langs:
             emit(combined, lang, [], home_langs, is_home=False)
 

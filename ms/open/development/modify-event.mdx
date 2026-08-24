@@ -1,0 +1,1076 @@
+---
+title: "Kemas kini acara"
+description: "Panggil API ini untuk mengemas kini maklumat satu acara Kalendar DingTalk secara individu, lengkap dengan butiran permintaan dan respons."
+---
+
+Panggil API ini untuk mengemas kini maklumat satu acara.
+
+## Penerangan panggilan API
+
+- Hanya penganjur dibenarkan mengemas kini acara. Oleh itu, medan `userId` dalam laluan mestilah unionId penganjur.
+- Hantar hanya medan yang perlu dikemas kini dalam permintaan. Medan yang tidak dihantar akan kekal tidak berubah.
+- Setiap operasi ke atas peserta acara menyokong sehingga 500 pengguna, dan acara dengan sehingga 5,000 peserta disokong.
+- Untuk menambah atau mengeluarkan peserta acara, gunakan API [Tambah peserta acara](/ms/open/development/add-schedule-participant#) dan [Keluarkan peserta acara](/ms/open/development/delete-schedule-participant#).
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | `https://api.dingtalk.io/v1.0/calendar/users/{userId}/calendars/{calendarId}/events/{eventId}` |
+| Kaedah HTTP | PUT |
+| Jenis aplikasi disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga　appType-Aplikasi peribadi pihak ketiga |
+| Kebenaran diperlukan | permission-Calendar.Event.Write-Kebenaran tulis untuk acara dalam aplikasi Calendar |
+
+### Header permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-client-token | String | Tidak | Semakan idempotensi.       - `x-client-token` yang sama menandakan permintaan yang sama. - Tamat tempoh dalam 1 hari. |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses yang digunakan untuk memanggil API ini. Dapatkan seperti berikut:   - Untuk aplikasi dalaman, panggil API [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app#). - Untuk aplikasi perusahaan pihak ketiga, panggil API [Dapatkan access token perusahaan yang diberi kuasa kepada aplikasi pihak ketiga](https://open.dingtalk.com/document/development/obtain-the-access-token-of-the-authorized-enterprise-1#). - Untuk aplikasi peribadi pihak ketiga, panggil API [Dapatkan user token](/ms/open/development/obtain-user-token#). |
+
+### Parameter laluan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| userId | String | Ya | unionId penganjur acara.   - Untuk aplikasi dalaman dan aplikasi perusahaan pihak ketiga, panggil API [Tanya butiran pengguna](/ms/open/development/query-user-details#) untuk mendapatkan nilai parameter `unionid`. - Untuk aplikasi peribadi pihak ketiga, panggil API [Dapatkan profil pengguna daripada kenalan](/ms/open/development/dingtalk-retrieve-user-information#) untuk mendapatkan nilai parameter `unionId`. |
+| calendarId | String | Ya | ID kalendar tempat acara berada. Tetapkan parameter ini kepada `primary`, yang mewakili kalendar utama pengguna. |
+| eventId | String | Ya | ID acara. Panggil API [Tanya senarai acara](/ms/open/development/query-an-event-list#) untuk mendapatkan nilai parameter `id`. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| summary | String | Tidak | Tajuk acara. |
+| id | String | Ya | ID acara. |
+| description | String | Tidak | Penerangan acara. |
+| start | Object | Tidak | Masa mula acara. |
+| date | String | Tidak | Tarikh mula acara dalam format `yyyy-MM-dd`.     - Wajib untuk acara sepanjang hari. - Mesti kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Tidak | Masa mula acara dalam format tarikh-masa ISO-8601.     - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Tidak | Zon waktu bagi masa mula acara, dalam format nama TZ database.     - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| end | Object | Tidak | Masa tamat acara.    Bilangan pengulangan (**numberOfOccurrences**) dan masa tamat acara (**end**) tidak boleh ditetapkan pada masa yang sama. |
+| date | String | Tidak | Tarikh tamat acara dalam format `yyyy-MM-dd`.     - Wajib untuk acara sepanjang hari. - Mesti kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Tidak | Masa tamat acara dalam format tarikh-masa ISO-8601.     - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Tidak | Zon waktu bagi masa tamat acara. Mesti sama dengan zon waktu masa mula, dalam format nama TZ database.     - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| isAllDay | Boolean | Tidak | Sama ada acara adalah acara sepanjang hari.   - **true**: Ya. - **false**: Tidak. |
+| recurrence | Object | Tidak | Peraturan pengulangan acara. |
+| pattern | Object | Tidak | Corak pengulangan. |
+| type | String | Tidak | Jenis corak pengulangan.   - **daily**: Berulang setiap **interval** hari. - **weekly**: Berulang pada **daysOfWeek** setiap **interval** minggu. - **absoluteMonthly**: Berulang pada hari **dayOfMonth** setiap **interval** bulan. - **relativeMonthly**: Berulang pada **daysOfWeek** minggu ke-**index** setiap **interval** bulan. - **absoluteYearly**: Berulang setiap **interval** tahun. |
+| dayOfMonth | Integer | Tidak | Menentukan hari dalam bulan apabila corak pengulangan **type** ialah **absoluteMonthly**. |
+| daysOfWeek | String | Tidak | Menentukan hari dalam minggu dalam huruf kecil bahasa Inggeris. Pisahkan beberapa nilai dengan koma. |
+| index | String | Tidak | Menentukan minggu dalam bulan apabila `type` ialah `relativeMonthly`.   - **first**: Minggu pertama. - **second**: Minggu kedua. - **third**: Minggu ketiga. - **fourth**: Minggu keempat. - **last**: Minggu terakhir. |
+| interval | Integer | Tidak | Selang pengulangan. Unit berbeza mengikut `type`.      Contohnya:   - Apabila **type** ialah **daily**, ia mewakili selang N hari. - Apabila **type** ialah **absoluteYearly**, ia mewakili selang N tahun. |
+| firstDayOfWeek | String | Tidak | Hari pertama dalam minggu. Nilai sah: sunday, monday, tuesday, wednesday, thursday, friday, saturday. Lalai: "sunday". |
+| range | Object | Tidak | Julat pengulangan. |
+| type | String | Tidak | Jenis julat pengulangan.   - **noEnd**: Tidak pernah tamat. - **endDate**: Tamat pada tarikh yang ditetapkan. - **numbered**: Tamat selepas bilangan pengulangan yang ditetapkan. |
+| endDate | String | Tidak | Masa tamat pengulangan.      **endDate** dan **numberOfOccurrences** tidak boleh ditetapkan pada masa yang sama. |
+| numberOfOccurrences | Integer | Tidak | Bilangan pengulangan.      **endDate** dan **numberOfOccurrences** tidak boleh ditetapkan pada masa yang sama. |
+| attendees | Array | Tidak | Senarai peserta acara. |
+| id | String | Tidak | unionId pengguna. |
+| email | String | Tidak | Alamat mel. |
+| isOptional | Boolean | Tidak | Sama ada peserta bersifat pilihan.   - **true**: Ya. - **false**: Tidak. |
+| location | Object | Tidak | Lokasi acara. |
+| displayName | String | Tidak | Nama lokasi acara. |
+| extra | `Map<String, String>` | Tidak | Satu set suis lanjutan berformat JSON. Pilihan. Atribut ditakrifkan seperti berikut:   - **noPushNotification**: Sama ada untuk menghantar pemberitahuan tolak DingTalk kepada pengguna berkaitan apabila acara dicipta.    - **true**: Jangan hantar.   - **false**: Hantar. - **noChatNotification**: Sama ada untuk menghantar kad Mesej Terus kepada peserta apabila acara dicipta.    - **true**: Jangan hantar.   - **false**: Hantar. |
+| reminders | Array | Tidak | Peringatan acara. Beberapa peringatan boleh ditambah.   - Jika parameter ini tidak dihantar, masa peringatan lalai adalah:    - **Acara bukan sepanjang hari**: 15 minit sebelumnya daripada masa mula.   - **Acara sepanjang hari**: Jam 9 pagi pada hari sebelum acara bermula. - Jika data kosong dihantar, tiada peringatan dicipta. |
+| method | String | Tidak | Kaedah peringatan.   - **dingtalk**: Peringatan dalam aplikasi pada DingTalk. |
+| minutes | Integer | Tidak | Menghantar peringatan N minit sebelum acara bermula. |
+| onlineMeetingInfo | Object | Tidak | Mesyuarat video.  Menghantar medan ini semasa kemas kini akan mencipta mesyuarat video baharu. Jika mesyuarat video sudah wujud, menghantar medan ini akan menulis ganti mesyuarat sedia ada. |
+| type | String | Tidak | Jenis mesyuarat dalam talian.   - **dingtalk**: Mesyuarat Video DingTalk. |
+| richTextDescription | Object | Tidak | Medan teks kaya. |
+| text | String | Tidak | Nilai teks kaya. |
+| uiConfigs | Array | Tidak | Konfigurasi UI yang mengawal paparan komponen pada halaman butiran acara. |
+| uiName | String | Ya | Nama komponen. Nilai sah (dikemas kini secara berterusan):   - **updateEventButton**: Butang Edit Acara. - **deleteEventButton**: Butang Padam Acara. - **transferEventButton**: Butang Serahkan Acara. - **attendee**: Area peserta. - **comment**: Area komen acara. |
+| uiStatus | String | Ya | Status komponen. Nilai sah:   - **hide**: Tersembunyi. - **disable**: Dinyahaktifkan (disokong pada halaman butiran baharu; tidak disokong pada versi lebih awal, di mana komponen akan disembunyikan sebagai gantinya).    Untuk komponen butang: tidak boleh diklik.   Untuk komponen area: tidak boleh berinteraksi. Contohnya, jika area komen ditetapkan kepada disable, komen tidak boleh ditulis, tetapi komen sedia ada kekal kelihatan. - **enable**: Tersedia (status lalai). |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+PUT /v1.0/calendar/users/iiiP35sJaxxx/calendars/primary/events/cnNTbWxxx HTTP/1.1
+Host:api.dingtalk.io
+x-client-token:******
+x-acs-dingtalk-access-token:dd438xxx
+Content-Type:application/json
+
+{
+  "summary" : "some event",
+  "id" : "cnNTbWxxx",
+  "description" : "This is an event",
+  "start" : {
+    "date" : "2020-01-01",
+    "dateTime" : "2020-01-01T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "end" : {
+    "date" : "2020-01-02",
+    "dateTime" : "2020-01-01T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "isAllDay" : false,
+  "recurrence" : {
+    "pattern" : {
+      "type" : "daily",
+      "dayOfMonth" : 1,
+      "daysOfWeek" : "sunday",
+      "index" : "last",
+      "interval" : 1
+    },
+    "range" : {
+      "type" : "endDate",
+      "endDate" : "2021-12-31T10:15:30+08:00",
+      "numberOfOccurrences" : 1
+    }
+  },
+  "attendees" : [ {
+    "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+    "isOptional" : false
+  } ],
+  "location" : {
+    "displayName" : "room 1-2-3"
+  },
+  "reminders" : [ {
+    "method" : "dingtalk",
+    "minutes" : 15
+  } ],
+  "onlineMeetingInfo" : {
+    "type" : "dingtalk"
+  },
+  "richTextDescription" : { },
+  "uiConfigs" : [ { } ]
+}
+```
+
+Java
+
+```java
+// Fail ini dijana secara automatik, jangan edit. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Mulakan klien akaun menggunakan token.
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkcalendar_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkcalendar_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkcalendar_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventHeaders patchEventHeaders = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventHeaders();
+        patchEventHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestUiConfigs uiConfigs0 = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestUiConfigs();
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRichTextDescription richTextDescription = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRichTextDescription();
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestOnlineMeetingInfo onlineMeetingInfo = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestOnlineMeetingInfo()
+                .setType("dingtalk");
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestReminders reminders0 = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestReminders()
+                .setMethod("dingtalk")
+                .setMinutes(15);
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestLocation location = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestLocation()
+                .setDisplayName("room 1-2-3");
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestAttendees attendees0 = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestAttendees()
+                .setId("iiiP35sJadba8aBSgjrwPRKgiEiF")
+                .setIsOptional(false);
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRecurrenceRange recurrenceRange = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRecurrenceRange()
+                .setType("endDate")
+                .setEndDate("2021-12-31T10:15:30+08:00")
+                .setNumberOfOccurrences(1);
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRecurrencePattern recurrencePattern = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRecurrencePattern()
+                .setType("daily")
+                .setDayOfMonth(1)
+                .setDaysOfWeek("sunday")
+                .setIndex("last")
+                .setInterval(1);
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRecurrence recurrence = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestRecurrence()
+                .setPattern(recurrencePattern)
+                .setRange(recurrenceRange);
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestEnd end = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestEnd()
+                .setDate("2020-01-02")
+                .setDateTime("2020-01-01T10:15:30+08:00")
+                .setTimeZone("Asia/Shanghai");
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestStart start = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest.PatchEventRequestStart()
+                .setDate("2020-01-01")
+                .setDateTime("2020-01-01T10:15:30+08:00")
+                .setTimeZone("Asia/Shanghai");
+        com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest patchEventRequest = new com.aliyun.dingtalkcalendar_1_0.models.PatchEventRequest()
+                .setSummary("some event")
+                .setId("cnNTbWxxx")
+                .setDescription("This is an event")
+                .setStart(start)
+                .setEnd(end)
+                .setIsAllDay(false)
+                .setRecurrence(recurrence)
+                .setAttendees(java.util.Arrays.asList(
+                    attendees0
+                ))
+                .setLocation(location)
+                .setReminders(java.util.Arrays.asList(
+                    reminders0
+                ))
+                .setOnlineMeetingInfo(onlineMeetingInfo)
+                .setRichTextDescription(richTextDescription)
+                .setUiConfigs(java.util.Arrays.asList(
+                    uiConfigs0
+                ));
+        try {
+            client.patchEventWithOptions("iiiP35sJaxxx", "primary", "cnNTbWxxx", patchEventRequest, patchEventHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan edit. Terima kasih.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.calendar_1_0.client import Client as dingtalkcalendar_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.calendar_1_0 import models as dingtalkcalendar__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkcalendar_1_0Client:
+        """
+        Mulakan klien akaun menggunakan token.
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkcalendar_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        patch_event_headers = dingtalkcalendar__1__0_models.PatchEventHeaders()
+        patch_event_headers.x_acs_dingtalk_access_token = '<your access token>'
+        ui_configs_0 = dingtalkcalendar__1__0_models.PatchEventRequestUiConfigs()
+        rich_text_description = dingtalkcalendar__1__0_models.PatchEventRequestRichTextDescription()
+        online_meeting_info = dingtalkcalendar__1__0_models.PatchEventRequestOnlineMeetingInfo(
+            type='dingtalk'
+        )
+        reminders_0 = dingtalkcalendar__1__0_models.PatchEventRequestReminders(
+            method='dingtalk',
+            minutes=15
+        )
+        location = dingtalkcalendar__1__0_models.PatchEventRequestLocation(
+            display_name='room 1-2-3'
+        )
+        attendees_0 = dingtalkcalendar__1__0_models.PatchEventRequestAttendees(
+            id='iiiP35sJadba8aBSgjrwPRKgiEiF',
+            is_optional=False
+        )
+        recurrence_range = dingtalkcalendar__1__0_models.PatchEventRequestRecurrenceRange(
+            type='endDate',
+            end_date='2021-12-31T10:15:30+08:00',
+            number_of_occurrences=1
+        )
+        recurrence_pattern = dingtalkcalendar__1__0_models.PatchEventRequestRecurrencePattern(
+            type='daily',
+            day_of_month=1,
+            days_of_week='sunday',
+            index='last',
+            interval=1
+        )
+        recurrence = dingtalkcalendar__1__0_models.PatchEventRequestRecurrence(
+            pattern=recurrence_pattern,
+            range=recurrence_range
+        )
+        end = dingtalkcalendar__1__0_models.PatchEventRequestEnd(
+            date='2020-01-02',
+            date_time='2020-01-01T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        start = dingtalkcalendar__1__0_models.PatchEventRequestStart(
+            date='2020-01-01',
+            date_time='2020-01-01T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        patch_event_request = dingtalkcalendar__1__0_models.PatchEventRequest(
+            summary='some event',
+            id='cnNTbWxxx',
+            description='This is an event',
+            start=start,
+            end=end,
+            is_all_day=False,
+            recurrence=recurrence,
+            attendees=[
+                attendees_0
+            ],
+            location=location,
+            reminders=[
+                reminders_0
+            ],
+            online_meeting_info=online_meeting_info,
+            rich_text_description=rich_text_description,
+            ui_configs=[
+                ui_configs_0
+            ]
+        )
+        try:
+            client.patch_event_with_options('iiiP35sJaxxx', 'primary', 'cnNTbWxxx', patch_event_request, patch_event_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        patch_event_headers = dingtalkcalendar__1__0_models.PatchEventHeaders()
+        patch_event_headers.x_acs_dingtalk_access_token = '<your access token>'
+        ui_configs_0 = dingtalkcalendar__1__0_models.PatchEventRequestUiConfigs()
+        rich_text_description = dingtalkcalendar__1__0_models.PatchEventRequestRichTextDescription()
+        online_meeting_info = dingtalkcalendar__1__0_models.PatchEventRequestOnlineMeetingInfo(
+            type='dingtalk'
+        )
+        reminders_0 = dingtalkcalendar__1__0_models.PatchEventRequestReminders(
+            method='dingtalk',
+            minutes=15
+        )
+        location = dingtalkcalendar__1__0_models.PatchEventRequestLocation(
+            display_name='room 1-2-3'
+        )
+        attendees_0 = dingtalkcalendar__1__0_models.PatchEventRequestAttendees(
+            id='iiiP35sJadba8aBSgjrwPRKgiEiF',
+            is_optional=False
+        )
+        recurrence_range = dingtalkcalendar__1__0_models.PatchEventRequestRecurrenceRange(
+            type='endDate',
+            end_date='2021-12-31T10:15:30+08:00',
+            number_of_occurrences=1
+        )
+        recurrence_pattern = dingtalkcalendar__1__0_models.PatchEventRequestRecurrencePattern(
+            type='daily',
+            day_of_month=1,
+            days_of_week='sunday',
+            index='last',
+            interval=1
+        )
+        recurrence = dingtalkcalendar__1__0_models.PatchEventRequestRecurrence(
+            pattern=recurrence_pattern,
+            range=recurrence_range
+        )
+        end = dingtalkcalendar__1__0_models.PatchEventRequestEnd(
+            date='2020-01-02',
+            date_time='2020-01-01T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        start = dingtalkcalendar__1__0_models.PatchEventRequestStart(
+            date='2020-01-01',
+            date_time='2020-01-01T10:15:30+08:00',
+            time_zone='Asia/Shanghai'
+        )
+        patch_event_request = dingtalkcalendar__1__0_models.PatchEventRequest(
+            summary='some event',
+            id='cnNTbWxxx',
+            description='This is an event',
+            start=start,
+            end=end,
+            is_all_day=False,
+            recurrence=recurrence,
+            attendees=[
+                attendees_0
+            ],
+            location=location,
+            reminders=[
+                reminders_0
+            ],
+            online_meeting_info=online_meeting_info,
+            rich_text_description=rich_text_description,
+            ui_configs=[
+                ui_configs_0
+            ]
+        )
+        try:
+            await client.patch_event_with_options_async('iiiP35sJaxxx', 'primary', 'cnNTbWxxx', patch_event_request, patch_event_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// Fail ini dijana secara automatik, jangan edit. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\uiConfigs;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\richTextDescription;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\onlineMeetingInfo;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\reminders;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\location;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\attendees;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\recurrence\range;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\recurrence\pattern;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\recurrence;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\end;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest\start;
+use AlibabaCloud\SDK\Dingtalk\Vcalendar_1_0\Models\PatchEventRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan klien akaun menggunakan token.
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $patchEventHeaders = new PatchEventHeaders([]);
+        $patchEventHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $uiConfigs0 = new uiConfigs([]);
+        $richTextDescription = new richTextDescription([]);
+        $onlineMeetingInfo = new onlineMeetingInfo([
+            "type" => "dingtalk"
+        ]);
+        $reminders0 = new reminders([
+            "method" => "dingtalk",
+            "minutes" => 15
+        ]);
+        $location = new location([
+            "displayName" => "room 1-2-3"
+        ]);
+        $attendees0 = new attendees([
+            "id" => "iiiP35sJadba8aBSgjrwPRKgiEiF",
+            "isOptional" => false
+        ]);
+        $recurrenceRange = new range([
+            "type" => "endDate",
+            "endDate" => "2021-12-31T10:15:30+08:00",
+            "numberOfOccurrences" => 1
+        ]);
+        $recurrencePattern = new pattern([
+            "type" => "daily",
+            "dayOfMonth" => 1,
+            "daysOfWeek" => "sunday",
+            "index" => "last",
+            "interval" => 1
+        ]);
+        $recurrence = new recurrence([
+            "pattern" => $recurrencePattern,
+            "range" => $recurrenceRange
+        ]);
+        $end = new end([
+            "date" => "2020-01-02",
+            "dateTime" => "2020-01-01T10:15:30+08:00",
+            "timeZone" => "Asia/Shanghai"
+        ]);
+        $start = new start([
+            "date" => "2020-01-01",
+            "dateTime" => "2020-01-01T10:15:30+08:00",
+            "timeZone" => "Asia/Shanghai"
+        ]);
+        $patchEventRequest = new PatchEventRequest([
+            "summary" => "some event",
+            "id" => "cnNTbWxxx",
+            "description" => "This is an event",
+            "start" => $start,
+            "end" => $end,
+            "isAllDay" => false,
+            "recurrence" => $recurrence,
+            "attendees" => [
+                $attendees0
+            ],
+            "location" => $location,
+            "reminders" => [
+                $reminders0
+            ],
+            "onlineMeetingInfo" => $onlineMeetingInfo,
+            "richTextDescription" => $richTextDescription,
+            "uiConfigs" => [
+                $uiConfigs0
+            ]
+        ]);
+        try {
+            $client->patchEventWithOptions("iiiP35sJaxxx", "primary", "cnNTbWxxx", $patchEventRequest, $patchEventHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// Fail ini dijana secara automatik, jangan edit. Terima kasih.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkcalendar_1_0  "github.com/alibabacloud-go/dingtalk/calendar_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Mulakan klien akaun menggunakan token.
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkcalendar_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkcalendar_1_0.Client{}
+  _result, _err = dingtalkcalendar_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  patchEventHeaders := &dingtalkcalendar_1_0.PatchEventHeaders{}
+  patchEventHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  uiConfigs0 := &dingtalkcalendar_1_0.PatchEventRequestUiConfigs{}
+  richTextDescription := &dingtalkcalendar_1_0.PatchEventRequestRichTextDescription{}
+  onlineMeetingInfo := &dingtalkcalendar_1_0.PatchEventRequestOnlineMeetingInfo{
+    Type: tea.String("dingtalk"),
+  }
+  reminders0 := &dingtalkcalendar_1_0.PatchEventRequestReminders{
+    Method: tea.String("dingtalk"),
+    Minutes: tea.Int32(15),
+  }
+  location := &dingtalkcalendar_1_0.PatchEventRequestLocation{
+    DisplayName: tea.String("room 1-2-3"),
+  }
+  attendees0 := &dingtalkcalendar_1_0.PatchEventRequestAttendees{
+    Id: tea.String("iiiP35sJadba8aBSgjrwPRKgiEiF"),
+    IsOptional: tea.Bool(false),
+  }
+  recurrenceRange := &dingtalkcalendar_1_0.PatchEventRequestRecurrenceRange{
+    Type: tea.String("endDate"),
+    EndDate: tea.String("2021-12-31T10:15:30+08:00"),
+    NumberOfOccurrences: tea.Int32(1),
+  }
+  recurrencePattern := &dingtalkcalendar_1_0.PatchEventRequestRecurrencePattern{
+    Type: tea.String("daily"),
+    DayOfMonth: tea.Int32(1),
+    DaysOfWeek: tea.String("sunday"),
+    Index: tea.String("last"),
+    Interval: tea.Int32(1),
+  }
+  recurrence := &dingtalkcalendar_1_0.PatchEventRequestRecurrence{
+    Pattern: recurrencePattern,
+    Range: recurrenceRange,
+  }
+  end := &dingtalkcalendar_1_0.PatchEventRequestEnd{
+    Date: tea.String("2020-01-02"),
+    DateTime: tea.String("2020-01-01T10:15:30+08:00"),
+    TimeZone: tea.String("Asia/Shanghai"),
+  }
+  start := &dingtalkcalendar_1_0.PatchEventRequestStart{
+    Date: tea.String("2020-01-01"),
+    DateTime: tea.String("2020-01-01T10:15:30+08:00"),
+    TimeZone: tea.String("Asia/Shanghai"),
+  }
+  patchEventRequest := &dingtalkcalendar_1_0.PatchEventRequest{
+    Summary: tea.String("some event"),
+    Id: tea.String("cnNTbWxxx"),
+    Description: tea.String("This is an event"),
+    Start: start,
+    End: end,
+    IsAllDay: tea.Bool(false),
+    Recurrence: recurrence,
+    Attendees: []*dingtalkcalendar_1_0.PatchEventRequestAttendees{attendees0},
+    Location: location,
+    Reminders: []*dingtalkcalendar_1_0.PatchEventRequestReminders{reminders0},
+    OnlineMeetingInfo: onlineMeetingInfo,
+    RichTextDescription: richTextDescription,
+    UiConfigs: []*dingtalkcalendar_1_0.PatchEventRequestUiConfigs{uiConfigs0},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.PatchEventWithOptions(tea.String("iiiP35sJaxxx"), tea.String("primary"), tea.String("cnNTbWxxx"), patchEventRequest, patchEventHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// Fail ini dijana secara automatik, jangan edit
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkcalendar_1_0, * as $dingtalkcalendar_1_0 from '@alicloud/dingtalk/calendar_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Mulakan klien akaun menggunakan token.
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkcalendar_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkcalendar_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let patchEventHeaders = new $dingtalkcalendar_1_0.PatchEventHeaders({ });
+    patchEventHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let uiConfigs0 = new $dingtalkcalendar_1_0.PatchEventRequestUiConfigs({ });
+    let richTextDescription = new $dingtalkcalendar_1_0.PatchEventRequestRichTextDescription({ });
+    let onlineMeetingInfo = new $dingtalkcalendar_1_0.PatchEventRequestOnlineMeetingInfo({
+      type: "dingtalk",
+    });
+    let reminders0 = new $dingtalkcalendar_1_0.PatchEventRequestReminders({
+      method: "dingtalk",
+      minutes: 15,
+    });
+    let location = new $dingtalkcalendar_1_0.PatchEventRequestLocation({
+      displayName: "room 1-2-3",
+    });
+    let attendees0 = new $dingtalkcalendar_1_0.PatchEventRequestAttendees({
+      id: "iiiP35sJadba8aBSgjrwPRKgiEiF",
+      isOptional: false,
+    });
+    let recurrenceRange = new $dingtalkcalendar_1_0.PatchEventRequestRecurrenceRange({
+      type: "endDate",
+      endDate: "2021-12-31T10:15:30+08:00",
+      numberOfOccurrences: 1,
+    });
+    let recurrencePattern = new $dingtalkcalendar_1_0.PatchEventRequestRecurrencePattern({
+      type: "daily",
+      dayOfMonth: 1,
+      daysOfWeek: "sunday",
+      index: "last",
+      interval: 1,
+    });
+    let recurrence = new $dingtalkcalendar_1_0.PatchEventRequestRecurrence({
+      pattern: recurrencePattern,
+      range: recurrenceRange,
+    });
+    let end = new $dingtalkcalendar_1_0.PatchEventRequestEnd({
+      date: "2020-01-02",
+      dateTime: "2020-01-01T10:15:30+08:00",
+      timeZone: "Asia/Shanghai",
+    });
+    let start = new $dingtalkcalendar_1_0.PatchEventRequestStart({
+      date: "2020-01-01",
+      dateTime: "2020-01-01T10:15:30+08:00",
+      timeZone: "Asia/Shanghai",
+    });
+    let patchEventRequest = new $dingtalkcalendar_1_0.PatchEventRequest({
+      summary: "some event",
+      id: "cnNTbWxxx",
+      description: "This is an event",
+      start: start,
+      end: end,
+      isAllDay: false,
+      recurrence: recurrence,
+      attendees: [
+        attendees0
+      ],
+      location: location,
+      reminders: [
+        reminders0
+      ],
+      onlineMeetingInfo: onlineMeetingInfo,
+      richTextDescription: richTextDescription,
+      uiConfigs: [
+        uiConfigs0
+      ],
+    });
+    try {
+      await client.patchEventWithOptions("iiiP35sJaxxx", "primary", "cnNTbWxxx", patchEventRequest, patchEventHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// Fail ini dijana secara automatik, jangan edit. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Mulakan klien akaun menggunakan token.
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventHeaders patchEventHeaders = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventHeaders();
+            patchEventHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestUiConfigs uiConfigs0 = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestUiConfigs();
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRichTextDescription richTextDescription = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRichTextDescription();
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestOnlineMeetingInfo onlineMeetingInfo = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestOnlineMeetingInfo
+            {
+                Type = "dingtalk",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestReminders reminders0 = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestReminders
+            {
+                Method = "dingtalk",
+                Minutes = 15,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestLocation location = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestLocation
+            {
+                DisplayName = "room 1-2-3",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestAttendees attendees0 = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestAttendees
+            {
+                Id = "iiiP35sJadba8aBSgjrwPRKgiEiF",
+                IsOptional = false,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRecurrence.PatchEventRequestRecurrenceRange recurrenceRange = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRecurrence.PatchEventRequestRecurrenceRange
+            {
+                Type = "endDate",
+                EndDate = "2021-12-31T10:15:30+08:00",
+                NumberOfOccurrences = 1,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRecurrence.PatchEventRequestRecurrencePattern recurrencePattern = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRecurrence.PatchEventRequestRecurrencePattern
+            {
+                Type = "daily",
+                DayOfMonth = 1,
+                DaysOfWeek = "sunday",
+                Index = "last",
+                Interval = 1,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRecurrence recurrence = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestRecurrence
+            {
+                Pattern = recurrencePattern,
+                Range = recurrenceRange,
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestEnd end = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestEnd
+            {
+                Date = "2020-01-02",
+                DateTime = "2020-01-01T10:15:30+08:00",
+                TimeZone = "Asia/Shanghai",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestStart start = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestStart
+            {
+                Date = "2020-01-01",
+                DateTime = "2020-01-01T10:15:30+08:00",
+                TimeZone = "Asia/Shanghai",
+            };
+            AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest patchEventRequest = new AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest
+            {
+                Summary = "some event",
+                Id = "cnNTbWxxx",
+                Description = "This is an event",
+                Start = start,
+                End = end,
+                IsAllDay = false,
+                Recurrence = recurrence,
+                Attendees = new List<AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestAttendees>
+                {
+                    attendees0
+                },
+                Location = location,
+                Reminders = new List<AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestReminders>
+                {
+                    reminders0
+                },
+                OnlineMeetingInfo = onlineMeetingInfo,
+                RichTextDescription = richTextDescription,
+                UiConfigs = new List<AlibabaCloud.SDK.Dingtalkcalendar_1_0.Models.PatchEventRequest.PatchEventRequestUiConfigs>
+                {
+                    uiConfigs0
+                },
+            };
+            try
+            {
+                client.PatchEventWithOptions("iiiP35sJaxxx", "primary", "cnNTbWxxx", patchEventRequest, patchEventHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message, yang membantu mengesan punca masalah.
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| id | String | ID acara. |
+| summary | String | Tajuk acara. |
+| description | String | Penerangan acara. |
+| start | Object | Masa mula acara. |
+| date | String | Tarikh mula acara dalam format `yyyy-MM-dd`.       - Wajib untuk acara sepanjang hari. - Mesti kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Masa mula acara dalam format tarikh-masa ISO-8601.       - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Zon waktu bagi masa mula acara, dalam format nama TZ database.       - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| end | Object | Masa tamat acara. |
+| date | String | Tarikh tamat acara dalam format `yyyy-MM-dd`.       - Wajib untuk acara sepanjang hari. - Mesti kosong untuk acara bukan sepanjang hari. |
+| dateTime | String | Masa tamat acara dalam format tarikh-masa ISO-8601.       - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| timeZone | String | Zon waktu bagi masa tamat acara. Mesti sama dengan zon waktu masa mula, dalam format nama TZ database.       - Mesti kosong untuk acara sepanjang hari. - Wajib untuk acara bukan sepanjang hari. |
+| isAllDay | Boolean | Sama ada acara adalah acara sepanjang hari.   - **true**: Ya. - **false**: Tidak. |
+| recurrence | Object | Peraturan pengulangan acara. |
+| pattern | Object | Corak pengulangan. |
+| type | String | Jenis corak pengulangan.   - **daily**: Berulang setiap **interval** hari. - **weekly**: Berulang pada **daysOfWeek** setiap **interval** minggu. - **absoluteMonthly**: Berulang pada hari **dayOfMonth** setiap **interval** bulan. - **relativeMonthly**: Berulang pada **daysOfWeek** minggu ke-**index** setiap **interval** bulan. - **absoluteYearly**: Berulang setiap **interval** tahun. |
+| dayOfMonth | Integer | Menentukan hari dalam bulan apabila corak pengulangan **type** ialah **absoluteMonthly**. |
+| daysOfWeek | String | Menentukan hari dalam minggu dalam huruf kecil bahasa Inggeris. Pisahkan beberapa nilai dengan koma. |
+| index | String | Menentukan minggu dalam bulan apabila `type` ialah `relativeMonthly`.   - **first**: Minggu pertama. - **second**: Minggu kedua. - **third**: Minggu ketiga. - **fourth**: Minggu keempat. - **last**: Minggu terakhir. |
+| interval | Integer | Selang pengulangan. Unit berbeza mengikut `type`.      Contohnya:   - Apabila **type** ialah **daily**, ia mewakili selang N hari. - Apabila **type** ialah **absoluteYearly**, ia mewakili selang N tahun. |
+| firstDayOfWeek | String | Hari pertama dalam minggu. Nilai sah: sunday, monday, tuesday, wednesday, thursday, friday, saturday. Lalai: "sunday". |
+| range | Object | Julat pengulangan. |
+| type | String | Jenis julat pengulangan.   - **noEnd**: Tidak pernah tamat. - **endDate**: Tamat pada tarikh yang ditetapkan. - **numbered**: Tamat selepas bilangan pengulangan yang ditetapkan. |
+| endDate | String | Masa tamat pengulangan. |
+| numberOfOccurrences | Integer | Bilangan pengulangan. |
+| attendees | Array | Senarai peserta acara. |
+| id | String | unionId pengguna. |
+| displayName | String | Nama pengguna. |
+| responseStatus | String | Status balasan. |
+| self | Boolean | Sama ada pengguna adalah pengguna yang sedang log masuk.   - **true**: Ya. - **false**: Tidak. |
+| isOptional | Boolean | Sama ada peserta bersifat pilihan.   - **true**: Ya. - **false**: Tidak. |
+| organizer | Object | Penganjur acara. |
+| id | String | unionId pengguna. |
+| displayName | String | Nama pengguna. |
+| responseStatus | String | Status balasan. |
+| self | Boolean | Sama ada pengguna adalah pengguna yang sedang log masuk.   - **true**: Ya. - **false**: Tidak. |
+| location | Object | Maklumat lokasi acara. |
+| displayName | String | Nama paparan lokasi acara. |
+| meetingRooms | Array of String | Maklumat bilik mesyuarat. |
+| reminders | Array | Peringatan acara. |
+| method | String | Kaedah peringatan. |
+| minutes | String | Menghantar peringatan N minit sebelum acara bermula. |
+| createTime | String | Masa dicipta. |
+| updateTime | String | Masa kemas kini. |
+| onlineMeetingInfo | Object | Maklumat mesyuarat dalam talian. |
+| type | String | Jenis mesyuarat dalam talian.   - **dingtalk**: Mesyuarat Video DingTalk. |
+| conferenceId | String | ID mesyuarat. |
+| url | String | URL untuk menyertai mesyuarat. |
+| richTextDescription | Object | Medan teks kaya. |
+| text | String | Nilai teks kaya. |
+| uiConfigs | Array | Konfigurasi UI yang mengawal paparan komponen pada halaman butiran acara. |
+| uiName | String | Nama komponen. Nilai sah (dikemas kini secara berterusan):   - **updateEventButton**: Butang Edit Acara. - **deleteEventButton**: Butang Padam Acara. - **transferEventButton**: Butang Serahkan Acara. - **attendee**: Area peserta. - **comment**: Area komen acara. |
+| uiStatus | String | Status komponen. Nilai sah:   - **hide**: Tersembunyi. - **disable**: Dinyahaktifkan (disokong pada halaman butiran baharu; tidak disokong pada versi lebih awal, di mana komponen akan disembunyikan sebagai gantinya).      Untuk komponen butang: tidak boleh diklik.   Untuk komponen area: tidak boleh berinteraksi. Contohnya, jika area komen ditetapkan kepada disable, komen tidak boleh ditulis, tetapi komen sedia ada kekal kelihatan. - **enable**: Tersedia (status lalai). |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+  "summary" : "some event",
+  "description" : "something about this event",
+  "start" : {
+    "date" : "2020-01-01",
+    "dateTime" : "2020-01-01T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "end" : {
+    "date" : "2020-01-01",
+    "dateTime" : "2020-01-01T10:15:30+08:00",
+    "timeZone" : "Asia/Shanghai"
+  },
+  "isAllDay" : false,
+  "recurrence" : {
+    "pattern" : {
+      "type" : "daily",
+      "dayOfMonth" : 14,
+      "daysOfWeek" : "sunday",
+      "index" : "first",
+      "interval" : 1
+    },
+    "range" : {
+      "type" : "noEnd",
+      "endDate" : "2020-01-01T10:15:30+08:00",
+      "numberOfOccurrences" : 5
+    }
+  },
+  "attendees" : [ {
+    "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+    "displayName" : "jack",
+    "responseStatus" : "accepted",
+    "self" : false,
+    "isOptional" : false
+  } ],
+  "organizer" : {
+    "id" : "iiiP35sJadba8aBSgjrwPRKgiEiF",
+    "displayName" : "tony",
+    "responseStatus" : "accepted",
+    "self" : false
+  },
+  "location" : {
+    "displayName" : "room 1-2-3"
+  },
+  "reminders" : [ {
+    "method" : "dingtalk",
+    "minutes" : "15"
+  } ],
+  "createTime" : "2020-01-01T10:15:30+08:00",
+  "updateTime" : "2020-01-01T10:15:30+08:00"
+}
+```
+
+### Kod ralat
+
+Jika ralat dikembalikan semasa anda memanggil API ini, cari penyelesaian dalam dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1) berdasarkan mesej ralat.
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | invalidParameter | forwardErrorMessage | Parameter tidak sah. |
+| 400 | invalidParameter | CalendarId cannot be blank | ID kalendar tidak boleh kosong. |
+| 400 | invalidParameter | Event must be provided. | Acara tidak boleh kosong. |
+| 400 | invalidParameter | Event id summary cannot be blank | ID acara tidak boleh kosong. |
+| 400 | invalidParameter | Recurrence range numberOfOccurrences must between [1, 99] | numberOfOccurrences mesti dalam julat [1, 99]. |
+| 400 | invalidParameter | Recurrence interval must between [1, 365] | interval mesti dalam julat [1, 365]. |
+| 400 | invalidParameter | Meeting room invalid | Bilik mesyuarat tidak tersedia. |
+| 400 | idempotencyProcessing | Idempotency processing | Permintaan idempoten sedang diproses. |
+| 404 | itemNotFound | forwardErrorMessage | Acara yang ditentukan tidak dapat dijumpai. |

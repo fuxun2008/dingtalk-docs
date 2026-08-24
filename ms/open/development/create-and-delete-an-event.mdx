@@ -1,0 +1,287 @@
+---
+title: "Cipta, ubah suai, tanya, dan padam acara"
+description: "Menunjukkan aliran end-to-end penggunaan aplikasi dalaman untuk memanggil API acara bagi mencipta, mengubah suai, menanya satu acara, dan memadam acara, merangkumi persediaan kelayakan aplikasi dan kebenaran API."
+---
+
+Dokumen ini menerangkan cara memanggil API Kalendar untuk mencipta acara dan melakukan operasi berkaitan. Mula-mula, cipta satu aplikasi dalaman, kemudian gunakan API yang disediakan oleh Kalendar untuk mencipta, mengubah suai, menanya butiran satu acara, dan memadam acara.
+
+## Hasil yang dijangka
+
+Selepas satu acara dicipta, hasilnya adalah seperti berikut:
+
+## Gambaran keseluruhan aliran integrasi
+
+Dokumen ini menunjukkan cara mencipta aplikasi dalaman dan kemudian menggunakan API yang disediakan oleh Kalendar untuk mencipta, mengubah suai, menanya butiran satu acara, dan memadam acara.
+
+Prasyarat: Lengkapkan aliran [Cipta dan konfigurasikan aplikasi](/ms/open/dingstart/create-application).
+
+Langkah 1: Dapatkan maklumat kelayakan aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Mohon kebenaran API untuk API berkaitan Kalendar.
+
+Langkah 3: Dapatkan kredensial akses aplikasi [Dapatkan access token bagi aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). Semasa memanggil API, gunakan access token untuk mengesahkan pemanggil.
+
+Langkah 4: Panggil Server API untuk Kalendar:
+
+1. Panggil Server API [Acara Baharu](/ms/open/development/create-schedule) untuk mencipta satu acara. Dapatkan `id` acara.
+2. Berdasarkan `id` acara, panggil Server API [Ubah suai acara](/ms/open/development/modify-event) untuk mengubah suai maklumat acara.
+3. Berdasarkan `id` acara, panggil Server API [Tanya butiran tentang satu acara](/ms/open/development/query-details-about-an-event) untuk mendapatkan butiran acara.
+4. Berdasarkan `id` acara, panggil Server API [Padam Acara](/ms/open/development/delete-event) untuk memadam acara yang telah dicipta.
+
+## Prasyarat
+
+Lengkapkan aliran [Cipta dan konfigurasikan aplikasi](/ms/open/dingstart/create-application).
+
+## Langkah 1: Dapatkan kelayakan aplikasi
+
+1. Pilih aplikasi sasaran untuk masuk ke halaman butiran aplikasi, kemudian klik **Maklumat asas** > **Kelayakan dan maklumat asas**.
+2. Dapatkan client ID dan Client Secret.
+
+## Langkah 2: Tambah kebenaran API
+
+Klik **Konfigurasi pembangunan** > **Urus kebenaran**. Dalam kotak carian kebenaran, masukkan `Calendar.Event.Write` dan `Calendar.Event.Read` masing-masing, kemudian mohon kebenaran tersebut.
+
+## Langkah 3: Dapatkan access token aplikasi
+
+<Warning>
+Untuk butiran tentang perbezaan antara Server API, sila lihat Server API lama berbanding API baharu. Semua API di bawah menggunakan Server API. Untuk butiran muat turun SDK, sila lihat Muat turun SDK bahagian pelayan.
+</Warning>
+
+Gunakan client ID dan Client Secret daripada Langkah 1 untuk mendapatkan [access_token bagi aplikasi dalaman](/ms/open/development/obtain-orgapp-token).
+
+```java
+ public void getAccessToken() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+        GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+                .setAppKey("ding*********hgn")
+                .setAppSecret("9G_O**********xamBkhgGIO");
+        GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+        System.out.println(JSON.toJSONString(accessToken.getBody()));
+    }
+```
+
+## Langkah 4: Panggil Server API untuk Kalendar
+
+1. Panggil Server API [Acara Baharu](/ms/open/development/create-schedule) untuk mencipta satu acara. Dapatkan `id` acara.
+
+   ```java lines
+    public void createCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           CreateEventHeaders createEventHeaders = new CreateEventHeaders();
+           createEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           java.util.Map<String, String> extra = TeaConverter.buildMap(
+                   new TeaPair("noChatNotification", "false"),
+                   new TeaPair("noPushNotification","false")
+           );
+           CreateEventRequest.CreateEventRequestOnlineMeetingInfo onlineMeetingInfo = new CreateEventRequest.CreateEventRequestOnlineMeetingInfo()
+                   .setType("dingtalk");
+           CreateEventRequest.CreateEventRequestReminders reminders0 = new CreateEventRequest.CreateEventRequestReminders()
+                   .setMethod("dingtalk")
+                   .setMinutes(15);
+           CreateEventRequest.CreateEventRequestLocation location = new CreateEventRequest.CreateEventRequestLocation()
+                   .setDisplayName("******** Tower A 9F");
+           CreateEventRequest.CreateEventRequestAttendees attendees0 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("attendeeUnionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestAttendees attendees1 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("attendeeUnionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestAttendees attendees2 = new CreateEventRequest.CreateEventRequestAttendees()
+                   .setId("attendeeUnionId")
+                   .setIsOptional(false);
+           CreateEventRequest.CreateEventRequestRecurrenceRange recurrenceRange = new CreateEventRequest.CreateEventRequestRecurrenceRange()
+                   .setType("numbered")
+                   .setNumberOfOccurrences(2);
+           CreateEventRequest.CreateEventRequestRecurrencePattern recurrencePattern = new CreateEventRequest.CreateEventRequestRecurrencePattern()
+                   .setType("daily")
+                   .setInterval(1);
+           CreateEventRequest.CreateEventRequestRecurrence recurrence = new CreateEventRequest.CreateEventRequestRecurrence()
+                   .setPattern(recurrencePattern)
+                   .setRange(recurrenceRange);
+           CreateEventRequest.CreateEventRequestEnd end = new CreateEventRequest.CreateEventRequestEnd()
+                   .setDate("2022-09-03");
+   //                .setDateTime("2021-09-20T10:15:30+08:00")
+   //                .setTimeZone("Asia/Shanghai");
+           CreateEventRequest.CreateEventRequestStart start = new CreateEventRequest.CreateEventRequestStart()
+                   .setDate("2022-09-02");
+   //                .setDateTime("2021-09-20T10:15:30+08:00")
+   //                .setTimeZone("Asia/Shanghai");
+           CreateEventRequest createEventRequest = new CreateEventRequest()
+                   .setSummary("0902 New Event")
+                   .setDescription("This is an event created on 0902")
+                   .setStart(start)
+                   .setEnd(end)
+                   .setIsAllDay(true)
+                   .setRecurrence(recurrence)
+                   .setAttendees(java.util.Arrays.asList(
+                           attendees0,
+                           attendees1,
+                           attendees2
+                   ))
+                   .setLocation(location)
+                   .setReminders(java.util.Arrays.asList(
+                           reminders0
+                   ))
+                   .setOnlineMeetingInfo(onlineMeetingInfo)
+                   .setExtra(extra);
+           try {
+               CreateEventResponse eventWithOptions = client.createEventWithOptions("organizerUnionId", "primary", createEventRequest, createEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(eventWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+2. Berdasarkan `id` acara, panggil Server API [Ubah suai acara](/ms/open/development/modify-event) untuk mengubah suai maklumat acara.
+
+   ```java lines
+   public void  updateCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           PatchEventHeaders patchEventHeaders = new PatchEventHeaders();
+           patchEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           PatchEventRequest.PatchEventRequestReminders reminders0 = new PatchEventRequest.PatchEventRequestReminders()
+                   .setMethod("dingtalk")
+                   .setMinutes(15);
+           java.util.Map<String, String> extra = TeaConverter.buildMap(
+                   new TeaPair("noChatNotification", "false"),
+                   new TeaPair("noPushNotification","false")
+           );
+           PatchEventRequest.PatchEventRequestLocation location = new PatchEventRequest.PatchEventRequestLocation()
+                   .setDisplayName("room 1-2-3");
+           PatchEventRequest.PatchEventRequestAttendees attendees0 = new PatchEventRequest.PatchEventRequestAttendees()
+                   .setId("attendeeUnionId")
+                   .setIsOptional(false);
+           PatchEventRequest.PatchEventRequestRecurrenceRange recurrenceRange = new PatchEventRequest.PatchEventRequestRecurrenceRange()
+                   .setType("numbered")
+                   .setNumberOfOccurrences(1);
+           PatchEventRequest.PatchEventRequestRecurrencePattern recurrencePattern = new PatchEventRequest.PatchEventRequestRecurrencePattern()
+                   .setType("daily")
+                   .setInterval(1);
+           PatchEventRequest.PatchEventRequestRecurrence recurrence = new PatchEventRequest.PatchEventRequestRecurrence()
+                   .setPattern(recurrencePattern)
+                   .setRange(recurrenceRange);
+           PatchEventRequest.PatchEventRequestEnd end = new PatchEventRequest.PatchEventRequestEnd()
+                   .setDate("2022-09-02");
+           PatchEventRequest.PatchEventRequestStart start = new PatchEventRequest.PatchEventRequestStart()
+                   .setDate("2022-09-02");
+           PatchEventRequest patchEventRequest = new PatchEventRequest()
+                   .setSummary("0902 Modify event content")
+                   .setId("eventId")
+                   .setDescription("This is an event modified on 0902")
+                   .setStart(start)
+                   .setEnd(end)
+                   .setIsAllDay(true)
+                   .setRecurrence(recurrence)
+                   .setAttendees(java.util.Arrays.asList(
+                           attendees0
+                   ))
+                   .setLocation(location)
+                   .setExtra(extra)
+                   .setReminders(java.util.Arrays.asList(
+                           reminders0
+                   ));
+           try {
+               PatchEventResponse patchEventResponse = client.patchEventWithOptions("organizerUnionId", "primary", "eventId", patchEventRequest, patchEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(patchEventResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+3. Berdasarkan `id` acara, panggil Server API [Tanya butiran tentang satu acara](/ms/open/development/query-details-about-an-event) untuk mendapatkan butiran acara.
+
+   ```java lines
+    public void calendarInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           GetEventHeaders getEventHeaders = new GetEventHeaders();
+           getEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           GetEventRequest getEventRequest = new GetEventRequest()
+                   .setMaxAttendees(100L);
+           try {
+               GetEventResponse eventWithOptions = client.getEventWithOptions("organizerUnionId", "primary", "eventId", getEventRequest, getEventHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(eventWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+4. Berdasarkan `id` acara, panggil Server API [Padam Acara](/ms/open/development/delete-event) untuk memadam acara yang telah dicipta.
+
+   ```java lines
+   public void  deleteCalendar() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkcalendar_1_0.Client client = new com.aliyun.dingtalkcalendar_1_0.Client(config);
+           DeleteEventHeaders deleteEventHeaders = new DeleteEventHeaders();
+           deleteEventHeaders.xAcsDingtalkAccessToken = "accessToken";
+           try {
+               client.deleteEventWithOptions("organizerUnionId", "primary", "eventId", deleteEventHeaders, new RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message, yang membantu pembangun mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+<Note>
+Dua senario pemadaman berikut disokong:
+</Note>
+
+- Apabila penganjur memadam acara (parameter userId dalam laluan menggunakan unionId penganjur), semua peserta akan menerima notifikasi pembatalan acara, dan acara tersebut dialih keluar daripada kalendar semua peserta.
+- Apabila seorang peserta memadam acara (parameter userId dalam laluan menggunakan unionId peserta tersebut), acara hanya dialih keluar daripada kalendar peserta itu sendiri, dan peserta acara yang lain tidak terjejas.

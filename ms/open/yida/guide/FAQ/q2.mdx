@@ -1,0 +1,118 @@
+---
+title: "Gunakan Apache ECharts"
+description: "Tutorial: Import pustaka JS luaran seperti ECharts.js ke dalam Halaman tersuai YiDA untuk memvisualisasikan data Borang dan melangkaui Komponen terbina dalam."
+polished: true
+---
+
+## Kes Penggunaan
+
+Dalam sesetengah senario, anda mungkin memerlukan Komponen dalam Halaman tersuai YiDA yang tidak terdapat dalam pustaka Komponen YiDA, seperti Komponen Carta ECharts. Pembangun boleh mengimport ECharts.js ke dalam Halaman tersuai untuk memvisualisasikan data YiDA. Tutorial ini menunjukkan cara mengimport pustaka JS luaran ke dalam Halaman tersuai untuk memenuhi keperluan senario yang kompleks.
+
+## Tutorial Video
+
+## Langkah
+
+### Langkah 1: Konfigurasikan Atribut Komponen JSX
+
+Cipta Halaman tersuai dan seret Komponen `JSX` daripada pustaka Komponen ke kanvas tengah. Kemudian tetapkan Atribut id dan gayanya.
+Langkah-langkahnya:
+
+1. Pilih Komponen JSX pada Halaman. Dalam panel Atribut di sebelah kanan, klik butang Edit Kod JSX.
+2. Tambah Medan `id="main"` selepas div.
+3. Klik tab Gaya di sebelah kanan, klik Penyuntingan Sumber, dan masukkan `#main { height: 400px }`.
+
+Lihat ilustrasi di bawah:
+
+### Langkah 2: Ikat Kitaran Hayat didMount untuk Memuatkan Sumber JS Jauh
+
+Muatkan sumber JS daripada CDN dalam kitaran hayat didMount Halaman (untuk maklumat lanjut tentang kitaran hayat Halaman tersuai, lihat [dokumentasi](/ms/open/yida/guide/concept/lifecycle)). Salin kod berikut terus ke dalam bahagian didMount pada panel tindakan Halaman tersuai, seperti yang ditunjukkan di bawah:
+
+Kod kaedah loadScript adalah seperti berikut:
+
+```js
+// Kaedah loadScript: mencipta tag skrip dan mengimport JS luaran, dilaksanakan selepas berjaya dengan kod pembangunan pantas
+export function loadScript() {
+  // Cipta tag skrip dan import echarts.js
+  // Panggil resolve(...) apabila kod async berjaya, panggil reject(...) apabila kod async gagal
+  new Promise((resolve, reject) => {
+    const src = 'https://g.alicdn.com/code/lib/echarts/5.3.0/echarts.min.js';
+    const script = document.createElement('script');
+    script.setAttribute('type', 'text/javascript');
+    script.src = src;
+    document.body.appendChild(script);
+    // Peristiwa onload bagi tag skrip hanya dicetuskan selepas fail js luaran dimuatkan dan dilaksanakan
+    script.onload = () => {
+      resolve('Berjaya');
+    };
+    script.onerror = reject;
+  }).then(() => {
+    // Muatkan js Carta Radar selepas import berjaya
+    radar();
+  });
+}
+```
+
+### Langkah 3: Paparkan Carta Radar dengan ECharts
+
+Berdasarkan pelaksanaan JS di atas, selepas sumber JS jauh dimuatkan, Fungsi `radar` akan dijalankan untuk memaparkan Radar. Tambah Fungsi radar dalam panel tindakan untuk memaparkan Radar ke dalam Komponen JSX yang dicipta dalam Langkah 1. Untuk butiran penggunaan Radar, rujuk [dokumentasi ECharts](https://echarts.apache.org/zh/index.html).
+
+Kod kaedah radar adalah seperti berikut:
+
+```js
+// Kaedah js Carta Radar
+export function radar() {
+  // js Carta Radar
+
+  var chartDom = document.getElementById('main');
+  chartDom.style.height = '400px';
+  // Sediakan DOM dengan saiz (lebar dan tinggi) untuk ECharts, tetapkan lebar dan tinggi dalam gaya Komponen JSX
+  // Mulakan instance echarts berdasarkan DOM yang disediakan
+  var myChart = echarts.init(chartDom);
+  // Tentukan konfigurasi Carta dan data
+  var option;
+  option = {
+    // data menggunakan Sumber data pembolehubah, atau boleh ditulis terus
+    title: {
+      text: 'Keupayaan Menyeluruh Pekerja',
+    },
+    legend: {
+      data: state.nameArr,
+      // data: ["YiDA-ly"]
+    },
+    radar: {
+      // shape: 'circle',
+      indicator: [
+        { name: 'Prestasi', max: 100 },
+        { name: 'Keupayaan Menyeluruh', max: 100 },
+        { name: 'Keupayaan Tindak Balas', max: 100 },
+        { name: 'Keupayaan Profesional', max: 100 },
+        { name: 'Keupayaan Pertimbangan', max: 100 },
+        { name: 'Keupayaan Perkhidmatan', max: 100 },
+      ],
+    },
+    series: [
+      {
+        name: 'Keupayaan Menyeluruh Pekerja',
+        type: 'radar',
+        data: state.dataArr,
+        // data: [
+        //   {
+        //     value: [80, 85, 90, 90, 88, 92],
+        //     name: 'YiDA-ly'
+        //   }
+        // ]
+      },
+    ],
+  };
+  // Paparkan Carta menggunakan konfigurasi dan data yang ditentukan
+  option && myChart.setOption(option);
+}
+```
+
+### Langkah 3: Ikat Pembolehubah Data
+
+Kaedah radar di atas membaca dua pembolehubah daripada state: `nameArr` dan `dataArr`. Oleh itu, anda perlu menetapkan pembolehubah data untuk Radar, seperti yang ditunjukkan di bawah:
+
+## Kesan Paparan
+
+Layari [Contoh Import ECharts](https://docs.aliwork.com/docs/yida_subject/_1/cv1rpl1oi5eqlea9) rasmi untuk melihat kesan dan butiran pelaksanaan. Paparan akhir ditunjukkan di bawah:

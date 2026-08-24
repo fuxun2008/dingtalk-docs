@@ -1,0 +1,55 @@
+---
+title: "Tentang Pengikatan This"
+description: "Artikel ini menerangkan cara kata kunci this berfungsi dalam JavaScript, termasuk cara rujukannya berubah berdasarkan pola pemanggilan yang berbeza serta kesan kaedah bind ES5 dan fungsi anak panah ES2015 terhadap this. Ia turut merangkumi pertimbangan untuk menggunakan this dalam panel tindakan YiDA, terutamanya peranan kata kunci export dan kesannya terhadap nilai this. Beberapa contoh menunjukkan cara menggunakan this dengan betul dalam persekitaran YiDA untuk mengakses konteks enjin rendering."
+polished: true
+---
+
+## 1. Latar Belakang
+
+- Untuk memahami pengikatan this, anda perlu terlebih dahulu memahami cara this berfungsi dalam JavaScript.
+- Dalam kebanyakan kes, nilai this ditentukan oleh cara sesuatu fungsi dipanggil (pengikatan masa jalanan/runtime binding). Ia tidak boleh ditetapkan semasa pelaksanaan, dan nilainya mungkin berbeza setiap kali fungsi tersebut dipanggil. ES5 memperkenalkan kaedah bind untuk menetapkan nilai this bagi sesuatu fungsi tanpa mengira cara fungsi itu dipanggil. ES2015 memperkenalkan fungsi anak panah, yang tidak menyediakan pengikatan this tersendiri (this mengekalkan nilai konteks leksikal yang merangkuminya).
+
+<Card title="this - JavaScript | MDN https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this" icon="bookmark" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this" horizontal />
+
+## 2. This dalam Panel Tindakan YiDA
+
+- Setelah anda memahami cara this berfungsi dalam JavaScript, anda hanya perlu menyemak sama ada kata kunci export digunakan semasa memanggil fungsi dalam panel tindakan YiDA.
+- Cadangan: Bagi Fungsi utiliti tulen yang tidak melibatkan sebarang konteks Halaman—contohnya, menjana string rawak dengan function uid() \{ return new Date().getTime().toString(32); }—jangan gunakan kata kunci export. Selain itu, semua kaedah mesti menggunakan kata kunci export dan dipanggil menggunakan this.
+
+Contoh 1
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); // Betul. Kaedah a boleh mengakses Konteks enjin rendering YiDA this.
+  a(); // Salah. Kaedah a tidak dapat mengakses Konteks enjin rendering YiDA this.
+}
+```
+
+Contoh 2
+
+```jsx
+function a() {
+  console.log(this);
+}
+
+export function b() {
+  this.a(); // Salah dan menyebabkan Ralat. Kaedah a tidak diimport melalui kata kunci export, jadi ia tidak dapat dipanggil menggunakan Konteks enjin rendering YiDA this.
+  a(); // Salah. Kaedah a tidak dapat mengakses Konteks enjin rendering YiDA this.
+}
+```
+
+Contoh 3
+
+```jsx
+export function a() {
+  console.log(this);
+}
+
+function b() {
+  a(); // Salah. Kaedah b tidak menggunakan kata kunci export dan tidak dipanggil melalui this.a(), jadi kaedah a tidak dapat mengakses Konteks enjin rendering YiDA this.
+}
+```

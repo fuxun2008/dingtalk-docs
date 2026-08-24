@@ -416,6 +416,99 @@ def find_line(text: str, pos: int) -> int:
     return text.count("\n", 0, pos) + 1
 
 
+RE_FENCE_OPEN = re.compile(r'(`{3,}|~{3,})')
+RE_FENCE_CLOSE = re.compile(r'(`{3,}|~{3,})[ \t]*$')
+RE_INLINE_CODE = re.compile(r'`[^`\n]+`')
+
+
+def code_spans(text: str) -> list[tuple[int, int]]:
+    """返回代码区间 [start, end) —— 围栏块（``` / ~~~）+ 行内 code。
+
+    Markdown 的格式标记（++ 下划线 / ** 粗体）在代码里不生效，是字面量。
+    实测 A 类 12/12、H 类 84/90 命中都落在代码区内（URL 编码串、JSON 示例、
+    Java 代码片段），照修会破坏示例代码，故检测与修复两侧都必须跳过。
+    """
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    fence: tuple[str, int] | None = None
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if fence is None:
+            m = RE_FENCE_OPEN.match(stripped)
+            if m:
+                fence = (m.group(1)[0], pos)
+        else:
+            ch, start = fence
+            m = RE_FENCE_CLOSE.match(stripped)
+            if m and m.group(1)[0] == ch:
+                spans.append((start, pos + len(line)))
+                fence = None
+        pos += len(line)
+    if fence is not None:           # 未闭合围栏 → 延伸到文末
+        spans.append((fence[1], len(text)))
+    for m in RE_INLINE_CODE.finditer(text):
+        if not any(s <= m.start() < e for s, e in spans):
+            spans.append((m.start(), m.end()))
+    return sorted(spans)
+
+
+def in_code(pos: int, spans: list[tuple[int, int]]) -> bool:
+    return any(s <= pos < e for s, e in spans)
+
+
+def apply_outside_code(text: str, fn) -> str:
+    """只对非代码片段套用 fn，代码区间（含行内 code）原样保留。
+
+    会在行内 code 处把行切断，**仅适用于无行语义的纯正则修复**（A / H）。
+    行敏感的修复（B 配对法、L 表格行跳过）必须改用 apply_outside_fenced_lines，
+    否则切片后片段不再以 `|` 开头，表格行跳过规则失效会造出误修。
+    """
+    spans = code_spans(text)
+    if not spans:
+        return fn(text)
+    out: list[str] = []
+    prev = 0
+    for s, e in spans:
+        if s > prev:
+            out.append(fn(text[prev:s]))
+        out.append(text[s:e])
+        prev = e
+    if prev < len(text):
+        out.append(fn(text[prev:]))
+    return "".join(out)
+
+
+def apply_outside_fenced_lines(text: str, fn) -> str:
+    """按整行跳过围栏代码块，其余行成块套用 fn —— 保留行首，行语义不受影响。"""
+    lines = text.split("\n")
+    out: list[str] = []
+    buf: list[str] = []
+    in_fence = False
+    fence_ch = ""
+
+    def flush() -> None:
+        if buf:
+            out.append(fn("\n".join(buf)))
+            buf.clear()
+
+    for line in lines:
+        stripped = line.lstrip()
+        m = RE_FENCE_OPEN.match(stripped)
+        if m and not in_fence:
+            flush()
+            in_fence, fence_ch = True, m.group(1)[0]
+            out.append(line)
+            continue
+        if in_fence:
+            out.append(line)
+            if m and m.group(1)[0] == fence_ch and RE_FENCE_CLOSE.match(stripped):
+                in_fence = False
+            continue
+        buf.append(line)
+    flush()
+    return "\n".join(out)
+
+
 def scan_file(path: Path) -> tuple[list[Issue], str | None]:
     """返回 (issues, 修复后内容 or None)。"""
     rel = str(path.relative_to(REPO_ROOT))
@@ -425,9 +518,12 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
         return [], None
 
     issues: list[Issue] = []
+    spans = code_spans(src)
 
     # A: underline
     for m in RE_UNDERLINE.finditer(src):
+        if in_code(m.start(), spans):
+            continue
         before = m.group(0)
         after = normalize_underline_inner(m.group(1))
         if before == after:
@@ -440,6 +536,8 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
 
     # H: 破碎嵌套粗体 ****（auto-fix，剥 4 连星）
     for m in RE_NESTED_BOLD.finditer(src):
+        if in_code(m.start(), spans):
+            continue
         ctx_start = max(0, m.start() - 30)
         ctx_end = min(len(src), m.end() + 30)
         issues.append(Issue(
@@ -449,8 +547,21 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
         ))
 
     # B: bold whitespace — per-line 配对法。先模拟剥 ++ 让破碎粗体浮出来。
-    after_underline = fix_underline(src)
+    after_underline = apply_outside_code(src, fix_underline)
+    in_fence = False
+    fence_ch = ""
     for line_idx, line in enumerate(after_underline.split("\n"), start=1):
+        stripped_line = line.lstrip()
+        m_fence = RE_FENCE_OPEN.match(stripped_line)
+        if m_fence:
+            if not in_fence:
+                in_fence, fence_ch = True, m_fence.group(1)[0]
+                continue
+            if m_fence.group(1)[0] == fence_ch and RE_FENCE_CLOSE.match(stripped_line):
+                in_fence = False
+                continue
+        if in_fence:
+            continue
         for start, end, inner in find_broken_bold_pairs(line):
             stripped = inner.strip()
             before = line[start:end]
@@ -549,8 +660,9 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
         ))
 
     # L: CJK 字符紧贴粗体（auto-fix，加空格）—— 用 fix 前后 diff 反推 issue
+    # 必须与修复路径同样跳过代码区，否则会报出永远不会被修的 issue。
     pre_l = src
-    post_l = fix_bold_cjk_boundary(src)
+    post_l = apply_outside_fenced_lines(src, fix_bold_cjk_boundary)
     if pre_l != post_l:
         # 逐行比对，定位变更行
         pre_lines = pre_l.split("\n")
@@ -581,11 +693,12 @@ def scan_file(path: Path) -> tuple[list[Issue], str | None]:
         ))
 
     # 修复（按 fix 顺序：A → H → L → B → C → E → F → G；D/I/J/K/M/N 不动）
+    # A/H/L/B 是 markdown 格式标记修复，在代码区内是字面量，必须跳过（见 code_spans）。
     fixed = src
-    fixed = fix_underline(fixed)
-    fixed = fix_nested_bold(fixed)
-    fixed = fix_bold_cjk_boundary(fixed)
-    fixed = fix_bold_whitespace(fixed)
+    fixed = apply_outside_code(fixed, fix_underline)
+    fixed = apply_outside_code(fixed, fix_nested_bold)
+    fixed = apply_outside_fenced_lines(fixed, fix_bold_cjk_boundary)
+    fixed = apply_outside_fenced_lines(fixed, fix_bold_whitespace)
     fixed = fix_bad_url_placeholder(fixed)
     fixed = fix_empty_note(fixed)
     if is_release_notes(rel):
@@ -611,7 +724,7 @@ def discover_files(root: str | None, lang: str) -> list[Path]:
             continue
 
         first = parts[0]
-        if lang == "en" and first in ("zh", "ja", "id"):
+        if lang == "en" and first in ("zh", "ja", "id", "ms"):
             continue
         if lang == "zh" and first != "zh":
             continue
@@ -619,10 +732,12 @@ def discover_files(root: str | None, lang: str) -> list[Path]:
             continue
         if lang == "id" and first != "id":
             continue
+        if lang == "ms" and first != "ms":
+            continue
 
         if root:
             # 命中条件：路径段含 root，或紧跟 lang 前缀后的段是 root
-            if first in ("zh", "ja", "id"):
+            if first in ("zh", "ja", "id", "ms"):
                 if len(parts) < 2 or parts[1] != root:
                     continue
             else:
@@ -735,7 +850,7 @@ def write_reports(issues: list[Issue], applied: dict[str, int], scanned: int, mo
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="MDX 质量审计：++/  /废 URL 检测与修复")
     p.add_argument("--root", default=None, help="限定单产品根，如 docs / aitable")
-    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id"])
+    p.add_argument("--lang", default="all", choices=["all", "en", "zh", "ja", "id", "ms"])
     p.add_argument("--apply", action="store_true", help="实际写盘修复（默认 dry-run）")
     p.add_argument("--limit", type=int, default=0, help="只扫前 N 个文件")
     return p.parse_args()

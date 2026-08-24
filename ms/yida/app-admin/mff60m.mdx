@@ -1,0 +1,135 @@
+---
+title: "Borang Biasa"
+description: "Borang biasa mengumpul data semasa operasi perniagaan dan sesuai untuk senario seperti tinjauan dan pendaftaran dalam talian. Borang ini tiada proses kelulusan. Atribut asas termasuk tetapan paparan PC, pengesahan borang, dan acara. Atribut Premium meliputi penyesuaian butang Hantar, logik sebelum dan selepas penyerahan, serta kawalan Sumber Data."
+polished: true
+---
+
+Borang biasa mengumpul semua data yang dihasilkan semasa operasi perniagaan, dan juga boleh diterbitkan kepada pengguna luar untuk mengumpul data luaran. Gunakan data yang dikumpul mengikut keperluan.
+
+Borang biasa tiada proses kelulusan. Gunakannya untuk senario seperti tinjauan, pendaftaran dalam talian, laporan jualan, tempahan mesyuarat, rekod kemasukan perolehan, kemasukan pesanan, dan daftar masuk Kod QR.
+
+## Tetapan Atribut Asas
+
+- Tetapan paparan PC: Bilangan lajur mengawal sama ada komponen pada borang dipaparkan dalam 1 atau 2 lajur.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i4/O1CN01yi26ZxSJKIB2nSvg_!!6000000005775-2-tps-1378-574.png)
+</Frame>
+
+- Pengesahan borang: Termasuk pengesahan Formula, pengesahan Perkhidmatan, dan pengesahan perkhidmatan kod Tersuai. Untuk butiran, lihat Pengesahan borang.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i1/O1CN01dEskM3eGFvI2hAhI_!!6000000006819-2-tps-1328-572.png)
+</Frame>
+
+- Acara borang: Untuk butiran, lihat Peraturan perniagaan borang.
+
+## Tetapan Atribut Premium
+
+### Butang Hantar
+
+Ubah suai teks paparan butang Hantar. Penyetempatan antarabangsa dan pengikatan pemboleh ubah disokong.
+
+### Sebelum Penyerahan Borang
+
+Secara lalai, sebaik sahaja data borang lulus pengesahan dan Tetapan selesai, data dihantar ke API bahagian belakang YiDA dan disimpan.
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i3/O1CN010G0Rz1PQunL2mpv6_!!6000000007581-2-tps-1373-627.png)
+</Frame>
+
+Pilihan Sebelum penyerahan borang membolehkan anda menyekat tingkah laku penyerahan lalai. Kembalikan `false` di dalam tindakan untuk menghentikan penyerahan dan menyesuaikan tingkah laku seterusnya.
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // Nota: Mengubah suai data yang dihantar di sini tidak disokong.
+
+  console.log('beforeSubmit', formDataMap);
+
+  // Kembalikan false untuk menyekat penyerahan apabila perlu. Promise disokong.
+  // return false;
+}
+```
+
+Anda juga boleh mengembalikan `Promise` untuk menjalankan semakan tak segerak:
+
+```javascript
+export function beforeSubmit({ formDataMap }){
+  // Nota: Mengubah suai data yang dihantar di sini tidak disokong.
+  return new Promise((resolve) => {
+  	// Contohnya, buat permintaan sumber data
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // Sekat penyerahan dengan mengembalikan false
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+Petua: Jika `Promise` dikembalikan, butang kekal dalam keadaan Sedang Memuatkan sehingga `Promise` diselesaikan.
+
+<Note>
+Mengubah suai data yang dihantar di sini tidak disokong.
+</Note>
+
+### Selepas Penyerahan Borang
+
+Secara lalai, borang YiDA akan mengalih hala selepas penyerahan. Sasaran alih hala boleh jadi halaman prompt Berjaya (PC), halaman butiran (mudah alih), atau halaman yang ditentukan oleh pengguna (Tetapan borang).
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i1/O1CN01g7s5FJVfJ9L397N9_!!6000000002042-2-tps-1550-753.png)
+</Frame>
+
+Pilihan Selepas penyerahan borang membolehkan anda menyekat tingkah laku alih hala lalai. Kembalikan `false` di dalam tindakan untuk menghentikan alih hala dan menyesuaikan tingkah laku seterusnya.
+
+```javascript
+export function afterSubmit({ submitResult }){
+  console.log('afterSubmit', submitResult);
+
+  // Kembalikan false untuk menyekat tindakan seterusnya apabila perlu. Promise disokong.
+  // return false;
+}
+```
+
+Anda juga boleh mengembalikan `Promise` untuk menjalankan semakan tak segerak:
+
+```javascript
+export function afterSubmit({ submitResult }){
+  return new Promise((resolve) => {
+  	// Contohnya, buat permintaan sumber data
+    this.dataSourceMap.someRequest.load().then((res) => {
+      if (res) {
+        // Sekat tindakan seterusnya dengan mengembalikan false
+        resolve(false);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+```
+
+Petua: Jika `Promise` dikembalikan, butang kekal dalam keadaan Sedang Memuatkan sehingga `Promise` diselesaikan.
+
+### Sumber Data Borang
+
+Sumber Data Borang menyediakan cara bersatu untuk mengawal nilai borang. Ia kini berfungsi untuk dua tujuan:
+
+- Menyediakan nilai awal, iaitu nilai lalai bagi setiap medan pada borang.
+- Apabila Sumber Data Borang berubah, nilai medan borang yang berkaitan turut dikemas kini.
+
+Sebagai contoh, tentukan nilai medan dalam Sumber Data Borang (salin dan guna terus):
+
+```json
+{
+  "textField_km1nnpxu": "Contoh nilai Teks satu baris"
+}
+```
+
+<Frame>
+  ![](https://gw.alicdn.com/imgextra/i1/O1CN01R8vchwe32wL38jwf_!!6000000001710-2-tps-1547-702.png)
+</Frame>

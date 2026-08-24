@@ -249,8 +249,10 @@ class FileResult:
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
     # user_msg 作为 positional prompt 传入（而非 stdin），规避 claude CLI 高负载下 3s stdin
     # 握手竞争导致的 "no stdin data received" 死锁（与 en2id 一致）；prompt 体量远低于 ARG_MAX。
+    # CLI 二进制走 CLAUDE_CLI_BIN（集团云壳会 SIGKILL 原生 claude，须用 cc_222 端），兜底 "claude"。
+    claude_bin = os.environ.get("CLAUDE_CLI_BIN") or "claude"
     proc = await asyncio.create_subprocess_exec(
-        "claude", "-p", "--bare",
+        claude_bin, "-p", "--bare",
         "--model", model,
         "--system-prompt", system_prompt,
         "--tools", "",

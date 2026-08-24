@@ -1,0 +1,230 @@
+---
+title: "Mod Stream Bahagian Pelayan"
+description: "Artikel ini memperkenalkan keupayaan asas, prinsip reka bentuk, dan kaedah integrasi bahagian pelayan bagi Mod Stream pada Platform Terbuka."
+---
+
+## **Apakah Mod Stream**
+
+Mod Stream ialah kaedah integrasi yang disediakan oleh Platform Terbuka DingTalk. Ia boleh mendengar callback Bot, callback Langganan peristiwa, dan Callback kad yang didaftarkan. Apabila anda melakukan integrasi menggunakan Mod Stream, Platform Terbuka DingTalk berkomunikasi dengan aplikasi anda melalui sambungan WebSocket. Mod Stream sangat mengurangkan halangan integrasi dan kebergantungan sumber. Anda tidak memerlukan sumber rangkaian awam seperti pelayan, alamat IP, atau domain. Anda hanya perlu mengintegrasikan SDK Platform Terbuka DingTalk.
+
+## Prinsip Mod Stream
+
+Dalam Mod Stream, Aplikasi anda mengintegrasikan SDK untuk mewujudkan sambungan WebSocket dengan Platform Terbuka DingTalk. Semasa proses sambungan, Platform Terbuka melakukan Pengesahan terhadap sambungan tersebut. Apabila Callback kad berlaku, Platform Terbuka akan mendorong (push) data ke aplikasi anda melalui sambungan WebSocket. Aplikasi anda boleh menerima data ini dan memprosesnya dengan sewajarnya, membolehkan komunikasi Real Time dengan Platform Terbuka DingTalk, seperti ditunjukkan dalam rajah di bawah.
+
+## **Kelebihan Mod Stream**
+
+Dalam senario di mana Platform Terbuka DingTalk menghantar Permintaan kepada sesebuah aplikasi, kebanyakannya menggunakan kaedah Webhook (mendaftarkan perkhidmatan HTTPS awam), termasuk Callback kad. Pembangunan menggunakan kaedah Webhook melibatkan banyak cabaran, termasuk:
+
+- Memohon domain awam dan sijil TLS
+- Memohon alamat IP awam dan menggunakan (deploy) get gateway akses
+- Menggunakan (deploy) tembok api aplikasi dan mengkonfigurasikan Senarai Dibenarkan
+- Mengendalikan Pengesahan Permintaan serta penyulitan dan penyahsulitan sendiri
+- Menyediakan persekitaran penembusan intranet untuk pembangunan dan penyahpepijatan (debugging) tempatan
+
+Untuk menangani isu-isu ini, Mod Stream menyediakan pembangun dengan pengalaman integrasi "lima sifar", mengurangkan kitaran pembangunan integrasi daripada 1 hingga 2 minggu kepada 5 minit, termasuk:
+
+- **Sifar IP Awam**
+
+  Anda tidak perlu bergantung pada atau mendedahkan alamat IP awam atau domain. Ini mengurangkan risiko Keselamatan akibat mendedahkan perkhidmatan kepada rangkaian awam dan menurunkan halangan pembangunan.
+- **Sifar Penyulitan/Penyahsulitan, Tandatangan, atau Pengurusan Sijil TLS**
+
+  Gunakan identiti aplikasi untuk mengesahkan sambungan dan mewujudkan sambungan tersulit TLS dengan Platform Terbuka DingTalk melalui sambungan songsang, memberikan pengalaman komunikasi yang pantas dan selamat.
+- **Sifar Senarai Dibenarkan Tembok Api**
+
+  Dalam Mod Stream, anda tidak perlu membuka sebarang port pelayan kepada rangkaian awam, menggunakan (deploy) tembok api, atau mengkonfigurasikan Senarai Dibenarkan.
+- **Sifar Penggunaan (Deployment) Gateway**
+
+  Saluran diwujudkan melalui sambungan songsang. Anda hanya perlu memastikan persekitaran masa jalan (runtime) mempunyai akses rangkaian awam. Tidak diperlukan penggunaan (deployment) gateway.
+- **Sifar Penembusan Intranet**
+
+  Anda tidak perlu menyediakan alat penembusan intranet secara tempatan. Dengan Mod Stream, anda boleh menerima Callback kad terus dalam persekitaran pembangunan tempatan anda.
+
+## **Kaedah Integrasi**
+
+**Penting**
+
+Bahagian klien menerima callback bagi Kad yang berkaitan sebaik sahaja ia dimulakan. Semasa menggunakan (deploy) persekitaran ujian dan pembangunan, elakkan menjejaskan persekitaran Produksi.
+
+### **Had Integrasi**
+
+1. Persekitaran tempat aplikasi anda digunakan (deploy) mesti mempunyai akses rangkaian awam.
+2. Hanya terpakai untuk aplikasi dalaman dan aplikasi perusahaan pihak ketiga.
+3. Setiap instance klien mendayakan satu sambungan WebSocket secara lalai, dan satu aplikasi boleh mewujudkan sehingga 50 sambungan secara lalai.
+
+### **Java**
+
+- #### **Persekitaran Masa Jalan (Runtime)**
+
+  JDK 1.8 atau lebih baharu.
+- #### **Pasang SDK Java**
+
+  Tambahkan kebergantungan (dependency) ke dalam fail `pom.xml` projek anda atau muat turun pakej JAR yang berkaitan. Anda boleh melihat dan memuat turun versi SDK terkini [di sini](https://s01.oss.sonatype.org/?spm=ding_open_doc.document.0.0.27fc4169or3Sre#nexus-search;quick~dingtalk-stream).
+
+  ```
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>dingtalk-stream</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+- #### **Kod Contoh**
+
+  **Callback Bot**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // Daftarkan pendengar (listener) bot
+                  .registerCallbackListener("${topic}", robotMessage -> {
+                      log.info("receive robotMessage, {}", robotMessage);
+                      // Kendalikan Callback bot berdasarkan keperluan perniagaan anda
+                      return new JSONObject();
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  Untuk maklumat lanjut, lihat [dokumentasi pembangunan Bot](https://opensource.dingtalk.com/developerpedia/docs/category/%E8%81%8A%E5%A4%A9%E6%9C%BA%E5%99%A8%E4%BA%BA).
+
+  **Penerangan Parameter**
+
+  | **Nama** | **Penerangan** |
+  | --- | --- |
+  | clientId | AppKey untuk aplikasi dalaman / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi dalaman / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+  | topic | Nama Callback bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+
+  **Callback Langganan Peristiwa**
+
+  ```
+  public static void main(String[] args) {
+    OpenDingTalkStreamClientBuilder
+      .custom()
+      .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+      // Daftarkan pendengar (listener) peristiwa
+      .registerAllEventListener(new GenericEventListener() {
+        public EventAckStatus onEvent(GenericOpenDingTalkEvent event) {
+          try {
+            // ID Unik peristiwa
+            String eventId = event.getEventId();
+            // Jenis peristiwa
+            String eventType = event.getEventType();
+            // Masa penciptaan peristiwa
+            Long bornTime = event.getEventBornTime();
+            // Dapatkan Kandungan peristiwa
+            JSONObject bizData = event.getData();
+            // Proses peristiwa
+            process(bizData);
+            // Penggunaan berjaya
+            return EventAckStatus.SUCCESS;
+          } catch (Exception e) {
+            // Penggunaan gagal
+            return EventAckStatus.LATER;
+          }
+        }
+      })
+      .build().start();
+  }
+  ```
+
+  Untuk maklumat lanjut, lihat Konfigurasikan Push Stream.
+
+  **Penerangan Parameter**
+
+  | **Nama** | **Penerangan** |
+  | --- | --- |
+  | clientId | AppKey untuk aplikasi dalaman / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi dalaman / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+
+  **Callback Kad**
+
+  ```
+  public static void main(String[] args) throws Exception {
+          OpenDingTalkStreamClientBuilder
+                  .custom()
+                  .credential(new AuthClientCredential("${clientId}", "${clientSecret}"))
+                  // Daftarkan pendengar (listener) Callback kad
+                  .registerCallbackListener("/v1.0/card/instances/callback", callbackData -> {
+                      log.info("receive call back request, {}", callbackData);
+                      // your code is here
+
+                      // Kemas kini Kandungan kad berdasarkan keperluan perniagaan anda dan kembalikan Respons
+                      CardCallbackResponse resp = new CardCallbackResponse();
+                      return resp;
+
+                  })
+                  .build().start();
+  }
+  ```
+
+  Untuk maklumat lanjut, lihat Stream Kad interaktif.
+
+  **Penerangan Parameter**
+
+  | **Nama** | **Penerangan** |
+  | --- | --- |
+  | clientId | AppKey untuk aplikasi dalaman / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi dalaman / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+  | topic | Nama Callback kad yang didaftarkan. Nilai tetap: `/v1.0/card/instances/callback`. |
+
+### **Golang**
+
+- #### **Persekitaran Masa Jalan (Runtime)**
+
+  1.16 atau lebih baharu.
+- #### **Pasang SDK**
+
+  ```
+  go get github.com/open-dingtalk/dingtalk-stream-sdk-go
+  ```
+- #### **Kod Contoh**
+
+  **Callback Bot**
+
+  ```
+  func OnChatReceive(ctx context.Context, data *chatbot.BotCallbackDataModel) error {
+  	return nil
+  }
+
+  func StartRobot() {
+  	logger.SetLogger(logger.NewStdTestLogger())
+  	cli := client.NewStreamClient(
+      client.WithAppCredential(client.NewAppCredentialConfig(${clientId}, ${clientSecret})),
+  		client.WithUserAgent(client.NewDingtalkGoSDKUserAgent()),
+      client.WithSubscription(utils.SubscriptionTypeKCallback, ${topic}, chatbot.NewDefaultChatBotFrameHandler(OnChatReceive).OnEventReceived),
+  	)
+
+  	err := cli.Start(context.Background())
+  	if err != nil {
+  		panic(err)
+  	}
+
+  	defer cli.Close()
+
+  	select {}
+  }
+  ```
+
+  **Penerangan Parameter**
+
+  | **Nama** | **Penerangan** |
+  | --- | --- |
+  | clientId | AppKey untuk aplikasi dalaman / SuiteKey untuk aplikasi perusahaan pihak ketiga. |
+  | clientSecret | AppSecret untuk aplikasi dalaman / SuiteSecret untuk aplikasi perusahaan pihak ketiga. |
+  | topic | Nama Callback bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+
+### **Kaedah Integrasi dalam Bahasa Lain**
+
+- [Projek Contoh SDK Java](https://github.com/open-dingtalk/dingtalk-stream-sdk-java-quick-start)
+- [SDK Golang dan Kod Contoh](https://github.com/open-dingtalk/dingtalk-stream-sdk-go)
+- [SDK Python dan Kod Contoh](https://github.com/open-dingtalk/dingtalk-stream-sdk-python)
+- [SDK Node.js dan Kod Contoh](https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs)
+
+Jika anda menghadapi sebarang isu semasa proses ini, anda boleh menghantar Maklum Balas dan membincangkan soalan melalui [Sokongan Teknikal](https://open-dingtalk.github.io/developerpedia/docs/explore/support).
+
+## **Sokongan Teknikal**
+
+Jika anda mempunyai sebarang soalan semasa pembangunan, sertai Kumpulan Ko-Kreasi Mod Stream DingTalk untuk mendapatkan khidmat rundingan dan jawapan: [Kumpulan Ko-Kreasi Mod Stream](https://open-dingtalk.github.io/developerpedia/docs/explore/support?via=moon-group).

@@ -1,0 +1,78 @@
+---
+title: "Lampiran B: Cara Menangani Had Kadar Server API DingTalk"
+description: "Ketahui syarat pencetus dan penyelesaian untuk Had kadar Server API DingTalk, termasuk had panggilan bulanan, IP, QPS aplikasi dan global bagi pentadbir IT."
+---
+
+Untuk mengelakkan beban tidak normal pada pelayan DingTalk akibat ralat aplikasi, secara lalai, setiap panggilan Server API daripada Aplikasi dalaman—atau Aplikasi dalaman tersuai yang dibangunkan oleh Penyedia perkhidmatan yang diberi kuasa—mempunyai Had kadar. Apabila had mana-mana dimensi dilebihi, panggilan API berkenaan akan mengembalikan Kod ralat yang berkaitan.
+
+## **Had Bilangan Panggilan Bulanan setiap API**
+
+**Nota**
+
+Bagi Organisasi DingTalk pada edisi Standard, semua Aplikasi dalaman dan Aplikasi dalaman tersuai yang dibangunkan oleh pihak ketiga yang diberi kuasa—kecuali API yang tidak dikira dalam kuota panggilan bulanan (termasuk API Kredensial akses, API pengesahan identiti, API Kenalan, dan lain-lain; untuk butiran, lihat Lampiran A: Senarai API yang Tidak Dikira dalam Kuota Panggilan Bulanan)—mempunyai kuota panggilan gabungan sebanyak 10,000 panggilan sebulan untuk semua API lain.
+
+### **Syarat Pencetus**
+
+Bagi Organisasi DingTalk pada edisi Standard, jika Had Bilangan Panggilan Bulanan di atas dilebihi, Server API lama mengembalikan Kod ralat 90020, manakala Server API baharu mengembalikan Kod ralat Forbidden.AccessDenied.ApiCountLimitForOrg.
+
+### **Penyelesaian**
+
+- **Umum:** Hubungi pengurus akaun DingTalk anda, pengurus bandar DingTalk, atau Penyedia perkhidmatan serantau DingTalk untuk menaik taraf kepada [DingTalk Pro](dingtalk://dingtalkclient/page/link?spm=ding_open_doc.document.0.0.2cfb309498qOzp&url=https%3A%2F%2Fn.dingtalk.com%2Fdingding%2Fweb-dd-pro%2Fmobile_microApp%2Findex.html%3FcorpId%3D%26channel%3Dopenpf_web_devdoc&web_wnd=general&width=480&height=800) atau [Edisi Dedicated DingTalk](https://partner.dingtalk.com/opportunity_web.html?channel=openpf_web_devdoc_trial&templateId=092b3722b3fd4dd08fb641a194a90691#/consultingService) dan manfaatkan faedah pengembangannya untuk menyelesaikan isu ini.
+
+## **Had Kadar QPS setiap API pada Peringkat IP**
+
+**Nota**
+
+Disebabkan dasar perlindungan keselamatan API DingTalk, setiap IP mempunyai had bilangan panggilan API DingTalk dalam tempoh masa yang ditetapkan. Jika IP semasa melebihi had panggilan ini dalam tempoh masa tersebut, DingTalk akan mengembalikan maklumat berkaitan dan menyekat panggilan tersebut.
+
+### **Syarat Pencetus**
+
+Bagi setiap IP, memanggil mana-mana API DingTalk lebih daripada 10,000 kali dalam masa 20 saat akan mencetuskan Had kadar, dan IP semasa akan disekat daripada membuat panggilan selama 5 minit. Pencetusan Had kadar ini tidak mengembalikan Kod ralat; sebaliknya, ia mengembalikan halaman HTML. Contoh maklumat yang dikembalikan adalah seperti berikut:
+
+```
+{
+   "status":1111,
+   "wait":5,
+   "source":"x5",
+   "punish":"deny",
+   "uuid":"xxx"
+}
+```
+
+### **Penyelesaian**
+
+- **Umum:** Sediakan IP keluar yang mencukupi berdasarkan jumlah panggilan OpenAPI anda.
+
+## **Had Kadar QPS setiap API pada Peringkat Aplikasi**
+
+**Nota**
+
+Apabila Organisasi DingTalk pada edisi Standard memanggil API DingTalk, Bilangan panggilan sesaat tidak boleh melebihi 20. Jika Bilangan panggilan dalam saat semasa melebihi 20, Ralat berkaitan akan dicetuskan. Pastikan kadar panggilan tidak melebihi 20 sesaat.
+
+### **Syarat Pencetus**
+
+Bagi setiap Aplikasi, memanggil setiap API melebihi kadar maksimumnya akan mencetuskan Had kadar. Server API lama mengembalikan Kod ralat 90018, manakala Server API baharu mengembalikan Kod ralat Forbidden.AccessDenied.QpsLimitForAppkeyAndApi.
+
+### **Penyelesaian**
+
+- **Umum**
+
+  - Oleh kerana tetingkap Had kadar QPS ialah 1 saat, apabila anda menemui ralat Had kadar, jeda program anda selama 1 saat sebelum meneruskan pelaksanaan.
+  - **Panggilan bergilir**: Untuk Had kadar QPS bagi API satu Aplikasi, selesaikan isu ini dengan membuat panggilan melalui gilirian (queue).
+- **Had kadar proaktif pada satu mesin**: Ini adalah cara asas untuk menyelesaikan Had kadar. Jika satu pelayan sahaja memanggil Server API DingTalk, gunakan SDK Had kadar seperti **Guava RateLimiter** untuk mengawal kadar panggilan secara bebas.
+- **Had kadar proaktif teragih**: Jika berbilang pelayan memanggil Server API DingTalk, gunakan cache teragih dengan kunci cache ialah Cap masa peringkat saat semasa dan nilai ialah Bilangan panggilan.
+
+## **Had Kadar QPS setiap API pada Peringkat Global**
+
+**Nota**
+
+Disebabkan dasar perlindungan keselamatan API DingTalk, Bilangan panggilan sesaat adalah terhad. Apabila semua Aplikasi bagi semua Organisasi DingTalk memanggil sesuatu API secara serentak dan melebihi had panggilan sesaat untuk API tersebut, Ralat berkaitan akan dicetuskan.
+
+### **Syarat Pencetus**
+
+Apabila semua Aplikasi bagi semua Organisasi DingTalk memanggil API yang sama melebihi kadar maksimumnya, Had kadar akan dicetuskan. Server API lama mengembalikan Kod ralat 90002, manakala Server API baharu mengembalikan Kod ralat Forbidden.AccessDenied.QpsLimitForApi.
+
+### **Penyelesaian**
+
+- **Umum**: Oleh kerana tetingkap Had kadar QPS ialah 1 saat, apabila anda menemui ralat Had kadar, jeda program anda selama 1 saat sebelum meneruskan pelaksanaan.
+- **Strategi luar waktu puncak**: Untuk program yang memanggil API DingTalk mengikut jadual, elakkan waktu puncak DingTalk pada setiap jam—contohnya, jadualkan pelaksanaan pada minit ke-10 selepas setiap jam.

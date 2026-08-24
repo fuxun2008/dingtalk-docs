@@ -1,0 +1,259 @@
+---
+title: "Konfigurasikan SyncHTTP Push (Disyorkan)"
+description: "Kaedah push SyncHTTP DingTalk untuk deployment on-premises menghantar status akhir data perniagaan secara terus, memudahkan integrasi callback, langganan peristiwa, dan pengesahan Kebenaran API pembangun."
+---
+
+## Gambaran Keseluruhan Callback
+
+DingTalk menghantar peristiwa callback yang dilanggan kepada Aplikasi perusahaan pihak ketiga, termasuk pengaktifan aplikasi, perubahan Kebenaran App, dan perubahan Jabatan. Dengan melanggan peristiwa ini, pembangun dapat berintegrasi dengan DingTalk secara lebih berkesan.
+
+Semasa membangunkan Aplikasi perusahaan pihak ketiga, anda **wajib** mendaftarkan callback untuk menerima peristiwa pengaktifan aplikasi perusahaan. Peristiwa ini memberitahu Aplikasi pihak ketiga anda Organisasi mana yang telah mengaktifkan aplikasi tersebut. Selepas bahagian pelayan Aplikasi pihak ketiga anda menerima peristiwa ini, mulakan (initialize) maklumat Organisasi tersebut.
+
+DingTalk kini menyokong kaedah push berikut:
+
+- RDS push
+- HTTP push
+- SyncHTTP push
+
+SyncHTTP menghantar data kepada perkhidmatan ISV melalui callback HTTP, **menggunakan medan dan format yang sama seperti RDS push**. Penyedia perkhidmatan boleh menyimpan data yang diterima melalui HTTP ke pangkalan data yang dibina sendiri atau RDS, mengikut kaedah dan jenis RDS push.
+
+**Nota**
+
+Selepas SyncHTTP menerima callback, simpan data tersebut ke pangkalan data dengan segera dan kemudian pulangkan respons berjaya. Untuk mengendalikan logik perniagaan lain, gunakan pemprosesan tak segerak (asynchronous).
+
+Dengan SyncHTTP, anda tidak perlu memanggil API pengaktifan aplikasi secara manual. Selepas menerima ticket yang dihantar, gunakan ticket tersebut untuk memanggil Server API secara terus.
+
+**Nota**
+
+IP keluar (egress) untuk SyncHTTP push dan HTTP push adalah:
+
+- 203.119.0.0/16
+- 203.119.128.0/17
+- 140.205.0.0/16
+- 106.11.0.0/16
+- 198.11.0.0/16
+- 59.82.0.0/16
+
+## Proses Pendaftaran Peristiwa Callback
+
+Proses langganan peristiwa callback ditunjukkan dalam rajah berikut.
+
+Pertama, konfigurasikan titik akhir (endpoint) permintaan HTTP pada DingTalk Open Platform untuk menerima peristiwa langganan yang dihantar, kemudian tetapkan peristiwa yang ingin anda langgan. Selepas anda mengkonfigurasikan titik akhir permintaan, DingTalk Open Platform menghantar permintaan POST kepadanya. Langganan peristiwa hanya selesai jika anda memulangkan string tersulit yang mengandungi "**success**" dengan betul dalam masa yang ditetapkan.
+
+## Konfigurasikan Titik Akhir Permintaan dan Langgan Peristiwa Callback
+
+Untuk menerima peristiwa callback yang dihantar oleh DingTalk melalui SyncHTTP, konfigurasikan URL callback HTTP terlebih dahulu. Apabila peristiwa yang dilanggan dicetuskan, DingTalk menghantar permintaan POST HTTP yang berkaitan kepada URL ini.
+
+1. Log masuk ke [Developer Console](https://open-dev.dingtalk.com/). Cari aplikasi yang anda cipta dan buka halaman butirannya.
+2. Klik **Development Management**, kemudian klik **Edit**, dan pilih **SyncHTTP Push** sebagai jenis push.
+3. Konfigurasikan titik akhir HTTP yang digunakan untuk menerima permintaan.
+
+   - **token**: Setiap kali DingTalk menghantar data peristiwa ke titik akhir anda, ia menyertakan `token` yang digunakan untuk menjana Tandatangan dan mengesahkan kesahihan permintaan callback. Ia mesti terdiri daripada huruf Inggeris atau nombor dan panjangnya 3 hingga 32 aksara.
+   - **Encryption AES Key**: Klik **Generate Automatically** untuk menjana kunci AES. Ini adalah parameter yang digunakan untuk menyulitkan dan menyahsulitkan Kandungan mesej callback. Ia adalah pengekodan Base64 bagi kunci AES tersebut. Untuk butiran, lihat [Penyulitan dan Penyahsulitan Mesej](#section-vhz-t5l-4kf) di bawah.
+   - **Callback URL**: URL yang digunakan untuk menerima permintaan peristiwa yang dilanggan. Apabila peristiwa yang dilanggan dicetuskan, DingTalk menghantar permintaan POST HTTP yang berkaitan kepada URL ini.
+
+     **Nota**
+
+     Setiap aplikasi hanya boleh mengkonfigurasikan satu URL Callback. Semua Notifikasi peristiwa bagi langganan aplikasi tersebut dihantar ke URL permintaan ini.
+4. Selepas konfigurasi selesai, apabila anda klik butang **Verify Validity**, Open Platform menghantar permintaan POST `application/json` ke URL yang anda konfigurasikan untuk mengesahkan kesahihannya, seperti ditunjukkan di bawah:
+
+   ```
+   {
+       "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // String tersulit. Lihat penerangan penyulitan dan penyahsulitan di bawah.
+   }
+   ```
+
+   Apabila anda menerima permintaan pengesahan POST daripada Open Platform, nyahsulit data tersebut dan pulangkan string tersulit yang mengandungi **success** kepada DingTalk dalam masa **1,200 ms**. Jika anda tidak memberi respons tepat pada masanya, permintaan mungkin dihadkan kadarnya (rate limited).
+5. Selepas titik akhir permintaan berjaya dikonfigurasikan, dalam kawasan senarai **Callback Events**, pilih peristiwa callback yang ingin anda langgan, kemudian klik **Save** di penjuru kanan atas.
+
+   **Nota**
+
+   Jika sesuatu peristiwa callback tidak dapat dipilih, mohon Kebenaran API yang berkaitan pada halaman **Manage Permissions** di dalam Developer Console.
+
+## Penerangan Data yang Dihantar
+
+Selepas anda mengkonfigurasikan URL Callback, apabila anda klik butang **Verify Validity**, Open Platform menghantar permintaan POST `application/json` ke URL yang anda konfigurasikan untuk mengesahkan kesahihannya, seperti ditunjukkan di bawah:
+
+```
+{
+    "encrypt":"HJ+q6tp1qhl9L1+++j74xxxx"   // String tersulit. Lihat penerangan penyulitan dan penyahsulitan di bawah.
+}
+```
+
+Nyahsulit Kandungan mesej yang diterima. Untuk butiran, lihat [Penyulitan dan Penyahsulitan Mesej](#section-vhz-t5l-4kf) di bawah. Jenis peristiwa selepas dinyahsulit adalah seperti berikut:
+
+- check_url: Peristiwa callback ujian
+
+  Data selepas dinyahsulit:
+
+  ```
+  {
+      "EventType" : "check_url"
+  }
+  ```
+- check_create_suite_url: Peristiwa callback pengesahan
+
+  Data selepas dinyahsulit:
+
+  ```
+  {
+    "EventType":"check_create_suite_url",
+    "Random":"brdkKLMW"
+  }
+  ```
+- check_update_suite_url: Peristiwa kemas kini URL Callback
+
+  Data selepas dinyahsulit:
+
+  ```
+  {
+    "EventType":"check_update_suite_url",
+    "Random":"xxxxxx",
+    "TestSuiteKey":"suited6db0pze8yao1b1y"
+  }
+  ```
+- SYNC_HTTP_PUSH_HIGH: Data keutamaan tinggi, seperti pengaktifan aplikasi
+
+  ```
+  {
+   "EventType": "SYNC_HTTP_PUSH_HIGH",
+   "bizData": [{
+    "gmt_create": 1608639648000,
+    "biz_type": 4,
+    "open_cursor": 0,
+    "subscribe_id": "14999999001_0",
+    "id": 7001,
+    "gmt_modified": 1608639648000,
+    "biz_id": "1489999001",
+    "biz_data": "{\"auth_user_info\":{\"userId\":\"manager4xxx\"},\"auth_corp_info\":{\"corp_type\":0,\"corpid\":\"dingffea2a0dcc37d0xxxxxxx25e91351\",\"auth_level\":0,\"auth_channel\":\"\",\"industry\":\"\",\"full_corp_name\":\"XX Test Organization\",\"corp_name\":\"XX Test Organization\",\"invite_url\":\"https://pre-wx.dingtalk.com/xxxxx/index.html?bizSource=____source____&corpId=dingffea2a0dcc3xxxxx25e91351&inviterUid=71E7E5B48C2DDB2xxxxxxF52346D\",\"auth_channel_type\":\"\",\"invite_code\":\"\",\"is_authenticated\":false,\"license_code\":\"\",\"corp_logo_url\":\"\"},\"syncAction\":\"org_suite_auth\",\"auth_scope\":{\"errcode\":0,\"condition_field\":[],\"auth_user_field\":[\"jobnumber\",\"isLeader\",\"name\",\"position\",\"isAdmin\",\"avatar\",\"department\",\"userid\",\"deviceId\",\"isHide\"],\"auth_org_scopes\":{\"authed_user\":[],\"authed_dept\":[1]},\"errmsg\":\"ok\"},\"auth_info\":{\"agent\":[{\"agentid\":1038226450,\"agent_name\":\"Tuhao Push Test 1217\",\"logo_url\":\"https://static-legacy.dingtalk.com/media/lADPDfmVQafoVxxxxxx0_200.jpg\",\"appid\":62282,\"admin_list\":[\"manager492\"]}]},\"permanent_code\":\"MFcbac-7zg0Mhcl-_dGmY2_f4NZPzLUf813xxxxxrjyEoGmKjqZwfi-5mh\"}",
+    "corp_id": "dingffea2axxxxxx0dcb25e91351",
+    "status": 0
+   }]
+  }
+  ```
+- SYNC_HTTP_PUSH_MEDIUM: Data keutamaan normal, seperti perubahan Kenalan
+
+  ```
+  {
+   "EventType": "SYNC_HTTP_PUSH_MEDIUM",
+   "bizData": [{
+    "gmt_create": 1608639751000,
+    "biz_type": 14,
+    "open_cursor": 0,
+    "subscribe_id": "14778001_0",
+    "id": 68,
+    "gmt_modified": 1608639751000,
+    "biz_id": "433877002",
+    "biz_data": "{\"errcode\":0,\"userPermits\":\"\",\"userPerimits\":\"\",\"syncAction\":\"org_dept_create\",\"outerDept\":false,\"errmsg\":\"ok\",\"deptManagerUseridList\":\"\",\"parentid\":1,\"groupContainSubDept\":false,\"outerPermitUsers\":\"\",\"outerPermitDepts\":\"\",\"deptPerimits\":\"\",\"createDeptGroup\":true,\"name\":\"f'f'f\",\"id\":433885002,\"autoAddUser\":true,\"deptHiding\":false,\"deptPermits\":\"\",\"order\":43388775002}",
+    "corp_id": "ding7629a25dxxxxxxxxf7214b6d69",
+    "status": 0
+   }]
+  }
+  ```
+
+`bizData` bagi jenis SYNC_HTTP_PUSH_HIGH dan SYNC_HTTP_PUSH_MEDIUM adalah tepat sama dengan data dalam jadual `open_sync_biz_data` dan `open_sync_biz_data_medium` bagi RDS push. Untuk format khusus, lihat Data Formats.
+
+## Terima dan Beri Respons kepada Peristiwa Callback
+
+Mulakan perkhidmatan HTTP (seperti ditunjukkan di bawah). Dalam logik respons perkhidmatan, nyahsulit dan simpan data callback (yang dihantar).
+
+Contoh kod lengkap: &lt;https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java>
+
+```
+package com.controller;
+import com.dingtalk.oapi.lib.aes.DingTalkEncryptor;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Pengendalian callback Mini program ISV
+ */
+@RestController
+@RequestMapping("/")
+public class CallbackController {
+
+    private final Logger log = LoggerFactory.getLogger(getClass());
+
+    @PostMapping(value = "dingCallback")
+    public Object dingCallback(
+            @RequestParam(value = "signature") String signature,
+            @RequestParam(value = "timestamp") Long timestamp,
+            @RequestParam(value = "nonce") String nonce,
+            @RequestBody(required = false) JSONObject body
+    ) {
+        String[] config = CommonUtil.readConfig();
+        String params = "signature:" + signature + " timestamp:" + timestamp + " nonce:" + nonce + " body:" + body;
+        DingTalkEncryptor dingTalkEncryptor = new DingTalkEncryptor(config[CommonUtil.TOKEN], config[CommonUtil.ENCODING_AES_KEY], config[CommonUtil.SUITE_KEY]);
+
+        // Dapatkan data callback tersulit daripada isi permintaan POST dan nyahsulit. Lihat penerangan penyulitan dan penyahsulitan mesej di bawah.
+        String encrypt = body.getString("encrypt");
+        String plainText = dingTalkEncryptor.getDecryptMsg(signature, timestamp.toString(), nonce, encrypt);
+        JSONObject callBackContent = JSON.parseObject(plainText);
+
+        // Lakukan pemprosesan perniagaan yang berbeza berdasarkan jenis peristiwa callback
+        String eventType = callBackContent.getString("EventType");
+        //TODO Simpan data secara kekal (persist)
+        return plainText;
+    }
+}
+```
+
+## Penyulitan dan Penyahsulitan Mesej
+
+Untuk memastikan penghantaran data yang selamat, apabila DingTalk menghantar peristiwa callback yang dilanggan ke URL Callback, ia menyertakan token yang dikonfigurasikan untuk mengesahkan sumber peristiwa. Ia juga menggunakan kunci untuk menyulitkan Kandungan mesej secara simetri.
+
+Klik [di sini](https://github.com/open-dingtalk/dingtalk-callback-Crypto) untuk mendapatkan pustaka penyulitan dan penyahsulitan callback serta demonya.
+
+Pelayan DingTalk mengekod teks jelas (plaintext) badan mesej `msg` menjadi `encrypt`. `encrypt = Base64_Encode(AES_Encrypt[random(16B) + msg_len(4B) + msg + $key])` adalah pengekodan Base64 bagi mesej teks jelas `msg` yang telah disulitkan. Di mana:
+
+- **random** ialah string rawak sepanjang 16 bait.
+- **msg_len** ialah panjang `msg` sepanjang 4 bait, dalam susunan bait rangkaian (network byte order).
+- **msg** ialah teks jelas bagi badan mesej.
+- **key** ialah suiteKey aplikasi tersebut.
+
+Ekstrak medan `encrypt` daripada JSON yang dipulangkan:
+
+- Nyahkod Base64 teks tersulit: `aes_msg = Base64_Decode(encrypt)`.
+- Gunakan AESKey untuk melakukan penyahsulitan AES: `rand_msg = AES_Decrypt(aes_msg)`.
+
+Contoh kod penyulitan dan penyahsulitan ditunjukkan di bawah. Untuk contoh lengkap, lihat [DingTalk Third-Party Enterprise App - Mini Program - Quickstart (Java)](https://github.com/opendingtalk/eapp-isv-quick-start-java/blob/master/src/main/java/com/controller/CallbackController.java):
+
+**Nota**
+
+Proses penyulitan dan penyahsulitan dalam contoh kod ini bergantung kepada kelas utiliti **DingCallbackCrypto**. Lihat [dingtalk-callback-Crypto](https://github.com/open-dingtalk/dingtalk-callback-Crypto).
+
+```
+public Map<String, String> callBack(HttpServletRequest request,
+                                    @RequestParam(value = "msg_signature", required = false) String msg_signature,
+                                    @RequestParam(value = "timestamp", required = false) String timeStamp,
+                                    @RequestParam(value = "nonce", required = false) String nonce,
+                                    @RequestBody(required = false) JSONObject json) {
+    try {
+        // 1. Dapatkan parameter penyulitan dan penyahsulitan daripada permintaan HTTP
+
+        // 2. Gunakan jenis penyulitan dan penyahsulitan
+        // Nota mengenai Constant.OWNER_KEY:
+        // 1. Jika peristiwa langganan yang dikonfigurasikan dalam Developer Console adalah push peristiwa peringkat aplikasi,
+        //      OWNER_KEY ialah APP_KEY aplikasi (Aplikasi dalaman) atau SUITE_KEY (Aplikasi pihak ketiga).
+        // 2. Jika peristiwa yang dilanggan melalui API langganan peristiwa adalah push peristiwa peringkat perusahaan,
+        //      OWNER_KEY ialah CORP_ID organisasi (Aplikasi dalaman) atau SUITE_KEY (Aplikasi pihak ketiga).
+        DingCallbackCrypto callbackCrypto = new DingCallbackCrypto(Constant.AES_TOKEN, Constant.AES_KEY, Constant.OWNER_KEY);
+        String encryptMsg = json.getString("encrypt");
+        String decryptMsg = callbackCrypto.getDecryptMsg(msg_signature, timeStamp, nonce, encryptMsg);
+
+        // 3. Nyahsirikan (deserialize) data JSON peristiwa callback
+        JSONObject eventJson = JSON.parseObject(decryptMsg);
+        String eventType = eventJson.getString("EventType");
+
+        // 4. Kendalikan mengikut EventType
+        bizLogger.info("Event occurred: " + eventType);
+
+        // 5. Pulangkan data "success" yang telah disulitkan
+        Map<String, String> successMap = callbackCrypto.getEncryptedMap("success");
+        return successMap;
+
+    } catch (DingTalkEncryptException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```

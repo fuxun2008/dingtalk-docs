@@ -1,0 +1,212 @@
+---
+title: "Menerima mesej dengan Bot"
+description: "Ketahui cara membangunkan Bot DingTalk untuk menerima mesej melalui Server API — panduan lengkap Stream mode dan HTTP mode untuk pembangun bahagian pelayan."
+---
+
+Untuk membangunkan Bot yang menerima mesej, ikut langkah-langkah dalam dokumen ini untuk melengkapkan pembangunan bahagian pelayan bagi penerimaan mesej.
+
+## Latar belakang
+
+Bot boleh menerima mesej dalam dua mod: mod Stream dan mod HTTP. Dokumen ini menerangkan cara menerima mesej dalam kedua-dua mod tersebut.
+
+## Prasyarat
+
+1. Lengkapkan proses [Cipta aplikasi](/ms/open/dingstart/create-application).
+2. Lengkapkan proses menambah keupayaan aplikasi.
+
+## Prosedur
+
+### Mod Stream (disyorkan)
+
+> Untuk bahasa pengaturcaraan lain, rujuk dokumentasi mod Stream Bahagian pelayan.
+
+1. Sediakan persekitaran pembangunan Java:
+
+- Runtime: JDK 1.8 atau lebih tinggi
+- Pasang Java SDK:
+
+  Tambahkan dependency ke fail `pom.xml` projek anda atau muat turun pakej JAR yang berkaitan. Anda boleh melihat dan memuat turun versi SDK terkini [di sini](https://s01.oss.sonatype.org/?spm=openapi-amp.sdkpublish.0.0.78cefAyIfAyImO#nexus-search;quick~app-stream-client).
+
+  ```xml lines
+  <dependency>
+    <groupId>com.dingtalk.open</groupId>
+    <artifactId>app-stream-client</artifactId>
+    <version>{sdk-version}</version>
+  </dependency>
+  ```
+
+2. Contoh integrasi bahagian pelayan:
+
+   ```java lines
+   public class BotExample {
+
+     public static void main(String[] args) {
+       OpenDingTalkClient client = OpenDingTalkStreamClientBuilder
+                   .custom()
+                   .credential(new AuthClientCredential("${ClientId}", "${ClientSecret}"))
+                   .registerCallbackListener("${topic}", new RobotMsgCallbackConsumer())
+                   .build();
+        client.start();
+     }
+
+     public static class RobotMsgCallbackConsumer implements OpenDingTalkCallbackListener<JSONObject, JSONObject> {
+
+       /*
+        * @param request
+        * @return
+        */
+       @Override
+       public JSONObject execute(JSONObject request) {
+           System.out.println(JSON.toJSONString(request));
+           try {
+               JSONObject text = request.getJSONObject("text");
+               if (text != null) {
+                   // Kandungan mesej yang diterima oleh Bot
+                   String msg = text.getString("content").trim();
+                   String openConversationId = request.getString("conversationId");
+               }
+           } catch (Exception e) {
+               log.error("receive group message by robot error:" +e.getMessage(), e);
+           }
+           return new JSONObject();
+       }
+     } 
+   }
+   ```
+
+   | **Nama** | **Penerangan** |
+   | --- | --- |
+   | ClientId | ClientId bagi Kelayakan Aplikasi dalaman. |
+   | ClientSecret | ClientSecret bagi Kelayakan Aplikasi dalaman. |
+   | topic | Nama callback Bot. Nilai tetap: `/v1.0/im/bot/messages/get`. |
+3. Selepas pembangunan selesai, [tambah Bot ke dalam kumpulan](/ms/open/dingstart/add-robot-to-group). Apabila anda menghantar "Hello" dengan @ Bot, pelayan akan menerima mesej dalam format berikut:
+
+   ```json lines
+   {
+     "conversationId": "cidjMOsz******AhS4Jg==",
+     "atUsers": [
+       {
+         "dingtalkId": "$:LWCP_v1:$v*********f1+2ow21Zzg"
+       }
+     ],
+     "chatbotCorpId": "ding9f50*****6741",
+     "chatbotUserId": "$:LWCP_v1:$v*********1+2ow21Zzg",
+     "msgId": "msg2*****p+w==",
+     "senderNick": "DingTalk Bot",
+     "isAdmin": true,
+     "senderStaffId": "452523285939877041",
+     "sessionWebhookExpiredTime": 1695204671648,
+     "createAt": 1695199269062,
+     "senderCorpId": "ding9f50*****6741",
+     "conversationType": "2",
+     "senderId": "$:LWCP_v1:$C*********pnNGsP0HS+",
+     "conversationTitle": "Unified App Model - Test Group",
+     "isInAtList": true,
+     "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=c610ee93e4d96899d9236bd4bea185dd",
+     "text": {
+       "content": " Hello"
+     },
+     "robotCode": "ding1f*******dabddc",
+     "msgtype": "text"
+   }
+   ```
+
+   | **Nama** | **Penerangan** |
+   | --- | --- |
+   | conversationId | ID perbualan. |
+   | atUsers | Maklumat tentang pengguna yang di-@:  - **dingtalkId**: ID penghantar yang disulitkan. |
+   | chatbotCorpId | ID organisasi tempat Bot berada. |
+   | chatbotUserId | ID Bot yang disulitkan. Tiada kes penggunaan buat masa ini; boleh diabaikan. |
+   | msgId | ID mesej yang disulitkan. Tiada kes penggunaan buat masa ini; boleh diabaikan. |
+   | senderNick | Nama penghantar. |
+   | isAdmin | Sama ada penghantar merupakan Admin. |
+   | senderStaffId | ID pengguna bagi orang yang meng-@ Bot dalam Kumpulan Dalaman. |
+   | sessionWebhookExpiredTime | Masa tamat tempoh URL Webhook bagi perbualan semasa. |
+   | createAt | Cap masa mesej, dalam milisaat. |
+   | senderCorpId | ID organisasi bagi kumpulan semasa penghantar, hanya tersedia dalam Kumpulan Dalaman. |
+   | conversationType | Jenis perbualan:  - **1**: Mesej Terus - **2**: Sembang Kumpulan |
+   | senderId | ID penghantar yang disulitkan.  **Nota**  Gunakan senderStaffId, iaitu nilai userId penghantar. |
+   | conversationTitle | Tajuk sembang, hanya tersedia dalam sembang kumpulan. |
+   | isInAtList | Sama ada pengguna berada dalam senarai @. |
+   | sessionWebhook | URL Webhook bagi perbualan semasa. |
+   | text | Mesej teks:  - content: Kandungan teks. |
+   | robotCode | Kod Bot. |
+   | msgtype | Jenis mesej. |
+
+### Mod HTTP
+
+1. Sediakan persekitaran pembangunan Java:
+
+   - Runtime: JDK 1.7 atau lebih tinggi
+2. Contoh integrasi bahagian pelayan:
+
+   ```java lines
+   @RestController
+   public class RobotsController {
+     	// Nilai value = "/robots" di bawah menentukan URL penerimaan mesej Bot yang dikonfigurasi kemudian, contohnya: https://example.com/robots
+       @RequestMapping(value = "/robots", method = RequestMethod.POST)
+       public String helloRobots(@RequestBody(required = false) JSONObject json) {
+           System.out.println(json);
+         	// Kandungan mesej yang diterima oleh Bot
+           String content = json.getJSONObject("text").get("content").toString().replaceAll(" ", "");
+
+           return null;
+       }
+   }
+   ```
+3. Selepas pembangunan selesai, [tambah Bot ke dalam kumpulan](/ms/open/dingstart/add-robot-to-group). Apabila anda menghantar "Hello" dengan @ Bot, pelayan akan menerima mesej dalam format berikut:
+
+   ```json lines
+   {
+     "conversationId": "cidjMOsz******AhS4Jg==",
+     "atUsers": [
+       {
+         "dingtalkId": "$:LWCP_v1:$v*********f1+2ow21Zzg",
+         "staffId": "452523285939877041"
+       }
+     ],
+     "chatbotCorpId": "ding9f50*****6741",
+     "chatbotUserId": "$:LWCP_v1:$v*********1+2ow21Zzg",
+     "msgId": "msg2*****p+w==",
+     "senderNick": "DingTalk Bot",
+     "isAdmin": true,
+     "senderStaffId": "452523285939877041",
+     "sessionWebhookExpiredTime": 1695204671648,
+     "createAt": 1695199269062,
+     "senderCorpId": "ding9f50*****6741",
+     "conversationType": "2",
+     "senderId": "$:LWCP_v1:$C*********pnNGsP0HS+",
+     "conversationTitle": "Unified App Model - Test Group",
+     "isInAtList": true,
+     "sessionWebhook": "https://oapi.dingtalk.io/robot/sendBySession?session=c610ee93e4d96899d9236bd4bea185dd",
+     "content": " Hello"
+     "msgtype": "text"
+   }
+   ```
+
+   | **Nama** | **Penerangan** |
+   | --- | --- |
+   | conversationId | ID perbualan. |
+   | atUsers | Maklumat tentang pengguna yang di-@:  - **dingtalkId**: ID penghantar yang disulitkan. - **staffId**: Nilai userId Pekerja dalam Kumpulan Dalaman semasa. |
+   | chatbotCorpId | ID organisasi tempat Bot berada. |
+   | chatbotUserId | ID Bot yang disulitkan. Tiada kes penggunaan buat masa ini; boleh diabaikan. |
+   | msgId | ID mesej yang disulitkan. Tiada kes penggunaan buat masa ini; boleh diabaikan. |
+   | senderNick | Nama penghantar. |
+   | isAdmin | Sama ada penghantar merupakan Admin. |
+   | senderStaffId | ID pengguna bagi orang yang meng-@ Bot dalam Kumpulan Dalaman. |
+   | sessionWebhookExpiredTime | Masa tamat tempoh URL Webhook bagi perbualan semasa. |
+   | createAt | Cap masa mesej, dalam milisaat. |
+   | senderCorpId | ID organisasi bagi kumpulan semasa penghantar, hanya tersedia dalam Kumpulan Dalaman. |
+   | conversationType | Jenis perbualan:  - **1**: Mesej Terus - **2**: Sembang Kumpulan |
+   | senderId | ID penghantar yang disulitkan.  **Nota**  Gunakan senderStaffId, iaitu nilai userId penghantar. |
+   | conversationTitle | Tajuk sembang, hanya tersedia dalam sembang kumpulan. |
+   | isInAtList | Sama ada pengguna berada dalam senarai @. |
+   | sessionWebhook | URL Webhook bagi perbualan semasa. |
+   | content | Teks mesej. |
+   | msgtype | Jenis mesej. |
+
+## Langkah seterusnya
+
+Selepas melengkapkan pembangunan penerimaan mesej oleh Bot, anda boleh membalas mesej yang diterima atau menghantar mesej. Teruskan dengan perkara berikut:
+
+- [Bot membalas dan menghantar mesej](/ms/open/dingstart/robot-reply-and-send-messages)

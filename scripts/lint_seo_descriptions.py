@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # 与 sitemap 脚本保持同一份 valid content 目录白名单
 VALID_TOP_DIRS = {
     "ai-minutes", "aitable", "calendar", "contacts", "docs", "drive",
-    "im", "mail", "meetings", "oa", "open", "yida", "zh", "ja", "id",
+    "im", "mail", "meetings", "oa", "open", "yida", "zh", "ja", "id", "ms",
 }
 # 根目录 .mdx 也算 en (index.mdx / quickstart.mdx 等)
 ROOT_MDX_AS_EN = True

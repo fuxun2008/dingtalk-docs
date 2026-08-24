@@ -46,7 +46,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="docs", help="子产品目录名（docs/aitable/...）")
     args = ap.parse_args()
-    lang_base = {"en": args.root, "zh": f"zh/{args.root}", "ja": f"ja/{args.root}", "id": f"id/{args.root}"}
+    lang_base = {"en": args.root, "zh": f"zh/{args.root}", "ja": f"ja/{args.root}", "id": f"id/{args.root}", "ms": f"ms/{args.root}"}
 
     group_map = build_group_map()
     inventory = {}
@@ -54,7 +54,7 @@ def main():
         for f in sorted((ROOT / base).rglob("*.mdx")):
             rel = f.relative_to(ROOT)
             slug = str(rel)[:-4]  # 去 .mdx
-            for pre in ("zh/", "ja/", "id/"):
+            for pre in ("zh/", "ja/", "id/", "ms/"):
                 if slug.startswith(pre):
                     slug = slug[len(pre):]
             head = f.read_text(encoding="utf-8")[:800]
@@ -72,7 +72,7 @@ def main():
         json.dumps(inventory, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # 摘要
-    missing = {s: sorted({"en", "zh", "ja", "id"} - set(v["titles"])) for s, v in inventory.items()
+    missing = {s: sorted({"en", "zh", "ja", "id", "ms"} - set(v["titles"])) for s, v in inventory.items()
                if len(v["titles"]) != 4}
     no_group = [s for s, v in inventory.items() if not v["group"]]
     print(f"[done] slug 总数: {len(inventory)}")

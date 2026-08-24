@@ -31,10 +31,11 @@
     zh: "找不到该页面。也许您想找的是以下页面之一？",
     ja: "ページが見つかりませんでした。お探しのページは以下のいずれかではありませんか？",
     id: "Kami tidak dapat menemukan halaman tersebut. Mungkin Anda mencari salah satu halaman di bawah ini?",
+    ms: "Kami tidak menemui halaman tersebut. Mungkin anda sedang mencari salah satu halaman di bawah?",
   };
 
   // Localized "Page Not Found" title.
-  var HEADING = { zh: "页面未找到", ja: "ページが見つかりません", id: "Halaman tidak ditemukan" };
+  var HEADING = { zh: "页面未找到", ja: "ページが見つかりません", id: "Halaman tidak ditemukan", ms: "Halaman tidak ditemui" };
 
   // Navbar label overrides, keyed by the English text Mintlify renders.
   // Covers the 11 Help Docs product tabs + the 3 Developer Docs tabs +
@@ -43,26 +44,26 @@
   // (Mintlify draws the 404 chrome in the default en locale). Order-
   // independent (matched by text).
   var NAV_LABELS = {
-    Chats: { zh: "消息", ja: "メッセージ", id: "Pesan" },
-    Calendar: { zh: "日历", ja: "カレンダー", id: "Kalender" },
-    Meetings: { zh: "会议", ja: "会議", id: "Rapat" },
-    Contacts: { zh: "通讯录", ja: "連絡先", id: "Kontak" },
-    Mail: { zh: "邮箱", ja: "メール", id: "Email" },
-    Docs: { zh: "文档", ja: "ドキュメント", id: "Dokumen" },
-    Drive: { zh: "钉盘", ja: "ドライブ", id: "Drive" },
-    "AI Table": { zh: "AI 表格", ja: "AI テーブル", id: "AI Table" },
-    "AI Minutes": { zh: "AI 听记", ja: "AI 議事録", id: "AI Minutes" },
-    Attendance: { zh: "考勤", ja: "勤怠", id: "Absensi" },
-    Approval: { zh: "审批", ja: "承認", id: "Persetujuan" },
-    YiDA: { zh: "宜搭", ja: "YiDA", id: "YiDA" },
-    "Admin Console": { zh: "管理控制台", ja: "管理コンソール", id: "Konsol Admin" },
-    "Developer Guide": { zh: "开发指南", ja: "開発ガイド", id: "Panduan pengembang" },
-    "Server API": { zh: "服务端 API", ja: "サーバー API", id: "Server API" },
-    "YiDA API": { zh: "宜搭 API", ja: "YiDA API", id: "YiDA API" },
-    "Help Docs": { zh: "帮助文档", ja: "ヘルプドキュメント", id: "Pusat Bantuan" },
-    "Developer Docs": { zh: "开发文档", ja: "開発ドキュメント", id: "Platform Terbuka" },
-    English: { zh: "中文", ja: "日本語", id: "Bahasa Indonesia" },
-    Download: { zh: "下载", ja: "ダウンロード", id: "Unduh" },
+    Chats: { zh: "消息", ja: "メッセージ", id: "Pesan", ms: "Sembang" },
+    Calendar: { zh: "日历", ja: "カレンダー", id: "Kalender", ms: "Kalendar" },
+    Meetings: { zh: "会议", ja: "会議", id: "Rapat", ms: "Mesyuarat" },
+    Contacts: { zh: "通讯录", ja: "連絡先", id: "Kontak", ms: "Kenalan" },
+    Mail: { zh: "邮箱", ja: "メール", id: "Email", ms: "E-mel" },
+    Docs: { zh: "文档", ja: "ドキュメント", id: "Dokumen", ms: "Dokumen" },
+    Drive: { zh: "钉盘", ja: "ドライブ", id: "Drive", ms: "Drive" },
+    "AI Table": { zh: "AI 表格", ja: "AI テーブル", id: "AI Table", ms: "AI Table" },
+    "AI Minutes": { zh: "AI 听记", ja: "AI 議事録", id: "AI Minutes", ms: "AI Minutes" },
+    Attendance: { zh: "考勤", ja: "勤怠", id: "Absensi", ms: "Kehadiran" },
+    Approval: { zh: "审批", ja: "承認", id: "Persetujuan", ms: "Kelulusan" },
+    YiDA: { zh: "宜搭", ja: "YiDA", id: "YiDA", ms: "YiDA" },
+    "Admin Console": { zh: "管理控制台", ja: "管理コンソール", id: "Konsol Admin", ms: "Konsol Pentadbir" },
+    "Developer Guide": { zh: "开发指南", ja: "開発ガイド", id: "Panduan pengembang", ms: "Panduan Pembangun" },
+    "Server API": { zh: "服务端 API", ja: "サーバー API", id: "Server API", ms: "Server API" },
+    "YiDA API": { zh: "宜搭 API", ja: "YiDA API", id: "YiDA API", ms: "YiDA API" },
+    "Help Docs": { zh: "帮助文档", ja: "ヘルプドキュメント", id: "Pusat Bantuan", ms: "Pusat Bantuan" },
+    "Developer Docs": { zh: "开发文档", ja: "開発ドキュメント", id: "Platform Terbuka", ms: "Platform Terbuka" },
+    English: { zh: "中文", ja: "日本語", id: "Bahasa Indonesia", ms: "Bahasa Melayu" },
+    Download: { zh: "下载", ja: "ダウンロード", id: "Unduh", ms: "Muat Turun" },
   };
 
   // First path segment of every product tab — used to spot a navbar-tab
@@ -79,6 +80,7 @@
     if (p.indexOf("/zh/") === 0 || p === "/zh") return "zh";
     if (p.indexOf("/ja/") === 0 || p === "/ja") return "ja";
     if (p.indexOf("/id/") === 0 || p === "/id") return "id";
+    if (p.indexOf("/ms/") === 0 || p === "/ms") return "ms";
     return "en";
   }
 

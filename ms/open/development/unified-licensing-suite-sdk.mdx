@@ -1,0 +1,170 @@
+---
+title: "SDK Bahagian Hadapan Suite Kebenaran Bersepadu"
+description: "Artikel ini menerangkan cara menggunakan SDK Suite Kebenaran Bersepadu DingTalk."
+---
+
+## **Keputusan Dijangka**
+
+### **Kebenaran Peribadi**
+
+### **Kebenaran Organisasi**
+
+#### **Kebenaran Admin**
+
+#### **Kebenaran Bukan Admin**
+
+## **Keperluan Versi**
+
+SDK Suite Kebenaran Bersepadu DingTalk memerlukan versi DingTalk **6.3.35 atau lebih baru**. Untuk versi terdahulu, minta pengguna menaik taraf klien. Gunakan kaedah berikut untuk menyemak versi DingTalk.
+
+```
+import { getENV, } from 'dingtalk-jsapi/lib/env';
+import { compareVersion, } from 'dingtalk-jsapi/lib/sdk/sdkLib';
+
+const { platform, version, appType, } = getENV();
+/**
+ * Semak sama ada versi aplikasi semasa menyokong SDK
+ * @return {boolean}
+ */
+function isAuthSDKSupport() {
+  return compareVersion(version, '6.3.35');
+}
+```
+
+## **1. Pasang SDK Suite Kebenaran**
+
+1. Jalankan arahan berikut untuk memuat turun dan memasang SDK (dingtalk-design-libs mestilah versi 0.1.0 atau lebih baru).
+
+   ```
+   npm install dingtalk-design-libs --save
+   ```
+2. Selepas muat turun selesai, import SDK terus ke dalam kod anda.
+
+   ```
+   import { openAuth } from 'dingtalk-design-libs/biz/openAuth';
+   ```
+
+## **2. Integrasikan Kebenaran App**
+
+Ikuti langkah berikut untuk menggunakan Suite Kebenaran Bersepadu DingTalk bagi membimbing pengguna melalui proses memberikan kebenaran maklumat berkaitan.
+
+1. Import SDK Suite Kebenaran Bersepadu DingTalk.
+
+   ```
+   import { openAuth } from 'dingtalk-design-libs/biz/openAuth';
+   ```
+2. Apabila kebenaran pengguna diperlukan, panggil **openAuth** secara terus. Contoh permintaan adalah seperti berikut:
+
+   ```
+   openAuth({
+     clientId:'dingwlanwxxx', // ID Aplikasi (pengecam unik)
+     corpId:'', // ID organisasi bagi organisasi semasa
+     rpcScope:'Calendar.Event.Write,Calendar.Event.Read,Contact.User.Read', 
+     fieldScope:'Contact.User.mobile',
+     type:0 // 0 menunjukkan pemberian kebenaran profil; 1 menunjukkan pemberian kebenaran maklumat organisasi
+   }).then((res)=>{
+   // Proses data yang dikembalikan
+   })
+   ```
+
+### **Parameter Permintaan**
+
+| **Parameter** | **Jenis** | **Wajib** | **Contoh** | **Penerangan** |
+| --- | --- | --- | --- | --- |
+| client | string | Ya | f1dLkxxx | ID Aplikasi:   - Aplikasi dalaman menggunakan **Appkey** - Aplikasi perusahaan pihak ketiga menggunakan **SuiteKey** - Aplikasi peribadi pihak ketiga menggunakan **AppId** - Aplikasi tersuai menggunakan **CustomKey** |
+| corpId | string | Ya | ding123xxxx | ID organisasi bagi organisasi semasa. |
+| rpcScope | string | Tidak | Contact.User.Read | Senarai skop antara muka.  **Nota**   - Pisahkan berbilang skop dengan koma. - Sediakan sekurang-kurangnya satu daripada rpcScope dan fieldScope. |
+| fieldScope | string | Tidak | Contact.User.mobile | Senarai skop medan.  **Nota**  Pisahkan berbilang skop dengan koma.  Sediakan sekurang-kurangnya satu daripada rpcScope dan fieldScope. |
+| type | string | Ya | 0 | grant_type:   - **0**: Minta kebenaran peribadi - **1**: Minta kebenaran organisasi |
+| from | string | Tidak | alicloud | Sumber permintaan.  **Nota**  Pengecam lokasi yang ditetapkan oleh pemanggil. |
+
+## **3. Maklumat Respons**
+
+#### **Contoh Respons Adalah Seperti Berikut:**
+
+- Kebenaran selesai
+
+  ```
+  {
+   status: 'ok',
+   result: {
+   authCode:'xxxxxxx' // Nilai ini tidak dikembalikan untuk kebenaran organisasi (type=1)
+   }
+  }
+  ```
+- Kebenaran ditolak
+
+  ```
+  {
+      status: 'cancel',
+      result: null
+  }
+  ```
+- Permintaan kebenaran telah dihantar kepada admin, menunggu kebenaran (hanya berlaku dalam senario kebenaran organisasi)
+
+  ```
+  {
+      status: 'toAdmin',
+      result: null
+  }
+  ```
+- Ralat kebenaran
+
+  ```
+  {
+      status: 'failed',
+      result: null
+  }
+  ```
+
+### **Parameter Respons**
+
+| **Nama medan** | **Jenis** | **Contoh** | **Penerangan** |
+| --- | --- | --- | --- |
+| status | string | ok | Hasil kebenaran:   - **ok:** Kebenaran berjaya - **toAdmin:** Permintaan kebenaran telah dihantar kepada admin, menunggu kebenaran - **failed:** Ralat kebenaran - **cancel:** Kebenaran dibatalkan secara aktif |
+| result | Object |  | Hasil yang dikembalikan. |
+| result.authCode | string | mrtjjwdmxxx | Kod kebenaran peribadi sementara.  **Nota**  Dikembalikan apabila type=0 dan kebenaran berjaya. |
+
+## **Kod Ralat**
+
+### **Ralat Parameter**
+
+| **Kod ralat** | **Punca** |
+| --- | --- |
+| 400001 | Permintaan kosong. |
+| 400006 | Parameter clientId adalah wajib. |
+| 400007 | Parameter corpId adalah wajib. |
+| 400008 | uid kosong. Hubungi DingTalk. |
+
+### **Ralat Skop Kebenaran**
+
+| **Kod ralat** | **Punca** |
+| --- | --- |
+| 500201 | Kod skop kebenaran tidak sah. |
+| 500202 | Parameter rpcScope mesti mengandungi skop kebenaran jenis rpc. |
+| 500203 | Parameter fieldScope mesti mengandungi skop kebenaran jenis medan. |
+| 500204 | Kebenaran organisasi mesti mengandungi skop kebenaran jenis organisasi. |
+| 500205 | Kebenaran peribadi mesti mengandungi skop kebenaran jenis peribadi. |
+
+### **Ralat App**
+
+| **Kod ralat** | **Punca** |
+| --- | --- |
+| 500101 | Aplikasi tidak wujud. |
+| 500102 | Aplikasi tiada skop kebenaran ditambah. |
+| 500103 | Gagal mendapatkan maklumat aplikasi. |
+| 500104 | Aplikasi tidak mempunyai skop kebenaran ini. Tambahkannya dalam Developer Console. |
+| 500105 | Gagal mendapatkan maklumat organisasi penyedia aplikasi. |
+
+### **Ralat Kebenaran**
+
+| **Kod ralat** | **Punca** |
+| --- | --- |
+| 500401 | Gagal mendapatkan peranan pemberi kebenaran. |
+| 500402 | Bukan admin bagi organisasi semasa. |
+| 500403 | Organisasi belum mengaktifkan kebenaran untuk app ini. |
+| 500404 | Gagal mengemas kini rekod kebenaran. |
+
+## **Tempoh Sah Kebenaran**
+
+Setelah pengguna memberikan kebenaran secara eksplisit, hubungan kebenaran akan direkodkan di bahagian belakang (backend) sehingga pengguna membatalkannya secara aktif.

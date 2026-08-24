@@ -79,14 +79,7 @@ function buildMultipartBody(filename, fileBuffer, contentType = 'image/png') {
   return { body, contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
-function wirelessUrl(url) {
-  const u = new URL(url);
-  if (u.hostname === 'img.alicdn.com') u.hostname = 'gw.alicdn.com';
-  u.pathname = u.pathname.replace(/_\d+x\d+\.jpg$/i, '');
-  return u.toString();
-}
-
-async function uploadOne(cookieHeader, uploadUrl, item, retries = 3) {
+async function uploadOne(cookieHeader, uploadUrl, item, retries = 3, delayMs = 0) {
   const fileBuffer = readFileSync(item.path);
   const contentType = item.path.endsWith('.jpg') || item.path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
   const { body, contentType: headerContentType } = buildMultipartBody(item.filename, fileBuffer, contentType);
@@ -103,10 +96,12 @@ async function uploadOne(cookieHeader, uploadUrl, item, retries = 3) {
         },
         body,
       });
+      if (resp.status === 429 || resp.status === 403) throw new Error(`HTTP ${resp.status}(疑似限流)`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      const cdnUrl = data.h5url || wirelessUrl(data.url);
+      const cdnUrl = data.url;
       if (!cdnUrl) throw new Error('响应中没有 CDN URL');
+      if (delayMs > 0) await sleep(delayMs);
       return { id: item.id, cdnUrl };
     } catch (err) {
       if (attempt === retries) return { id: item.id, error: err.message };
@@ -142,13 +137,14 @@ async function runPool(items, concurrency, fn) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.manifest || !args.result) {
-    throw new Error('用法: cdn-api-upload.mjs --manifest <json> --result <json> [--concurrency 8]');
+    throw new Error('用法: cdn-api-upload.mjs --manifest <json> --result <json> [--concurrency 1] [--delay 500] [--limit N]');
   }
 
   const manifestPath = resolve(String(args.manifest));
   const resultPath = resolve(String(args.result));
-  const concurrency = Math.max(1, Math.min(16, Number(args.concurrency) || 8));
-  const uploadUrl = 'https://tps.alibaba-inc.com/internal-management/image/upload?uploadType=image&compressType=0&folder=&isPrivate=false&workId=224019&workName=' + encodeURIComponent('萤火');
+  const concurrency = Math.max(1, Math.min(16, Number(args.concurrency) || 1));
+  const delayMs = Math.max(0, Number(args.delay) || 500);
+  const uploadUrl = 'https://tps.alibaba-inc.com/internal-management/image/upload?uploadType=image&compressType=0&folder=&isPrivate=false&workId=162333&workName=' + encodeURIComponent('砚心');
 
   // 读取清单
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -166,8 +162,8 @@ async function main() {
     } catch {}
   }
 
-  const pending = manifest.items.filter((item) => !existingResults[item.id]);
-  console.log(`总清单: ${manifest.items.length}, 待上传: ${pending.length}, 并发: ${concurrency}`);
+  const pending = manifest.items.filter((item) => !existingResults[item.id]).slice(0, args.limit ? Number(args.limit) : Infinity);
+  console.log(`总清单: ${manifest.items.length}, 待上传: ${pending.length}, 并发: ${concurrency}, 间隔: ${delayMs}ms`);
 
   // 获取 Chrome 端口
   const profile = resolve(homedir(), 'Library', 'Application Support', 'DingTalkDocsImageWorker');
@@ -194,7 +190,7 @@ async function main() {
   const batchSize = concurrency * 5;
   for (let i = 0; i < pending.length; i += batchSize) {
     const batch = pending.slice(i, i + batchSize);
-    const results = await runPool(batch, concurrency, (item) => uploadOne(cookieHeader, uploadUrl, item));
+    const results = await runPool(batch, concurrency, (item) => uploadOne(cookieHeader, uploadUrl, item, 3, delayMs));
 
     for (const result of results) {
       if (result.cdnUrl) allResults.set(result.id, result.cdnUrl);
@@ -211,20 +207,23 @@ async function main() {
     });
   }
 
-  // 最终结果
-  const ok = allResults.size === manifest.items.length;
+  // 最终结果（--limit 模式下只覆盖本次实际尝试过的条目 + 断点续传里已有的，
+  // 避免把未触碰的条目误标为 upload failed，污染断点续传状态）
+  const attempted = new Set([...Object.keys(existingResults), ...pending.map((item) => item.id)]);
+  const scoped = manifest.items.filter((item) => attempted.has(item.id));
+  const ok = allResults.size === scoped.length;
   writeJsonAtomic(resultPath, {
     ok,
-    total: manifest.items.length,
+    total: scoped.length,
     completed: allResults.size,
-    failed: manifest.items.length - allResults.size,
-    items: manifest.items.map((item) => {
+    failed: scoped.length - allResults.size,
+    items: scoped.map((item) => {
       const cdnUrl = allResults.get(item.id);
       return cdnUrl ? { id: item.id, cdnUrl } : { id: item.id, error: 'upload failed' };
     }),
   });
 
-  console.log(`\n完成! 成功 ${allResults.size}/${manifest.items.length}, 失败 ${manifest.items.length - allResults.size}`);
+  console.log(`\n完成! 成功 ${allResults.size}/${scoped.length}, 失败 ${scoped.length - allResults.size}`);
 }
 
 main().catch((err) => {

@@ -1,0 +1,157 @@
+---
+title: "Menghantar mesej sembang kumpulan dengan bot templat kumpulan"
+description: "Panduan praktikal menghantar mesej Sembang Kumpulan menggunakan bot templat kumpulan DingTalk, merangkumi keperluan, prasyarat, panduan pantas, dan langkah konfigurasi API."
+---
+
+Untuk menghantar mesej sembang kumpulan menggunakan bot templat kumpulan, ikuti langkah-langkah dalam dokumen ini.
+
+## Tentukan keperluan
+
+Sebelum pembangunan, semak gambaran keseluruhan berikut. Dokumen ini menerangkan cara menggunakan bot templat kumpulan untuk menghantar mesej Sembang Kumpulan melalui API mesej pembantu kumpulan. Untuk bermula dengan pantas, jalankan demo contoh yang disediakan dalam bahagian Panduan pantas. Ini memberi anda pengalaman praktikal dengan bot templat kumpulan.
+
+## Prasyarat
+
+1. Lengkapkan proses mencipta bot templat kumpulan.
+2. Lengkapkan [permohonan Kebenaran API](/ms/open/development/add-api-permission) untuk OpenAPI. Mohon `kebenaran pengurusan mesej kumpulan DingTalk`.
+3. Sediakan persekitaran pembangunan:
+
+   - Java: JDK 1.8 atau versi lebih baharu dipasang
+   - Java: Maven 3 dipasang
+
+## Panduan pantas
+
+1. Muat turun demo contoh [group-template-robot-group-message-quick-start](https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20240221/oqqnlh/group-template-robot-group-message-quick-start.zip).
+2. Ganti parameter dalam kaedah main bagi groupTemplateRobotGroupMessage:
+
+   | Item konfigurasi | Penerangan |
+   | --- | --- |
+   | GROUP_TEMPLATE_ID | Log masuk ke Developer Backend, klik **Open Capabilities** > **Scenario Group** > **Group Template**, dan salin ID tersebut. |
+   | ROBOT_CODE | Log masuk ke Developer Backend, klik **Open Capabilities** > **Scenario Group** > **Group Template** > **Target group template**. Salin ID bot. Jika templat kumpulan tidak dikaitkan dengan bot, rujuk mengaitkan bot templat kumpulan dengan templat kumpulan. |
+   | OWNER_USER_ID | UserId pengguna. Untuk butiran lanjut, lihat [User UserId](/ms/open/dingstart/basic-concepts-beta). |
+   | CLIENT_ID | Client ID aplikasi. Untuk butiran lanjut, lihat [Client ID](/ms/open/dingstart/basic-concepts-beta). |
+   | CLIENT_SECRET | Client Secret aplikasi. Untuk butiran lanjut, lihat [Client Secret](/ms/open/dingstart/basic-concepts-beta). |
+3. Jalankan kaedah main. Anda akan menerima mesej yang dihantar oleh bot dalam kumpulan tersebut.
+
+## Prosedur
+
+1. Tambah dependensi ke dalam fail `pom.xml` projek.
+
+   ```xml lines
+   <dependencies>
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>alibaba-dingtalk-service-sdk</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.aliyun</groupId>
+               <artifactId>dingtalk</artifactId>
+               <version>2.0.76</version>
+           </dependency>
+
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>fastjson</artifactId>
+               <version>1.2.68</version>
+           </dependency>
+       </dependencies>
+   ```
+2. Cipta kaedah main dan jalankannya.
+
+   ```java lines
+   import com.alibaba.fastjson.JSON;
+   import com.alibaba.fastjson.JSONObject;
+   import com.aliyun.dingtalkoauth2_1_0.Client;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest;
+   import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
+   import com.aliyun.teaopenapi.models.Config;
+   import com.dingtalk.api.DefaultDingTalkClient;
+   import com.dingtalk.api.DingTalkClient;
+   import com.dingtalk.api.request.OapiImChatScencegroupMessageSendV2Request;
+   import com.dingtalk.api.request.OapiImChatScenegroupCreateRequest;
+   import com.dingtalk.api.response.OapiImChatScencegroupMessageSendV2Response;
+   import com.dingtalk.api.response.OapiImChatScenegroupCreateResponse;
+   import com.taobao.api.ApiException;
+
+   public class groupTemplateRobotGroupMessage {
+
+       // Id templat kumpulan
+       public static final String GROUP_TEMPLATE_ID = "<your group template id >";
+
+       // Id bot templat kumpulan
+       public static final String ROBOT_CODE = "<your group robot id>";
+
+       // UserId pemilik kumpulan
+       public static final String OWNER_USER_ID= "<owner userId>";
+
+       // Client id aplikasi
+       public static final String CLIENT_ID= "<your app client id>";
+
+       // Client secret aplikasi
+       public static final String CLIENT_SECRET= "< your app client secret>";
+
+       /**
+        * Hantar mesej bot templat kumpulan
+        * @param args
+        */
+       public static void main(String[] args) {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/im/chat/scencegroup/message/send_v2");
+           OapiImChatScencegroupMessageSendV2Request req = new OapiImChatScencegroupMessageSendV2Request();
+           req.setTargetOpenConversationId(CreateGroup());
+           req.setMsgTemplateId("inner_app_template_markdown");
+           JSONObject jsonObject = new JSONObject().fluentPut("title","Tajuk ujian").fluentPut("markdown_content", "# Kandungan ujian \n > Ujian");
+           req.setMsgParamMap(JSON.toJSONString(jsonObject));
+           req.setRobotCode(ROBOT_CODE);
+           OapiImChatScencegroupMessageSendV2Response rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               System.out.println(rsp.getBody());
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+       }
+
+       /**
+        * Dapatkan OpenConversationId kumpulan
+        * @return
+        */
+       public static String CreateGroup() {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/im/chat/scenegroup/create");
+           OapiImChatScenegroupCreateRequest req = new OapiImChatScenegroupCreateRequest();
+           req.setTitle("Kumpulan ujian bot templat kumpulan");
+           req.setTemplateId(GROUP_TEMPLATE_ID);
+           req.setOwnerUserId(OWNER_USER_ID);
+           OapiImChatScenegroupCreateResponse rsp = null;
+           try {
+               rsp = client.execute(req, accessToken());
+               return rsp.getResult().getOpenConversationId();
+           } catch (ApiException e) {
+               throw new RuntimeException(e);
+           }
+
+       }
+
+       public static String accessToken(){
+           GetAccessTokenRequest getAccessTokenRequest = new GetAccessTokenRequest();
+           getAccessTokenRequest.setAppKey(CLIENT_ID);
+           getAccessTokenRequest.setAppSecret(CLIENT_SECRET);
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           try {
+               Client client = new Client(config);
+               GetAccessTokenResponse accessToken = client.getAccessToken(getAccessTokenRequest);
+               return accessToken.getBody().getAccessToken();
+           } catch (Exception e) {
+               throw new RuntimeException(e);
+           }
+       }
+   }
+   ```
+
+   Sembang Kumpulan akan dicipta secara automatik, dan anda boleh melihat mesej yang dihantar oleh bot templat kumpulan dalam kumpulan tersebut.
+
+## Dokumen berkaitan
+
+- Menghantar mesej pembantu kumpulan

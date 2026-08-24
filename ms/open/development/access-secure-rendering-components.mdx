@@ -1,0 +1,158 @@
+---
+title: "Kaedah 2: Integrasi komponen rendering selamat DingTalk"
+description: "Ketahui cara mengintegrasikan komponen rendering selamat DingTalk (open-data) untuk menyulitkan data Kenalan seperti nama pengguna, jawatan dan nama jabatan bagi melindungi maklumat sensitif organisasi."
+---
+
+## **Maklumat Latar Belakang**
+
+Data Kenalan (nama pengguna, jawatan pengguna dan nama jabatan) merupakan data sensitif penting bagi sesebuah organisasi. Keperluan berbeza-beza bergantung pada kaedah penggunaan aplikasi yang digunakan oleh penyedia perkhidmatan. Sesetengah kaedah penggunaan memerlukan penyulitan Kenalan; jika tidak, aplikasi tidak dapat disenaraikan di App Market.
+
+Untuk memenuhi keperluan "mendapatkan medan sensitif di pihak pengguna sambil menghalang pembangun daripada mengaksesnya," DingTalk menyediakan penyelesaian komponen rendering selamat (open-data) bagi pengalaman yang lebih selamat dan lebih baik.
+
+## **Prosedur**
+
+1. Gabungkan URL status log masuk pengguna pada halaman front-end.
+
+   **Note** 
+
+   **URL status log masuk** dibina terutamanya berdasarkan **URL callback** (pautan halaman front-end ISV itu sendiri, seperti URL Laman Utama aplikasi atau URL halaman yang menggunakan komponen rendering H5). Apabila pengguna dialihkan ke **URL status log masuk** pada klien, mereka akhirnya akan dialihkan ke **URL callback**.
+
+   1. Enkod URL callback.
+
+      **Note** 
+
+      *https://open.dingtalk.com/document* digunakan sebagai contoh dalam semua langkah.
+
+      ```
+      https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   2. Tambah **awalan tetap** `http://auth.dingtalk.com/login?redirectUri=`.
+
+      ```
+      http://auth.dingtalk.com/login?redirectUri=https%3A%2F%2Fopen.dingtalk.com%2Fdocument
+      ```
+   3. Enkod URL sekali lagi.
+
+      ```
+      http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   4. Tambah **awalan tetap** `https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=` dan gabungkannya untuk mendapatkan **URL status log masuk**.
+
+      ```
+      https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=dingwa4tibze6jwz7mgv&scope=openid&state=dddd&redirect_uri=http%3A%2F%2Fauth.dingtalk.com%2Flogin%3FredirectUri%3Dhttps%253A%252F%252Fopen.dingtalk.com%252Fdocument
+      ```
+   5. Import SDK open-data pada halaman front-end.
+
+      ```
+      <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+      ```
+
+      **Note** 
+      - Letakkan skrip SDK dalam tag &lt;head> dan sebelum semua tag &lt;script> lain; jika tidak, SDK tidak akan berfungsi.
+      - Kandungan SDK dikembalikan secara dinamik. Import mengikut cara yang ditunjukkan dalam demo dengan tepat. Jangan simpan secara tempatan dalam projek dan kemudian menggabungkannya (bundle).
+   6. Muatkan data daripada open-data pada halaman front-end.
+
+      1. Panggil kaedah DTOpenData.init untuk memulakan (initialize).
+
+         | **Item Konfigurasi** | **Penerangan** |
+         | --- | --- |
+         | `CorpId` | Nilai CorpId bagi organisasi yang telah mengaktifkan aplikasi. |
+         | `URL status log masuk` | URL status log masuk yang diperoleh selepas menambah awalan tetap terakhir. |
+
+         **Note** 
+
+         Kaedah ini mengembalikan nilai Boolean yang menunjukkan sama ada permulaan (initialization) berjaya atau gagal. Jika permulaan gagal, ini biasanya disebabkan Langkah 1 dilakukan dengan tidak betul atau status log masuk telah tamat tempoh. Dalam kes ini, bina semula "URL status log masuk" dan alihkan semula ke URL tersebut.
+
+         ```
+         <script>
+           if (window.DTOpenData.init('$CorpId$')) {
+             // Parameter input ialah nilai corpId bagi organisasi yang telah mengaktifkan aplikasi
+             // Permulaan SDK berjaya, teruskan pelaksanaan logik halaman
+           } else {
+             // Pengguna semasa tidak log masuk, alihkan ke log masuk bersepadu DingTalk
+             window.location.href = '$Sign-in state URL$';
+           }
+         </script>
+         ```
+      2. Apabila terdapat data pada halaman yang memerlukan rendering selamat, bina elemen dt-open-data pada halaman dan tetapkan atribut open-type dan open-id dengan betul. Selepas elemen DOM ditetapkan, panggil kaedah DTOpenData.update dan hantar objek elemen DOM yang perlu dirender untuk melengkapkan rendering secara automatik.
+
+         **Note** 
+
+         Bilangan nod DOM yang dihantar ke dalam kaedah DTOpenData.update pada satu masa tidak boleh melebihi 200; jika tidak, rendering akan gagal.
+
+         ```
+         <div>
+           <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+           <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+           <dt-open-data open-type="departmentName" open-id="2202079361"></dt-open-data>
+         </div>
+
+         <script>
+           window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+         </script>
+         ```
+
+         | **Atribut** | **Jenis** | **Wajib** | **Penerangan** |
+         | --- | --- | --- | --- |
+         | open-type | String | Ya | Jenis data terbuka (open data):  - userName: nama pengguna - userTitle: jawatan pengguna - deptName: nama jabatan |
+         | open-id | String | Ya | Apabila nilai openType ialah:  - userName: userId pengguna - userTitle: userId pengguna - deptName: nama jabatan |
+
+## **Contoh Penggunaan SDK**
+
+```
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <script src="https://auth.dingtalk.com/opendata-1.1.0.js"></script>
+  </head>
+  <body>
+    <div>
+      <dt-open-data open-type="userName" open-id="manager163711"></dt-open-data>
+      <dt-open-data open-type="userTitle" open-id="013768148774791"></dt-open-data>
+      <dt-open-data open-type="deptName" open-id="2202079361"></dt-open-data>
+    </div>
+    <div id="load">Klik untuk memuatkan data</div>
+    <script>
+      if (window.DTOpenData.init('ding1d4b5fc9223daa8e35c2f4657eb6378f')) {
+        document.getElementById('load').addEventListener('click', () => {
+          window.DTOpenData.update(document.querySelectorAll('dt-open-data'));
+        });
+      } else {
+        // Pengguna semasa tidak log masuk, alihkan ke log masuk bersepadu DingTalk
+        window.location.href = '$Sign-in state URL$';
+      }
+    </script>
+  </body>
+</html>
+```
+
+## **(Pilihan) Terjemahan Kandungan**
+
+#### **Terjemahan Kandungan Templat Notifikasi Mesej**
+
+Apabila menghantar mesej notifikasi, anda boleh menyertakan ID dalam kandungan menggunakan sintaks parameter templat. DingTalk akan menggantikannya dengan nama pengguna atau nama jabatan. Server API berikut terlibat:
+
+- Hantar Notifikasi Kerja
+
+Tambahkan medan `enable_id_trans` pada parameter API asal dan tetapkan nilainya kepada true untuk mengaktifkan terjemahan. Ini hanya diperlukan untuk Aplikasi pihak ketiga; Aplikasi dalaman boleh mengabaikannya.
+
+**Sintaks Templat Terjemahan ID Kenalan**
+
+```
+$departmentName=DEPARTMENT_ID$
+$userName=USER_ID$
+```
+
+Di sini, DEPARTMENT_ID ialah ID jabatan berbentuk nombor, dan USER_ID ialah ID pengguna. Contohnya:
+
+- $departmentName=1$ akan digantikan dengan nama jabatan yang sepadan dengan ID jabatan "1", seperti "Jabatan Pengalaman Pengguna DingTalk."
+- $userName=00001$ akan digantikan dengan nama pengguna yang sepadan dengan userid "lisi007", seperti "Ahmad."
+
+#### **Terjemahan Kenalan**
+
+- [Terjemah ID Kenalan Secara Asinkron](/ms/open/development/asynchronous-address-book-file-content-translation)
+- [Dapatkan Hasil Tugas Terjemahan Asinkron](/ms/open/development/obtains-the-results-of-an-asynchronous-translation-task)
