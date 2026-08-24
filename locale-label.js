@@ -74,7 +74,18 @@
     return null;
   }
 
+  // 借码 uz 会让 Mintlify 在 /ms/* 页面输出 <html lang="uz">，读屏软件因此把马来语
+  // 正文当乌兹别克语朗读，也和 sitemap 的 hreflang="ms" 自相矛盾。就地改回 ms。
+  function fixHtmlLang() {
+    var p = location.pathname;
+    if (p !== "/ms" && p.indexOf("/ms/") !== 0) return;
+    var el = document.documentElement;
+    if (el.getAttribute("lang") !== "ms") el.setAttribute("lang", "ms");
+  }
+
   function relabelAll() {
+    // 0) <html lang>：uz → ms。
+    fixHtmlLang();
     // 1) 文本节点：走 TreeWalker，只改叶子文本，避开正文（正文不会命中 UZ 映射）。
     var walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT, null);
     var node;
