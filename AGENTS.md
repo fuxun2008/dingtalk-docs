@@ -4,6 +4,15 @@
 
 DingTalk 国际版帮助中心（help.dingtalk.io），Mintlify Hobby SaaS 托管，纯 MDX + 单文件 `docs.json` 配置，无本地 build pipeline，三语（en / zh / ja）镜像站点。
 
+## Skills（可执行经验库）
+
+`.agents/skills/` 是本仓库的 Qoder 技能库（Qoder 默认自动发现），17 个技能覆盖导入、建页、导航、翻译、质量、发布全流程。索引见 [.agents/skills/README.md](.agents/skills/README.md)。
+
+- **执行任务前先扫一遍技能索引**：任务命中某个技能的 description 时，**严格按该 `SKILL.md` 的步骤执行**，不要自行发挥——正文里写死了大量历史踩坑（顺序锁、正则禁忌、`docs.json` 覆盖事故）。
+- 改 `docs.json` 一律走 `docs-nav-edit` / `docs-add-page`，**只用 `SearchReplace` 精确替换，禁止 `Write` 整份覆盖**。
+- 发布走 `docs-release`（推 main 到 github 会触发 Mintlify 线上发布，须先取得用户授权）。
+- 原 `.claude/commands/` 保留作为上游出处，**修改请改 `.agents/skills/`**，勿改旧副本。
+
 ## 常用命令
 
 ```bash
