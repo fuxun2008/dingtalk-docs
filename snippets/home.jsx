@@ -299,6 +299,25 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   }, []);
 
 
+  /* ---- Top-gap fallback for WebViews without CSS :has() ----
+     style.css zeroes the Mintlify content-wrapper padding-top (reserved for
+     its now-hidden navbar) via `:where(div):has(> #content-area)`. Some in-app
+     WebViews (older/customised Chromium, e.g. vivo) don't support :has(), so
+     that padding survives as a tall dead gap above our sticky header. When the
+     selector is unsupported, zero the same wrapper's padding-top in JS. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const hasSupported =
+      typeof CSS !== "undefined" &&
+      typeof CSS.supports === "function" &&
+      CSS.supports("selector(:has(*))");
+    if (hasSupported) return;
+    const anchor = document.getElementById("content-area");
+    const wrapper = anchor && anchor.parentElement;
+    if (wrapper) wrapper.style.setProperty("padding-top", "0", "important");
+  }, []);
+
+
   /* ---- ParticleCanvas (closure-local component) ---- */
   const ParticleCanvas = () => {
     const ref = useRef(null);
