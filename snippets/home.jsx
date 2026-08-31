@@ -299,6 +299,25 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   }, []);
 
 
+  /* ---- Top-gap fallback for WebViews without CSS :has() ----
+     style.css zeroes the Mintlify content-wrapper padding-top (reserved for
+     its now-hidden navbar) via `:where(div):has(> #content-area)`. Some in-app
+     WebViews (older/customised Chromium, e.g. vivo) don't support :has(), so
+     that padding survives as a tall dead gap above our sticky header. When the
+     selector is unsupported, zero the same wrapper's padding-top in JS. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const hasSupported =
+      typeof CSS !== "undefined" &&
+      typeof CSS.supports === "function" &&
+      CSS.supports("selector(:has(*))");
+    if (hasSupported) return;
+    const anchor = document.getElementById("content-area");
+    const wrapper = anchor && anchor.parentElement;
+    if (wrapper) wrapper.style.setProperty("padding-top", "0", "important");
+  }, []);
+
+
   /* ---- ParticleCanvas (closure-local component) ---- */
   const ParticleCanvas = () => {
     const ref = useRef(null);
@@ -605,8 +624,8 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   // redirects to the first nav doc, so point at the custom home page directly.
   const homeHref = lang === "en" ? "/" : "/" + lang + "/index";
 
-  // Feedback form differs by language; zh, ja and id each have their own form,
-  // remaining locales (en) share the international form.
+  // Feedback form differs by language; zh, ja, id and ms each have their own form,
+  // remaining locales (en) fall back to the international form.
   const feedbackHref =
     lang === "zh"
       ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_wSHNmzo_d2mVaXS?source=link"
@@ -614,6 +633,8 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_beLDpf0_etWlgA3?source=link"
       : lang === "id"
       ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_BkZNaGR_mUnBXsD?source=link"
+      : lang === "ms"
+      ? "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_r1olUUZ_sKDvHWM?source=link"
       : "https://docs.dingtalk.io/notable/share/form/v01r4mlQd7VRJ0kOxow_dv19yqvsgs3oebp3pcjys_1qX0QQ0?source=link";
 
   // Marketing site differs by region: ja points at the localized .co.jp site
