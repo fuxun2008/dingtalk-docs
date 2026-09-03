@@ -476,24 +476,6 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
             }}
             onClick={(e) => e.stopPropagation()}
           />
-          <kbd
-            aria-hidden="true"
-            style={{
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-              fontSize: "11.5px",
-              fontWeight: 600,
-              color: "var(--ink-3)",
-              background: "var(--surface-2, rgba(15, 23, 42, 0.06))",
-              border: "1px solid var(--line)",
-              borderRadius: "5px",
-              padding: "2px 6px",
-              flex: "none",
-              letterSpacing: "0.02em",
-              userSelect: "none",
-            }}
-          >
-            {kbdHint}
-          </kbd>
           <button
             type="button"
             className="dt-home-search-go"
@@ -516,6 +498,18 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
               <path d="M5 12h14m-6-6 6 6-6 6" />
             </svg>{" "}
             <span>{t.search_btn}</span>
+            <kbd
+              aria-hidden="true"
+              style={{
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                fontSize: "11.5px",
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                userSelect: "none",
+              }}
+            >
+              {kbdHint}
+            </kbd>
           </button>
         </div>
       </div>
@@ -572,7 +566,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     const current = LANGS.find((l) => l.code === lang) ||
       { code: lang, label: LABEL_MAP[lang] || "English" };
     return (
-      <div className={`dt-home-lang${open ? " dt-home-lang-open" : ""}`}>
+      <div className={"dt-home-lang" + (open ? " dt-home-lang-open" : "")}>
         <button
           type="button"
           className="dt-home-lang-btn"
@@ -684,7 +678,7 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       };
     }, [open]);
     return (
-      <div className={`dt-home-navmenu${open ? " dt-home-navmenu-open" : ""}`}>
+      <div className={"dt-home-navmenu" + (open ? " dt-home-navmenu-open" : "")}>
         <button
           type="button"
           className="dt-home-nav-burger"
