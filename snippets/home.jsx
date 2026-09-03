@@ -224,6 +224,21 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     };
 
     const onOpen = (dialog) => {
+      // 统一可见性守卫：新版 Mintlify 在 SSR / SPA 切换后会常驻一个
+      // display:none 的隐藏搜索 dialog（带 input），MutationObserver 的
+      // addedNodes 分支会命中它。若不检查可见性，会误触发 onOpen →
+      // body.dt-search-open 残留 → header 被压到 z-index:0，语言/菜单
+      // 下拉被下方内容盖住。只有真实打开的 dialog（display 非 none、
+      // 有实际宽高）才继续。
+      if (!dialog || dialog.nodeType !== 1) return;
+      const cs = getComputedStyle(dialog);
+      if (
+        cs.display === "none" ||
+        cs.visibility === "hidden" ||
+        dialog.getBoundingClientRect().width === 0
+      ) {
+        return;
+      }
       const container = dialog.parentElement;
       if (container) {
         container.classList.add("dt-search-portal");
@@ -277,6 +292,9 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
+    // 初始时若已存在搜索 dialog（如深链 ?q= 打开），直接交给 onOpen 的
+    // 可见性守卫判断——新版 Mintlify 常驻一个 display:none 的隐藏 dialog，
+    // 守卫会拦住它，只对真实可见的 dialog 生效。
     const existing = document.querySelector('[role="dialog"]');
     if (existing && existing.querySelector("input")) onOpen(existing);
 
