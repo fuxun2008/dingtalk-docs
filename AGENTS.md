@@ -6,7 +6,7 @@ DingTalk 国际版帮助中心（help.dingtalk.io），Mintlify Hobby SaaS 托�
 
 ## Skills（可执行经验库）
 
-`.agents/skills/` 是本仓库的 Qoder 技能库（Qoder 默认自动发现），17 个技能覆盖导入、建页、导航、翻译、质量、发布全流程。索引见 [.agents/skills/README.md](.agents/skills/README.md)。
+`.agents/skills/` 是本仓库的 Qoder 技能库（Qoder 默认自动发现），17 个技能覆盖导入、建页、导航、翻译、质量、发布全流程。索引见 `.agents/skills/README.md`。
 
 - **执行任务前先扫一遍技能索引**：任务命中某个技能的 description 时，**严格按该 `SKILL.md` 的步骤执行**，不要自行发挥——正文里写死了大量历史踩坑（顺序锁、正则禁忌、`docs.json` 覆盖事故）。
 - 改 `docs.json` 一律走 `docs-nav-edit` / `docs-add-page`，**只用 `SearchReplace` 精确替换，禁止 `Write` 整份覆盖**。
