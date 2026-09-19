@@ -317,6 +317,70 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   }, []);
 
 
+  /* ---- Search language filter repair ----
+     落地页是 mode: "custom" 且不在 docs.json 的 navigation 里注册（index.mdx
+     全站 0 处注册），Mintlify 的 NavigationContext 推不出它的语言，于是
+     selectedLocale 回落成默认的 "en"。useSearch 把这个值原样塞进请求体的
+     filters.language，而服务端是硬过滤：
+
+       POST leaves.mintlify.com/api/search/<subdomain>            （线上）
+       POST /_mintlify/api-public/search/<subdomain>              （本地 mint dev）
+       {"query":"宜搭","filters":{"language":"en"}}   -> Results: 0
+       {"query":"宜搭","filters":{"language":"zh"}}   -> 正常返回
+
+     两个端点的路径前缀不同，URL 判定必须用 /search/ 这一小段——只认
+     /api/search/ 会漏掉本地那条，线上对本地都验不出问题。
+
+     结果就是中文/日文/印尼文/马来文首页的中文关键词一律搜不到，文档页却正常
+     （文档页路径在 language 字典里，能推对）。同源的另一个症状是
+     document.documentElement.lang 也停在 "en"，本 effect 一并修掉。
+
+     拿不到 Mintlify 的 setSelectedLocale，也不该改它的内部状态，所以在首页
+     生命周期内薄包装 window.fetch，只改带 filters.language 的搜索请求体。
+     范围仅限本组件挂载期间，卸载时还原。语言取本页显式传入的 lang prop ——
+     比从 location.pathname 反推更可靠（/zh/index 与 /zh/... 前缀都在，但
+     prop 是构建期就确定的）。 */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const target = lang || "en";
+
+    if (document.documentElement.lang !== target) {
+      document.documentElement.lang = target;
+    }
+
+    const originalFetch = window.fetch;
+    window.fetch = function (input, init) {
+      try {
+        const url = typeof input === "string" ? input : input && input.url;
+        if (
+          typeof url === "string" &&
+          url.indexOf("/search/") !== -1 &&
+          init &&
+          typeof init.body === "string"
+        ) {
+          const payload = JSON.parse(init.body);
+          if (payload && payload.filters && payload.filters.language !== target) {
+            init = {
+              ...init,
+              body: JSON.stringify({
+                ...payload,
+                filters: { ...payload.filters, language: target },
+              }),
+            };
+          }
+        }
+      } catch (_) {
+        /* 解析失败就按原样放行，绝不因为修复本身打断搜索 */
+      }
+      return originalFetch.call(this, input, init);
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [lang]);
+
+
   /* ---- Top-gap fallback for WebViews without CSS :has() ----
      style.css zeroes the Mintlify content-wrapper padding-top (reserved for
      its now-hidden navbar) via `:where(div):has(> #content-area)`. Some in-app
