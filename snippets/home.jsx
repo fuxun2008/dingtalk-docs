@@ -716,12 +716,13 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
   // Marketing site differs by region: ja points at the localized .co.jp site
   // (product/contact/blog targets verified via dingtalk.co.jp sitemap
   // hreflang=en alts), with privacy/terms going to the official Alibaba legal
-  // agreement pages. en/zh keep the global .io path so they stay byte-identical.
+  // agreement pages. Other locales use www.dingtalk.io, which only has en (root)
+  // and zh (/zh/) versions — zh gets the /zh prefix, the rest fall back to en.
   const mkt = (path) => {
     const jp = {
-      "/contact-sales": "https://www.dingtalk.co.jp/contact-sales/",
-      "/contact-sales/": "https://www.dingtalk.co.jp/contact-sales/",
-      "/contact-sales/?type=support": "https://www.dingtalk.co.jp/contact-sales/?type=support",
+      "/contact-sales": "https://www.dingtalk.co.jp/contact-sales/?from=%2F",
+      "/contact-sales/": "https://www.dingtalk.co.jp/contact-sales/?from=%2F",
+      "/contact-sales/?type=support": "https://www.dingtalk.co.jp/contact-sales/?from=%2F",
       "/products/dingtalk-im/": "https://www.dingtalk.co.jp/feature/chat/",
       "/products/dingtalk-meeting/": "https://www.dingtalk.co.jp/feature/meeting/",
       "/products/dingtalk-document/": "https://www.dingtalk.co.jp/feature/document/",
@@ -735,7 +736,8 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       "/#customer-cases": "https://www.dingtalk.co.jp/#customer-cases",
     };
     if (lang === "ja" && jp[path]) return jp[path];
-    return "https://www.dingtalk.io" + path;
+    const ioPrefix = lang === "zh" ? "/zh" : "";
+    return "https://www.dingtalk.io" + ioPrefix + path;
   };
 
   /* ---- NavMenu (mobile hamburger; mirrors LangMenu's open/close pattern) ----
