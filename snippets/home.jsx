@@ -10,7 +10,7 @@
      lives inside the Home closure.
    ============================================================ */
 
-export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
+export const Home = ({ t, cats, arts, hot, notice, lang = "en" }) => {
   /* ---- SEO: schema.org JSON-LD payload (Organization + WebSite/SearchAction) ----
      Mintlify auto-injects title/description from frontmatter, but rich-result
      eligibility (Organization sitelinks, sitelinks search box) requires
@@ -850,10 +850,18 @@ export const Home = ({ t, cats, arts, hot, lang = "en" }) => {
       <div className="dt-home-hero-bg"><ParticleCanvas /></div>
       <div className="dt-home-hero-scrim" />
       <div className="dt-home-hero-inner">
-        <span className="dt-home-eyebrow">
-          <span className="dt-home-eyebrow-dot" />
-          <span>{t.status}</span>
-        </span>
+        {notice ? (
+          <a href={notice.href} className="dt-home-eyebrow dt-home-notice">
+            <span className="dt-home-notice-label">{notice.label}</span>
+            <span className="dt-home-notice-text">{notice.text}</span>
+            <span className="dt-home-notice-arrow" aria-hidden="true">→</span>
+          </a>
+        ) : (
+          <span className="dt-home-eyebrow">
+            <span className="dt-home-eyebrow-dot" />
+            <span>{t.status}</span>
+          </span>
+        )}
         <h1 className="dt-home-hero-title">{t.title}</h1>
         <p className="dt-home-hero-sub">{t.subtitle}</p>
         <SearchBar />
