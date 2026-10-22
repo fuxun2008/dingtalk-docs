@@ -300,7 +300,31 @@ def build_user_message(hits: dict[str, str], source: str) -> str:
     )
 
 
-def build_system_prompt(lang: str, root: str = "", keep_media: bool = False) -> str:
+IMAGE_DESC_RULES = """图片转文字（--image-desc 模式，最高优先级）：
+- 源文中 <<IMG_DESC>>…<</IMG_DESC>> 块是原图片所含关键信息的英文描述（图片本身已移除）。
+- 去掉 <<IMG_DESC>> / <</IMG_DESC>> 标记，把块内信息按目标语言自然并入上下文：可作为独立段落、编号列表或表格，紧跟在原图片位置。
+- 不得写"如图所示 / as shown in the figure / the screenshot shows"等指代图片的表述；原文中"如下图所示""见下图"等指代句一并改写或删除，保持上下文通顺。
+- 块内信息不得删减，也不得编造块外不存在的信息。"""
+
+IMG_DESC_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
+
+
+def apply_image_desc(source: str, slug: str, desc_map: dict) -> str:
+    """按 <slug>#<序号> 把 informative 图替换为英文描述块，redundant / 未登记的图原样留给 sanitize_media 剥离。"""
+    counter = 0
+
+    def repl(m: re.Match) -> str:
+        nonlocal counter
+        counter += 1
+        item = desc_map.get(f"{slug}#{counter}")
+        if item and item.get("class") == "informative" and item.get("en"):
+            return f"<<IMG_DESC>>\n{item['en']}\n<</IMG_DESC>>"
+        return m.group(0)
+
+    return IMG_DESC_RE.sub(repl, source)
+
+
+def build_system_prompt(lang: str, root: str = "", keep_media: bool = False, image_desc: bool = False) -> str:
     style = {"en": STYLE_EN, "ja": STYLE_JA, "id": STYLE_ID}[lang]
     target = {
         "en": "英文（American English）",
@@ -316,6 +340,8 @@ def build_system_prompt(lang: str, root: str = "", keep_media: bool = False) -> 
         sections.append(HELP_ATTENDANCE_APPROVAL_RULES)
     if keep_media:
         sections.append(KEEP_MEDIA_OVERRIDE)
+    if image_desc:
+        sections.append(IMAGE_DESC_RULES)
     sections.append(f"本次任务把中文 mdx 译为 {target}。直接输出译文 mdx，不要前后缀说明。")
     return "\n\n".join(sections)
 
@@ -348,7 +374,7 @@ class FileResult:
 async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout_s: int) -> tuple[str, dict]:
     """调用 claude -p --bare，返回 (result_text, usage_dict)"""
     proc = await asyncio.create_subprocess_exec(
-        "claude", "-p", "--bare",
+        os.environ.get("CLAUDE_CLI_BIN") or "claude", "-p", "--bare",
         "--model", model,
         "--system-prompt", system_prompt,
         "--tools", "",
@@ -393,12 +419,15 @@ async def translate_one(
     sem: asyncio.Semaphore,
     force: bool,
     keep_media: bool = False,
+    image_desc: dict | None = None,
 ) -> FileResult:
     rel = task.rel
     try:
         source_text = task.source.read_text(encoding="utf-8")
     except Exception as e:
         return FileResult(rel=rel, status="failed", error=f"read source: {e}")
+    if image_desc is not None:
+        source_text = apply_image_desc(source_text, task.source.stem, image_desc)
 
     if task.target.exists() and not force:
         existing = task.target.read_text(encoding="utf-8")
@@ -420,6 +449,8 @@ async def translate_one(
                 result_text, usage = await call_claude_cli(system_prompt, user_msg, model, timeout_s)
                 elapsed = time.time() - t0
                 unwrapped = strip_code_fence_wrapper(result_text)
+                if "IMG_DESC" in unwrapped:
+                    raise RuntimeError("译文残留 IMG_DESC 标记")
                 cleaned = unwrapped if keep_media else sanitize_media(unwrapped)
                 if keep_media:
                     cleaned = MULTI_EMPTY_LINE_RE.sub("\n\n", cleaned).strip() + "\n"
@@ -456,6 +487,7 @@ def gather_tasks(
     only: str | None,
     bucket_id: int | None = None,
     bucket_count: int | None = None,
+    slugs: set[str] | None = None,
 ) -> list[FileTask]:
     zh_root = REPO_ROOT / "zh" / root
     if not zh_root.exists():
@@ -475,6 +507,8 @@ def gather_tasks(
         target = target_base / rel
         rel_str = str(Path(root) / rel)
         if only and not rel_str.startswith(only):
+            continue
+        if slugs is not None and mdx.stem not in slugs:
             continue
         tasks.append(FileTask(source=mdx, target=target, rel=rel_str))
 
@@ -554,10 +588,12 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
     glossary = load_glossary(args.lang)
-    system_prompt = build_system_prompt(args.lang, args.root, args.keep_media)
+    image_desc = json.loads(Path(args.image_desc).read_text(encoding="utf-8")) if args.image_desc else None
+    system_prompt = build_system_prompt(args.lang, args.root, args.keep_media, image_desc is not None)
     sem = asyncio.Semaphore(args.concurrency)
 
-    tasks = gather_tasks(args.root, args.lang, args.only, args.bucket_id, args.bucket_count)
+    slugs = set(Path(args.slugs_file).read_text(encoding="utf-8").split()) if args.slugs_file else None
+    tasks = gather_tasks(args.root, args.lang, args.only, args.bucket_id, args.bucket_count, slugs)
     if args.limit:
         tasks = tasks[: args.limit]
 
@@ -572,7 +608,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
     started = time.time()
     coros = [
-        translate_one(t, glossary, system_prompt, model, args.timeout, args.dry_run, sem, args.force, args.keep_media)
+        translate_one(t, glossary, system_prompt, model, args.timeout, args.dry_run, sem, args.force, args.keep_media, image_desc)
         for t in tasks
     ]
     results: list[FileResult] = []
@@ -617,6 +653,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--force", action="store_true", help="覆盖非占位的已译文件")
     p.add_argument("--keep-media", action="store_true", dest="keep_media",
                    help="保留图片/Frame（只译 alt/caption），不删除媒体；用于三语共用 zh 截图")
+    p.add_argument("--slugs-file", default=None, dest="slugs_file",
+                   help="只翻文件名（不含 .mdx）在此清单中的页，空白分隔")
+    p.add_argument("--image-desc", default=None, dest="image_desc",
+                   help="describe_open_images.py 产出的 json：informative 图替换为文字描述并入译文")
     p.add_argument("--dry-run", action="store_true", help="只列任务 + 命中术语")
     p.add_argument("--bucket-id", type=int, default=None, dest="bucket_id",
                    help="多进程分桶：本进程跑桶 N（0..bucket_count-1），与 --bucket-count 配合")
