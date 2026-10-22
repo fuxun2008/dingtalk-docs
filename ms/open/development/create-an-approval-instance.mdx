@@ -1,0 +1,1122 @@
+---
+title: "Mulakan instans kelulusan"
+description: "Mulakan instans Kelulusan OA DingTalk melalui Server API. Guna semula proses kelulusan dari Admin Console atau tetapkan penyokong terus melalui approvers."
+---
+
+Panggil API ini untuk memulakan instans Kelulusan OA. Suite seperti Kehadiran & Cuti, HR, Kewangan & Cukai, Perundangan dan Perjalanan Perniagaan tidak menyokong permulaan instans kelulusan melalui API ini.
+
+## Penerangan panggilan API
+
+### Notis penting
+
+API ini akan mengenakan pengesahan yang lebih ketat terhadap data yang dihantar. Tujuannya adalah untuk menghalang data tidak sah daripada dihantar ke Open API.
+
+- Bagi kawalan pilih tunggal dan Pilih Banyak, setiap nilai pilihan yang dihantar mesti wujud dalam senarai pilihan yang dikonfigurasi.
+- Bagi kawalan kenalan dalaman, setiap userID yang dihantar mesti milik pengguna aktif dalam organisasi semasa.
+- Bagi kawalan jabatan, setiap ID jabatan mesti merupakan ID jabatan yang sah dalam organisasi semasa.
+- Bagi kawalan borang kelulusan berkaitan, setiap ID instans yang dihantar mesti merupakan ID instans kelulusan yang wujud dalam organisasi semasa.
+
+Borang kelulusan yang dimulakan dengan melanggar peraturan ini mungkin gagal dimulakan apabila pengesahan data borang yang lebih ketat berkuat kuasa kelak.
+
+### Kes penggunaan
+
+<Note>
+Selepas instans kelulusan dimulakan, maklumatnya tidak boleh diubah suai melalui API.
+</Note>
+
+Terdapat 2 cara untuk memulakan instans kelulusan, bergantung pada sama ada penyokong ditetapkan. Tetapkan proses kelulusan baharu, atau guna semula proses kelulusan yang dikonfigurasi dalam Admin Console Kelulusan.
+
+- Jangan tetapkan penyokong, dan guna semula proses kelulusan yang dikonfigurasi dalam Admin Console Kelulusan. Ambil perhatian perkara berikut:
+
+  - Penyokong dan penerima CC menggunakan semula pengguna yang dikonfigurasi dalam Admin Console Kelulusan.
+  - Semua reka bentuk aliran kerja yang disokong dalam Admin Console Kelulusan turut disokong. Contohnya kelulusan salah seorang, kelulusan bersama, kelulusan bersyarat dan penyokong dipilih oleh pemohon.
+
+    Editor templat kelulusan mempunyai empat langkah konfigurasi: **Tetapan Asas** > **Reka Bentuk Borang** > **Reka Bentuk Aliran Kerja** > **Tetapan Lanjutan**. Dalam **Reka Bentuk Aliran Kerja**, bina aliran menggunakan jenis nod berikut:
+    - **pemohon**
+    - **penyokong**, contohnya dipilih oleh pemohon, kelulusan bersama atau kelulusan salah seorang
+    - cabang bersyarat yang menghala mengikut nilai medan, contohnya amaun ≥ 100 berbanding < 100
+    - **penerima CC**
+- Tetapkan penyokong, dan jangan guna semula proses kelulusan yang dikonfigurasi dalam Admin Console OA.
+
+  - Tetapan lanjutan templat kelulusan tidak disokong. Contohnya, Tandatangan dan kebenaran operasi borang tidak tersedia. **Tetapan Lanjutan** templat kelulusan (langkah 4) merangkumi pilihan proses berikut. Tiada satu pun pilihan ini terpakai apabila penyokong ditetapkan melalui API ini:
+    - **Nyahpendua Automatik**: jika penyokong muncul lebih daripada sekali dalam aliran, mereka hanya meluluskan sekali dan selebihnya lulus secara automatik.
+    - **Lulus Automatik**: apabila penyokong dan pemohon ialah orang yang sama, Kelulusan lulus secara automatik.
+    - **Benarkan Penambahan Penyokong**: tambah penyokong sementara pada borang.
+    - **Penarikan Balik Kelulusan**: pemohon boleh menarik balik borang.
+    - **Kelulusan Berhad Masa**
+    - **Tandatangan**
+    - **Komen Kelulusan**
+    - **Benarkan Penghantaran bagi Pihak Orang Lain**
+  - Apabila penyokong ditetapkan, API ini tidak boleh digunakan untuk menetapkan penyokong sebagai dipilih oleh pemohon.
+
+### Arahan
+
+Senario 1: Jangan tetapkan penyokong, dan guna semula proses kelulusan yang dikonfigurasi dalam Admin Console Kelulusan.
+
+### Nota
+
+- Biarkan parameter approvers kosong. Proses kelulusan yang dikonfigurasi dalam Admin Console Kelulusan akan digunakan semula secara lalai.
+- Parameter ccList dan ccPosition yang ditetapkan melalui API tidak berkuat kuasa. Penerima CC yang dikonfigurasi dalam Admin Console Kelulusan akan digunakan semula.
+
+- Terdapat 2 kes, bergantung pada sama ada proses kelulusan mengandungi nod dipilih oleh pemohon.
+
+  - Dengan nod dipilih oleh pemohon: panggil API [Dapatkan Maklumat Nod dalam Proses Borang Kelulusan](/ms/open/development/approval-process-prediction). Nilai isTargetSelect bagi setiap nod yang dikembalikan ialah true.
+
+### Nota
+
+  Apabila memanggil API ini untuk memulakan instans kelulusan, biarkan approvers dan targetSelectActioners kosong.
+
+  - Tanpa nod dipilih oleh pemohon: panggil API [Dapatkan Maklumat Nod dalam Proses Borang Kelulusan](/ms/open/development/approval-process-prediction). Sesetengah nod yang dikembalikan mempunyai nilai isTargetSelect false.
+
+### Nota
+
+  Apabila memanggil API ini untuk memulakan instans kelulusan, biarkan approvers kosong. Hantar targetSelectActioners untuk menetapkan maklumat bagi nod dipilih oleh pemohon.
+
+Senario 2: Tetapkan penyokong, dan jangan guna semula proses kelulusan yang dikonfigurasi dalam Admin Console OA. Gunakan parameter approvers untuk menetapkan penyokong baharu.
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/workflow/processInstances |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran yang diperlukan | permission-Workflow.Instance.Write-Kebenaran tulis Instans aliran kerja |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkan seperti berikut:   - Aplikasi dalaman: panggil API [Dapatkan Access Token Aplikasi Dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). - Aplikasi perusahaan pihak ketiga: panggil API untuk mendapatkan access token organisasi yang telah memberi kebenaran kepada Aplikasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| bizDetailPageUrl | String | Tidak | URL halaman butiran borang kelulusan dalam sistem kelulusan pihak ketiga. Gunakannya untuk senario kompleks yang mengintegrasikan halaman pihak ketiga tersuai dengan aliran kerja Kelulusan OA rasmi. Panjang maksimum: 1,024 aksara.     - Penetapan bizDetailPageUrl adalah eksklusif untuk [OA Edisi Premium](dingtalk://dingtalkclient/page/link?url=https%3A%2F%2Fpage.dingtalk.io%2Fwow%2Fdingtalk%2Fdefault%2Fdingtalk%2FlnfR8GaRSWqNncZHSvLLx%3Fdd_mini_app_id%3D5000000004997171&web_wnd=general&width=480&height=800). Naik taraf ke OA Edisi Premium untuk menggunakannya bagi keperluan pembangunan lanjutan dan senario perniagaan tersuai. Lihat semua OpenAPI eksklusif. - Jika bizDetailPageUrl ditetapkan, pengguna yang mengklik dari titik masuk akan terus dibawa ke halaman butiran sistem perniagaan berkenaan. Titik masuk ini termasuk Kelulusan OA DingTalk, Tugasan DingTalk dan Kad mesej. |
+| originatorUserId | String | Ya | userId pemohon kelulusan. Dapatkannya dengan memanggil API [Dapatkan Senarai ID Pengguna dalam Jabatan](/ms/open/development/query-the-list-of-department-userids). |
+| processCode | String | Ya | Kod unik proses kelulusan. Dapatkan process_code daripada URL halaman edit templat kelulusan. |
+| deptId | Long | Tidak | ID jabatan tempat pemohon kelulusan bernaung.     - Jika approvers ditetapkan (penyokong ditetapkan secara terus), biarkan deptId kosong. - Jika approvers tidak ditetapkan, deptId adalah wajib. Dapatkan ID jabatan daripada API [Tanya Butiran Pengguna](/ms/open/development/query-user-details). Bagi jabatan root, hantar -1. |
+| microappAgentId | Long | Tidak | Pengecam aplikasi Agent ID. Untuk butiran, lihat Konsep Asas. |
+| approvers | Array | Tidak | Senarai penyokong yang ditetapkan secara terus apabila tiada templat proses kelulusan digunakan. Panjang senarai maksimum: 20.    Parameter ini menetapkan aliran pelaksanaan borang kelulusan. Ia mengatasi proses lalai yang dikonfigurasi dalam Admin Console OA. |
+| actionType | String | Tidak | Jenis kelulusan. Nilai yang sah:   - **AND**: kelulusan bersama - **OR**: kelulusan salah seorang - **NONE**: penyokong tunggal |
+| userIds | Array of String | Tidak | userId penyokong. Contoh: ["user001","user002"]. |
+| ccList | Array of String | Tidak | userId penerima CC.    Panjang senarai maksimum: 50. |
+| ccPosition | String | Tidak | Masa CC dihantar. Nilai yang sah:   - **START**: CC pada masa mula - **FINISH**: CC pada masa tamat - **START_FINISH**: CC pada masa mula dan masa tamat |
+| targetSelectActioners | Array | Tidak | Senarai pelaksana terpilih yang diperlukan oleh peraturan nod dalam hasil ramalan proses, apabila templat proses kelulusan digunakan. Panjang senarai maksimum: 20.    Wajib apabila proses lalai yang dikonfigurasi dalam Admin Console OA digunakan dan proses itu mengandungi nod dipilih oleh penyokong. |
+| actionerKey | String | Tidak | Kunci peraturan nod terpilih. Dapatkan nilai actorKey dengan memanggil API [Dapatkan Maklumat Nod dalam Proses Borang Kelulusan](/ms/open/development/approval-process-prediction). |
+| actionerUserIds | Array of String | Tidak | userId pelaksana. Dapatkannya dengan memanggil API [Dapatkan Senarai ID Pengguna dalam Jabatan](/ms/open/development/query-the-list-of-department-userids). |
+| formComponentValues | Array | Ya | Senarai kawalan borang. Untuk butiran, lihat [Penerangan Parameter FormComponentValues](/ms/open/development/oa-formcomponent-message). Panjang senarai maksimum: 150. |
+| id | String | Tidak | ID kawalan. |
+| bizAlias | String | Tidak | Alias kawalan. |
+| name | String | Ya | Nama kawalan. Nama ini mesti sepadan dengan nilai medan `label` bagi Komponen dalam API [Cipta atau Kemas Kini Templat Borang Kelulusan](/ms/open/development/create-an-approval-form-template). |
+| value | String | Ya | Nilai kawalan. Panjang maksimum: 65,535 aksara. |
+| extValue | String | Tidak | Nilai lanjutan kawalan. Panjang maksimum: 65,535 aksara. |
+| componentType | String | Tidak | Jenis kawalan. Nilai yang sah:   - **TextField**: input satu baris - **TextareaField**: input pelbagai baris - **NumberField**: input nombor - **DDSelectField**: pilih tunggal    Nilai pilihan mesti wujud dalam senarai pilihan. - **DDMultiSelectField**: Pilih Banyak    Semua nilai pilihan mesti wujud dalam senarai pilihan. - **DDDateField**: kawalan tarikh - **DDDateRangeField**: kawalan julat masa - **TextNote**: kawalan penerangan teks (dikonfigurasi pada templat kelulusan dan tidak boleh diubah suai semasa memulakan instans kelulusan) - **PhoneField**: kawalan telefon - **DDPhotoField**: kawalan imej - **MoneyField**: kawalan amaun - **TableField**: kawalan butiran - **DDAttachment**: lampiran - **InnerContactField**: kawalan kenalan    userID dalam kawalan kenalan mesti milik pengguna aktif dalam organisasi semasa. - **RelateField**: borang kelulusan berkaitan    ID instans kelulusan yang dihantar mesti wujud dalam organisasi semasa. - **AddressField**: kawalan negeri/bandar/daerah - **StarRatingField**: kawalan penarafan - **DepartmentField**: kawalan jabatan    Hantar ID jabatan yang wujud dalam organisasi semasa. |
+| details | Array | Tidak | Senarai kawalan anak. Bilangan elemen maksimum: 150. Jumlah panjang maksimum bagi kawalan butiran: 65,535 aksara. |
+| id | String | Tidak | ID kawalan. |
+| bizAlias | String | Tidak | Alias kawalan. |
+| name | String | Tidak | Nama kawalan. |
+| value | String | Tidak | Nilai kawalan. |
+| extValue | String | Tidak | Nilai lanjutan kawalan. |
+| details | Array | Tidak | Senarai kawalan anak. Panjang senarai maksimum: 150. |
+| id | String | Tidak | ID kawalan. |
+| bizAlias | String | Tidak | Alias kawalan. |
+| name | String | Tidak | Nama kawalan. |
+| value | String | Tidak | Nilai kawalan. |
+| extValue | String | Tidak | Nilai lanjutan kawalan. |
+| componentType | String | Tidak | Jenis kawalan. Nilai yang sah:   - **TextField**: input satu baris - **TextareaField**: input pelbagai baris - **NumberField**: input nombor - **DDSelectField**: pilih tunggal    Nilai pilihan mesti wujud dalam senarai pilihan. - **DDMultiSelectField**: Pilih Banyak    Semua nilai pilihan mesti wujud dalam senarai pilihan. - **DDDateField**: kawalan tarikh - **DDDateRangeField**: kawalan julat masa - **TextNote**: kawalan penerangan teks (dikonfigurasi pada templat kelulusan dan tidak boleh diubah suai semasa memulakan instans kelulusan) - **PhoneField**: kawalan telefon - **DDPhotoField**: kawalan imej - **MoneyField**: kawalan amaun - **TableField**: kawalan butiran - **DDAttachment**: lampiran - **InnerContactField**: kawalan kenalan    Hantar userID pengguna aktif dalam organisasi semasa. - **RelateField**: borang kelulusan berkaitan    Hantar ID instans kelulusan yang wujud dalam organisasi semasa. - **AddressField**: kawalan negeri/bandar/daerah - **StarRatingField**: kawalan penarafan - **DepartmentField**: kawalan jabatan    ID jabatan yang dihantar mesti wujud dalam organisasi semasa. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/workflow/processInstances HTTP/1.1
+Host:api.dingtalk.io
+Content-Type:application/json
+
+{
+    /*
+      API ini belum menyokong semua kawalan dalam aplikasi Kelulusan. Hanya kawalan dalam contoh di bawah disokong.
+      Bagi kawalan asas, hantar atribut name dan value sahaja, kedua-duanya sebagai rentetan.
+      Jika data dalam format JSON, escape data itu kepada rentetan terlebih dahulu.
+    */ 
+    "processCode": "PROC-17428B8C-6C60-xxxx-924C-64F1037AE067",
+    "originatorUserId": "26652461xxxx5992",
+    "deptId": 1,
+    "microappAgentId": 1234,
+    "formComponentValues":[
+        {
+            "name": "[\"Masa Semasa\",\"Lokasi Semasa\"]",
+            "value": "[\"2025-01-03 14:27:20\",120.021195,30.281506,\"Alibaba Group Kampus Xixi Zon C, No. 960-1 Jalan Wenyi Barat, Daerah Yuhang, Hangzhou, Zhejiang\",100]"
+        },
+        {
+            "name": "Input Satu Baris",
+            "value": "Contoh input satu baris"
+        },
+        {
+            "name": "Input Pelbagai Baris",
+            "value": "Masukkan teks pelbagai baris. Untuk menyisipkan baris baharu, masukkan \r\n"
+        },
+        {
+            "name": "Input Nombor",
+            "value": "100"
+        },
+        {
+            /*
+                value boleh merupakan nilai pilihan sebenar
+                Nilai pilihan, seperti "Pilihan 1", mesti wujud dalam senarai pilihan yang dikonfigurasi
+                Nilai pilihan yang tidak sah mungkin menyebabkan permintaan gagal kelak
+            */
+            "name": "Pilih Tunggal",
+            "value": "Pilihan 1"
+        },
+        {
+            /*
+                value mesti merupakan tatasusunan nilai pilihan sebenar yang di-escape kepada rentetan.
+                Gunakan tatasusunan walaupun hanya ada satu pilihan
+                Nilai pilihan, seperti "Pilihan 1" dan "Pilihan 2", mesti wujud dalam senarai pilihan yang dikonfigurasi
+                Nilai pilihan yang tidak sah mungkin menyebabkan permintaan gagal kelak
+            */
+            "name": "Pilih Banyak",
+            "value": "[\"Pilihan 1\",\"Pilihan 2\"]"
+        }, 
+        {
+            /*
+                value hanya menyokong format yyyy-MM-dd
+            */
+            "name": "Tarikh",
+            "value": "2021-08-17"
+        },
+        {
+            /*
+                value ialah tatasusunan tarikh dalam bentuk rentetan, dan juga hanya menyokong format yyyy-MM-dd
+            */
+            "name": "[\"Masa Mula\",\"Masa Tamat\"]",
+            "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+            /*
+                value mesti merupakan tatasusunan URL sebenar yang di-escape kepada rentetan.
+                Gunakan tatasusunan walaupun hanya ada satu item
+            */
+            "name": "Imej",
+            "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+            /*
+                Nilai kawalan jadual ialah tatasusunan 2D objek JSON. Setiap baris tatasusunan mewakili satu baris data dalam jadual,
+                dan setiap objek JSON dalam satu baris mewakili satu kawalan dalam jadual.
+            */
+            "name": "Jadual",
+            "value": "[[{\"name\":\"Input Satu Baris\",\"value\":\"Input satu baris butiran\"},{\"name\":\"Input Nombor\",\"value\":\"100\"}]]"
+        },
+        {
+            "name": "Amaun (CNY)",
+            "value": "100"
+        },
+        {
+            /*
+                Nilai kawalan lampiran ialah tatasusunan JSON yang di-escape kepada rentetan. Setiap objek JSON dalam tatasusunan ialah satu fail lampiran.
+                Setiap fail mesti mengandungi medan spaceId, fileName, fileSize, fileType dan fileId. Dapatkan medan ini
+                dengan memanggil API Muat Naik Lampiran Drive.
+            */
+            "name": "Lampiran",
+            "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+    "\"643xxxx140\"}]"
+        },
+        {
+            /*
+                Hantar userId untuk kenalan
+                Jika userId bukan milik pengguna aktif dalam organisasi semasa, permintaan mungkin gagal kelak
+            */
+            "name": "Kenalan",
+            "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+            /*
+                value mesti merupakan tatasusunan borang kelulusan sebenar yang di-escape kepada rentetan.
+                Gunakan tatasusunan walaupun hanya ada satu item
+                Menghantar ID instans kelulusan yang tidak wujud mungkin menyebabkan permintaan gagal kelak
+            */
+            "name": "Borang Kelulusan Berkaitan",
+            "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        },
+        {
+            /*
+                Bagi nombor mudah alih tanah besar China, awalan +86 adalah pilihan. Bagi nombor mudah alih antarabangsa, sertakan kod negara, jika tidak nombor itu mungkin tidak dapat dihuraikan;
+                bagi talian tetap, kod kawasan adalah pilihan
+            */
+            "name": "Telefon",
+              "value": "157xxxx4545"
+        },
+        {
+            /*
+                Nilai negeri/bandar/daerah mesti mengikut format kawalan alamat untuk dikenal pasti, dan mesti dipisahkan dengan koma Inggeris
+            */
+              "name": "Negeri/Bandar/Daerah",
+              "value": "Beijing,Beijing,Daerah Hedong"
+        },
+        {
+              "name": "Penarafan",
+              "value": "5"
+        },
+        {
+            /*
+                value ialah ID jabatan dalam Kenalan DingTalk. Apabila berbilang jabatan dipilih, pisahkan dengan koma Inggeris
+                Menghantar ID jabatan yang tidak sah mungkin menyebabkan permintaan kelulusan gagal kelak
+            */
+              "name": "Jabatan",
+              "value": "ID jabatan 1 Kenalan DingTalk,ID jabatan 2 Kenalan DingTalk"
+        }
+    ],
+    "targetSelectActioners":[
+        {
+            "actionerKey": "manual_f953_8c70_xxxx_7ffa",
+            "actionerUserIds": ["26652461xxxx5992", "011220460xxxx8765"]
+        }
+    ],
+    "approvers": [
+        {
+            "actionType": "AND",
+            "userIds": ["26652461xxxx5992", "011220460xxxx8765"]
+        }
+    ],
+    "ccList": ["25054456xxxx0123"],
+    "ccPosition": "START",
+    "RequestId" : "4F73A5B6-81E5-1556-BC35-C2912C84993D"
+}
+```
+
+Java
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Mulakan Client akaun menggunakan Token</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceHeaders startProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceHeaders();
+        startProcessInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetailsDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Jumlah keseluruhan:1")
+                .setComponentType("PhoneField");
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Jumlah keseluruhan:1")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0Details0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("myPhoneNumber")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Jumlah keseluruhan:1")
+                .setComponentType("PhoneField")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners targetSelectActioners0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners()
+                .setActionerKey("manual_1918_5cd3_xxxx_6a98")
+                .setActionerUserIds(java.util.Arrays.asList(
+                    "26652461xxxx5992"
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                .setActionType("AND")
+                .setUserIds(java.util.Arrays.asList(
+                    "26652461xxxx5992"
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest startProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest()
+                .setBizDetailPageUrl("https://www.dingtalk.io")
+                .setOriginatorUserId("manager432")
+                .setProcessCode("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1")
+                .setDeptId(1L)
+                .setMicroappAgentId(41605932L)
+                .setApprovers(java.util.Arrays.asList(
+                    approvers0
+                ))
+                .setCcList(java.util.Arrays.asList(
+                    "26652461xxxx5992"
+                ))
+                .setCcPosition("START")
+                .setTargetSelectActioners(java.util.Arrays.asList(
+                    targetSelectActioners0
+                ))
+                .setFormComponentValues(java.util.Arrays.asList(
+                    formComponentValues0
+                ));
+        try {
+            client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Mulakan Client akaun menggunakan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        start_process_instance_headers = dingtalkworkflow__1__0_models.StartProcessInstanceHeaders()
+        start_process_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah keseluruhan:1',
+            component_type='PhoneField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah keseluruhan:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='myPhoneNumber',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah keseluruhan:1',
+            component_type='PhoneField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        target_select_actioners_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestTargetSelectActioners(
+            actioner_key='manual_1918_5cd3_xxxx_6a98',
+            actioner_user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        approvers_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestApprovers(
+            action_type='AND',
+            user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        start_process_instance_request = dingtalkworkflow__1__0_models.StartProcessInstanceRequest(
+            biz_detail_page_url='https://www.dingtalk.io',
+            originator_user_id='manager432',
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            microapp_agent_id=41605932,
+            approvers=[
+                approvers_0
+            ],
+            cc_list=[
+                '26652461xxxx5992'
+            ],
+            cc_position='START',
+            target_select_actioners=[
+                target_select_actioners_0
+            ],
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            client.start_process_instance_with_options(start_process_instance_request, start_process_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        start_process_instance_headers = dingtalkworkflow__1__0_models.StartProcessInstanceHeaders()
+        start_process_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah keseluruhan:1',
+            component_type='PhoneField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah keseluruhan:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='myPhoneNumber',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah keseluruhan:1',
+            component_type='PhoneField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        target_select_actioners_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestTargetSelectActioners(
+            actioner_key='manual_1918_5cd3_xxxx_6a98',
+            actioner_user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        approvers_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestApprovers(
+            action_type='AND',
+            user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        start_process_instance_request = dingtalkworkflow__1__0_models.StartProcessInstanceRequest(
+            biz_detail_page_url='https://www.dingtalk.io',
+            originator_user_id='manager432',
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            microapp_agent_id=41605932,
+            approvers=[
+                approvers_0
+            ],
+            cc_list=[
+                '26652461xxxx5992'
+            ],
+            cc_position='START',
+            target_select_actioners=[
+                target_select_actioners_0
+            ],
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            await client.start_process_instance_with_options_async(start_process_instance_request, start_process_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\formComponentValues\details\details;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\formComponentValues;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\targetSelectActioners;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\approvers;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $startProcessInstanceHeaders = new StartProcessInstanceHeaders([]);
+        $startProcessInstanceHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $formComponentValues0Details0Details0 = new details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Jumlah keseluruhan:1",
+            "componentType" => "PhoneField"
+        ]);
+        $formComponentValues0Details0 = new \AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\formComponentValues\details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Jumlah keseluruhan:1",
+            "details" => [
+                $formComponentValues0Details0Details0
+            ]
+        ]);
+        $formComponentValues0 = new formComponentValues([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "myPhoneNumber",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Jumlah keseluruhan:1",
+            "componentType" => "PhoneField",
+            "details" => [
+                $formComponentValues0Details0
+            ]
+        ]);
+        $targetSelectActioners0 = new targetSelectActioners([
+            "actionerKey" => "manual_1918_5cd3_xxxx_6a98",
+            "actionerUserIds" => [
+                "26652461xxxx5992"
+            ]
+        ]);
+        $approvers0 = new approvers([
+            "actionType" => "AND",
+            "userIds" => [
+                "26652461xxxx5992"
+            ]
+        ]);
+        $startProcessInstanceRequest = new StartProcessInstanceRequest([
+            "bizDetailPageUrl" => "https://www.dingtalk.io",
+            "originatorUserId" => "manager432",
+            "processCode" => "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+            "deptId" => 1,
+            "microappAgentId" => 41605932,
+            "approvers" => [
+                $approvers0
+            ],
+            "ccList" => [
+                "26652461xxxx5992"
+            ],
+            "ccPosition" => "START",
+            "targetSelectActioners" => [
+                $targetSelectActioners0
+            ],
+            "formComponentValues" => [
+                $formComponentValues0
+            ]
+        ]);
+        try {
+            $client->startProcessInstanceWithOptions($startProcessInstanceRequest, $startProcessInstanceHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Penerangan:
+// 
+// Mulakan Client akaun menggunakan Token
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  startProcessInstanceHeaders := &dingtalkworkflow_1_0.StartProcessInstanceHeaders{}
+  startProcessInstanceHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  formComponentValues0Details0Details0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetailsDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Jumlah keseluruhan:1"),
+    ComponentType: tea.String("PhoneField"),
+  }
+  formComponentValues0Details0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Jumlah keseluruhan:1"),
+    Details: []*dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetailsDetails{formComponentValues0Details0Details0},
+  }
+  formComponentValues0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValues{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("myPhoneNumber"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Jumlah keseluruhan:1"),
+    ComponentType: tea.String("PhoneField"),
+    Details: []*dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetails{formComponentValues0Details0},
+  }
+  targetSelectActioners0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestTargetSelectActioners{
+    ActionerKey: tea.String("manual_1918_5cd3_xxxx_6a98"),
+    ActionerUserIds: []*string{tea.String("26652461xxxx5992")},
+  }
+  approvers0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestApprovers{
+    ActionType: tea.String("AND"),
+    UserIds: []*string{tea.String("26652461xxxx5992")},
+  }
+  startProcessInstanceRequest := &dingtalkworkflow_1_0.StartProcessInstanceRequest{
+    BizDetailPageUrl: tea.String("https://www.dingtalk.io"),
+    OriginatorUserId: tea.String("manager432"),
+    ProcessCode: tea.String("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1"),
+    DeptId: tea.Int64(1),
+    MicroappAgentId: tea.Int64(41605932),
+    Approvers: []*dingtalkworkflow_1_0.StartProcessInstanceRequestApprovers{approvers0},
+    CcList: []*string{tea.String("26652461xxxx5992")},
+    CcPosition: tea.String("START"),
+    TargetSelectActioners: []*dingtalkworkflow_1_0.StartProcessInstanceRequestTargetSelectActioners{targetSelectActioners0},
+    FormComponentValues: []*dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValues{formComponentValues0},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.StartProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```text
+'use strict';
+// Fail ini dijana secara automatik, jangan suntingnya
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Mulakan Client akaun menggunakan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let startProcessInstanceHeaders = new dingtalkworkflow_1_0.StartProcessInstanceHeaders({ });
+    startProcessInstanceHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let formComponentValues0Details0Details0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetailsDetails({
+      id: 'PhoneField_IZI2LP8QF6O0',
+      bizAlias: 'Phone',
+      name: 'PhoneField',
+      value: '123xxxxxxxx',
+      extValue: 'Jumlah keseluruhan:1',
+      componentType: 'PhoneField',
+    });
+    let formComponentValues0Details0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetails({
+      id: 'PhoneField_IZI2LP8QF6O0',
+      bizAlias: 'Phone',
+      name: 'PhoneField',
+      value: '123xxxxxxxx',
+      extValue: 'Jumlah keseluruhan:1',
+      details: [
+        formComponentValues0Details0Details0
+      ],
+    });
+    let formComponentValues0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValues({
+      id: 'PhoneField_IZI2LP8QF6O0',
+      bizAlias: 'myPhoneNumber',
+      name: 'PhoneField',
+      value: '123xxxxxxxx',
+      extValue: 'Jumlah keseluruhan:1',
+      componentType: 'PhoneField',
+      details: [
+        formComponentValues0Details0
+      ],
+    });
+    let targetSelectActioners0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestTargetSelectActioners({
+      actionerKey: 'manual_1918_5cd3_xxxx_6a98',
+      actionerUserIds: [
+        '26652461xxxx5992'
+      ],
+    });
+    let approvers0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestApprovers({
+      actionType: 'AND',
+      userIds: [
+        '26652461xxxx5992'
+      ],
+    });
+    let startProcessInstanceRequest = new dingtalkworkflow_1_0.StartProcessInstanceRequest({
+      bizDetailPageUrl: 'https://www.dingtalk.io',
+      originatorUserId: 'manager432',
+      processCode: 'PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+      deptId: 1,
+      microappAgentId: 41605932,
+      approvers: [
+        approvers0
+      ],
+      ccList: [
+        '26652461xxxx5992'
+      ],
+      ccPosition: 'START',
+      targetSelectActioners: [
+        targetSelectActioners0
+      ],
+      formComponentValues: [
+        formComponentValues0
+      ],
+    });
+    try {
+      await client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Description:</b></term>
+        /// <description>
+        /// <para>Mulakan Client akaun menggunakan Token</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceHeaders startProcessInstanceHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceHeaders();
+            startProcessInstanceHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails.StartProcessInstanceRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails.StartProcessInstanceRequestFormComponentValuesDetailsDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Jumlah keseluruhan:1",
+                ComponentType = "PhoneField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Jumlah keseluruhan:1",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails.StartProcessInstanceRequestFormComponentValuesDetailsDetails>
+                {
+                    formComponentValues0Details0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "myPhoneNumber",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Jumlah keseluruhan:1",
+                ComponentType = "PhoneField",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails>
+                {
+                    formComponentValues0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners targetSelectActioners0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners
+            {
+                ActionerKey = "manual_1918_5cd3_xxxx_6a98",
+                ActionerUserIds = new List<string>
+                {
+                    "26652461xxxx5992"
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers
+            {
+                ActionType = "AND",
+                UserIds = new List<string>
+                {
+                    "26652461xxxx5992"
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest startProcessInstanceRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest
+            {
+                BizDetailPageUrl = "https://www.dingtalk.io",
+                OriginatorUserId = "manager432",
+                ProcessCode = "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+                DeptId = 1,
+                MicroappAgentId = 41605932,
+                Approvers = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers>
+                {
+                    approvers0
+                },
+                CcList = new List<string>
+                {
+                    "26652461xxxx5992"
+                },
+                CcPosition = "START",
+                TargetSelectActioners = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners>
+                {
+                    targetSelectActioners0
+                },
+                FormComponentValues = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues>
+                {
+                    formComponentValues0
+                },
+            };
+            try
+            {
+                client.StartProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu pembangun mengesan isu
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| instanceId | String | ID instans kelulusan. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "instanceId" : "91ef1076-c3ed-4a78-xxxx-fa29ef2d6252"
+}
+```
+
+### Kod ralat
+
+Jika panggilan API ini mengembalikan ralat, rujuk dokumen [Kod Ralat Global](/ms/open/development/server-api-error-codes-1) untuk mencari penyelesaian berdasarkan mesej ralat.
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | targetSelectApproverScopeError | Penyokong yang dipilih berada di luar skop yang dibenarkan. | Penyokong yang dipilih berada di luar skop yang dibenarkan. |
+| 400 | targetSelectApproverMissing | Penyokong yang dipilih tiada. | Penyokong yang dipilih tiada. |
+| 400 | invalidParameter | Ralat parameter permintaan kelulusan. Kemungkinan punca: parameter tidak sah seperti ID Organisasi atau kod templat kelulusan, atau pemohon telah meninggalkan organisasi. | Ralat parameter permintaan kelulusan. Kemungkinan punca: parameter tidak sah seperti ID Organisasi atau kod templat kelulusan, atau pemohon telah meninggalkan organisasi. |
+| 400 | processInstanceInvalidParameter | Ralat parameter instans kelulusan. Kemungkinan punca: userid pemohon, penyokong atau penerima CC tidak sah; ID jabatan pemohon tidak sah; atau pemohon bukan ahli jabatan pemohon. | Ralat parameter instans kelulusan. Kemungkinan punca: userid pemohon, penyokong atau penerima CC tidak sah; ID jabatan pemohon tidak sah; atau pemohon bukan ahli jabatan pemohon. |
+| 400 | processInstanceStartFailed | Gagal mencipta instans kelulusan. | Gagal mencipta instans kelulusan. |
+| 400 | needAuth | Tiada kebenaran untuk memulakan kelulusan. | Tiada kebenaran untuk memulakan kelulusan. |
+| 400 | invalidAgentId | ID Aplikasi mikro tidak sah. | ID Aplikasi mikro tidak sah. |
+| 400 | processGroupGetFailed | Gagal mendapatkan kumpulan proses kelulusan. | Gagal mendapatkan kumpulan proses kelulusan. |
+| 400 | processCodeError | Gagal mendapatkan templat kelulusan, atau templat telah dipadam. | Gagal mendapatkan templat kelulusan, atau templat telah dipadam. |
+| 400 | processSetupNoPermission | Tiada kebenaran untuk mengendalikan proses kelulusan. | Tiada kebenaran untuk mengendalikan proses kelulusan. |
+| 400 | processGetFailed | Gagal mendapatkan proses kelulusan, atau borang kelulusan tidak diaktifkan. | Gagal mendapatkan proses kelulusan, atau borang kelulusan tidak diaktifkan. |
+| 400 | formConverterError | Pengesahan data borang gagal. Kawalan yang gagal: %s | Pengesahan data borang gagal. |
+| 400 | illegalComponent | Parameter input komponen borang tidak sah. | Parameter input komponen borang tidak sah. |
+| 400 | sysErrror | Ralat sistem semasa mencipta instans kelulusan. | Ralat sistem semasa mencipta instans kelulusan. |
+| 400 | internalError | %s | Ralat sistem dalaman. |
+| 400 | autoflowLikeTriggerRateLimited | Operasi ini melibatkan Automasi (peraturan perniagaan) dan telah mencetuskan sekatan kelajuan. Kurangkan kadar panggilan atau batalkan konfigurasi Automasi yang berkaitan. | Operasi ini melibatkan Automasi (peraturan perniagaan) dan telah mencetuskan sekatan kelajuan. Kurangkan kadar panggilan atau batalkan konfigurasi Automasi yang berkaitan. |
+| 400 | benefitStatusInvalid | Pengesahan manfaat gagal. Penetapan bizDetailPageUrl adalah eksklusif untuk OA Edisi Premium. Naik taraf ke Edisi Premium dan cuba lagi. | Pengesahan manfaat gagal. Penetapan bizDetailPageUrl adalah eksklusif untuk OA Edisi Premium. Naik taraf ke Edisi Premium dan cuba lagi. |
+| 500 | systemError | Ralat sistem. | Ralat sistem. |

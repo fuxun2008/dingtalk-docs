@@ -1,0 +1,1113 @@
+---
+title: "Protokol API hosting area tindakan persetujuan"
+description: "Kustomisasi tombol area tindakan persetujuan DingTalk via API hosting Pusat Proses: daftarkan callback, render tombol, dan sinkronkan status tugas."
+---
+
+## Ikhtisar area tindakan persetujuan
+
+Area tindakan persetujuan berada di bagian bawah halaman detail persetujuan dan berisi tombol-tombol tindakan. Dalam contoh, area ini mencakup **Komentar**, **Buat diskusi grup**, **Hapus**, **Kembali ke formulir asli**, **Tolak**, dan **Setujui**. Aplikasi pihak ketiga dapat mengustomisasi tombol di area ini.
+
+## Cara kerja area tindakan persetujuan
+
+Saat membuat templat persetujuan atau instans persetujuan, Aplikasi pihak ketiga dapat mendaftarkan callback untuk merender tombol kustom di area tindakan persetujuan dan mengirim permintaan. Aplikasi wajib menyediakan dua API untuk rendering ter-hosting dan untuk memproses permintaan pengguna:
+
+- **Rendering tombol:** DingTalk memanggil kembali Aplikasi pihak ketiga untuk mendapatkan definisi tombol pada area tindakan.
+- **Operasi persetujuan:** DingTalk memanggil kembali API pihak ketiga untuk menerima dan memproses tindakan persetujuan yang dikirim pengguna.
+
+Alur integrasi berjalan dari **Aplikasi pihak ketiga** ke **Backend persetujuan: OA Open API**, lalu ke **Frontend persetujuan**. Frontend persetujuan merender hasilnya di tiga tampilan: **To-do**, **Pusat Persetujuan**, dan **Kartu interaktif IM**. Aplikasi pihak ketiga menyelesaikan langkah-langkah berikut secara berurutan:
+
+1. Buat templat
+2. Buat instans
+3. Daftarkan callback Tombol render kustom & Kirim permintaan pada area tindakan persetujuan
+4. Buat tugas
+
+Selama proses rendering dan pengiriman, Frontend persetujuan memanggil Aplikasi pihak ketiga melalui **SPI callback (render / operasi persetujuan)**. **Backend persetujuan: Open gateway** merutekan callback ini. Tampilan **To-do** dan **Kartu interaktif IM** memicu callback operasi persetujuan.
+
+## Definisi model inti
+
+- **ProcessFeatureConfig: Konfigurasi integrasi Pusat Proses**
+
+  Dalam mode integrasi Pusat Proses, konfigurasi ini memungkinkan Aplikasi pihak ketiga mendefinisikan logika kustom untuk modul fitur bisnis tertentu. Solusi hosting halaman persetujuan dibangun di atas konfigurasi ini. Aplikasi pihak ketiga dapat mengustomisasi setiap tombol di area tindakan persetujuan pada halaman detail. Konfigurasikan dua API callback tambahan:
+
+  - CUSTOM_ACTION_DEFINITION: DingTalk memanggil kembali Aplikasi pihak ketiga untuk mendapatkan definisi tombol pada area tindakan (rendering tombol).
+  - CUSTOM_ACTION_APPLY: DingTalk memanggil kembali API pihak ketiga untuk menerima dan memproses tindakan persetujuan yang dikirim pengguna (operasi persetujuan).
+
+  ```text
+  "featureConfig":{
+    "features":  [
+      {
+        // URL callback untuk mendapatkan data area tindakan (tombol) (rendering tombol)
+        "name":"CUSTOM_ACTION_DEFINITION",  
+        "runType":"OUTBIZ_CUSTOM",
+        "callback":{
+          "apiKey":"customActionDefinitionApiKey",
+          "appUuid":"appUuid",
+          "version":"1"
+        }
+      },
+      {
+        // URL callback yang dipanggil saat tindakan persetujuan dilakukan (operasi persetujuan)
+        "name":"CUSTOM_ACTION_APPLY",  
+        "runType":"OUTBIZ_CUSTOM",
+        "callback":{
+          "apiKey":"customActionApplyApiKey",
+          "appUuid":"appUuid",
+          "version":"1"
+        }
+      }
+    ]
+  }
+  ```
+- **CustomActionDefinition: Tombol tindakan kustom**
+
+  - **Area tindakan halaman detail**
+
+    |  |  |
+    | --- | --- |
+    | Persetujuan OA resmi:  Bagikan, Unduh, Cetak, Kirim ulang, Edit templat  Terima, Tolak, Ubah, Batalkan, Alihkan, Tanda tangani permintaan, Kembalikan, Komentar, Obrolan Baru, Otomatisasi, Hapus Formulir persetujuan  gambar | Mode hosting ORIGIN Pusat Proses:  Bagikan, Unduh, Cetak  Terima, Tolak, Komentar, Buat diskusi grup, Hapus, Kembali ke formulir asli  gambar |
+  - **Kategori tombol area tindakan halaman detail**
+
+    - ##### **Tombol umum**
+
+      Platform hosting halaman detail Formulir persetujuan Persetujuan OA DingTalk menyediakan tombol-tombol ini secara default. Gunakan kembali tombol tersebut secara langsung. Pihak yang berintegrasi tidak perlu mengembalikan data apa pun untuk tombol ini. Implementasi default mendefinisikan interaksinya. Sisi bisnis dapat mengonfigurasi apakah setiap tombol ditampilkan.
+
+      |  |  |  |  |
+      | --- | --- | --- | --- |
+      | ID tombol [actionType] | Kemampuan | Tipe interaksi | Deskripsi |
+      | INSTANCE_SHARE | Bagikan Formulir persetujuan ke Obrolan Grup | Klik untuk membuka pemilih grup. Callback dijalankan setelah konfirmasi. | Implementasi default mendefinisikan interaksi. Sisi bisnis dapat mengonfigurasi apakah tombol ditampilkan. |
+      | INSTANCE_DOWNLOAD | Unduh Formulir persetujuan. DingTalk mengirim file melalui Notifikasi Kerja. | Klik untuk menjalankan callback dan menampilkan prompt. | Implementasi default mendefinisikan interaksi. Sisi bisnis dapat mengonfigurasi apakah tombol ditampilkan. |
+      | INSTANCE_PRINT | Cetak Formulir persetujuan | Klik untuk membuka grup tombol. | Implementasi default mendefinisikan interaksi. Sisi bisnis dapat mengonfigurasi apakah tombol ditampilkan. |
+      | INSTANCE_DING | Pengingat: pengaju Proses persetujuan mengirim pengingat kepada penyetuju di node saat ini | Klik untuk membuka komponen DING. | Implementasi default mendefinisikan interaksi. Sisi bisnis dapat mengonfigurasi apakah tombol ditampilkan. |
+      | INSTANCE_IM_GROUP | Buat diskusi grup berdasarkan instans | Klik untuk membuka pemilih pengguna. Dialog konfirmasi muncul setelah pemilihan. | Implementasi default mendefinisikan interaksi. Sisi bisnis dapat mengonfigurasi apakah tombol ditampilkan. |
+      | INSTANCE_COMMENT | Beri komentar pada Formulir persetujuan | Klik untuk membuka dialog konfirmasi komentar. | Implementasi default mendefinisikan interaksi. Sisi bisnis dapat mengonfigurasi apakah tombol ditampilkan. |
+    - ##### **Tombol bawaan**
+
+      Hosting formulir menyediakan tombol tindakan persetujuan ini secara bawaan dan mengimplementasikan mekanisme interaksi umum untuknya secara otomatis. Sisi bisnis mengirim tombol-tombol ini sesuai kebutuhan, berdasarkan proses dan pengguna saat ini. Pihak yang berintegrasi mengimplementasikan kemampuan sebenarnya, sehingga perilakunya dapat sedikit berbeda antar-mesin proses.
+
+      |  |  |  |
+      | --- | --- | --- |
+      | ID tombol [actionType] | Kemampuan | Deskripsi |
+      | TASK_APPROVE | Terima tugas persetujuan | Interaksi tetap. Teks tombol dan logika callback dapat dikustomisasi. |
+      | TASK_REJECT | Tolak tugas persetujuan | Interaksi tetap. Teks tombol dan logika callback dapat dikustomisasi. |
+      | TASK_FORWARD | Alihkan tugas persetujuan | Interaksi tetap. Teks tombol, daftar pengguna yang dapat dipilih, dan logika callback dapat dikustomisasi. |
+      | TASK_APPEND | Tanda tangani permintaan | Interaksi tetap. Teks tombol, penyetuju yang dapat dipilih untuk tanda tangan permintaan, metode tanda tangan permintaan, dan logika callback dapat dikustomisasi. |
+      | INSTANCE_REVERT | Kembalikan | Interaksi tetap. Teks tombol, daftar node tujuan pengembalian, dan logika callback dapat dikustomisasi. |
+      | INSTANCE_MODIFY | Ubah Formulir persetujuan | Interaksi tetap. Teks tombol, status nonaktif (abu-abu), alasan nonaktif, dan properti serupa dapat dikustomisasi. |
+      | INSTANCE_TERMINATE | Batalkan Formulir persetujuan | Interaksi tetap. Teks tombol, teks prompt konfirmasi, dan logika callback dapat dikustomisasi. |
+      | INSTANCE_DELETE | Hapus Formulir persetujuan | Interaksi tetap. Teks tombol, teks prompt konfirmasi, dan logika callback dapat dikustomisasi. |
+      | INSTANCE_EXTERNAL_DETAIL | Kembali ke formulir asli: menampilkan tombol di halaman detail persetujuan yang membuka halaman detail eksternal | Interaksi tetap. Teks tombol dan visibilitas dapat dikustomisasi. |
+    - ##### **Tombol bisnis kustom**
+
+      Sistem pihak ketiga yang berintegrasi mendefinisikan tombol-tombol ini. Terapkan konfigurasi sederhana agar tombol memiliki gaya yang mirip dengan tombol bawaan. Saat pengguna mengklik salah satu tombol ini, DingTalk memanggil kembali sistem pihak yang berintegrasi melalui API operasi persetujuan. Sistem tersebut kemudian menjalankan logika tindakan kustom.
+
+      |  |  |  |  |
+      | --- | --- | --- | --- |
+      | ID tombol [actionType] | Kemampuan | Tipe interaksi | Deskripsi |
+      | CUSTOM_ACTION_xxx | Tombol bisnis kustom | Tipe interaksi standar yang didukung platform:  - link: langsung dialihkan - confirm: dialog konfirmasi - modal: membuka dialog (sisi bisnis dapat mengustomisasi komponen di dalam dialog) | Tidak boleh sama dengan ID apa pun yang dicadangkan oleh platform hosting. |
+  - **Aturan pengurutan dan rendering tombol**
+
+    Secara default, platform hosting mengurutkan dan memformat tombol yang dikirim oleh pihak yang berintegrasi.
+
+    - Platform hosting memeriksa apakah tombol umum perlu ditambahkan dan menambahkannya jika diperlukan.
+    - DingTalk memanggil kembali Aplikasi pihak ketiga untuk mendapatkan definisi tombol pada area tindakan (rendering tombol), lalu merender tombol berdasarkan data yang dikembalikan. Jika callback mengembalikan error, DingTalk kembali menggunakan tombol yang sudah ada pada solusi hosting ORIGIN: Bagikan, Unduh, Cetak, Terima, Tolak, Komentar, Buat diskusi grup, Hapus, dan Kembali ke formulir asli.
+    - Pengurutan semua tombol:
+
+      - Tombol umum ditampilkan lebih dahulu, dengan urutan tetap.
+      - Tombol bawaan dan tombol kustom menyusul, sesuai urutan pengirimannya.
+- **Referensi model CustomActionDefinition**
+
+  Model tombol tindakan di bawah ini diturunkan dari kategori tombol dan tipe interaksi yang dijelaskan di atas:
+
+  | **Nama** | **Tipe** | **Arti** | **Deskripsi** |
+  | --- | --- | --- | --- |
+  | actions | list | Tombol tindakan persetujuan |  |
+  | ∟context | string | Konteks persetujuan yang didefinisikan sisi bisnis. API ApplyAction meneruskannya tanpa perubahan. | Konteks adalah string yang didefinisikan sisi bisnis. DingTalk mengembalikan string ini dalam callback persetujuan agar sisi bisnis dapat mengidentifikasi skenario saat ini. |
+  | ∟actionKey | string | Kunci tindakan yang didefinisikan sisi bisnis. API ApplyAction meneruskannya tanpa perubahan. Jika dikonfigurasi, nilainya harus unik dalam array actions. | Opsional. Kosongkan secara default. |
+  | ∟actionType | string | Tipe tindakan persetujuan, yaitu tipe tombol | Enum. Untuk detailnya, lihat enum ProcessFeatureEnum di [**Kategori tombol area tindakan halaman detail**]. |
+  | ∟name | i18n | Nama tindakan persetujuan | Opsional. Kosongkan secara default. Jika dikosongkan, nama default dari `actionType` akan digunakan. |
+  | ∟icon | string | Ikon tombol | Opsional. Kosongkan secara default. Jika dikosongkan, ikon default akan digunakan.  Nilai URL didukung. Dimensi ikon harus memenuhi spesifikasi desain DingTalk. |
+  | ∟hidden | boolean | Apakah tombol disembunyikan | Sisi bisnis dapat menyembunyikan tombol umum bawaan platform, seperti Bagikan, Unduh, Cetak, Komentar, dan Buat grup. |
+  | ∟disabled | boolean | Nonaktifkan | Tombol tampil abu-abu dan tidak dapat diklik di frontend. |
+  | ∟disabledReason | i18n | Alasan tombol dinonaktifkan | Saat tombol dinonaktifkan, tooltip menampilkan teks ini. |
+  | ∟primary | boolean | Apakah tombol ini merupakan tombol utama | Tombol utama ditampilkan lebih besar, seperti tombol Terima dan Tolak. Jika lebih dari 2 tombol utama muncul di halaman secara bersamaan, tombol tersebut diturunkan menjadi tombol biasa. |
+  | ∟behavior | string | Perilaku saat dibuka. Opsional. | Enum. Untuk detailnya, lihat enum BehaviorType.  - link: membuka Link - modal: membuka dialog - confirm: membuka dialog konfirmasi |
+  | ∟behaviorProps | object |  | Properti perilaku untuk tipe perilaku yang dipilih  - link: konfigurasikan URL yang akan dibuka - modal: konfigurasikan schema kontrol formulir di dalam dialog - confirm: konfigurasikan judul dan teks prompt dialog konfirmasi |
+  | ∟title | string | Judul. Opsional. Wajib jika behavior adalah confirm. |  |
+  | ∟message | string | Teks prompt. Opsional. Wajib jika behavior adalah confirm. |  |
+  | ∟link | string | Link yang akan dibuka. Opsional. Wajib jika behavior adalah link. |  |
+  | ∟schema | json Array  [&#123;  componentName: 'TextareaField',  **props: &#123;**  **id: 'comment',**  **&#125;,**  &#125;] | Daftar komponen formulir di dalam dialog. Wajib jika behavior adalah modal. | Lihat [**Catatan parameter FormComponent**] di Simpan Templat Persetujuan Integrasi Eksternal Pusat Proses.  - **TextField**: input satu baris - **TextareaField**: input multi-baris - **DDSelectField**: pilih satu - **DDMultiSelectField**: Pilih Banyak - **TextNote**: kontrol teks deskripsi - **DDPhotoField**: kontrol gambar - **DDAttachment**: Lampiran - **InnerContactField**: kontrol Kontak    - users string[]: daftar staffId |
+  | ∟componentName | string | Tipe kontrol |  |
+  | ∟props | json | Atribut kontrol | `{  "label": "Input satu baris", // Judul kontrol  "placeholder": "Silakan masukkan", // Petunjuk input  "componentId": "TextField_17EZKEGSOCTC0", // ID kontrol; unik dalam formulir; tanpa makna bisnis  "required": false, // Apakah kolom wajib diisi; Opsional secara default  "bizAlias": "staffId" // Alias bisnis kontrol; unik dalam formulir; gunakan ini atau componentId  }` |
+  | ∟value | string | Nilai kontrol | Lihat contoh di Simpan Templat Persetujuan Integrasi Eksternal Pusat Proses. |
+
+  - **Enum kategori tombol area tindakan halaman detail: ProcessFeatureEnum**
+
+    ```text
+    public enum ProcessFeatureEnum {
+      /**
+      * Hapus tugas
+      */
+      TASK_DELETE,
+
+      /**
+      * Alihkan tugas
+      */
+      TASK_FORWARD,
+
+      /**
+      * Tambahkan tanda tangan permintaan ke tugas
+      */
+      TASK_APPEND,
+
+      /**
+      * Tanda tangani dan baca tugas
+      */
+      TASK_SIGN,
+
+      /**
+      * Bagikan Formulir persetujuan
+      */
+      INSTANCE_SHARE,
+
+      /**
+      * Unduh Formulir persetujuan
+      */
+      INSTANCE_DOWNLOAD,
+
+      /**
+      * Cetak Formulir persetujuan
+      */
+      INSTANCE_PRINT,
+
+      /**
+      * Kirim ulang Formulir persetujuan
+      */
+      INSTANCE_RESUBMIT,
+
+      /**
+      * Mulai persetujuan
+      */
+      INSTANCE_START,
+
+      /**
+      * Hapus instans persetujuan
+      */
+      INSTANCE_DELETE,
+
+      /**
+      * Tampilkan halaman detail
+      */
+      INSTANCE_DETAIL,
+
+      /**
+      * Batalkan Formulir persetujuan
+      */
+      INSTANCE_TERMINATE,
+
+      /**
+      * Ubah Formulir persetujuan
+      */
+      INSTANCE_MODIFY,
+
+      /**
+      * Tarik kembali perubahan
+      */
+      INSTANCE_REVOKE_MODIFY,
+
+      /**
+      * Beri komentar pada Formulir persetujuan
+      */
+      INSTANCE_COMMENT,
+
+      /**
+      * Buat diskusi grup berdasarkan instans
+      */
+      INSTANCE_IM_GROUP,
+
+      /**
+      * Kembalikan Formulir persetujuan
+      */
+      INSTANCE_REVERT,
+
+      /**
+      * Kirim pengingat
+      */
+      INSTANCE_DING,
+
+      /**
+      * Tampilkan tombol di halaman detail persetujuan yang membuka halaman detail eksternal
+      */
+      INSTANCE_EXTERNAL_DETAIL
+    }
+    ```
+  - **Enum tipe perilaku interaksi tombol: CustomActionBehaviorTypeEnum**
+
+    ```text
+    public enum CustomActionBehaviorTypeEnum {
+        /**
+         * Buka link
+         */
+        LINK("link"),
+
+        /**
+         * Buka dialog
+         */
+        MODAL("modal"),
+
+        /**
+         * Buka dialog konfirmasi
+         */
+        CONFIRM("confirm")
+    }
+    ```
+  - **Komponen formulir di dalam dialog (wajib jika behavior adalah modal)**
+
+    Lihat [**Catatan parameter FormComponent**] di [Buat atau perbarui templat persetujuan](/id/open/development/create-orupdate-the-approval-template-new). Tipe komponen formulir berikut saat ini didukung:
+
+    - **TextField**: input satu baris
+    - **TextareaField**: input multi-baris
+    - **DDSelectField**: pilih satu
+    - **DDMultiSelectField**: Pilih Banyak
+    - **TextNote**: kontrol teks deskripsi
+    - **DDPhotoField**: kontrol gambar
+    - **DDAttachment**: Lampiran
+    - **InnerContactField**: kontrol Kontak
+
+      - users string[]: daftar staffId
+- **Contoh model CustomActionDefinition**
+
+  ```json
+  {
+    "code": 200,
+    "body": [
+      {
+        "actionKey": "default",
+        "actionType": "INSTANCE_COMMENT",
+        "name": "Beri komentar pada Formulir persetujuan",
+        "hidden": true
+      },
+      {
+        "actionKey": "default",
+        "actionType": "INSTANCE_DING",
+        "name": "Kirim pengingat",
+        "disabled": true,
+        "disabledReason": "Formulir persetujuan ini tidak mendukung fitur ini"
+      },
+      {
+        "actionKey": "custom",
+        "actionType": "INSTANCE_EXTERNAL_DETAIL",
+        "name": "Kembali ke formulir asli",
+        "icon": "icon1",
+        "primary": false,
+        "behavior": "link",
+        "behaviorProps": {
+          "link": "https://www.dingtalk.io"
+        }
+      },
+      {
+        "actionKey": "general",
+        "actionType": "TASK_APPROVE",
+        "name": "Terima",
+        "icon": "icon1",
+        "primary": true,
+        "behavior": "modal",
+        "behaviorProps": {
+          "schema": [
+            {
+              "componentName": "TextareaField",
+              "props": {
+                "label": "Komentar",
+                "placeholder": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\n",
+                "id": "TextareaField_comment",
+                "required": true,
+                "bizAlias": "comment",
+                "value": "Ini adalah komentar persetujuan\r\n"
+              }
+            }
+          ]
+        },
+        "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+        "disabled": false
+      },
+      {
+        "key": "general",
+        "actionType": "TASK_FORWARD",
+        "name": "Terima dan alihkan",
+        "icon": "icon2",
+        "primary": true,
+        "behavior": "modal",
+        "behaviorProps": {
+          "schema": [
+            {
+              "componentName": "InnerContactField",
+              "props": {
+                "label": "Alihkan ke",
+                "placeholder": "Pilih penerima pengalihan",
+                "id": "InnerContactField_forward_user",
+                "choice": "1",
+                "required": false,
+                "bizAlias": "taskForward",
+                "users": "[\"0135185610551036178639\",\"0135185610551036178639\"]",
+                "value": "[\"0135185610551036178639\"]"
+              }
+            },
+            {
+              "componentName": "TextareaField",
+              "props": {
+                "label": "Komentar",
+                "placeholder": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\n",
+                "id": "TextareaField_comment",
+                "required": true,
+                "bizAlias": "comment",
+                "value": "Ini adalah komentar persetujuan\r\n"
+                          }
+                      }
+                  ]
+              },
+              "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+              "disabled": false
+          }
+      ]
+  }
+  ```
+
+## Contoh langkah integrasi
+
+### Langkah 1: Daftarkan callback tombol tindakan kustom
+
+1. Daftarkan callback untuk tombol tindakan persetujuan kustom, seperti pada contoh berikut.
+
+   ```json
+   {
+     // URL callback untuk mendapatkan data area tindakan (tombol) (rendering tombol)
+     "name": "CUSTOM_ACTION_DEFINITION",
+     "runType": "OUTBIZ_CUSTOM",
+     "callback": {
+       "apiKey": "getIntegratedCustomActionDefinitions",
+       "appUuid": "dingecxxxx97fcb1e09",
+       "version": "1"
+     }
+   },
+   {
+     // URL callback yang dipanggil saat tindakan persetujuan dilakukan (operasi persetujuan)
+     "name": "CUSTOM_ACTION_APPLY",
+     "runType": "OUTBIZ_CUSTOM",
+     "callback": {
+       "apiKey": "applxxxxction",
+       "appUuid": "dingecxxxxb1e09",
+       "version": "1"
+     }
+   }
+   ```
+2. Pusat Proses mendapatkan daftar tombol kustom untuk area tindakan persetujuan.
+
+   - apiKey: getIntegratedCustomActionDefinitions
+   - URL: https://connector.dingtalk.io/webhook/flow/d8c375d76acb7eb01019fe0b
+   - Parameter: corpId,processInstanceId,activityId,taskId,operator,platform,locale,context,customData
+   - apiSecret: getIntegratedCustomActionDefinitions
+
+### Contoh permintaan
+
+     ```json
+     {
+         "activityId": "001",
+         "processInstanceId": "fR7Adxxxx1716975",
+         "corpId": "dingecxxxxcb1e09",
+         "locale": "zh_CN",
+         "operator": "manager9814",
+         "platform": "pc",
+         "taskId": 876xxxx3607,
+         "customData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+     }
+     ```
+
+### Contoh respons berhasil
+
+     ```json
+     {
+       "success": true,
+       "errorCode": "",
+       "errorMessage": "",
+       "result": [
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_EXTERNAL_DETAIL",
+           "name": "Kembali ke formulir asli",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "link",
+           "behaviorProps": {
+             "link": "https://www.dingtalk.io"
+           }
+         },
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_DELETE",
+           "name": "Hapus Formulir persetujuan",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "confirm",
+           "behaviorProps": {
+             "title": "Apakah Anda yakin ingin menghapus Formulir persetujuan ini?",
+             "message": "Formulir tidak dapat dipulihkan setelah dihapus. Lanjutkan dengan hati-hati."
+           }
+         },
+         {
+           "actionKey": "general",
+           "actionType": "TASK_APPROVE",
+           "name": "Terima",
+           "icon": "icon1",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komentar",
+                   "placeholder": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini adalah komentar persetujuan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         },
+         {
+           "key": "general",
+           "actionType": "TASK_FORWARD",
+           "name": "Terima dan alihkan",
+           "icon": "icon2",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "InnerContactField",
+                 "props": {
+                   "label": "Alihkan ke",
+                   "placeholder": "Pilih penerima pengalihan",
+                   "id": "InnerContactField_forward_user",
+                   "choice": "0",
+                   "required": false,
+                   "bizAlias": "taskForward",
+                   "users": [
+                     "0213523642-1025002834",
+                     "14516942141077447"
+                   ]
+                 }
+               },
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komentar",
+                   "placeholder": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini adalah komentar persetujuan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         }
+       ]
+     }
+     ```
+
+### Contoh respons error
+
+     ```json
+     {
+         "success": false,
+         "errorCode": "FORM_SPI_CUSTOM_ERROR",
+         "errorMessage": "Error callback pihak ketiga: gagal mendapatkan daftar tombol kustom untuk area tindakan persetujuan",
+         "result": []
+     }
+     ```
+3. Pusat Proses menjalankan tindakan persetujuan untuk tombol kustom.
+
+   - apiKey: applyIntegratedCustomAction
+   - URL: https://connector.dingtalk.io/webhook/flow/a8d743d0afd948bd5d9dc2a8
+   - Parameter: corpId,processInstanceId,activityId,taskId,operator,platform,locale,context,customData,formDataArray,actionKey,actionType
+   - apiSecret: applyIntegratedCustomAction
+
+### Contoh permintaan
+
+     ```json
+     {
+       "activityId": "001",
+       "processInstanceId": "fR7Adw93Rxxxx716975",
+       "corpId": "dingecxxxxfcb1e09",
+       "locale": "zh_CN",
+       "operator": "manager9814",
+       "platform": "pc",
+       "taskId": 87622494607,
+       "customData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+     }
+     ```
+
+### Contoh respons berhasil
+
+     ```json
+     {
+       "success": true,
+       "errorCode": "",
+       "errorMessage": "",
+       "result": [
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_EXTERNAL_DETAIL",
+           "name": "Kembali ke formulir asli",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "link",
+           "behaviorProps": {
+             "link": "https://www.dingtalk.io"
+           }
+         },
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_DELETE",
+           "name": "Hapus Formulir persetujuan",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "confirm",
+           "behaviorProps": {
+             "title": "Apakah Anda yakin ingin menghapus Formulir persetujuan ini?",
+             "message": "Formulir tidak dapat dipulihkan setelah dihapus. Lanjutkan dengan hati-hati."
+           }
+         },
+         {
+           "actionKey": "general",
+           "actionType": "TASK_APPROVE",
+           "name": "Terima",
+           "icon": "icon1",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komentar",
+                   "placeholder": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini adalah komentar persetujuan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         },
+         {
+           "key": "general",
+           "actionType": "TASK_FORWARD",
+           "name": "Terima dan alihkan",
+           "icon": "icon2",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "InnerContactField",
+                 "props": {
+                   "label": "Alihkan ke",
+                   "placeholder": "Pilih penerima pengalihan",
+                   "id": "InnerContactField_forward_user",
+                   "choice": "0",
+                   "required": false,
+                   "bizAlias": "taskForward",
+                   "users": [
+                     "0213523642-1025002834",
+                     "14516942141077447"
+                   ]
+                 }
+               },
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komentar",
+                   "placeholder": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini adalah komentar persetujuan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         }
+       ]
+     }
+     ```
+
+### Contoh respons error
+
+     ```json
+     {
+       "success": false,
+       "errorCode": "FORM_SPI_CUSTOM_ERROR",
+       "errorMessage": "Error callback pihak ketiga: gagal mendapatkan daftar tombol kustom untuk area tindakan persetujuan",
+       "result": []
+     }
+     ```
+
+### Langkah 2: Simpan templat persetujuan Pusat Proses
+
+**Sinkronkan data templat persetujuan ke DingTalk:** Panggil Server API baru Simpan Templat Persetujuan Integrasi Eksternal Pusat Proses untuk mendapatkan kode unik templat, `processCode`.
+
+<Note>
+Dalam skenario ini, kustomisasikan dua modul di processFeatureConfig. CUSTOM_ACTION_DEFINITION adalah URL callback untuk mendapatkan data tombol area tindakan (callback rendering tombol). CUSTOM_ACTION_APPLY adalah URL callback yang dipanggil saat tindakan persetujuan dilakukan (callback operasi persetujuan).
+</Note>
+
+```json
+{
+  "name": "Mode integrasi hosting halaman persetujuan",
+  "description": "Mode hosting kustom Pusat Proses: area tindakan persetujuan kustom",
+  "formComponents": [
+    {
+      "componentType": "TextField",
+      "props": {
+        "componentId": "TextField-1",
+        "label": "Input satu baris",
+        "required": true,
+        "bizAlias": "TextField-bizAlias",
+        "disabled": false
+      }
+    },
+    {
+      "componentType": "TextareaField",
+      "props": {
+        "placeholder": "Silakan masukkan",
+        "label": "Input multi-baris"
+      }
+    },
+    {
+      "componentType": "NumberField",
+      "props": {
+        "placeholder": "Masukkan angka",
+        "label": "Input angka",
+        "id": "NumberField-1"
+      }
+    },
+    {
+      "componentType": "DDSelectField",
+      "props": {
+        "options": [ // Daftar opsi yang dapat dipilih
+          {
+            "value": "Opsi 1", // Nama tampilan opsi
+            "key": "option_0" // Kunci unik dalam kontrol; Opsional; sistem membuatnya secara default
+          },
+          {
+            "value": "Opsi 2",
+            "key": "option_1"
+          },
+          {
+            "value": "Opsi 3",
+            "key": "option_2"
+          },
+          {
+            "key": "other", // Kunci khusus untuk opsi "Lainnya"
+            "value": "Lainnya"
+          }
+        ],
+        "label": "Pilih satu",
+        "placeholder": "Silakan pilih",
+        "componentId": "DDSelectField_1",
+        "required": false
+      }
+    },
+    {
+      "componentType": "DDMultiSelectField",
+      "props": {
+        "options": [
+          {
+            "value": "Opsi 1",
+            "key": "option_0"
+          },
+          {
+            "value": "Opsi 2",
+            "key": "option_1"
+          },
+          {
+            "value": "Opsi 3",
+            "key": "option_2"
+          },
+          {
+            "key": "other", // Kunci khusus untuk opsi "Lainnya"
+            "value": "Lainnya"
+          }
+        ],
+        "label": "Pilih Banyak",
+        "placeholder": "Silakan pilih",
+        "componentId": "DDMultiSelectField_1",
+        "required": false
+      }
+    },
+    {
+      "componentType": "DDDateField",
+      "props": {
+        "unit": "小时", // Jam. Satuan tanggal; Nilai enum: 小时 (jam), 天 (hari)
+        "format": "yyyy-MM-dd HH:mm", // Format tanggal; Opsional; jam menggunakan yyyy-MM-dd HH:mm, hari menggunakan yyyy-MM-dd
+        "bizAlias": "",
+        "label": "Tanggal",
+        "placeholder": "Silakan pilih",
+        "componentId": "DDDateField_1",
+        "required": false,
+        "defaultValue": "2021-12-21 17:46" // Nilai default
+      }
+    },
+    {
+      "componentType": "DDDateRangeField",
+            "props": {
+                "unit": "天", // Hari
+                "format": "yyyy-MM-dd",
+                "bizAlias": "",
+                "label": "[\"Waktu mulai\",\"Waktu selesai\"]",
+                "placeholder": "Silakan pilih",
+                "componentId": "DDDateRangeField_1",
+                "duration": true, // Apakah durasi dihitung secara otomatis
+                "durationLabel": "Durasi", // Teks tampilan untuk durasi yang dihitung
+                "required": false
+            }
+        },
+        {
+            "componentType": "TextNote",
+            "props": {
+                "link": "https://www.dingtalk.io/", // Hyperlink
+                "notPrint": "0",
+                "bizAlias": "",
+                "componentId": "TextNote_1",
+                "content": "Ini adalah deskripsi" // Teks deskripsi
+            }
+        },
+        {
+            "componentType": "DDPhotoField",
+            "props": {
+                "label": "Gambar",
+                "componentId": "DDPhotoField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "MoneyField",
+            "props": {
+                "upper": "0", // Apakah jumlah ditampilkan dalam angka Tionghoa huruf besar (0: tidak, 1: ya); huruf besar secara default
+                "label": "Jumlah (CNY)",
+                "placeholder": "Masukkan jumlah",
+                "componentId": "MoneyField_1",
+                "required": false
+            }
+        },
+        {
+            "children": [
+                {
+                    "componentType": "TextField",
+                    "props": {
+                        "label": "Input satu baris",
+                        "placeholder": "Silakan masukkan",
+                        "componentId": "TextField_1UE1ZY1A28AO0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "MoneyField",
+                    "props": {
+                        "upper": "0",
+                        "bizAlias": "",
+                        "label": "Jumlah (CNY)",
+                        "placeholder": "Masukkan jumlah",
+                        "componentId": "MoneyField_1S85G0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "NumberField",
+                    "props": {
+                        "unit": "CNY",
+                        "bizAlias": "",
+                        "label": "Input angka",
+                        "placeholder": "Masukkan angka",
+                        "componentId": "NumberField_1XP6A",
+                        "required": false
+                    }
+                }
+            ],
+            "componentType": "TableField",
+            "props": {
+                "tableViewMode": "table",
+                "verticalPrint": true,
+                "statField": [
+                    {
+                        "componentId": "MoneyField_1S85G0",
+                        "label": "Jumlah (CNY)"
+                    },
+                    {
+                        "componentId": "NumberField_1XP6A",
+                        "label": "Input angka"
+                    }
+                ],
+                "bizAlias": "table",
+                "label": "Tabel",
+                "componentId": "TableField_1MLEPEA"
+            }
+        },
+        {
+            "componentType": "DDAttachment",
+            "props": {
+                "label": "Lampiran",
+                "componentId": "DDAttachment_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "InnerContactField",
+            "props": {
+                "label": "Kontak",
+                "placeholder": "Silakan pilih",
+                "componentId": "InnerContactField_1",
+                "choice": "1", // Nilai enum: 1 mendukung pilih banyak, 0 mendukung pilih satu; Default adalah 0
+                "required": false,
+                "bizAlias": ""
+            }
+        },
+        {
+            "componentType": "DepartmentField",
+            "props": {
+                "multiple": false, // Apakah mendukung pilih banyak; true untuk pilih banyak, false untuk pilih satu
+                "label": "Departemen",
+                "placeholder": "Silakan pilih",
+                "componentId": "DepartmentField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "RelateField",
+            "props": {
+                "label": "Formulir persetujuan terkait",
+                "placeholder": "Silakan pilih",
+                "componentId": "RelateField_1",
+                "required": false,
+                "bizAlias": "",
+                "availableTemplates": [ // Templat persetujuan yang dapat dikaitkan; jika kosong, data instans dari semua templat persetujuan dapat dikaitkan
+                ]
+            }
+        },
+        {
+            "componentType": "AddressField",
+            "props": {
+                "addressModel": "district", // Nilai enum: city (provinsi/kota), district (provinsi/kota/distrik), street (provinsi/kota/distrik/jalan)
+                "bizAlias": "",
+                "label": "Provinsi/Kota/Distrik",
+                "componentId": "AddressField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "StarRatingField",
+            "props": {
+                "limit": 5, // Nilai enum: skala 5 poin, skala 10 poin
+                "label": "Peringkat",
+                "placeholder": "Silakan masukkan",
+                "componentId": "StarRatingField_1",
+                "required": false,
+                "bizAlias": ""
+            }
+        }
+    ],
+    "processFeatureConfig": {
+        "features": [
+            {
+                // URL callback untuk mendapatkan data area tindakan (tombol) (rendering tombol)
+                "name": "CUSTOM_ACTION_DEFINITION",
+                "runType": "OUTBIZ_CUSTOM",
+                "callback": {
+                    "apiKey": "getIntegratedCustomActionDefinitions",
+                    "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            },
+            {
+                // URL callback yang dipanggil saat tindakan persetujuan dilakukan (operasi persetujuan)
+                "name": "CUSTOM_ACTION_APPLY",
+                "runType": "OUTBIZ_CUSTOM",
+                "callback": {
+                    "apiKey": "applyIntegratedCustomAction",
+                    "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            }
+        ]
+    }
+}
+```
+
+### Langkah 3: Simpan instans persetujuan Pusat Proses
+
+**Sinkronkan data instans persetujuan ke DingTalk:** Gunakan kode templat `processCode` untuk memanggil Server API baru Simpan Instans Persetujuan Integrasi Eksternal Pusat Proses. Panggilan ini memulai instans persetujuan dan mengembalikan ID instans persetujuan, `processInstanceId`.
+
+<Note>
+Jika Anda belum mendaftarkan konfigurasi tombol tindakan persetujuan kustom saat membuat templat persetujuan, tentukan konfigurasi tersebut saat membuat instans. Jika Anda mengonfigurasinya di tingkat templat dan instans sekaligus, konfigurasi tingkat instans yang diprioritaskan.
+</Note>
+
+```json
+{
+  "formComponentValueList": [
+    {
+      "name": "Input satu baris",
+      "value": "[DingTalk](https://www.dingtalk.io/)"
+    },
+    {
+      "name": "Input multi-baris",
+      "value": "Masukkan teks multi-baris. Untuk baris baru, masukkan \r\nMasukkan teks multi-baris. Untuk baris baru, masukkan \r\n"
+    },
+    {
+      "name": "Input angka",
+      "value": "100"
+    },
+    {
+      "name": "Pilih satu",
+      "value": "Opsi 1"
+    },
+    {
+      "name": "Pilih Banyak",
+      "value": "[\"Opsi 1\",\"Opsi 2\"]"
+    },
+    {
+      "name": "Tanggal",
+      "value": "2021-08-17 11:11"
+    },
+    {
+      "name": "[\"Waktu mulai\",\"Waktu selesai\"]",
+      "value": "[\"2019-02-19 11:11\",\"2019-02-25 11:11\"]"
+    },
+    {
+      "name": "Gambar",
+      "value": "[\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"http://url3\"]"
+    },
+    {
+      "name": "Tabel",
+      "value": "[[{\"name\":\"Input satu baris\",\"value\":\"[DingTalk](https://www.dingtalk.io/)\"},{\"name\":\"Input angka\",\"value\":\"100\"}]]"
+    },
+    {
+      "name": "Jumlah (CNY)",
+      "value": "100"
+    },
+    {
+      "name": "Lampiran",
+      "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": \"643xxxx140\"}]"
+    },
+    {
+      "name": "Kontak",
+      "value": "[\"0135185610551036178639\"]"
+    },
+    {
+      "name": "Formulir persetujuan terkait",
+      "value": "[\"9XCLWKxNTom6W_u88iKbug09641720074458\", \"9XCLWKxNTom6W_u88iKbug09641720074458\"]"
+    },
+    {
+      "name": "Telepon",
+      "value": "18015586666"
+    },
+    {
+      "name": "Provinsi/Kota/Distrik",
+      "value": "Beijing,Beijing,Distrik Hedong"
+    },
+    {
+      "name": "Peringkat",
+      "value": "5"
+    },
+    {
+      "name": "Departemen",
+      "value": "714738614"
+    }
+  ],
+  "title": "Mode integrasi hosting halaman persetujuan",
+  "processCode": "PROC-A807C4FF-93AF-409A-A0C5-197CC81E8FF9",
+  "originatorUserId": "manager9814",
+  "url": "http://www.dingtalk.io",
+  "notifiers": [
+    {
+      "userid": "manager9814",
+      "position": "start"
+    }
+  ],
+  "featureConfig": {
+    "features": [
+      {
+        // URL callback untuk mendapatkan data area tindakan (tombol) (rendering tombol)
+        "name": "CUSTOM_ACTION_DEFINITION",
+        "runType": "OUTBIZ_CUSTOM",
+        "callback": {
+          "apiKey": "getIntegratedCustomActionDefinitions",
+          "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+          "version": "1"
+        }
+      },
+      {
+        // URL callback yang dipanggil saat tindakan persetujuan dilakukan (operasi persetujuan)
+        "name": "CUSTOM_ACTION_APPLY",
+        "runType": "OUTBIZ_CUSTOM",
+        "callback": {
+          "apiKey": "applyIntegratedCustomAction",
+          "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            }
+        ]
+    },
+    "bizData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+}
+```
+
+### Langkah 4: Simpan tugas persetujuan Pusat Proses
+
+**Sinkronkan data tugas persetujuan ke DingTalk:** Panggil Simpan Tugas Persetujuan Integrasi Eksternal Pusat Proses dengan ID instans persetujuan `processInstanceId` dan daftar To-Do `tasks`. Panggilan ini menyinkronkan informasi node persetujuan dari sistem pihak ketiga ke Persetujuan OA DingTalk. Panggilan ini juga mengembalikan taskId setiap item To-Do dan membuat tugas To-Do DingTalk yang sesuai.
+
+```json
+{
+  "processInstanceId": "snfwBxxxx392174",
+  "activityId": "001",
+  "tasks": [
+    {
+      "userId": "manager9814",
+      "url": "https://www.dingtalk.io"
+    },
+    {
+      "userId": "013xxxx639",
+      "url": "https://www.dingtalk.io"
+    }
+  ]
+}
+```
+
+### Langkah 5: Perbarui status tugas persetujuan Pusat Proses
+
+**Terima atau tolak tugas persetujuan dengan logika kustom:** Penyetuju membuka halaman persetujuan kustom di DingTalk dan memilih tindakan seperti Terima atau Tolak. DingTalk kemudian memanggil API callback yang dikonfigurasi pada modul `CUSTOM_ACTION_APPLY` di Simpan Templat Persetujuan Integrasi Eksternal Pusat Proses. Setelah Aplikasi pihak ketiga menjalankan logika bisnisnya, Aplikasi wajib menyinkronkan status tugas ke DingTalk. Untuk memperbarui status item To-Do persetujuannya, panggil API [Perbarui status tugas Pusat Proses](/id/open/development/update-process-center-task-status) dengan ID instans persetujuan `processInstanceId` dan ID tugas To-Do persetujuan `taskId`.
+
+Dalam skenario seperti OR-sign, panggil API [Batalkan beberapa tugas tertunda Pusat Proses](/id/open/development/cancel-multiple-oa-approval-tasks). API ini mengubah semua item To-Do yang sedang berjalan dalam satu instans persetujuan menjadi CANCELED sekaligus.
+
+```json
+{
+  "processInstanceId": "qZpLKAxxxx43810",
+  "tasks": [
+    {
+      "taskId": 88094338042,
+      "status": "COMPLETED",
+      "result": "AGREE"
+    }
+  ]
+}
+```

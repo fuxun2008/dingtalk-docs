@@ -1,0 +1,1113 @@
+---
+title: "承認操作エリアのホスティング API プロトコル"
+description: "DingTalk承認の詳細ページにある操作エリアのボタンを、サードパーティアプリから自由にカスタマイズする API プロトコルを解説します。コールバックの登録からボタンの描画、承認操作の処理までの連携手順を紹介します。"
+---
+
+## 承認操作エリアの概要
+
+承認操作エリアは承認詳細ページの下部に表示され、操作ボタンが配置されています。例では、**コメント**、**グループディスカッションを作成**、**削除**、**元のフォームに戻る**、**却下**、**承認** のボタンが含まれています。サードパーティアプリは、このエリアのボタンをカスタマイズできます。
+
+## 承認操作エリアの仕組み
+
+サードパーティアプリは、承認テンプレートまたは承認インスタンスの作成時にコールバックを登録します。これにより、承認操作エリアにカスタムボタンを描画し、リクエストを送信できます。App は、ホスティング描画とユーザーリクエストの処理のために、次の 2 つの API を提供する必要があります。
+
+- **ボタンの描画：** DingTalk がサードパーティアプリをコールバックし、操作エリアのボタン定義を取得します。
+- **承認操作：** DingTalk がサードパーティの API をコールバックし、ユーザーが送信した承認操作を受け渡して処理させます。
+
+統合フローは、**サードパーティアプリ** から **承認バックエンド：OA Open API** を経て、**承認フロントエンド** へと進みます。承認フロントエンドは、**ToDo**、**承認センター**、**IM インタラクティブカード** の 3 つの画面に結果を描画します。サードパーティアプリは、次の手順を順番に実行します。
+
+1. テンプレートの作成
+2. インスタンスの作成
+3. 承認操作エリアのカスタム描画ボタンおよびリクエスト送信コールバックの登録
+4. タスクの作成
+
+描画および送信の際、承認フロントエンドは **SPI コールバック（描画 / 承認操作）** を通じてサードパーティアプリを呼び出します。このコールバックは **承認バックエンド：Open ゲートウェイ** によってルーティングされます。**ToDo** と **IM インタラクティブカード** の画面からは、承認操作のコールバックがトリガーされます。
+
+## コアモデルの定義
+
+- **ProcessFeatureConfig：プロセスセンター統合設定**
+
+  プロセスセンター統合モードでは、この設定により、サードパーティアプリが一部の業務機能モジュールに独自のロジックを定義できます。承認ページのホスティングソリューションは、この設定をベースにしています。サードパーティアプリは、詳細ページの承認操作エリアにあるすべてのボタンをカスタマイズできます。次の 2 つのコールバック API を追加で設定してください。
+
+  - CUSTOM_ACTION_DEFINITION：DingTalk がサードパーティアプリをコールバックし、操作エリアのボタン定義を取得します（ボタンの描画）。
+  - CUSTOM_ACTION_APPLY：DingTalk がサードパーティの API をコールバックし、ユーザーが送信した承認操作を受け渡して処理させます（承認操作）。
+
+  ```text
+  "featureConfig":{
+    "features":  [
+      {
+        // 操作エリア（ボタン）データを取得するためのコールバック URL（ボタンの描画）
+        "name":"CUSTOM_ACTION_DEFINITION",  
+        "runType":"OUTBIZ_CUSTOM",
+        "callback":{
+          "apiKey":"customActionDefinitionApiKey",
+          "appUuid":"appUuid",
+          "version":"1"
+        }
+      },
+      {
+        // 承認操作の実行時に呼び出されるコールバック URL（承認操作）
+        "name":"CUSTOM_ACTION_APPLY",  
+        "runType":"OUTBIZ_CUSTOM",
+        "callback":{
+          "apiKey":"customActionApplyApiKey",
+          "appUuid":"appUuid",
+          "version":"1"
+        }
+      }
+    ]
+  }
+  ```
+- **CustomActionDefinition：カスタム操作ボタン**
+
+  - **詳細ページの操作エリア**
+
+    |  |  |
+    | --- | --- |
+    | 公式 OA 承認：  共有、ダウンロード、印刷、再申請、テンプレートを編集  承認、却下、変更、取り消し、転送、リクエスト署名、差し戻し、コメント、グルチャ作成、自動化、承認フォームを削除  画像 | プロセスセンター ORIGIN ホスティングモード：  共有、ダウンロード、印刷  承認、却下、コメント、グループディスカッションを作成、削除、元のフォームに戻る  画像 |
+  - **詳細ページ操作エリアのボタン分類**
+
+    - ##### **共通ボタン**
+
+      DingTalk OA承認フォームの詳細ページのホスティングプラットフォームが、これらのボタンをデフォルトで提供します。そのまま再利用でき、連携側からデータを返す必要はありません。インタラクションはデフォルト実装で定義されています。各ボタンを表示するかどうかは業務側で設定できます。
+
+      |  |  |  |  |
+      | --- | --- | --- | --- |
+      | ボタン ID [actionType] | 機能 | インタラクションタイプ | 説明 |
+      | INSTANCE_SHARE | 承認フォームをグループチャットに共有 | クリックするとグループ選択画面が開きます。確定後にコールバックが実行されます。 | インタラクションはデフォルト実装で定義されています。ボタンを表示するかどうかは業務側で設定できます。 |
+      | INSTANCE_DOWNLOAD | 承認フォームをダウンロード。DingTalk が業務通知でファイルを送信します。 | クリックするとコールバックが実行され、プロンプトが表示されます。 | インタラクションはデフォルト実装で定義されています。ボタンを表示するかどうかは業務側で設定できます。 |
+      | INSTANCE_PRINT | 承認フォームを印刷 | クリックするとボタングループが開きます。 | インタラクションはデフォルト実装で定義されています。ボタンを表示するかどうかは業務側で設定できます。 |
+      | INSTANCE_DING | リマインダー：承認フローの申請者が、現在のノードの承認者にリマインダーを送信 | クリックすると DING コンポーネントが開きます。 | インタラクションはデフォルト実装で定義されています。ボタンを表示するかどうかは業務側で設定できます。 |
+      | INSTANCE_IM_GROUP | インスタンスに基づいてグループディスカッションを作成 | クリックするとユーザー選択画面が開きます。選択後に確認ダイアログが表示されます。 | インタラクションはデフォルト実装で定義されています。ボタンを表示するかどうかは業務側で設定できます。 |
+      | INSTANCE_COMMENT | 承認フォームにコメント | クリックするとコメントの確認ダイアログが開きます。 | インタラクションはデフォルト実装で定義されています。ボタンを表示するかどうかは業務側で設定できます。 |
+    - ##### **定義済みボタン**
+
+      フォームホスティングでは、これらの承認操作ボタンがあらかじめ用意されており、共通のインタラクションの仕組みが自動で実装されます。業務側は、現在のフローとユーザーに応じて、必要なボタンを渡します。実際の機能は連携側が実装するため、プロセスエンジンによって動作が多少異なる場合があります。
+
+      |  |  |  |
+      | --- | --- | --- |
+      | ボタン ID [actionType] | 機能 | 説明 |
+      | TASK_APPROVE | 承認タスクを承認 | インタラクションは固定です。ボタンテキストとコールバックロジックはカスタマイズできます。 |
+      | TASK_REJECT | 承認タスクを却下 | インタラクションは固定です。ボタンテキストとコールバックロジックはカスタマイズできます。 |
+      | TASK_FORWARD | 承認タスクを転送 | インタラクションは固定です。ボタンテキスト、選択可能なユーザー一覧、コールバックロジックはカスタマイズできます。 |
+      | TASK_APPEND | リクエスト署名 | インタラクションは固定です。ボタンテキスト、リクエスト署名で選択可能な承認者、リクエスト署名の方式、コールバックロジックはカスタマイズできます。 |
+      | INSTANCE_REVERT | 差し戻し | インタラクションは固定です。ボタンテキスト、差し戻し先ノードの一覧、コールバックロジックはカスタマイズできます。 |
+      | INSTANCE_MODIFY | 承認フォームを変更 | インタラクションは固定です。ボタンテキスト、グレーアウト状態、グレーアウトの理由などのプロパティはカスタマイズできます。 |
+      | INSTANCE_TERMINATE | 承認フォームを取り消し | インタラクションは固定です。ボタンテキスト、確認プロンプトのテキスト、コールバックロジックはカスタマイズできます。 |
+      | INSTANCE_DELETE | 承認フォームを削除 | インタラクションは固定です。ボタンテキスト、確認プロンプトのテキスト、コールバックロジックはカスタマイズできます。 |
+      | INSTANCE_EXTERNAL_DETAIL | 元のフォームに戻る：承認詳細ページに、外部の詳細ページを開くボタンを表示 | インタラクションは固定です。ボタンテキストと表示 / 非表示はカスタマイズできます。 |
+    - ##### **カスタム業務ボタン**
+
+      連携するサードパーティシステムが定義するボタンです。簡単な設定を行うだけで、定義済みボタンと同様のスタイルを適用できます。ユーザーがこのボタンをクリックすると、DingTalk が承認操作 API を通じて連携側のシステムをコールバックします。その後、連携側のシステムがカスタム操作のロジックを実行します。
+
+      |  |  |  |  |
+      | --- | --- | --- | --- |
+      | ボタン ID [actionType] | 機能 | インタラクションタイプ | 説明 |
+      | CUSTOM_ACTION_xxx | カスタム業務ボタン | プラットフォームがサポートする標準インタラクションタイプ：  - link：直接リダイレクト - confirm：確認ダイアログ - modal：ダイアログを開く（ダイアログ内のコンポーネントは業務側でカスタマイズ可能） | ホスティングプラットフォームが予約している ID と重複しないようにしてください。 |
+  - **ボタンの並び順と描画ルール**
+
+    ホスティングプラットフォームは、連携側から渡されたボタンをデフォルトで並べ替え、整形します。
+
+    - ホスティングプラットフォームは、共通ボタンを追加する必要があるかを確認し、必要に応じて追加します。
+    - DingTalk がサードパーティアプリをコールバックして操作エリアのボタン定義を取得し（ボタンの描画）、返されたデータに基づいてボタンを描画します。コールバックがエラーを返した場合は、ORIGIN ホスティングソリューションの既存ボタン（共有、ダウンロード、印刷、承認、却下、コメント、グループディスカッションを作成、削除、元のフォームに戻る）にフォールバックします。
+    - すべてのボタンの並び順：
+
+      - 共通ボタンが先頭に、固定の順序で表示されます。
+      - 続いて、定義済みボタンとカスタムボタンが渡された順に表示されます。
+- **CustomActionDefinition モデルリファレンス**
+
+  上記のボタン分類とインタラクションタイプに基づく操作ボタンのモデルは次のとおりです。
+
+  | **名前** | **型** | **意味** | **説明** |
+  | --- | --- | --- | --- |
+  | actions | list | 承認操作ボタン |  |
+  | ∟context | 文字列 | 業務側が定義する承認コンテキスト。ApplyAction API がそのまま受け渡します。 | コンテキストは業務側が定義する文字列です。DingTalk は承認コールバックでこの文字列を返し、業務側が現在のシナリオを識別できるようにします。 |
+  | ∟actionKey | 文字列 | 業務側が定義する操作キー。ApplyAction API がそのまま受け渡します。設定する場合は、actions 配列内で一意にする必要があります。 | 任意。デフォルトでは省略します。 |
+  | ∟actionType | 文字列 | 承認操作のタイプ（ボタンタイプ） | 列挙型。詳細は [**詳細ページ操作エリアのボタン分類**] の ProcessFeatureEnum 列挙型を参照してください。 |
+  | ∟name | i18n | 承認操作の名前 | 任意。デフォルトでは省略します。省略した場合は `actionType` のデフォルト名が適用されます。 |
+  | ∟icon | 文字列 | ボタンアイコン | 任意。デフォルトでは省略します。省略した場合はデフォルトアイコンが適用されます。  URL 値に対応しています。アイコンのサイズは DingTalk のデザイン仕様に準拠する必要があります。 |
+  | ∟hidden | 真偽値 | ボタンを非表示にするかどうか | 業務側は、共有、ダウンロード、印刷、コメント、グループ作成など、プラットフォーム組み込みの共通ボタンを非表示にできます。 |
+  | ∟disabled | 真偽値 | 無効 | フロントエンドでボタンがグレーアウト表示され、クリックできなくなります。 |
+  | ∟disabledReason | i18n | ボタンが無効になっている理由 | ボタンが無効の場合、このテキストがツールチップに表示されます。 |
+  | ∟primary | 真偽値 | プライマリボタンかどうか | プライマリボタンは、承認ボタンや却下ボタンのように大きく表示されます。ページ上に同時に 2 つを超えるプライマリボタンがある場合は、通常のボタンに格下げされます。 |
+  | ∟behavior | 文字列 | 開く動作。任意。 | 列挙型。詳細は BehaviorType 列挙型を参照してください。  - link：リンクを開く - modal：ダイアログを開く - confirm：確認ダイアログを開く |
+  | ∟behaviorProps | オブジェクト |  | 選択した動作タイプに応じた動作プロパティ  - link：開く URL を設定 - modal：ダイアログ内フォームコントロールのスキーマを設定 - confirm：確認ダイアログのタイトルとプロンプトのテキストを設定 |
+  | ∟title | 文字列 | タイトル。任意。behavior が confirm の場合は必須。 |  |
+  | ∟message | 文字列 | プロンプトのテキスト。任意。behavior が confirm の場合は必須。 |  |
+  | ∟link | 文字列 | 開くリンク。任意。behavior が link の場合は必須。 |  |
+  | ∟schema | json 配列  [&#123;  componentName: 'TextareaField',  **props: &#123;**  **id: 'comment',**  **&#125;,**  &#125;] | ダイアログ内のフォームコンポーネント一覧。behavior が modal の場合は必須。 | 「プロセスセンター外部統合承認テンプレートの保存」の [**FormComponent パラメータの説明**] を参照してください。  - **TextField**：単一行入力 - **TextareaField**：複数行入力 - **DDSelectField**：単一選択 - **DDMultiSelectField**：複数選択 - **TextNote**：説明テキストコントロール - **DDPhotoField**：画像コントロール - **DDAttachment**：添付 - **InnerContactField**：連絡先コントロール    - users string[]：staffId の一覧 |
+  | ∟componentName | 文字列 | コントロールタイプ |  |
+  | ∟props | json | コントロールの属性 | `{  "label": "単一行入力", // コントロールのタイトル  "placeholder": "入力してください", // 入力ヒント  "componentId": "TextField_17EZKEGSOCTC0", // コントロール ID。フォーム内で一意。業務上の意味はありません  "required": false, // 必須かどうか。デフォルトは任意  "bizAlias": "staffId" // コントロールの業務用表示名。フォーム内で一意。componentId とどちらか一方を使用します  }` |
+  | ∟value | 文字列 | コントロールの値 | 「プロセスセンター外部統合承認テンプレートの保存」の例を参照してください。 |
+
+  - **詳細ページ操作エリアのボタン分類の列挙型：ProcessFeatureEnum**
+
+    ```text
+    public enum ProcessFeatureEnum {
+      /**
+      * タスクを削除
+      */
+      TASK_DELETE,
+
+      /**
+      * タスクを転送
+      */
+      TASK_FORWARD,
+
+      /**
+      * タスクにリクエスト署名を追加
+      */
+      TASK_APPEND,
+
+      /**
+      * タスクに署名して既読にする
+      */
+      TASK_SIGN,
+
+      /**
+      * 承認フォームを共有
+      */
+      INSTANCE_SHARE,
+
+      /**
+      * 承認フォームをダウンロード
+      */
+      INSTANCE_DOWNLOAD,
+
+      /**
+      * 承認フォームを印刷
+      */
+      INSTANCE_PRINT,
+
+      /**
+      * 承認フォームを再申請
+      */
+      INSTANCE_RESUBMIT,
+
+      /**
+      * 承認を開始
+      */
+      INSTANCE_START,
+
+      /**
+      * 承認インスタンスを削除
+      */
+      INSTANCE_DELETE,
+
+      /**
+      * 詳細ページを表示
+      */
+      INSTANCE_DETAIL,
+
+      /**
+      * 承認フォームを取り消し
+      */
+      INSTANCE_TERMINATE,
+
+      /**
+      * 承認フォームを変更
+      */
+      INSTANCE_MODIFY,
+
+      /**
+      * 変更を取り消し
+      */
+      INSTANCE_REVOKE_MODIFY,
+
+      /**
+      * 承認フォームにコメント
+      */
+      INSTANCE_COMMENT,
+
+      /**
+      * インスタンスに基づいてグループディスカッションを作成
+      */
+      INSTANCE_IM_GROUP,
+
+      /**
+      * 承認フォームを差し戻し
+      */
+      INSTANCE_REVERT,
+
+      /**
+      * リマインダーを送信
+      */
+      INSTANCE_DING,
+
+      /**
+      * 承認詳細ページに、外部の詳細ページを開くボタンを表示
+      */
+      INSTANCE_EXTERNAL_DETAIL
+    }
+    ```
+  - **ボタンのインタラクション動作タイプの列挙型：CustomActionBehaviorTypeEnum**
+
+    ```text
+    public enum CustomActionBehaviorTypeEnum {
+        /**
+         * リンクを開く
+         */
+        LINK("link"),
+
+        /**
+         * ダイアログを開く
+         */
+        MODAL("modal"),
+
+        /**
+         * 確認ダイアログを開く
+         */
+        CONFIRM("confirm")
+    }
+    ```
+  - **ダイアログ内のフォームコンポーネント（behavior が modal の場合は必須）**
+
+    [承認テンプレートの作成または更新](/ja/open/development/create-orupdate-the-approval-template-new) の [**FormComponent パラメータの説明**] を参照してください。現在、次のフォームコンポーネントタイプに対応しています。
+
+    - **TextField**：単一行入力
+    - **TextareaField**：複数行入力
+    - **DDSelectField**：単一選択
+    - **DDMultiSelectField**：複数選択
+    - **TextNote**：説明テキストコントロール
+    - **DDPhotoField**：画像コントロール
+    - **DDAttachment**：添付
+    - **InnerContactField**：連絡先コントロール
+
+      - users string[]：staffId の一覧
+- **CustomActionDefinition モデルの例**
+
+  ```json
+  {
+    "code": 200,
+    "body": [
+      {
+        "actionKey": "default",
+        "actionType": "INSTANCE_COMMENT",
+        "name": "承認フォームにコメント",
+        "hidden": true
+      },
+      {
+        "actionKey": "default",
+        "actionType": "INSTANCE_DING",
+        "name": "リマインダーを送信",
+        "disabled": true,
+        "disabledReason": "この承認フォームはこの機能に対応していません"
+      },
+      {
+        "actionKey": "custom",
+        "actionType": "INSTANCE_EXTERNAL_DETAIL",
+        "name": "元のフォームに戻る",
+        "icon": "icon1",
+        "primary": false,
+        "behavior": "link",
+        "behaviorProps": {
+          "link": "https://www.dingtalk.io"
+        }
+      },
+      {
+        "actionKey": "general",
+        "actionType": "TASK_APPROVE",
+        "name": "承認",
+        "icon": "icon1",
+        "primary": true,
+        "behavior": "modal",
+        "behaviorProps": {
+          "schema": [
+            {
+              "componentName": "TextareaField",
+              "props": {
+                "label": "コメント",
+                "placeholder": "複数行テキストを入力してください。改行するには次を入力します \r\n",
+                "id": "TextareaField_comment",
+                "required": true,
+                "bizAlias": "comment",
+                "value": "承認コメントです\r\n"
+              }
+            }
+          ]
+        },
+        "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+        "disabled": false
+      },
+      {
+        "key": "general",
+        "actionType": "TASK_FORWARD",
+        "name": "承認して転送",
+        "icon": "icon2",
+        "primary": true,
+        "behavior": "modal",
+        "behaviorProps": {
+          "schema": [
+            {
+              "componentName": "InnerContactField",
+              "props": {
+                "label": "転送先",
+                "placeholder": "転送先を選択してください",
+                "id": "InnerContactField_forward_user",
+                "choice": "1",
+                "required": false,
+                "bizAlias": "taskForward",
+                "users": "[\"0135185610551036178639\",\"0135185610551036178639\"]",
+                "value": "[\"0135185610551036178639\"]"
+              }
+            },
+            {
+              "componentName": "TextareaField",
+              "props": {
+                "label": "コメント",
+                "placeholder": "複数行テキストを入力してください。改行するには次を入力します \r\n",
+                "id": "TextareaField_comment",
+                "required": true,
+                "bizAlias": "comment",
+                "value": "承認コメントです\r\n"
+                          }
+                      }
+                  ]
+              },
+              "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+              "disabled": false
+          }
+      ]
+  }
+  ```
+
+## 連携手順の例
+
+### ステップ 1：カスタム操作ボタンのコールバックを登録する
+
+1. 次の例のように、カスタム承認操作ボタンのコールバックを登録します。
+
+   ```json
+   {
+     // 操作エリア（ボタン）データを取得するためのコールバック URL（ボタンの描画）
+     "name": "CUSTOM_ACTION_DEFINITION",
+     "runType": "OUTBIZ_CUSTOM",
+     "callback": {
+       "apiKey": "getIntegratedCustomActionDefinitions",
+       "appUuid": "dingecxxxx97fcb1e09",
+       "version": "1"
+     }
+   },
+   {
+     // 承認操作の実行時に呼び出されるコールバック URL（承認操作）
+     "name": "CUSTOM_ACTION_APPLY",
+     "runType": "OUTBIZ_CUSTOM",
+     "callback": {
+       "apiKey": "applxxxxction",
+       "appUuid": "dingecxxxxb1e09",
+       "version": "1"
+     }
+   }
+   ```
+2. プロセスセンターが、承認操作エリアのカスタムボタン一覧を取得します。
+
+   - apiKey：getIntegratedCustomActionDefinitions
+   - URL：https://connector.dingtalk.io/webhook/flow/d8c375d76acb7eb01019fe0b
+   - パラメータ：corpId,processInstanceId,activityId,taskId,operator,platform,locale,context,customData
+   - apiSecret：getIntegratedCustomActionDefinitions
+
+### リクエスト例
+
+     ```json
+     {
+         "activityId": "001",
+         "processInstanceId": "fR7Adxxxx1716975",
+         "corpId": "dingecxxxxcb1e09",
+         "locale": "zh_CN",
+         "operator": "manager9814",
+         "platform": "pc",
+         "taskId": 876xxxx3607,
+         "customData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+     }
+     ```
+
+### 成功レスポンス例
+
+     ```json
+     {
+       "success": true,
+       "errorCode": "",
+       "errorMessage": "",
+       "result": [
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_EXTERNAL_DETAIL",
+           "name": "元のフォームに戻る",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "link",
+           "behaviorProps": {
+             "link": "https://www.dingtalk.io"
+           }
+         },
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_DELETE",
+           "name": "承認フォームを削除",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "confirm",
+           "behaviorProps": {
+             "title": "この承認フォームを削除しますか？",
+             "message": "削除したフォームは復元できません。慎重に操作してください。"
+           }
+         },
+         {
+           "actionKey": "general",
+           "actionType": "TASK_APPROVE",
+           "name": "承認",
+           "icon": "icon1",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "コメント",
+                   "placeholder": "複数行テキストを入力してください。改行するには次を入力します \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "承認コメントです\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         },
+         {
+           "key": "general",
+           "actionType": "TASK_FORWARD",
+           "name": "承認して転送",
+           "icon": "icon2",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "InnerContactField",
+                 "props": {
+                   "label": "転送先",
+                   "placeholder": "転送先を選択してください",
+                   "id": "InnerContactField_forward_user",
+                   "choice": "0",
+                   "required": false,
+                   "bizAlias": "taskForward",
+                   "users": [
+                     "0213523642-1025002834",
+                     "14516942141077447"
+                   ]
+                 }
+               },
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "コメント",
+                   "placeholder": "複数行テキストを入力してください。改行するには次を入力します \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "承認コメントです\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         }
+       ]
+     }
+     ```
+
+### エラーレスポンス例
+
+     ```json
+     {
+         "success": false,
+         "errorCode": "FORM_SPI_CUSTOM_ERROR",
+         "errorMessage": "サードパーティのコールバックエラー：承認操作エリアのカスタムボタン一覧の取得に失敗しました",
+         "result": []
+     }
+     ```
+3. プロセスセンターが、カスタムボタンの承認操作を実行します。
+
+   - apiKey：applyIntegratedCustomAction
+   - URL：https://connector.dingtalk.io/webhook/flow/a8d743d0afd948bd5d9dc2a8
+   - パラメータ：corpId,processInstanceId,activityId,taskId,operator,platform,locale,context,customData,formDataArray,actionKey,actionType
+   - apiSecret：applyIntegratedCustomAction
+
+### リクエスト例
+
+     ```json
+     {
+       "activityId": "001",
+       "processInstanceId": "fR7Adw93Rxxxx716975",
+       "corpId": "dingecxxxxfcb1e09",
+       "locale": "zh_CN",
+       "operator": "manager9814",
+       "platform": "pc",
+       "taskId": 87622494607,
+       "customData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+     }
+     ```
+
+### 成功レスポンス例
+
+     ```json
+     {
+       "success": true,
+       "errorCode": "",
+       "errorMessage": "",
+       "result": [
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_EXTERNAL_DETAIL",
+           "name": "元のフォームに戻る",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "link",
+           "behaviorProps": {
+             "link": "https://www.dingtalk.io"
+           }
+         },
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_DELETE",
+           "name": "承認フォームを削除",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "confirm",
+           "behaviorProps": {
+             "title": "この承認フォームを削除しますか？",
+             "message": "削除したフォームは復元できません。慎重に操作してください。"
+           }
+         },
+         {
+           "actionKey": "general",
+           "actionType": "TASK_APPROVE",
+           "name": "承認",
+           "icon": "icon1",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "コメント",
+                   "placeholder": "複数行テキストを入力してください。改行するには次を入力します \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "承認コメントです\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         },
+         {
+           "key": "general",
+           "actionType": "TASK_FORWARD",
+           "name": "承認して転送",
+           "icon": "icon2",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "InnerContactField",
+                 "props": {
+                   "label": "転送先",
+                   "placeholder": "転送先を選択してください",
+                   "id": "InnerContactField_forward_user",
+                   "choice": "0",
+                   "required": false,
+                   "bizAlias": "taskForward",
+                   "users": [
+                     "0213523642-1025002834",
+                     "14516942141077447"
+                   ]
+                 }
+               },
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "コメント",
+                   "placeholder": "複数行テキストを入力してください。改行するには次を入力します \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "承認コメントです\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         }
+       ]
+     }
+     ```
+
+### エラーレスポンス例
+
+     ```json
+     {
+       "success": false,
+       "errorCode": "FORM_SPI_CUSTOM_ERROR",
+       "errorMessage": "サードパーティのコールバックエラー：承認操作エリアのカスタムボタン一覧の取得に失敗しました",
+       "result": []
+     }
+     ```
+
+### ステップ 2：プロセスセンターの承認テンプレートを保存する
+
+**承認テンプレートのデータを DingTalk に同期：** 新しいサーバー API「プロセスセンター外部統合承認テンプレートの保存」を呼び出し、テンプレートの一意のコード `processCode` を取得します。
+
+<Note>
+このシナリオでは、processFeatureConfig で 2 つのモジュールをカスタマイズします。CUSTOM_ACTION_DEFINITION は、操作エリアのボタンデータを取得するためのコールバック URL（ボタン描画コールバック）です。CUSTOM_ACTION_APPLY は、承認操作の実行時に呼び出されるコールバック URL（承認操作コールバック）です。
+</Note>
+
+```json
+{
+  "name": "承認ページホスティング統合モード",
+  "description": "プロセスセンターのカスタムホスティングモード：カスタム承認操作エリア",
+  "formComponents": [
+    {
+      "componentType": "TextField",
+      "props": {
+        "componentId": "TextField-1",
+        "label": "単一行入力",
+        "required": true,
+        "bizAlias": "TextField-bizAlias",
+        "disabled": false
+      }
+    },
+    {
+      "componentType": "TextareaField",
+      "props": {
+        "placeholder": "入力してください",
+        "label": "複数行入力"
+      }
+    },
+    {
+      "componentType": "NumberField",
+      "props": {
+        "placeholder": "数値を入力してください",
+        "label": "数値入力",
+        "id": "NumberField-1"
+      }
+    },
+    {
+      "componentType": "DDSelectField",
+      "props": {
+        "options": [ // 選択可能なオプションの一覧
+          {
+            "value": "選択肢1", // オプションの表示名
+            "key": "option_0" // コントロール内で一意のキー。任意。デフォルトではシステムが自動生成します
+          },
+          {
+            "value": "選択肢2",
+            "key": "option_1"
+          },
+          {
+            "value": "選択肢3",
+            "key": "option_2"
+          },
+          {
+            "key": "other", // 「その他」オプション用の特殊キー
+            "value": "その他"
+          }
+        ],
+        "label": "単一選択",
+        "placeholder": "選択してください",
+        "componentId": "DDSelectField_1",
+        "required": false
+      }
+    },
+    {
+      "componentType": "DDMultiSelectField",
+      "props": {
+        "options": [
+          {
+            "value": "選択肢1",
+            "key": "option_0"
+          },
+          {
+            "value": "選択肢2",
+            "key": "option_1"
+          },
+          {
+            "value": "選択肢3",
+            "key": "option_2"
+          },
+          {
+            "key": "other", // 「その他」オプション用の特殊キー
+            "value": "その他"
+          }
+        ],
+        "label": "複数選択",
+        "placeholder": "選択してください",
+        "componentId": "DDMultiSelectField_1",
+        "required": false
+      }
+    },
+    {
+      "componentType": "DDDateField",
+      "props": {
+        "unit": "小时", // 時間。日付の単位。列挙値：小时（時間）、天（日）
+        "format": "yyyy-MM-dd HH:mm", // 日付の形式。任意。時間単位は yyyy-MM-dd HH:mm、日単位は yyyy-MM-dd を使用
+        "bizAlias": "",
+        "label": "日付",
+        "placeholder": "選択してください",
+        "componentId": "DDDateField_1",
+        "required": false,
+        "defaultValue": "2021-12-21 17:46" // デフォルト値
+      }
+    },
+    {
+      "componentType": "DDDateRangeField",
+            "props": {
+                "unit": "天", // 日
+                "format": "yyyy-MM-dd",
+                "bizAlias": "",
+                "label": "[\"開始時刻\",\"終了時刻\"]",
+                "placeholder": "選択してください",
+                "componentId": "DDDateRangeField_1",
+                "duration": true, // 期間を自動計算するかどうか
+                "durationLabel": "期間", // 計算された期間の表示テキスト
+                "required": false
+            }
+        },
+        {
+            "componentType": "TextNote",
+            "props": {
+                "link": "https://www.dingtalk.io/", // ハイパーリンク
+                "notPrint": "0",
+                "bizAlias": "",
+                "componentId": "TextNote_1",
+                "content": "これは説明文です" // 説明テキスト
+            }
+        },
+        {
+            "componentType": "DDPhotoField",
+            "props": {
+                "label": "画像",
+                "componentId": "DDPhotoField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "MoneyField",
+            "props": {
+                "upper": "0", // 金額を中国語の大写数字で表示するかどうか（0：表示しない、1：表示する）。デフォルトは大写表示
+                "label": "金額（CNY）",
+                "placeholder": "金額を入力してください",
+                "componentId": "MoneyField_1",
+                "required": false
+            }
+        },
+        {
+            "children": [
+                {
+                    "componentType": "TextField",
+                    "props": {
+                        "label": "単一行入力",
+                        "placeholder": "入力してください",
+                        "componentId": "TextField_1UE1ZY1A28AO0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "MoneyField",
+                    "props": {
+                        "upper": "0",
+                        "bizAlias": "",
+                        "label": "金額（CNY）",
+                        "placeholder": "金額を入力してください",
+                        "componentId": "MoneyField_1S85G0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "NumberField",
+                    "props": {
+                        "unit": "CNY",
+                        "bizAlias": "",
+                        "label": "数値入力",
+                        "placeholder": "数値を入力してください",
+                        "componentId": "NumberField_1XP6A",
+                        "required": false
+                    }
+                }
+            ],
+            "componentType": "TableField",
+            "props": {
+                "tableViewMode": "table",
+                "verticalPrint": true,
+                "statField": [
+                    {
+                        "componentId": "MoneyField_1S85G0",
+                        "label": "金額（CNY）"
+                    },
+                    {
+                        "componentId": "NumberField_1XP6A",
+                        "label": "数値入力"
+                    }
+                ],
+                "bizAlias": "table",
+                "label": "テーブル",
+                "componentId": "TableField_1MLEPEA"
+            }
+        },
+        {
+            "componentType": "DDAttachment",
+            "props": {
+                "label": "添付",
+                "componentId": "DDAttachment_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "InnerContactField",
+            "props": {
+                "label": "連絡先",
+                "placeholder": "選択してください",
+                "componentId": "InnerContactField_1",
+                "choice": "1", // 列挙値：1 は複数選択、0 は単一選択に対応。デフォルトは 0
+                "required": false,
+                "bizAlias": ""
+            }
+        },
+        {
+            "componentType": "DepartmentField",
+            "props": {
+                "multiple": false, // 複数選択に対応するかどうか。true は複数選択、false は単一選択
+                "label": "部門",
+                "placeholder": "選択してください",
+                "componentId": "DepartmentField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "RelateField",
+            "props": {
+                "label": "関連承認フォーム",
+                "placeholder": "選択してください",
+                "componentId": "RelateField_1",
+                "required": false,
+                "bizAlias": "",
+                "availableTemplates": [ // 関連付け可能な承認テンプレート。空の場合は、すべての承認テンプレートのインスタンスデータを関連付け可能
+                ]
+            }
+        },
+        {
+            "componentType": "AddressField",
+            "props": {
+                "addressModel": "district", // 列挙値：city（省/市）、district（省/市/区）、street（省/市/区/街道）
+                "bizAlias": "",
+                "label": "省/市/区",
+                "componentId": "AddressField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "StarRatingField",
+            "props": {
+                "limit": 5, // 列挙値：5 段階評価、10 段階評価
+                "label": "評価点",
+                "placeholder": "入力してください",
+                "componentId": "StarRatingField_1",
+                "required": false,
+                "bizAlias": ""
+            }
+        }
+    ],
+    "processFeatureConfig": {
+        "features": [
+            {
+                // 操作エリア（ボタン）データを取得するためのコールバック URL（ボタンの描画）
+                "name": "CUSTOM_ACTION_DEFINITION",
+                "runType": "OUTBIZ_CUSTOM",
+                "callback": {
+                    "apiKey": "getIntegratedCustomActionDefinitions",
+                    "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            },
+            {
+                // 承認操作の実行時に呼び出されるコールバック URL（承認操作）
+                "name": "CUSTOM_ACTION_APPLY",
+                "runType": "OUTBIZ_CUSTOM",
+                "callback": {
+                    "apiKey": "applyIntegratedCustomAction",
+                    "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            }
+        ]
+    }
+}
+```
+
+### ステップ 3：プロセスセンターの承認インスタンスを保存する
+
+**承認インスタンスのデータを DingTalk に同期：** テンプレートコード `processCode` を使用して、新しいサーバー API「プロセスセンター外部統合承認インスタンスの保存」を呼び出します。この呼び出しにより承認インスタンスが開始され、承認インスタンス ID `processInstanceId` が返されます。
+
+<Note>
+承認テンプレートの作成時にカスタム承認操作ボタンの設定を登録していない場合は、インスタンスの作成時に指定してください。テンプレートとインスタンスの両方で設定した場合は、インスタンス側の設定が優先されます。
+</Note>
+
+```json
+{
+  "formComponentValueList": [
+    {
+      "name": "単一行入力",
+      "value": "[DingTalk](https://www.dingtalk.io/)"
+    },
+    {
+      "name": "複数行入力",
+      "value": "複数行テキストを入力してください。改行するには次を入力します \r\n複数行テキストを入力してください。改行するには次を入力します \r\n"
+    },
+    {
+      "name": "数値入力",
+      "value": "100"
+    },
+    {
+      "name": "単一選択",
+      "value": "選択肢1"
+    },
+    {
+      "name": "複数選択",
+      "value": "[\"選択肢1\",\"選択肢2\"]"
+    },
+    {
+      "name": "日付",
+      "value": "2021-08-17 11:11"
+    },
+    {
+      "name": "[\"開始時刻\",\"終了時刻\"]",
+      "value": "[\"2019-02-19 11:11\",\"2019-02-25 11:11\"]"
+    },
+    {
+      "name": "画像",
+      "value": "[\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"http://url3\"]"
+    },
+    {
+      "name": "テーブル",
+      "value": "[[{\"name\":\"単一行入力\",\"value\":\"[DingTalk](https://www.dingtalk.io/)\"},{\"name\":\"数値入力\",\"value\":\"100\"}]]"
+    },
+    {
+      "name": "金額（CNY）",
+      "value": "100"
+    },
+    {
+      "name": "添付",
+      "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": \"643xxxx140\"}]"
+    },
+    {
+      "name": "連絡先",
+      "value": "[\"0135185610551036178639\"]"
+    },
+    {
+      "name": "関連承認フォーム",
+      "value": "[\"9XCLWKxNTom6W_u88iKbug09641720074458\", \"9XCLWKxNTom6W_u88iKbug09641720074458\"]"
+    },
+    {
+      "name": "電話番号",
+      "value": "18015586666"
+    },
+    {
+      "name": "省/市/区",
+      "value": "北京市,北京市,河東区"
+    },
+    {
+      "name": "評価点",
+      "value": "5"
+    },
+    {
+      "name": "部門",
+      "value": "714738614"
+    }
+  ],
+  "title": "承認ページホスティング統合モード",
+  "processCode": "PROC-A807C4FF-93AF-409A-A0C5-197CC81E8FF9",
+  "originatorUserId": "manager9814",
+  "url": "http://www.dingtalk.io",
+  "notifiers": [
+    {
+      "userid": "manager9814",
+      "position": "start"
+    }
+  ],
+  "featureConfig": {
+    "features": [
+      {
+        // 操作エリア（ボタン）データを取得するためのコールバック URL（ボタンの描画）
+        "name": "CUSTOM_ACTION_DEFINITION",
+        "runType": "OUTBIZ_CUSTOM",
+        "callback": {
+          "apiKey": "getIntegratedCustomActionDefinitions",
+          "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+          "version": "1"
+        }
+      },
+      {
+        // 承認操作の実行時に呼び出されるコールバック URL（承認操作）
+        "name": "CUSTOM_ACTION_APPLY",
+        "runType": "OUTBIZ_CUSTOM",
+        "callback": {
+          "apiKey": "applyIntegratedCustomAction",
+          "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            }
+        ]
+    },
+    "bizData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+}
+```
+
+### ステップ 4：プロセスセンターの承認タスクを保存する
+
+**承認タスクのデータを DingTalk に同期：** 承認インスタンス ID `processInstanceId` と ToDo リスト `tasks` を指定して、「プロセスセンター外部統合承認タスクの保存」を呼び出します。この呼び出しにより、サードパーティシステムの承認ノード情報が DingTalk OA承認に同期されます。また、各 ToDo の taskId が返され、対応する DingTalk の ToDo タスクが作成されます。
+
+```json
+{
+  "processInstanceId": "snfwBxxxx392174",
+  "activityId": "001",
+  "tasks": [
+    {
+      "userId": "manager9814",
+      "url": "https://www.dingtalk.io"
+    },
+    {
+      "userId": "013xxxx639",
+      "url": "https://www.dingtalk.io"
+    }
+  ]
+}
+```
+
+### ステップ 5：プロセスセンターの承認タスクのステータスを更新する
+
+**カスタムロジックで承認タスクを承認または却下：** 承認者が DingTalk でカスタム承認ページを開き、承認や却下などの操作を選択します。すると DingTalk は、「プロセスセンター外部統合承認テンプレートの保存」の `CUSTOM_ACTION_APPLY` モジュールに設定されたコールバック API を呼び出します。サードパーティアプリは業務ロジックを実行した後、タスクのステータスを DingTalk に同期する必要があります。自身の承認 ToDo のステータスを更新するには、承認インスタンス ID `processInstanceId` と承認 ToDo タスク ID `taskId` を指定して、[プロセスセンターのタスクステータスの更新](/ja/open/development/update-process-center-task-status) API を呼び出します。
+
+或签（OR 署名）などのシナリオでは、[プロセスセンターの複数の保留中タスクのキャンセル](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出します。この API は、承認インスタンス配下で実行中のすべての ToDo を一括で CANCELED に設定します。
+
+```json
+{
+  "processInstanceId": "qZpLKAxxxx43810",
+  "tasks": [
+    {
+      "taskId": 88094338042,
+      "status": "COMPLETED",
+      "result": "AGREE"
+    }
+  ]
+}
+```

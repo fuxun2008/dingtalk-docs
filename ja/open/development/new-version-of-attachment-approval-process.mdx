@@ -1,0 +1,588 @@
+---
+title: "承認添付ファイルの作業フロー"
+description: "DingTalkのOA承認APIで承認添付ファイルをプレビュー・安全にダウンロードする方法を解説。承認用ドライブスペースの権限分離により、契約書や請求書などの機密ファイルを適切に保護できます。"
+---
+
+# OA承認連携：承認添付ファイルのダウンロードとプレビュー
+
+## 概要
+
+### 背景
+
+組織のOA承認フローでは、契約書、請求書、資格証明書などの添付ファイルを扱う場面が多くあります。承認者は、内容を確認するために DingTalk 上で添付ファイルを直接プレビューまたはダウンロードする必要があります。OA承認の添付ファイル API を利用すると、DingTalk 上で承認添付ファイルのオンラインプレビュー、安全なダウンロード、バージョン管理を行えます。承認者は元のシステムに切り替えずに添付ファイルを確認できるため、承認効率が向上し、一貫した操作体験を実現できます。
+
+組織では一般的に次のような課題があります。
+
+- **添付ファイルの確認までの手間が多い：** 承認詳細ページには添付ファイルの名前とサイズしか表示されません。承認者は内容をプレビューするために業務システムへ切り替える必要があります。承認 1 件あたり約 2 分余計にかかり、1 日で 30 分以上のロスになります。
+- **モバイルでプレビューできない：** 多くの業務システムはモバイルデバイスでの添付ファイルのプレビューに対応していません。出張中や通勤中の承認者は、契約条項や請求書の明細などの重要な添付ファイルをスマートフォンで確認できず、承認判断が遅れます。
+- **添付ファイルのダウンロードを制御できない：** 給与明細や取引契約書などの機密性の高い添付ファイルを、誰でもダウンロードして転送できてしまいます。透かし、コピー制限、有効期限の設定がないため、情報漏えいのリスクが現実的に存在します。
+- **添付ファイルのバージョンを区別しにくい：** 承認フォームに同じ添付ファイルの複数バージョンが含まれている場合、DingTalk ではバージョン番号やタイムスタンプを識別できません。承認者が古いファイルを確認し、誤った判断を下すおそれがあります。
+
+### 主なメリット
+
+- **添付ファイル処理をエンドツーエンドで自動化：** ドライブスペースの取得、ファイルのアップロードから、承認インスタンスの作成、承認添付ファイルのダウンロード・プレビューの権限付与まで、すべて API で処理します。手作業は不要です。
+- **統一された承認体験：** 承認者は外部システムに切り替えたり、ファイルをローカルにダウンロードしたりすることなく、DingTalk 上で添付ファイルの詳細を確認して承認操作を行えます。
+- **安全で管理されたデータ：** 承認用ドライブスペースは権限分離されているため、添付ファイルには許可された範囲内でのみアクセスできます。一時的なダウンロード権限とプレビューリンクにより、機密ファイルを保護します。
+
+### ユースケース
+
+本ソリューションは、自社の業務システムから添付ファイル付きの承認を申請し、承認フローの中でその添付ファイルをダウンロードまたはプレビューする必要がある場合に適用できます。代表的なユースケースは次のとおりです。
+
+- **契約承認：** 契約書のスキャンデータ、履行保証書などの法務文書を添付します。
+- **購買承認：** 見積書、サプライヤーの資格証明書、保守履歴などのファイルを添付します。
+- **経費精算承認：** 請求書の画像、経費明細表などの経理証憑を添付します。
+- **プロジェクト検収：** 検収報告書、現場写真、検査報告書などの資料を添付します。
+
+## 代表的な業務シナリオ
+
+### シナリオ 1：建設工事契約の承認（建設業）
+
+#### 課題
+
+ある大手建設グループは、自社開発のプロジェクト管理システムで建設工事契約の承認を管理しています。プロジェクトマネージャーは契約の承認を申請する際、契約書のスキャンデータ、相手方の営業許可証、履行保証書など複数のファイルを添付する必要があります。従来のプロセスには次の問題がありました。
+
+- **添付ファイルの受け渡しが非効率：** 紙の契約書をスキャンして各階層の承認者にメールで送付する必要があり、平均 2〜3 営業日かかっていました。緊急の契約を期限内に進められないこともありました。
+- **バージョン管理が煩雑：** 複数回の修正を経た契約書の各バージョンが、複数のユーザーのメールボックスに散在していました。承認者は最新版を特定しにくく、誤ったバージョンに署名するリスクがありました。
+- **コンプライアンス審査が困難：** 法務・経理の承認者は承認画面で添付ファイルを直接確認できませんでした。資料を印刷して 1 件ずつ確認する必要があり、時間がかかるうえ、重要な条項を見落とすおそれがありました。
+- **監査証跡がない：** 手作業で受け渡しされた添付ファイルには操作ログが残りませんでした。監査担当者は、承認フローにおけるファイルの流れや責任の所在を追跡できませんでした。
+
+#### 導入効果
+
+- **プロセスの自動化**
+
+  契約承認フローをエンドツーエンドで自動化します。
+
+  1. プロジェクト管理システムから契約承認を申請します（建築図面や契約書ファイルなどをアップロード）。
+  2. API 連携レイヤーがインターフェース呼び出しを処理し、**認証**、**権限付与**、**ルーティング**、**ログ記録**を担います。
+  3. DingTalk 内に承認フォームが表示され、契約書の添付ファイル、相手方の資格情報、過去の締結記録が表示されます。
+  4. 承認者は DingTalk モバイルクライアントから内容を確認し、**却下** / **承認** の操作を行います。必要に応じて承認コメントを入力できます。
+  5. 結果はプロジェクト管理システムに書き戻され、データが双方向に同期されます。
+
+  自動化された統合フロー：**プロジェクト管理システムからアップロード** > **DingTalk 承認センター** > **承認者がアプリ内で確認** > **結果をリアルタイムで書き戻し**。
+- **主な利点**
+
+  - **添付ファイルの詳細を確認してワンクリックで承認：** 承認者はシステムを切り替えることなく、DingTalk 上で契約の詳細を確認して操作できます。
+  - **承認フローをリアルタイムで可視化：** DingTalk には、添付ファイル一覧、相手方の資格情報、過去の締結記録など、契約データ全体が表示されます。承認の進捗がひと目でわかり、コメントやリマインドにも対応しています。
+  - **エンドツーエンドのデータ同期：** 承認結果はリアルタイムでプロジェクト管理システムに書き戻されます。申請が却下された場合は、申請者に追加資料の提出が自動で通知されます。双方のデータの整合性と追跡性が保たれ、契約承認のサイクルは 60% 以上短縮されます。
+
+### シナリオ 2：大学の研究費精算承認（教育業）
+
+#### 課題
+
+ある有力大学では、研究管理システムで教員の研究費精算を処理しています。研究代表者は精算を申請する際、請求書のスキャンデータ、出張承認書、会議の招待状などの証憑資料を添付する必要があります。従来のプロセスには次の問題がありました。
+
+- **証憑の確認が煩雑：** 経理担当者は、請求書の真正性や金額を確認するために研究システムとメールを何度も行き来する必要がありました。精算 1 件の審査に 40 分以上かかっていました。
+- **資料の不備を防ぎにくい：** 添付資料の要件は研究プロジェクトごとに大きく異なります。承認者は必要な資料がすべて揃っているかをオンラインですばやく確認できず、書類不備による差し戻し率は 35% に達していました。
+- **キャンパス間のコラボレーションの遅延：** 本部キャンパスの経理部門と分校の研究事務担当者は、紙の書類のオフラインでの受け渡しに頼っていました。遠隔キャンパスの精算は、本部キャンパスより 5〜7 日遅れていました。
+- **予算管理が不十分：** 精算承認がプロジェクトの予算上限と連動していませんでした。予算超過は事後にしか発覚せず、事前に防ぐ仕組みがありませんでした。
+
+#### 導入効果
+
+- **プロセスの自動化**
+
+  自動化された精算フローは次の 5 つの段階で進みます。
+  1. **経理が精算を申請** — 証憑の取り込みと経費の入力。
+  2. **システムによる自動検証**（**API** 経由）— 予算の照合と資料の審査。
+  3. **DingTalk 内での承認** — フォームを表示した多段階承認。
+  4. **承認者の操作** — モバイルでの承認と迅速な処理。
+  5. **結果を経理システムに同期** — ステータスの書き戻しとデータ同期。
+
+  従来の手作業によるフロー（**手書きの申請書** > **メール** > **手作業での照合** > **紙での保管**）と比べ、自動化フローでは統一された入口、リアルタイムの同期、アプリ内メッセージによる通知を実現します。
+- **主な利点**
+
+  - **証憑と予算をオンラインで連携：** 承認者は請求書の画像、プロジェクトの予算残高、精算履歴を DingTalk 上で直接確認し、コンプライアンスチェックを一か所で完了できます。
+  - **資料の不足をスマートに通知：** システムがプロジェクトの種類に応じて必要な添付ファイルを自動で一覧表示し、不足している項目を強調表示するため、不要な差し戻しを減らせます。
+  - **キャンパス間の承認を遅延なく実施：** すべての添付ファイルは承認用ドライブスペースに一元的に保存されます。分校の担当者は紙の書類を待たずにオンラインで承認でき、精算の処理時間は 70% 以上改善されます。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+本ソリューションの技術アーキテクチャは、次のコアコンポーネントで構成されます。
+
+- **認証レイヤー：** アプリ認証情報を管理してアクセストークンを取得し、すべての API 呼び出しの身元を検証します。
+- **ドライブ管理レイヤー：** 承認用ドライブスペースを取得してファイルをアップロードし、添付ファイルの安全な保存と権限分離を実現します。
+- **インスタンス実行レイヤー：** 承認インスタンスの申請、照会、追跡を行い、承認フローを進行させます。
+- **添付ファイル権限付与レイヤー：** 承認添付ファイルのダウンロードとプレビューに権限を付与し、機密ファイルが許可された範囲内でのみ利用されるようにします。
+
+### 前提条件
+
+- **アプリの準備：** [アプリの作成と設定](/ja/open/dingstart/create-application)を完了し、クライアント ID と Client Secret を取得します。
+- **権限要件：** DingTalk の組織管理者またはサブ管理者の権限を持ち、次の API 権限を申請します。
+
+  - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）
+  - `Workflow.Instance.Write`（承認インスタンスの書き込み権限）
+  - `Workflow.Instance.Read`（承認インスタンスの読み取り権限）
+- **開発環境：** Java 開発環境（JDK 1.6 以降）と Maven ビルドツールをインストールします。
+- **SDK の準備：** DingTalk のサーバーサイド SDK をダウンロードします。Java、Python、Go などの言語に対応しています。
+
+### コード実装
+
+ステップ 1：アプリの詳細ページに移動し、クライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限を申請します。必要な「OA承認」の権限を申請してください。
+
+ステップ 3：アプリのアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app)を参照してください。アクセストークンは、API 呼び出し時に呼び出し元の身元を認証するために使用します。
+
+ステップ 4：OA承認の API とクライアントサイド JSAPI を呼び出します。
+
+1. サーバー API [承認用ドライブスペース情報の取得](/ja/open/development/obtains-the-information-about-approval-nail-disk)を呼び出し、承認用ドライブスペースの `spaceId` を取得します。
+2. 添付ファイルをドライブにアップロードする、またはドライブからファイルを選択するクライアントサイド JSAPI を呼び出し、ファイルの基本情報を取得します。
+3. 一意のテンプレートコード `processCode` を取得します。
+
+   - [DingTalk 管理コンソール](https://oa.dingtalk.io/index.htm#/microApp/microAppListNew)の OA承認で承認テンプレートを開いて取得します。
+   - サーバー API [承認フォームテンプレートの作成または更新](/ja/open/development/create-an-approval-form-template)を呼び出して承認テンプレートを作成し、`processCode` を取得します。
+4. サーバー API [承認インスタンスの作成](/ja/open/development/create-an-approval-instance)を呼び出して承認を申請し、承認インスタンスの `instanceId` を取得します。
+5. 承認インスタンスの `instanceId` を使用してサーバー API [単一の承認インスタンスの詳細の取得](/ja/open/development/obtains-the-details-of-a-single-approval-instance-pop)を呼び出し、承認インスタンスの詳細から `fileId` を取得します。
+6. 承認添付ファイルに対する操作を行います。
+
+   1. 承認添付ファイルをダウンロードする
+
+      1. サーバー API [承認用ドライブファイルのダウンロード権限の付与](/ja/open/development/download-the-approval-nail-file)を呼び出し、承認用ドライブファイルへのアクセス権限を付与します。
+      2. サーバー API [承認添付ファイルのダウンロード](/ja/open/development/download-an-approval-attachment)を呼び出してファイルリンク `downloadUri` を取得し、ファイルをダウンロードします。現時点では、サードパーティアプリからこの API を呼び出すことはできません。
+   2. 承認添付ファイルをプレビューする
+
+      1. サーバー API [承認添付ファイルのプレビュー権限の付与](/ja/open/development/official-authorized-preview-approval-attachment)を呼び出し、ドライブファイルのプレビューを有効にします。
+      2. ドライブファイルをプレビューするクライアントサイド JSAPI を呼び出し、ファイルをプレビューします。
+
+## 実装手順
+
+### **ステップ 1：アプリ認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/)にログインします。
+2. 対象のアプリを選択し、アプリの詳細ページを開きます。
+3. **ベーシック情報** > **認証情報とベーシック情報** をクリックします。
+4. アプリの `Client ID` と `Client Secret` を控えておきます。
+
+### 注意
+
+   `Client Secret` は安全に保管し、第三者と共有しないでください。コードにハードコーディングせず、環境変数またはシークレット管理システムに保存してください。
+
+### ステップ 2：API 権限を追加する
+
+1. アプリの詳細ページで **権限管理** をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）：承認フォームテンプレートの作成と更新に使用します
+   - `Workflow.Instance.Write`（承認インスタンスの書き込み権限）：承認インスタンスの申請と実行に使用します
+   - `Workflow.Instance.Read`（承認インスタンスの読み取り権限）：承認インスタンスの詳細の照会に使用します
+
+<Note>
+業務シナリオによって、必要な権限の組み合わせは異なります。実際の要件に応じて申請してください。
+</Note>
+
+### ステップ 3：アクセス認証情報（アクセストークン）を取得する
+
+ステップ 1 で取得した Client ID と Client Secret を使用して、アプリのアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app)を参照してください。
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略：** `accessToken` の有効期間は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に事前に更新してください。
+- **同時実行の制御：** 複数のスレッドが同時にトークンを更新して競合が発生しないよう、分散ロックを使用してください。
+- **エラー時の再試行：** ネットワークが不安定な場合は自動で再試行します。再試行は最大 3 回とし、間隔を段階的に延ばします（1 秒 → 2 秒 → 4 秒）。
+
+### ステップ 4：コア API を呼び出す
+
+1. **承認用ドライブスペース情報を取得する：** サーバー API [承認用ドライブスペース情報の取得](/ja/open/development/obtains-the-information-about-approval-nail-disk)を呼び出し、承認用ドライブスペースの `spaceId` を取得します。
+
+   ```java
+   public void ProcessSpaceInfo() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders getAttachmentSpaceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders();
+           getAttachmentSpaceHeaders.xAcsDingtalkAccessToken ="accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest getAttachmentSpaceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest()
+                   .setUserId("manager7675")
+                   .setAgentId(11******75L);
+           try {
+               GetAttachmentSpaceResponse attachmentSpaceWithOptions = client.getAttachmentSpaceWithOptions(getAttachmentSpaceRequest, getAttachmentSpaceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(attachmentSpaceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメーター
+
+   - `userId`：申請者のユーザー ID。
+   - `agentId`：アプリの AgentId。
+
+### レスポンスフィールド
+
+   - `spaceId`：承認用ドライブスペースの ID。
+2. **添付ファイルをドライブにアップロードする：** 添付ファイルをドライブにアップロードする、またはドライブからファイルを選択するクライアントサイド JSAPI を呼び出し、ファイルの基本情報を取得します。この例では [JSAPI Explorer](https://open.dingtalk.io/tools/explorer/jsapi?id=10318) を使用します。
+
+### 重要
+
+   このメソッドを呼び出す前に、[承認用ドライブスペース情報の取得](/ja/open/development/obtains-the-information-about-approval-nail-disk)を呼び出して権限付与を完了してください。
+3. **承認テンプレートコード** `processCode` **を取得する：** 次のいずれかの方法で、一意のテンプレートコード `processCode` を取得します。
+
+   - **方法 1：** [DingTalk 管理コンソール](https://aflow.dingtalk.io/dingtalk/web/query/dashboard?dinghash=aflowSetting#/aflowSetting)の OA承認で承認テンプレートを開いて取得します。詳細は [processCode](/ja/open/development/workflow-overview) の説明を参照してください。
+   - **方法 2：** サーバー API [承認フォームテンプレートの作成または更新](/ja/open/development/create-an-approval-form-template)を呼び出して承認テンプレートを作成し、`processCode` を取得します。
+
+     ```java
+      public void createProcessTemplate() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+             FormCreateHeaders formCreateHeaders = new FormCreateHeaders();
+             formCreateHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+             // 1. 単一行入力コンポーネント
+             FormComponentProps formComponentProps = new FormComponentProps()
+                     .setComponentId("DDAttachment-sys1001")
+                     .setLabel("添付");
+             FormComponent formComponent = new FormComponent()
+                     .setComponentType("DDAttachment")
+                     .setProps(formComponentProps);
+
+             FormCreateRequest formCreateRequest = new FormCreateRequest()
+                     .setName("承認添付ファイルフォーム")
+                     .setDescription("承認添付ファイルコンポーネントのテスト")
+                     // processCode を指定するとテンプレートを更新し、指定しない場合はテンプレートを作成します。この例ではテンプレートを作成します
+                     //.setProcessCode("PROC-42928B7C-****-****-****-B52B4E1702FC")
+                     .setFormComponents(java.util.Arrays.asList(
+                             formComponent
+                     ));
+             try {
+                 FormCreateResponse formCreateResponse = client.formCreateWithOptions(formCreateRequest, formCreateHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(formCreateResponse.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+### リクエストパラメーター
+
+     - `name`：承認フォームの名前。
+     - `formComponents`：フォームコンポーネントのリスト。添付ファイルコンポーネントの種類と属性を含みます。
+
+### レスポンスフィールド
+
+     - `processCode`：一意の承認テンプレートコード。
+4. **承認インスタンスを作成する：** サーバー API [承認インスタンスの作成](/ja/open/development/create-an-approval-instance)を呼び出して承認を申請し、承認インスタンスの `instanceId` を取得します。
+
+   ```java
+   public void ProcessInstances() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           StartProcessInstanceHeaders startProcessInstanceHeaders = new StartProcessInstanceHeaders();
+           startProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. 添付
+           JSONObject json  = new JSONObject();
+           json.put("spaceId","479****886");
+           json.put("fileName","IMG_2895(1).PNG");
+           json.put("fileSize","2****4");
+           json.put("fileType","png");
+           json.put("fileId","68********11");
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("添付")
+                   .setValue(JSON.toJSONString(Arrays.asList(json)));
+
+           // 承認者を設定
+           // 合議承認（全員の承認が必要）
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("AND")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******877041", "085******4272"
+                   ));
+           // いずれか 1 人の承認（1 人が承認すれば完了）
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers1 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("OR")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******877041", "085******4272"
+                   ));
+           StartProcessInstanceRequest startProcessInstanceRequest = new StartProcessInstanceRequest()
+                   .setOriginatorUserId("承認申請者の userId")
+                   .setProcessCode("PROC-42928B7C-****-****-****-B52B4E1702FC")
+                   .setDeptId(1L)
+                   .setMicroappAgentId(11******5L)
+                   .setApprovers(java.util.Arrays.asList(
+                           approvers0, approvers1
+                   ))
+                   .setCcList(java.util.Arrays.asList(
+                           "CC受信者の userId"
+                   ))
+                   .setCcPosition("FINISH")
+                   .setFormComponentValues(java.util.Arrays.asList(
+                           formComponentValues
+                   ));
+           try {
+               StartProcessInstanceResponse startProcessInstanceResponse = client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメーター
+
+   - `originatorUserId`：承認申請者のユーザー ID。
+   - `processCode`：承認テンプレートコード。
+   - `formComponentValues`：フォームコンポーネントの値。添付ファイル情報（spaceId、fileName、fileSize、fileType、fileId）を含みます。
+   - `approvers`：承認者のリスト。合議承認（AND）といずれか 1 人の承認（OR）に対応しています。
+
+### レスポンスフィールド
+
+   - `instanceId`：承認インスタンスの ID。
+5. **承認インスタンスの詳細を取得する：** 承認インスタンスの `instanceId` を使用してサーバー API [単一の承認インスタンスの詳細の取得](/ja/open/development/obtains-the-details-of-a-single-approval-instance-pop)を呼び出し、承認インスタンスの詳細から `fileId` を取得します。
+
+   ```java
+    public void processInstancesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders getProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders();
+           getProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest getProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest()
+                   .setProcessInstanceId("Ay9***************199");
+           try {
+               GetProcessInstanceResponse processInstanceWithOptions = client.getProcessInstanceWithOptions(getProcessInstanceRequest, getProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processInstanceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメーター
+
+   - **processInstanceId**：承認インスタンスの ID。
+
+### レスポンスフィールド
+
+   - **fileId**：添付ファイルの ID。後続のダウンロードまたはプレビューの操作に使用します。
+6. **承認添付ファイルのダウンロード権限を付与する：** サーバー API [承認用ドライブファイルのダウンロード権限の付与](/ja/open/development/download-the-approval-nail-file)を呼び出し、承認用ドライブファイルへのアクセス権限を付与します。
+
+   ```java
+    public void spaceAuthDownload() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthHeaders addApproveDentryAuthHeaders = new com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthHeaders();
+           addApproveDentryAuthHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest.AddApproveDentryAuthRequestFileInfos fileInfos0 = new com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest.AddApproveDentryAuthRequestFileInfos()
+                   .setFileId("49*****61")
+                   .setSpaceId(47*****86L);
+           com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest addApproveDentryAuthRequest = new com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest()
+                   .setUserId("manager7675")
+                   .setFileInfos(java.util.Arrays.asList(
+                           fileInfos0
+                   ));
+           try {
+               AddApproveDentryAuthResponse addApproveDentryAuthResponse = client.addApproveDentryAuthWithOptions(addApproveDentryAuthRequest, addApproveDentryAuthHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(addApproveDentryAuthResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメーター
+
+   - `userId`：操作を行うユーザーの ID。
+   - `fileInfos`：ファイル情報のリスト。fileId と spaceId を含みます。
+
+### レスポンスフィールド
+
+   - `result`：権限付与の結果を示すフラグ。
+7. **承認添付ファイルをダウンロードする：** サーバー API [承認添付ファイルのダウンロード](/ja/open/development/download-an-approval-attachment)を呼び出してファイルリンク `downloadUri` を取得し、ファイルをダウンロードします。現時点では、サードパーティアプリからこの API を呼び出すことはできません。
+
+   ```java
+   public void processFileDownload() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileHeaders grantProcessInstanceForDownloadFileHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileHeaders();
+           grantProcessInstanceForDownloadFileHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileRequest grantProcessInstanceForDownloadFileRequest = new com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileRequest()
+                   .setProcessInstanceId("Ay9***************199")
+                   .setFileId("68********11");
+           try {
+               GrantProcessInstanceForDownloadFileResponse grantProcessInstanceForDownloadFileResponse = client.grantProcessInstanceForDownloadFileWithOptions(grantProcessInstanceForDownloadFileRequest, grantProcessInstanceForDownloadFileHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(grantProcessInstanceForDownloadFileResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメーター
+
+   - `processInstanceId`：承認インスタンスの ID。
+   - `fileId`：添付ファイルの ID。
+
+### レスポンスフィールド
+
+   - `downloadUri`：ファイルのダウンロードリンク。
+8. **承認添付ファイルのプレビュー権限を付与する：** サーバー API [承認添付ファイルのプレビュー権限の付与](/ja/open/development/official-authorized-preview-approval-attachment)を呼び出し、ドライブファイルのプレビューを有効にします。
+
+   ```java
+    public void authPreview() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthHeaders getSpaceWithDownloadAuthHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthHeaders();
+           getSpaceWithDownloadAuthHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthRequest getSpaceWithDownloadAuthRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthRequest()
+                   .setUserId("ma*****75")
+                   .setAgentId(118****5L)
+                   .setProcessInstanceId("yIYiVlR3R***********4433")
+                   .setFileId("495******61");
+           try {
+               GetSpaceWithDownloadAuthResponse spaceWithDownloadAuthWithOptions = client.getSpaceWithDownloadAuthWithOptions(getSpaceWithDownloadAuthRequest, getSpaceWithDownloadAuthHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(spaceWithDownloadAuthWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメーター
+
+   - `userId`：操作を行うユーザーの ID。
+   - `agentId`：アプリの AgentId。
+   - `processInstanceId`：承認インスタンスの ID。
+   - `fileId`：添付ファイルの ID。
+
+### レスポンスフィールド
+
+   - `spaceId`：ドライブスペースの ID。
+9. ドライブファイルをプレビューするクライアントサイド JSAPI を呼び出し、ファイルをプレビューします。この API は [JSAPI Explorer](https://open.dingtalk.io/tools/explorer/jsapi?id=10317) でオンラインデバッグできます。
+
+### 注意
+
+   承認添付ファイルをプレビューする前に、毎回 [承認添付ファイルのプレビュー権限の付与](/ja/open/development/official-authorized-preview-approval-attachment)を呼び出して権限付与を完了してください。
+
+### 実装チェックリスト
+
+- ✅ アプリ認証情報を取得し、設定済みである。
+- ✅ API 権限 Workflow.Form.Write、Workflow.Instance.Write、Workflow.Instance.Read を申請済みである。
+- ✅ アクセストークン取得 API の呼び出しに成功している。
+- ✅ 承認用ドライブスペースの spaceId を取得済みである。
+- ✅ 添付ファイルアップロード JSAPI の呼び出しに成功し、fileId が返されている。
+- ✅ 承認テンプレートの processCode を取得済みである。
+- ✅ 承認インスタンス作成 API の呼び出しに成功し、instanceId が返されている。
+- ✅ 承認インスタンス詳細 API から fileId が返されている。
+- ✅ ダウンロード / プレビュー権限付与 API の呼び出しに成功している。
+- ✅ 承認添付ファイルのダウンロード / プレビューを検証済みである。
+
+## よくある質問
+
+- **Q：添付ファイルアップロード JSAPI を呼び出す前に、承認用ドライブスペース情報を取得する必要があるのはなぜですか？**
+
+  承認用ドライブスペース情報の取得 API によって、ユーザーにドライブスペースへのアクセス権限が付与されます。この権限付与を行わずにアップロードすると、権限チェックで失敗します。
+- **Q：サードパーティアプリから承認添付ファイルのダウンロード API を呼び出せますか？**
+
+  いいえ。現時点では、サードパーティアプリから承認添付ファイルのダウンロード API を呼び出すことはできません。この API を利用できるのは社内アプリのみです。サードパーティアプリでは、プレビュー権限付与 API を使用して添付ファイルを閲覧できます。
+- **Q：承認添付ファイルの権限付与の有効期間はどのくらいですか？**
+
+  ダウンロードリンクとプレビューリンクには一時的な権限が付与されます。有効期間は API から返されるトークンによって決まります。有効期間内に操作を完了してください。権限の有効期限が切れた場合は、再度権限を付与してください。
+- **Q：同じ承認インスタンスに複数の添付ファイルをアップロードするにはどうすればよいですか？**
+
+  承認インスタンスの作成 API の formComponentValues で、すべての添付ファイルの JSON オブジェクトを 1 つの配列にまとめて指定します。各オブジェクトには spaceId、fileName、fileSize、fileType、fileId の各フィールドを含めてください。

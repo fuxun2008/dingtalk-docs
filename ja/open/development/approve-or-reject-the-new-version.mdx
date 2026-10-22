@@ -1,0 +1,713 @@
+---
+title: "承認フローの承認・却下"
+description: "DingTalkのOA承認APIで、自社業務システムの承認フローを承認センターに統合する方法を解説します。承認テンプレートの作成から承認インスタンスの承認・却下まで、医療・教育の導入事例とJavaサンプルコードで紹介します。"
+---
+
+# OA承認の統合：承認フローの承認・却下
+
+## 概要
+
+### 背景
+
+自社開発やサードパーティの業務システムには、それぞれ独自の承認フローと承認画面があることが少なくありません。従業員は承認のたびに複数のシステムを行き来する必要があり、作業が分断されて効率が下がります。承認フローを DingTalk のOA承認センターに接続すると、ユーザーは DingTalk の単一の入口からすべての承認を確認・処理できます。
+
+- **頻繁なシステム切り替え：** 従業員は業務システムと DingTalk を何度も行き来します。操作経路が長く、緊急の承認を見落としやすくなります。
+- **承認ステータスの不一致：** 業務システムと DingTalk のデータが一致せず、承認の進捗をリアルタイムに追跡・管理できません。
+- **承認フローの分散：** 管理者は DingTalk ですべての承認の進捗を確認できず、システムごとに個別にログインする必要があります。
+- **通知の遅延：** 承認通知がメールやオフラインでの連絡に依存しており、DingTalk の統一された ToDo リマインダーやメッセージプッシュを活用できていません。
+
+### 導入のメリット
+
+本ソリューションは、DingTalk の公式 OA 承認のプロセスエンジンとフォームコンポーネントを再利用します。業務システムの承認フローを DingTalk に統合し、一元管理と効率的なコラボレーションを実現します。
+
+- **承認の入口を一元化：** ユーザーは DingTalk の承認一覧から、すべての自社システムの承認を確認・処理できます。システム間の切り替えが減ります。
+- **低い統合コスト：** 少数の API を呼び出すだけで統合が完了します。既存の業務プロセスや画面ロジックを作り直す必要はありません。
+- **ステータスのリアルタイム同期：** 承認結果は業務システムにリアルタイムで書き戻されます。双方のデータの整合性とトレーサビリティを確保します。
+- **メッセージの即時配信：** DingTalk の ToDo リマインダーとメッセージ通知により、承認タスクを承認者に即座にプッシュします。
+
+### ユースケース
+
+本ソリューションは、次のような代表的な承認統合シナリオに適しています。
+
+- 自社開発の ERP、OA などの業務システムを DingTalk 承認センターと連携させたい場合
+- 小売チェーンの店舗運営に関する承認（改装申請、販促承認など）
+- 物流・輸送の配車に関する承認（車両修理申請、ルート変更承認など）
+- 人事関連の承認（休暇申請、経費精算、入社・退職手続きなど）
+
+## 代表的な業務シナリオ
+
+### シナリオ 1：医療機器の調達承認（医療）
+
+#### 課題
+
+ある大規模総合病院では、自社開発の HIS システムで医療機器の調達を管理しています。診療科が調達申請を提出すると、設備部 → 財務部 → 担当副院長の 3 段階で承認が行われます。従来のフローには次の課題がありました。
+
+- **調達対応の遅さ：** 緊急の機器購入でも紙の申請書に段階ごとの署名が必要で、平均 3〜5 日の遅延が発生し、診療に影響していました。
+- **承認情報の不足：** 承認者が確認できるのは機器名と予算のみでした。技術仕様、サプライヤーの資格、調達履歴を DingTalk で確認できず、的確な判断が困難でした。
+- **承認責任の不明確さ：** 多段階承認に明確な順序や期限がなく、責任の押し付け合いや重複承認が発生し、意思決定までの期間が長くなっていました。
+- **深刻なデータのサイロ化：** HIS システムの調達ステータスと DingTalk の承認進捗が同期されていませんでした。診療科は承認結果をリアルタイムに把握できず、何度も電話で確認する必要がありました。
+
+#### 導入効果
+
+- **自動化された作業フロー**
+
+  統合フロー：
+
+  1. HIS システムが調達申請を開始します。
+  2. API 経由で DingTalk に承認インスタンスを作成します。
+  3. DingTalk 内で調達申請の承認を行います。
+  4. 承認者が詳細を確認し、操作（**承認** または **却下**）を行います。
+  5. 結果が HIS システムに同期されます。
+
+  DingTalk の承認カードには、申請者、申請部門、調達品名、金額、サプライヤーなどのフィールドが表示されます。
+- **主なメリット**
+
+  - **機器仕様と資格のオンライン確認：** HIS システムに機器が登録されると、DingTalk の承認インスタンスが自動で作成されます。承認者はシステムを切り替えずに、DingTalk 上で機器の詳細を確認して操作できます。
+  - **透明でトレーサブルな多段階の合議：** DingTalk には技術仕様、サプライヤーの資格、調達履歴を含む機器データがすべて表示されます。承認の進捗がひと目でわかり、コメントや催促にも対応しています。
+  - **緊急調達の迅速化：** 承認結果は HIS システムにリアルタイムで書き戻されます。申請が却下されると、後続の ToDo は自動で取り消されます。双方のデータの整合性とトレーサビリティが保たれ、承認処理の所要時間が 50% 以上短縮されます。
+
+### シナリオ 2：大学の研究費精算承認（教育）
+
+#### 課題
+
+ある有力大学では、自社開発の研究管理システムで研究費の精算を管理しています。教員が精算申請を提出すると、研究責任者 → 学部 → 財務部の 3 段階で承認が行われます。従来のフローには次の課題がありました。
+
+- **精算サイクルの長さ：** 紙の申請書を承認者間で手渡しで回付しており、平均 7〜10 営業日かかっていました。立て替え払いをする教員にとって大きな経済的負担となっていました。
+- **請求書確認の難しさ：** 承認者は DingTalk で請求書の原本や費用明細を確認できず、紙の書類を印刷して 1 件ずつ照合する必要があり、非効率でした。
+- **部門間連携の不足：** 研究責任者、学部の事務担当者、財務の審査担当者の間にリアルタイムの連絡チャンネルがなく、差し戻された申請は最初からフローをやり直す必要がありました。
+- **高いコンプライアンスリスク：** 手書きの精算申請書は勘定科目の誤りや上限超過の申請が起こりやすく、後の監査で違反が見つかると責任追及と是正が必要になっていました。
+
+#### 導入効果
+
+- **自動化された作業フロー**
+
+  統合された研究費精算フローは、次の 5 ステップでエンドツーエンドに実行されます。
+
+  1. 研究システムで精算を開始します（申請者が精算申請を提出）。
+  2. 統合 API 経由で **承認インスタンス** を作成します。
+  3. 精算申請書が DingTalk に連携され、アプリ内で詳細を表示して審査します。
+  4. **承認者** がモバイルで **却下** または **承認** を選択します。
+  5. 結果が研究システムに書き戻され、同期されます。
+
+  従来の手作業によるフロー（提出 > メール > 手動処理 > メール通知 > 手動入力）と比べて、自動統合により入口の一元化、リアルタイム同期、メッセージ配信の集約を実現します。
+- **主なメリット**
+
+  - **請求書画像のインテリジェントな認識と確認：** 研究システムに請求書がアップロードされると、DingTalk の承認インスタンスが自動で作成されます。承認者はシステムを切り替えずに、DingTalk 上で請求書画像を確認して操作できます。
+  - **予算残高のリアルタイム検証：** DingTalk には請求書画像、費用明細、予算残高を含む精算データがすべて表示されます。承認の進捗がひと目でわかり、コメントや催促にも対応しています。
+  - **差し戻しと修正のクローズドループ：** 承認結果は研究システムにリアルタイムで書き戻されます。申請が却下されると、申請者に追加資料の提出が自動で通知されます。双方のデータの整合性とトレーサビリティが保たれ、精算サイクルが 60% 以上短縮されます。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+本ソリューションの技術アーキテクチャは、次のコアコンポーネントで構成されます。
+
+- **認証レイヤー：** App の認証情報を管理し、アクセストークンを取得して、すべての API 呼び出しの身元を検証します。
+- **テンプレート管理レイヤー：** 承認フォームテンプレートを作成・更新し、承認フローの構造とフィールドを定義します。
+- **インスタンス実行レイヤー：** 承認インスタンスの開始・照会・実行を行い、承認フローを進めます。
+- **イベントコールバックレイヤー：** 承認タスクと承認インスタンスのステータス変更イベントを受信し、業務システムと DingTalk の双方向同期を実現します。
+
+### 前提条件
+
+- **App の準備：** [App の作成と設定](/ja/open/dingstart/create-application) を完了し、Client ID と Client Secret を取得します。
+- **権限の要件：** DingTalk の組織管理者またはサブ管理者の権限を持ち、次の API 権限を申請します。
+
+  - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）
+  - `Workflow.Instance.Write`（承認インスタンスの書き込み権限）
+  - `Workflow.Instance.Read`（承認インスタンスの読み取り権限）
+- **開発環境：** Java 開発環境（JDK 1.6 以降）と Maven ビルドツールをインストールします。
+- **SDK の準備：** DingTalk サーバーサイド SDK をダウンロードします。Java、Python、Go などの言語に対応しています。
+
+### コードの実装
+
+ステップ 1：App の詳細ページに移動し、クライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限を申請します。「OA承認」関連の権限を申請してください。
+
+ステップ 3：App のアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) を参照してください。API を呼び出す際は、アクセストークンで呼び出し元を認証します。
+
+ステップ 4：OA承認 API を呼び出します。
+
+1. 新しいサーバー API [承認フォームテンプレートを作成または更新する](/ja/open/development/create-an-approval-form-template) を呼び出し、テンプレートの一意なコード `processCode` を取得します。
+2. `processCode` を使用して、新しいサーバー API [承認インスタンスを作成する](/ja/open/development/create-an-approval-instance) を呼び出して承認インスタンスを開始し、承認インスタンスの `instanceId` を取得します。
+
+### 注意
+
+   承認インスタンスの `instanceId` を保存していない場合は、新しいサーバー API [承認インスタンス ID の一覧を取得する](/ja/open/development/obtain-an-approval-list-of-instance-ids) を呼び出し、インスタンスを開始した期間の `instanceId` を取得してください。
+3. `instanceId` を使用して、新しいサーバー API [単一の承認インスタンスの詳細を取得する](/ja/open/development/obtains-the-details-of-a-single-approval-instance-pop) を呼び出し、承認インスタンスの詳細と各タスクノードの `taskId` を取得します。
+4. `instanceId` と対応する `taskId` を使用して、新しいサーバー API [承認タスクを承認または却下する](/ja/open/development/approve-or-reject-the-approval-task) を呼び出し、承認タスクを処理します。すべての承認ノードで承認されると、承認フォームの承認が完了します。このステップはサードパーティの企業アプリには対応していません。
+
+## 実装手順
+
+### **ステップ 1：** **App の認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/) にログインします。
+2. 対象の App を選択し、App の詳細ページに移動します。
+3. **基本情報** > **認証情報と基本情報** をクリックします。
+4. App の `Client ID` と `Client Secret` を控えます。
+
+### 注意
+
+   `Client Secret` は安全に管理し、第三者と共有しないでください。コードにハードコーディングせず、環境変数やキー管理システムに保存してください。
+
+### ステップ 2：API 権限を追加する
+
+1. App の詳細ページで **権限管理** をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）：承認フォームテンプレートを作成・更新します。
+   - `Workflow.Instance.Write`（承認インスタンスの書き込み権限）：承認インスタンスを開始・実行します。
+   - `Workflow.Instance.Read`（承認インスタンスの読み取り権限）：承認インスタンスの詳細を照会します。
+
+<Note>
+業務シナリオによって、必要な権限の組み合わせは異なります。実際の要件に応じて申請してください。
+</Note>
+
+### ステップ 3：アクセス認証情報（アクセストークン）を取得する
+
+ステップ 1 で取得した Client ID と Client Secret を使用して、App のアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) を参照してください。
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略**：`accessToken` の有効期間は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に事前に更新してください。
+- **同時実行制御**：複数のスレッドが同時にトークンを更新して競合が発生しないよう、分散ロックを使用してください。
+- **エラー時の再試行**：ネットワークが不安定な場合は自動で再試行します。再試行は最大 3 回とし、間隔を段階的に延ばします（1 秒 → 2 秒 → 4 秒）。
+
+### ステップ 4：コア API を呼び出す
+
+1. **承認フォームテンプレートを作成または更新する**：新しいサーバー API [承認フォームテンプレートを作成または更新する](/ja/open/development/create-an-approval-form-template) を呼び出し、テンプレートの一意なコード `processCode` を取得します。
+
+### 注意
+
+   API から返された `processCode` を保存していない場合は、[processCode](/ja/open/development/workflow-overview) の説明に従って確認してください。
+
+   ```java
+     public void createProcessTemplate() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           FormCreateHeaders formCreateHeaders = new FormCreateHeaders();
+           formCreateHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. 一行テキストコントロール
+           FormComponentProps formComponentProps1 = new FormComponentProps()
+                   .setComponentId("TextField-sys1001")
+                   .setPlaceholder("入力してください")
+                   .setLabel("顧客名")
+                   .setRequired(false);
+           FormComponent formComponent1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(formComponentProps1);
+           // 2. 複数行テキストコントロール
+           FormComponentProps formComponentProps2 = new FormComponentProps()
+                   .setComponentId("TextareaField-sys1002")
+                   .setPlaceholder("入力してください")
+                   .setLabel("顧客の説明")
+                   .setRequired(false);
+           FormComponent formComponent2 = new FormComponent()
+                   .setComponentType("TextareaField")
+                   .setProps(formComponentProps2);
+
+           //3. 複数選択コントロール
+           SelectOption option3 = new SelectOption();
+           option3.setKey("option1");
+           option3.setValue("重要");
+           SelectOption option4 = new SelectOption();
+           option4.setKey("option2");
+           option4.setValue("通常");
+           FormComponentProps formComponentProps3 = new FormComponentProps()
+                   .setComponentId("DDMultiSelectField-sys1003")
+                   .setLabel("顧客タグ")
+                   .setOptions(java.util.Arrays.asList(option3, option4));
+           FormComponent formComponent3 = new FormComponent()
+                   .setComponentType("DDMultiSelectField")
+                   .setProps(formComponentProps3);
+
+           //4. 日付範囲コントロール
+           FormComponentProps formComponentProps4 = new FormComponentProps()
+                   .setComponentId("DDDateRangeField-sys1004")
+                   .setLabel("[\"購入検討開始日時\",\"購入検討終了日時\"]")
+                   .setUnit("時間")
+                   .setPlaceholder("日時を選択してください")
+                   .setFormat("yyyy-MM-dd HH:mm");
+           FormComponent formComponent4 = new FormComponent()
+                   .setComponentType("DDDateRangeField")
+                   .setProps(formComponentProps4);
+
+           //5. 明細コントロール
+           // 明細サブコントロールの集計
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField2 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("数値入力");
+
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField1 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("金額（元）");
+
+           // 明細サブコントロール
+           //5.1 明細の一行テキストフィールド
+           FormComponentProps childProp1 = new FormComponentProps()
+                   .setComponentId("TextField-sysC1005")
+                   .setLabel("名称");
+           FormComponent child1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(childProp1);
+
+           //5.2 明細の金額フィールド
+           FormComponentProps childProp2 = new FormComponentProps()
+                   .setComponentId("MoneyField-sysC1005")
+                   .setLabel("単価（元）");
+           FormComponent child2 = new FormComponent()
+                   .setComponentType("MoneyField")
+                   .setProps(childProp2);
+
+           //5.3 明細の数値フィールド
+           FormComponentProps childProp3 = new FormComponentProps()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("数量");
+           FormComponent child3 = new FormComponent()
+                   .setComponentType("NumberField")
+                   .setProps(childProp3);
+           //5.4 数式コンポーネント
+           JSONObject jsonObject1 = new JSONObject();
+           jsonObject1.put("id", "NumberField-sysC1005");
+           String s = "*";
+           JSONObject jsonObject2 = new JSONObject();
+           jsonObject2.put("id", "MoneyField-sysC1005");
+           Object objects[] = new Object[]{jsonObject1, s, jsonObject2};
+           FormComponentProps childProp4 = new FormComponentProps()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("合計")
+                   .setPlaceholder("自動計算されます")
+                   .setRequired(false)
+                   .setFormula(JSON.toJSONString(objects));
+           FormComponent child4 = new FormComponent()
+                   .setComponentType("CalculateField")
+                   .setProps(childProp4);
+
+           FormComponentProps formComponentProps5 = new FormComponentProps()
+                   .setComponentId("TableField-sys1005")
+                   .setTableViewMode("table")
+                   .setLabel("明細")
+                   .setVerticalPrint(true)
+                   .setStatField(Arrays.asList(formComponentPropsStatField1, formComponentPropsStatField2));
+           FormComponent formComponent5 = new FormComponent()
+                   .setComponentType("TableField")
+                   .setChildren(Arrays.asList(child1, child2, child3, child4))
+                   .setProps(formComponentProps5);
+
+           // 6. 連絡先コントロール
+           FormComponentProps formComponentProps6 = new FormComponentProps()
+                   .setComponentId("InnerContactField-sys1006")
+                   .setLabel("連絡先")
+                   .setPlaceholder("連絡先を選択してください")
+                   .setChoice("1");
+           FormComponent formComponent6 = new FormComponent()
+                   .setComponentType("InnerContactField")
+                   .setProps(formComponentProps6);
+
+           // 7. 部門コントロール
+           FormComponentProps formComponentProps7 = new FormComponentProps()
+                   .setComponentId("DepartmentField-sys1007")
+                   .setLabel("連絡先の部門")
+                   .setPlaceholder("部門を選択してください")
+                   .setMultiple(false);
+           FormComponent formComponent7 = new FormComponent()
+                   .setComponentType("DepartmentField")
+                   .setProps(formComponentProps7);
+
+           // 8. 都道府県/市区町村コントロール
+           FormComponentProps formComponentProps8 = new FormComponentProps()
+                   .setComponentId("AddressField-sys1008")
+                   .setLabel("顧客住所")
+                   .setPlaceholder("選択してください")
+                   .setAddressModel("city");
+           FormComponent formComponent8 = new FormComponent()
+                   .setComponentType("AddressField")
+                   .setProps(formComponentProps8);
+
+           //9. 単一選択コントロール
+           SelectOption selectOption1 = new SelectOption();
+           selectOption1.setKey("option1");
+           selectOption1.setValue("至急");
+           SelectOption selectOption2 = new SelectOption();
+           selectOption2.setKey("option2");
+           selectOption2.setValue("標準");
+           FormComponentProps formComponentProps9 = new FormComponentProps()
+                   .setComponentId("DDSelectField-sys1009")
+                   .setLabel("承認優先度")
+                   .setOptions(Arrays.asList(selectOption1, selectOption2));
+           FormComponent formComponent9 = new FormComponent()
+                   .setComponentType("DDSelectField")
+                   .setProps(formComponentProps9);
+
+           FormCreateRequest formCreateRequest = new FormCreateRequest()
+                   .setName("顧客フォーム")
+                   .setDescription("顧客フォーム")
+                   // processCode を指定するとテンプレートを更新し、指定しない場合は新規作成します。この例ではテンプレートを新規作成します。
+                   //.setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setFormComponents(java.util.Arrays.asList(
+                           formComponent1, formComponent2, formComponent3, formComponent4,
+                           formComponent5, formComponent6, formComponent7, formComponent8,
+                           formComponent9
+                   ));
+           try {
+               FormCreateResponse formCreateResponse = client.formCreateWithOptions(formCreateRequest, formCreateHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(formCreateResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ：
+
+   - `name`：承認フォームテンプレートの名前です。
+   - `description`：テンプレートの説明です。
+   - `formComponents`：フォームコントロールの配列です。各フィールドのタイプ、ラベル、検証ルールなどの設定を含みます。
+
+### レスポンスフィールド：
+
+   - `processCode`：承認フォームテンプレートの一意なコードです。承認インスタンスの開始に使用します。
+2. **承認インスタンスを開始する**：`processCode` を使用して、新しいサーバー API [承認インスタンスを作成する](/ja/open/development/create-an-approval-instance) を呼び出し、承認インスタンスを開始します。申請者、承認者（全員承認またはいずれか承認に対応）、CC受信者、フォームフィールドの値を設定し、承認インスタンスの `instanceId` を取得します。
+
+   ```java
+   public void ProcessInstances() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           StartProcessInstanceHeaders startProcessInstanceHeaders = new StartProcessInstanceHeaders();
+           startProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           //1. 一行テキストフィールドコンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("顧客名")
+                   .setValue("山田太郎");
+
+           //2. 複数行テキストフィールドコンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("顧客の説明")
+                   .setValue("高価値の見込み顧客");
+
+           //3. 複数選択コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues3;
+           formComponentValues3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("顧客タグ")
+                   .setValue("[\"重要\",\"通常\"]")
+                   .setComponentType("DDMultiSelectField");
+
+           //4. 日付範囲コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("[\"購入検討開始日時\",\"購入検討終了日時\"]")
+                   .setValue("[\"2022-08-14 15:00\",\"2022-08-15 15:00\"]");
+
+           //5. 明細表コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("名称")
+                   .setValue("DingTalk F2 スマートビデオ会議オールインワン端末");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("単価（元）")
+                   .setValue("29999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("数量")
+                   .setValue("1");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("名称")
+                   .setValue("DingTalk F1 スマートビデオ会議オールインワン端末");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("単価（元）")
+                   .setValue("4999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("数量")
+                   .setValue("5");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("明細")
+                   .setValue(JSON.toJSONString(Arrays.asList(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3), Arrays.asList(formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6))))
+                   .setDetails(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3, formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6));
+
+           //6. 連絡先コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("連絡先")
+                   .setValue(JSON.toJSONString(Arrays.asList("連絡先の userId")));
+
+           //7. 部門コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues7 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("連絡先の部門")
+                   .setValue("部門 ID");
+
+           //8. 都道府県/市区町村コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues8 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("顧客住所")
+                   .setValue(JSON.toJSONString(Arrays.asList("北京市,北京市,朝陽区,東湖街道,A棟 xxxxxxx")));
+
+           //9. 単一選択コンポーネント
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues9 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("承認優先度")
+                   .setValue("至急");
+
+           // 承認者を設定
+           // 全員承認（全員の承認が必要）
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("AND")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           // いずれか承認（いずれか 1 人の承認で可）
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers1 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("OR")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           StartProcessInstanceRequest startProcessInstanceRequest = new StartProcessInstanceRequest()
+                   .setOriginatorUserId("申請者の userId")
+                   .setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setDeptId(1L)
+                   .setMicroappAgentId(118*****5L)
+                   .setApprovers(java.util.Arrays.asList(
+                           approvers0, approvers1
+                   ))
+             			// CC受信者
+                   .setCcList(java.util.Arrays.asList(
+                           "CC受信者の userId"
+                   ))
+                   .setCcPosition("FINISH")
+                   .setFormComponentValues(java.util.Arrays.asList(
+                           formComponentValues1, formComponentValues2, formComponentValues3, formComponentValues4,
+                           formComponentValues5, formComponentValues6, formComponentValues7, formComponentValues8,
+                           formComponentValues9
+                   ));
+           try {
+               StartProcessInstanceResponse startProcessInstanceResponse = client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ：
+
+   - `processCode`：承認テンプレートの一意なコードです。
+   - `originatorUserId`：申請者のユーザー ID です。
+   - `formComponentValues`：フォームコントロールの値のリストです。テンプレートで定義したフィールドと一致させます。
+   - `approvers`：承認者のリストです。各ノードの承認者と承認方法を指定します。
+
+### レスポンスフィールド：
+
+   - `instanceId`：承認インスタンスの一意な識別子です。
+3. **（任意）承認インスタンス ID の一覧を取得する**：`instanceId` を保存していない場合は、[承認インスタンス ID の一覧を取得する](/ja/open/development/obtain-an-approval-list-of-instance-ids) を呼び出し、インスタンスを開始した期間の `instanceId` を取得します。
+
+   ```java
+   public void instanceIdsQuery() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders listProcessInstanceIdsHeaders = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders();
+           listProcessInstanceIdsHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest listProcessInstanceIdsRequest = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest()
+                   .setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setStartTime(1663*****000L)
+                   .setEndTime(1663******00L)
+                   .setNextToken(0L)
+                   .setMaxResults(10L)
+                   .setUserIds(java.util.Arrays.asList(
+                           "申請者の userId"
+                   ));
+           try {
+               ListProcessInstanceIdsResponse listProcessInstanceIdsResponse = client.listProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(listProcessInstanceIdsResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+4. **単一の承認インスタンスの詳細を取得する**：`instanceId` を使用して、新しいサーバー API [単一の承認インスタンスの詳細を取得する](/ja/open/development/obtains-the-details-of-a-single-approval-instance-pop) を呼び出し、承認インスタンスの詳細を取得します。詳細には、現在の未処理タスクの `taskId`、承認ステータス、フォームデータが含まれます。
+
+   ```java
+   public void processInstancesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders getProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders();
+           getProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest getProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest()
+                   .setProcessInstanceId("zRfPT*********************159");
+           try {
+               GetProcessInstanceResponse processInstanceWithOptions = client.getProcessInstanceWithOptions(getProcessInstanceRequest, getProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processInstanceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ：
+
+   - `processInstanceId`：承認インスタンスの一意な識別子です。
+
+### レスポンスフィールド：
+
+   - `taskId`：承認タスクノードの識別子です。以降の承認操作に使用します。
+   - `status`：承認インスタンスの現在のステータスです。
+   - `formComponentValues`：フォームフィールドの現在の値です。
+5. **承認タスクを承認または却下する**：`instanceId` と `taskId` を使用して、新しいサーバー API [承認タスクを承認または却下する](/ja/open/development/approve-or-reject-the-approval-task) を呼び出し、承認操作を実行します。承認する場合は `result` に `agree` を、却下する場合は `refuse` を指定します。
+
+   **注意** 
+   - このステップはサードパーティの企業アプリには対応していません。
+   - **承認ノードは順番に実行してください。いずれか承認ノードの前に全員承認ノードを完了する必要があります。順番どおりでない場合、API の呼び出しは失敗します**。
+
+   ```java
+     public void processInstancesExecute() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceHeaders executeProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceHeaders();
+           executeProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceRequest.ExecuteProcessInstanceRequestFileAttachments fileAttachments0 = new com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceRequest.ExecuteProcessInstanceRequestFileAttachments()
+                   .setSpaceId("86****763")
+                   .setFileSize("10***45")
+                   .setFileId("673*****24")
+                   .setFileName("***.jpg")
+                   .setFileType("file");
+           com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceRequest.ExecuteProcessInstanceRequestFile file = new com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceRequest.ExecuteProcessInstanceRequestFile()
+                   .setPhotos(java.util.Arrays.asList(
+                           "https://*********"
+                   ))
+                   .setAttachments(java.util.Arrays.asList(
+                           fileAttachments0
+                   ));
+           com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceRequest executeProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.ExecuteProcessInstanceRequest()
+                   .setProcessInstanceId("********")
+                   .setRemark("承認しました")
+                   .setResult("agree")
+                   .setActionerUserId("承認者の userId")
+                   .setTaskId(76*****56L)
+                   .setFile(file);
+           try {
+               ExecuteProcessInstanceResponse executeProcessInstanceResponse = client.executeProcessInstanceWithOptions(executeProcessInstanceRequest, executeProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(executeProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code と message 属性が含まれ、問題の特定に役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ：
+
+   - `processInstanceId`：承認インスタンス ID です。
+   - `taskId`：処理対象の承認タスクの ID です。
+   - `result`：承認結果です。`agree` は承認、`refuse` は却下を表します。
+   - `actionerUserId`：操作を行う承認者の userId です。
+   - `remark`：承認コメントです。
+
+### レスポンスフィールド：
+
+   - `success`：操作が成功したかどうかを示します。
+
+### 実装チェックリスト
+
+- ✅ App の Client ID と Client Secret を取得し、安全に保管している。
+- ✅ OA承認の権限（承認フォームの書き込み、承認インスタンスの書き込み、承認インスタンスの読み取り）を申請し、付与されている。
+- ✅ アクセストークン取得 API の呼び出しが成功し、有効期間内に認証情報が機能する。
+- ✅ 承認テンプレートを作成し、processCode を業務システムの設定に保存している。
+- ✅ 承認インスタンスを開始し、以降のタスク操作に使用する instanceId を取得できる。
+- ✅ DingTalk のOA承認センターに承認インスタンスが表示され、承認・却下の操作が正常に動作する。
+- ✅ 承認インスタンスの詳細照会とタスクの実行を検証済みである。
+
+## よくある質問
+
+- **Q1：承認テンプレートを作成する際、formComponents の componentId にはどのような要件がありますか？**
+
+  componentId はフォーム内で一意である必要があり、業務上の意味は持ちません。コントロールを識別するためだけに使用します。業務上の識別子を使用したい場合は、代わりに bizAlias フィールドを使用してください。
+- **Q2：承認インスタンスを開始する際、approvers の actionType にはどの値を指定できますか？**
+
+  actionType には、NONE（単独承認）、OR（いずれか承認：承認者のうち 1 人が承認すれば承認）、AND（全員承認：すべての承認者の承認が必要）などの値を指定できます。詳細は API ドキュメントを参照してください。
+- **Q3：保存していない processCode を取得するにはどうすればよいですか？**
+
+  承認テンプレートの作成時に返された processCode を保存していない場合は、DingTalk のOA承認管理コンソールにログインして確認するか、テンプレートコードを取得する API を呼び出してください。
+- **Q4：承認タスクを実行する際、actionerUserId にはどのような要件がありますか？**
+
+  actionerUserId には、現在の承認ノードに割り当てられたユーザーの userId を指定する必要があります。それ以外の userId を指定すると、操作は失敗します。
+- **Q5：承認完了後のステータス変更を、業務システムで検知するにはどうすればよいですか？**
+
+  承認インスタンスの変更コールバックイベントをサブスクライブすると、ステータスの変更をリアルタイムに検知できます。または、承認インスタンスの詳細取得 API を定期的に呼び出し、status フィールドをポーリングしてください。

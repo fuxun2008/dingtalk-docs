@@ -1,0 +1,587 @@
+---
+title: "カスタム承認業務グループ：ToDoセンターで業務カテゴリを定義し、サードパーティのToDoを見やすく整理"
+description: "DingTalk OA承認の API で、サードパーティ業務システムの承認グループをToDoセンターに同期する方法を解説します。業務別の第2階層グループを作成し、承認者が案件をすばやく絞り込んで処理できるようにする実装手順を紹介します。"
+---
+
+# サードパーティ業務の承認カテゴリ連携：ToDoセンターのカスタム業務グループ
+
+## 概要
+
+多くの組織では複数の業務システムを運用しているため、承認タスクの発生元がさまざまです。管理職は、DingTalk のToDoセンターでサードパーティの承認を業務別に絞り込みたいと考えています。本ソリューションでは、DingTalk OA承認プロセスセンターのカスタム承認業務グループ API を使用します。サードパーティ業務システムは、社内の業務グループを DingTalk の承認センターに同期します。DingTalk は、ToDoセンターの **OA承認** カテゴリの下に、対応する第2階層の業務ソースグループを作成します。承認者はグループ単位でサードパーティのToDoを絞り込めます。多くの承認を抱える管理職も、すばやく処理できるようになります。
+
+### 背景
+
+組織が成長すると、休暇申請、経費精算、購買、契約、押印など、承認の種類が増えていきます。DingTalk のToDoセンターは、デフォルトですべてのToDoを時系列で一覧表示します。そのため、従業員は優先度の高い承認や特定業務の承認を見つけにくくなります。カスタム承認業務グループを使うと、業務領域、緊急度、発生元システムなどの軸で承認を分類できます。これにより処理効率が向上します。
+
+組織が一般的に抱える課題は次のとおりです。
+
+- **タスクリストが煩雑**：数十種類の承認が混在して表示されます。従業員は各項目の業務種別を 1 件ずつ確認する必要があり、重要な承認が日常的な承認に埋もれてしまいます。
+- **システムをまたぐ承認の区別が困難**：OA、経費管理、人事などのシステムからの承認が同じ見た目で表示されます。従業員は承認の発生元や処理の緊急度を判別しにくくなります。
+- **一括処理が非効率**：まとめて提出された経費精算など、同種の承認をグループで絞り込めません。従業員は 1 件ずつ開いて処理する必要があり、繰り返し作業が全体の 60% 以上を占めます。
+- **管理者向けのビューがない**：部門長は、チームのToDoを業務種別ごとに把握できません。人員配置やリソース配分の判断を裏付けるデータがありません。
+
+### 主なメリット
+
+本ソリューションは、次の 3 つの面で価値を提供します。
+
+- **わかりやすい業務グループ**：DingTalk は、ToDoセンターの **OA承認** カテゴリの下に、サードパーティシステム用の第2階層の業務グループを自動作成します。承認者はグループ単位で目的の承認タスクをすばやく絞り込めます。
+- **カテゴリの自動同期**：サードパーティシステムが API を呼び出して業務グループを DingTalk に同期します。グループの追加や変更はリアルタイムで反映され、DingTalk 側でカテゴリを手動で管理する必要はありません。
+- **柔軟な拡張性**：サードパーティシステムは、グループ名、多言語ラベル、説明を自由に定義でき、業務構成に合わせて多階層のグループ構造を設定できます。
+
+### ユースケース
+
+本ソリューションは、承認タスクの発生元が多様で、事業部門が明確に分かれている組織に適しています。代表的なユースケースは次のとおりです。
+
+- **複数事業部門の承認集約**：グループ企業に独立した事業部門が複数あり、部門ごとに異なる承認システムを使用しています。管理職は DingTalk 上で事業部門別にToDoを探したいと考えています。
+- **部門横断の承認が頻繁**：日々の承認に購買、人事、財務などの部門が関わります。承認者は特定の承認種別を探すために、絞り込み条件を頻繁に切り替えています。
+- **ToDoセンター運用の高度化**：DingTalk のToDoセンターの使い勝手を向上させたい組織です。カスタム業務グループにより、承認者は目的のタスクをすばやく見つけられ、一覧を探す時間を削減できます。
+
+## 代表的な業務シナリオ
+
+### シナリオ 1：スマート農業パークにおける複数業務の承認分類（アグリテック業界）
+
+#### 課題
+
+ある大規模スマート農業パークは、作物栽培、畜産、農産物加工、農業資材販売の 4 つの事業セグメントを運営しています。各セグメントは、自社開発の作物管理システム、畜産 IoT プラットフォーム、ERP 加工システム、EC 管理画面という独自のシステムで承認を処理しています。4 つのシステムはそれぞれ個別に承認タスクを処理しています。パークの総支配人とセグメント責任者は毎日多数の承認を処理しており、現行のプロセスには次の問題があります。
+
+- **事業部門が混在して絞り込みが困難**：パークでは 1 日に 80 件以上の承認が発生します。4 つのシステムからの承認はすべて業務分類なしで DingTalk のToDoセンターに流れ込みます。「作物用灌漑設備の購入」の承認を探すには 80 件以上のタスクをスクロールする必要があり、平均 3 分かかります。
+- **セグメントをまたぐ承認への対応が遅い**：総支配人は 4 つのセグメントすべての承認状況を追跡しています。従来は 4 つのシステムに個別にログインする必要があり、見落としのリスクが高い状態でした。畜産エリアの温度制御故障の修理など、緊急案件への対応が遅れると生産の安全性が脅かされます。
+- **ToDoセンターの使い勝手が悪い**：承認者はOA承認のメッセージカードを受け取ってToDoセンターを開いても、事業部門で絞り込めないフラットな一覧しか表示されません。新任の管理職が慣れるまでに最大 2 週間かかります。
+
+#### 効果の検証
+
+- **自動化フロー**
+
+  自動化された統合フローは、次の 5 つのステップで構成されます。
+
+  1. **複数システムの接続**：複数の業務システム（例：4 つの事業部門）を DingTalk に接続します。
+  2. **ToDoの集約表示**：すべての未処理項目を統合ビューに表示し、発生元で絞り込めるようにします。
+  3. **業務グループの作成**：各グループの **dirId** 識別子を取得します。
+  4. **テンプレートとグループの紐付け**：**AFFILIATION_DIR** を使用して承認テンプレートをグループに紐付けます。
+  5. **ステータス同期のクローズドループ**：コールバックイベントによりデータの整合性を保ちます。
+- **主な利点**
+
+  - **明確なグループ分け**：4 つの事業部門の承認が自動的に分類されます。目的の承認を見つける時間が 3 分から 5 秒に短縮され、1 日あたり 20 分の絞り込み時間を削減できます。
+  - **リアルタイム同期**：「スマート温室」サブグループなどの新しい業務グループは、API を呼び出すとすぐに反映されます。DingTalk のカテゴリを手動で管理する必要はありません。
+  - **デバイス間で一貫した表示**：カスタムグループは PC とモバイルの両方のToDoセンターに表示されるため、承認者は外出先でも事業部門で絞り込めます。
+
+### シナリオ 2：メディアグループにおける複数チャンネルのコンテンツ承認連携（文化・メディア業界）
+
+#### 課題
+
+ある地方の文化・メディアグループは、ニュース、エンターテインメント、スポーツ、ドキュメンタリーの 4 つのコンテンツチャンネルを運営しています。原稿の承認には自社開発の CMS、ライセンスの承認には著作権管理システム、広告出稿の承認には広告システム、予算の承認には財務システムを使用しています。4 つのシステムはそれぞれ独立して承認の作業フローを処理しています。編集長室の室長と各チャンネルのディレクターは毎日多数の承認を処理しており、現行のプロセスには次の問題があります。
+
+- **コンテンツ承認が混在**：グループでは 1 日に 100 件以上の承認が発生します。ニュース記事、エンターテインメントの台本、スポーツの放映権、広告出稿契約などの承認が、DingTalk のToDoセンターにすべて混在して表示されます。編集長室の室長はニュース記事をすばやく確認する必要がありますが、他の種類の承認に埋もれてしまい、重要な記事の速報性が損なわれます。
+- **著作権の承認を見落としやすい**：著作権ライセンスの承認は時間的制約が厳しく、期限を過ぎると無効になります。フラットな一覧では他の承認に埋もれがちです。期限切れで更新されなかった著作権が原因で、番組の配信停止を余儀なくされた事例が 3 件発生しました。
+- **チャンネルディレクター向けのビューがない**：各チャンネルディレクターは自分のチャンネルの承認にしか関心がありませんが、ToDoセンターにはチャンネルによる絞り込み機能がありません。ディレクターは各承認の担当を手作業で確認する必要があり、1 日 30 分を一覧の確認に費やしています。
+
+#### 効果の検証
+
+- **自動化フロー**
+
+  自動化された統合フローは、次の 5 つの段階で構成されます。
+
+  1. **複数システムの接続**：CMS、著作権、広告、財務の各システムをコンテンツハブに接続します。
+  2. **ToDoの集約**：統合された **ToDoセンター** で、発生元別に絞り込んだ未処理項目を確認します。
+  3. **業務グループの作成**：各グループの `dirId` 識別子を取得します。
+  4. **テンプレートとグループの紐付け**：`AFFILIATION_DIR` を使用して承認テンプレートを対応するグループに紐付けます。
+  5. **ステータス同期のクローズドループ**：コールバックイベントにより、すべてのシステム間でデータの整合性を保ちます。
+
+  各OA承認カードには、**送信元**（コンテンツハブ）、**チャンネル**、**テンプレート**、**グループ ID**（例：`DIR_1001`）の各フィールドと、**承認** および **却下** のアクションが表示されます。
+- **主な利点**
+
+  - **精度の高い絞り込み**：4 つのチャンネルの承認が自動的に分類されます。編集長室の室長がニュース記事の承認を見つける時間は 3 分から 5 秒に短縮され、重要な記事の遅延はゼロになりました。
+  - **著作権の保護**：著作権ライセンスの承認は専用グループに振り分けられて目立つため、見落としがなくなります。著作権の期限切れ事故はゼロになりました。
+  - **役割別のビュー**：各チャンネルディレクターには自分のチャンネルのグループだけが表示されます。一覧の確認に費やしていた 30 分がゼロになり、業務への集中度が大幅に向上しました。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+本ソリューションの技術アーキテクチャは、次の主要コンポーネントで構成されます。
+
+- **認証レイヤー**：アプリ認証情報を管理し、アクセストークンを取得して、すべての API 呼び出しの呼び出し元を検証します。
+- **グループ同期レイヤー**：業務グループを作成または更新する API を呼び出し、サードパーティシステムの業務グループを DingTalk の承認センターに同期して、グループの一意のコード `dirId` を取得します。
+- **テンプレート関連レイヤー**：外部連携の承認テンプレートをプロセスセンターに保存する API を呼び出します。`processFeatureConfig` の `AFFILIATION_DIR` フィールドで先に返された `dirId` を参照し、承認テンプレートを業務グループに紐付けます。
+- **タスク作成レイヤー**：承認ToDoタスクを作成または更新する API を呼び出し、サードパーティシステムの承認タスクを DingTalk の承認センターに同期して、対応する業務グループに自動で振り分けます。
+- **イベントコールバックレイヤー**：承認タスクのステータス変更に関するコールバックイベントを受信し、サードパーティシステムと DingTalk の承認センター間でデータの整合性を保ちます。
+
+### 前提条件
+
+- **アプリの準備**：[アプリの作成と設定](/ja/open/dingstart/create-application) の手順を完了してください。
+- **権限の要件**：DingTalk の組織管理者またはサブ管理者の権限を持ち、次の API 権限を申請してください。
+
+  - `qyapi_aflow`（承認作業フローのデータ管理権限）
+  - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）
+  - `Workflow.Form.Read`（ワークフローインスタンスの書き込み権限）
+  - `Premium.Workflow.ReadWrite.All`（OA承認作業フローの読み取り/書き込み権限）
+- **開発環境**：Java 開発環境（JDK 1.6 以降）と Maven ビルドツールをインストールしてください。
+- **SDK の準備**：DingTalk のサーバーサイド SDK をダウンロードしてください。Java、Python、Go などの言語に対応しています。
+
+### コード実装
+
+ステップ 1：アプリの詳細ページに移動し、アプリのクライアント ID と Client Secret を取得します。
+
+ステップ 2：API 権限を申請します。「OA承認」関連の権限を申請してください。
+
+ステップ 3：アプリのアクセス認証情報を取得します。詳しくは [社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) を参照してください。API を呼び出す際は、アクセストークンを使用して呼び出し元を認証します。
+
+ステップ 4：OA承認の API を呼び出します。
+
+1. 業務グループを作成または更新する新しいサーバー API を呼び出し、グループの `dirId` を取得します。
+2. 外部連携の承認テンプレートをプロセスセンターに保存する新しいサーバー API を呼び出し、テンプレートの一意のコード `processCode` を取得します。
+3. `processCode` を保存していない場合は、[テンプレートコードを取得する](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。
+4. 承認テンプレートの作成後、ユーザーは DingTalk のOA承認管理コンソールで、サードパーティの承認フォームテンプレートの表示、テンプレートデータの表示と検索、テンプレートデータのエクスポートと削除を行えます。
+5. テンプレートコード `processCode` を使用して、外部連携の承認インスタンスをプロセスセンターに保存する新しいサーバー API を呼び出します。これにより承認インスタンスが開始され、承認インスタンス ID `processInstanceId` が返されます。
+6. インスタンスの作成後、ユーザーは DingTalk のOA承認センターで、4 つの承認リスト（未処理、処理済み、申請済み、受信済み）の表示、承認インスタンスデータの検索、承認の処理を行えます。
+7. `processInstanceId` と `tasks` を使用して、外部連携の承認タスクをプロセスセンターに保存する API を呼び出します。これにより各ToDoの taskId が返され、対応する DingTalk のToDoタスクが作成されます。
+8. 未処理タスクの作成後、[プロセスセンター経由で連携したOA承認タスクを照会する](/ja/open/development/query-oa-approval-tasks-integrated-through-process-center) API を呼び出し、ユーザーの進行中の承認タスクを照会します。
+9. `processInstanceId` と `taskId` を使用して [プロセスセンターのタスクステータスを更新する](/ja/open/development/update-process-center-task-status) API を呼び出し、自社の承認ToDoのステータス更新を同期します。OR 承認（いずれか 1 名の承認者が決裁できる方式）などのシナリオでは、[プロセスセンターの未処理タスクを一括キャンセルする](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出し、承認インスタンス配下の進行中のToDoをすべて CANCELED に設定します。
+10. 承認タスクイベント（開始、完了、転送）または承認インスタンスイベント（開始、完了、終了、削除）を利用し、承認インスタンスの `processInstanceId`、`status`、インスタンスの結果などのデータに基づいてインスタンスのステータスを更新します。
+11. 業務グループを削除するには、業務グループを削除する API を呼び出します。これにより、サードパーティシステムから DingTalk のOA承認に同期されたグループと、DingTalk のToDoのOA承認カテゴリ配下にある対応する第2階層カテゴリが削除されます。
+12. 承認テンプレートのデータを整理するには、[テンプレートを削除する](/ja/open/development/self-owned-approval-deletion-template) API を呼び出します。これにより、組織用に作成された承認テンプレートと、その配下で作成されたインスタンスおよびToDoタスクが削除されます。
+
+## 実装手順
+
+### **ステップ 1：アプリ認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/) にログインします。
+2. 対象のアプリを選択して詳細ページを開きます。
+3. **基本情報** > **認証情報と基本情報** をクリックします。
+4. アプリの `Client ID` と `Client Secret` を控えておきます。
+
+### 注意
+
+   `Client Secret` は安全に保管し、第三者と共有しないでください。コードにハードコーディングせず、環境変数や鍵管理システムに保存してください。
+
+### ステップ 2：API 権限を追加する
+
+1. アプリの詳細ページで **権限管理** をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `qyapi_aflow`（承認作業フローのデータ管理権限）：プロセスセンターのタスクステータスの照会と更新に使用します。
+   - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）：テンプレートコードの取得に使用します。
+   - `Workflow.Form.Read`（作業フローテンプレートの読み取り権限）：承認インスタンスの作成・更新とテンプレートの削除に使用します。
+   - `Premium.Workflow.ReadWrite.All`（OA承認作業フローの読み取り/書き込み権限）：業務グループの作成・更新に使用します。
+
+<Note>
+業務シナリオによって必要な権限の組み合わせが異なる場合があります。実際の要件に応じて権限を申請してください。
+</Note>
+
+### ステップ 3：アクセス認証情報（アクセストークン）を取得する
+
+ステップ 1 で取得した Client ID と Client Secret を使用して、アプリのアクセス認証情報を取得します。詳しくは [社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) を参照してください。
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略**：`accessToken` の有効期限は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に事前に更新してください。
+- **同時実行の制御**：複数のスレッドが同時にトークンを更新して競合が発生しないよう、分散ロックを使用してください。
+- **エラー時の再試行**：ネットワークが不安定な場合は、最大 3 回まで間隔を延ばしながら（1 秒 → 2 秒 → 4 秒）自動的に再試行してください。
+
+### ステップ 4：主要 API を呼び出す
+
+1. **承認業務グループを DingTalk に同期する**：業務グループを作成または更新する新しいサーバー API を呼び出し、グループの `dirId` を取得します。これにより、サードパーティシステムの業務グループが DingTalk のOA承認に同期され、DingTalk のToDoのOA承認カテゴリ配下に対応する第2階層カテゴリが作成されます。
+
+### 注意
+
+   後で未処理タスクを DingTalk に同期する際、各ToDoタスクの所属業務グループを指定できます。これにより、承認者はサードパーティ業務システムからのToDoをより明確に確認できます。
+
+   ```text
+   リクエスト例：
+   {
+     "operateUserId":"manager9814",
+     "bizGroup":"administeration",
+     "name": "テスト",
+     "name18n": "{\"en_US\":\"test\",\"ja_JP\":\"テスト\",\"vi_VN\":\"test\",\"zh_CN\":\"测试\",\"zh_HK\":\"测试\",\"zh_TW\":\"测试\"}",
+     "description": "カスタム承認業務グループのテスト"
+   }
+
+   レスポンス例：
+   {
+     "result": {
+       "bizGroup": "348925476_administeration20250210",
+       "dirId": "194e436699fe71353fc1f3d498f80e66"
+     },
+     "success": true
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `operateUserId`：操作者のユーザー ID。
+   - `bizGroup`：グループを区別するための業務グループ識別子。
+   - `name`：グループの中国語名。
+   - `description`：グループの説明。
+
+### レスポンスフィールド
+
+   - `bizGroup`：業務グループの完全な識別子。
+   - `dirId`：グループの一意のコード。後でテンプレートを関連付ける際に使用します。
+2. **承認テンプレートのデータを DingTalk に同期する**：外部連携の承認テンプレートをプロセスセンターに保存する新しいサーバー API を呼び出し、テンプレートの一意のコード `processCode` を取得します。**このシナリオでは、processFeatureConfig（プロセスセンターの連携設定）の AFFILIATION_DIR を使用して、ステップ 1 で返された dirId のグループを指定します。**
+
+   ```json
+   {
+     "name": "クイック承認",
+     "description": "外部連携の承認テンプレートをプロセスセンターに保存（プレミアム限定 API）",
+     "formComponents": [
+       {
+         "componentType": "TextField",
+         "props": {
+           "componentId": "TextField-1",
+           "label": "一行テキストフィールド",
+           "required": true,
+           "bizAlias": "TextField-bizAlias",
+           "disabled": false
+         }
+       }
+     ],
+     "processFeatureConfig": {
+       "features": [
+         {
+           "name": "AFFILIATION_DIR",
+           "runType": "OUTBIZ_CUSTOM",
+           "config": "{\"dirId\":\"194e436699fe71353fc1f3d498f80e66\"}"
+         }
+       ]
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `name`：承認テンプレート名。
+   - `description`：テンプレートの説明。
+   - `formComponents`：フォームコンポーネントの設定配列。
+   - `processFeatureConfig`：プロセスセンターの連携設定。`AFFILIATION_DIR` の `config` 値に、ステップ 1 で返された `dirId` を設定します。
+
+### レスポンスフィールド
+
+   - `processCode`：承認フォームテンプレートの一意のコード。
+3. `processCode` を保存していない場合は、[テンプレートコードを取得する](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。
+
+   ```java
+   public void getProcessCodeByName() throws Exception {
+       Config config = new Config();
+       config.protocol = "https";
+       config.regionId = "central";
+
+       com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+
+       GetProcessCodeByNameHeaders getProcessCodeByNameHeaders = new GetProcessCodeByNameHeaders();
+       getProcessCodeByNameHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+       GetProcessCodeByNameRequest request = new GetProcessCodeByNameRequest()
+               .setName("名前");
+
+       try {
+           GetProcessCodeByNameResponse getProcessCodeByNameResponse = client.getProcessCodeByNameWithOptions(
+                   getProcessCodeByNameRequest,
+                   getProcessCodeByNameHeaders,
+                   new com.aliyun.teautil.models.RuntimeOptions()
+           );
+       } catch (TeaException err) {
+           if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+               // err には問題の特定に役立つ code 属性と message 属性が含まれます
+               System.out.println(err.code);
+               System.out.println(err.message);
+           }
+       } catch (Exception _err) {
+           TeaException err = new TeaException(_err.getMessage(), _err);
+           if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+               // err には問題の特定に役立つ code 属性と message 属性が含まれます
+               System.out.println(err.code);
+               System.out.println(err.message);
+           }
+       }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `name`：テンプレート名。
+
+### レスポンスフィールド
+
+   - `processCode`：承認フォームテンプレートの一意のコード。
+4. 承認テンプレートの作成後、ユーザーは DingTalk のOA承認管理コンソールで、サードパーティの承認フォームテンプレートの表示、テンプレートデータの表示と検索、テンプレートデータのエクスポートと削除を行えます。
+5. **承認インスタンスのデータを DingTalk に同期する**：テンプレートコード `processCode` を使用して、外部連携の承認インスタンスをプロセスセンターに保存する新しいサーバー API を呼び出します。これにより承認インスタンスが開始され、承認インスタンス ID `processInstanceId` が返されます。**このシナリオでは、インスタンス単位の連携設定にも対応しています。featureConfig を使用して、ステップ 1 で返された dirId のグループを指定します。**
+
+   ```json
+   {
+     "formComponentValueList": [
+       {
+         "name": "一行テキストフィールド",
+         "value": "[DingTalk](https://www.dingtalk.io/)"
+       }
+     ],
+     "title": "カスタムグループ付きクイック承認",
+     "processCode": "PROC-3602AF75-58DE-4862-9946-321DE45BBAEE",
+     "originatorUserId": "manager9814",
+     "url": "http://www.dingtalk.io",
+     "featureConfig": {
+       "features": [
+         {
+           "name": "AFFILIATION_DIR",
+           "runType": "OUTBIZ_CUSTOM",
+           "config": "{\"dirId\":\"194e436699fe71353fc1f3d498f80e66\"}"
+         }
+       ]
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `formComponentValueList`：フォームコンポーネントの値のリスト。
+   - `title`：承認インスタンスのタイトル。
+   - `processCode`：承認テンプレートの一意のコード。
+   - `originatorUserId`：申請者のユーザー ID。
+   - `url`：承認詳細ページの URL。
+   - `featureConfig`：インスタンス単位の連携設定。`AFFILIATION_DIR` の `config` 値に、ステップ 1 で返された `dirId` を設定します。
+
+### レスポンスフィールド
+
+   - `processInstanceId`：承認インスタンスの一意の ID。
+6. 承認インスタンスの作成後、ユーザーは DingTalk のOA承認センターでも、4 つの承認リスト（未処理、処理済み、申請済み、受信済み）の表示、承認インスタンスデータの検索、承認の処理を行えます。
+7. **承認タスクのデータを DingTalk に同期する**：`processInstanceId` と `tasks` を使用して、外部連携の承認タスクをプロセスセンターに保存する API を呼び出します。これにより、サードパーティシステムの承認ノード情報が DingTalk のOA承認に同期され、各ToDoの taskId が返されて、対応する DingTalk のToDoタスクが作成されます。**ToDoタスクは、ステップ 4 で指定した業務グループに表示されます。**
+
+### 注意
+
+   このシナリオでカスタムのクイック承認ボタンを設定しない場合、承認者は業務システムの詳細ページを開いて、同期された承認タスクを処理します。
+
+   ```json
+   {
+       "processInstanceId": "skFv-tLeTTWObq_vWiezew09641738995784",
+       "activityId": "0210-1",
+       "tasks": [
+           {
+               "userId": "manager9814",
+               "url": "https://www.dingtalk.io"
+           }
+       ]
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：承認インスタンスの一意の ID。
+   - `activityId`：承認ノードのアクティビティ ID。
+   - `tasks`：ToDoのリスト。承認者のユーザー ID と詳細ページの URL を含みます。
+
+### レスポンスフィールド
+
+   - `taskId`：承認ToDoタスクの一意の ID。
+8. 未処理タスクの作成後、[プロセスセンター経由で連携したOA承認タスクを照会する](/ja/open/development/query-oa-approval-tasks-integrated-through-process-center) API を呼び出し、ユーザーの進行中の承認タスクを照会します。
+
+   ```java
+       public void getPremiumRedirectTasksByManager() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           QueryIntegratedTodoTaskHeaders queryIntegratedTodoTaskHeaders = new QueryIntegratedTodoTaskHeaders();
+           queryIntegratedTodoTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+           QueryIntegratedTodoTaskRequest queryIntegratedTodoTaskRequest = new QueryIntegratedTodoTaskRequest()
+                   .setUserId("manager001")
+                   .setPageSize(1)
+                   .setPageNumber(1)
+                   .setCreateBefore(1660036833411L);
+           try {
+               QueryIntegratedTodoTaskResponse queryIntegratedTodoTaskWithOptions = client.queryIntegratedTodoTaskWithOptions(queryIntegratedTodoTaskRequest, queryIntegratedTodoTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ
+
+   - `userId`：タスク担当者のユーザー ID。
+   - `pageSize`：1 ページあたりの件数。1 から始まり、最大 40 です。
+   - `pageNumber`：ページ番号。1 から始まります。
+   - `createBefore`：照会する期間の起点。
+
+### レスポンスフィールド
+
+   - `list`：タスクリスト。taskId（OA承認タスク ID）、activityId（ToDoグループ ID）、processInstanceId（ワークフローインスタンス ID）などを含みます。
+9. **承認タスクのステータスを DingTalk に同期する**：承認インスタンスの `processInstanceId` と承認ToDoタスクの taskId を使用して [プロセスセンターのタスクステータスを更新する](/ja/open/development/update-process-center-task-status) API を呼び出し、自社の承認ToDoのステータス更新を同期します。
+
+   ```java
+   public void getPremiumGetDoneTasks() throws Exception {
+     Config config = new Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+     UpdateIntegratedTaskHeaders updateIntegratedTaskHeaders = new UpdateIntegratedTaskHeaders();
+     updateIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+     UpdateIntegratedTaskRequest.UpdateIntegratedTaskRequestTasks tasks0 = new UpdateIntegratedTaskRequest.UpdateIntegratedTaskRequestTasks();
+     tasks0.setTaskId(1234567L);
+     tasks0.setStatus("COMPLETED");
+     UpdateIntegratedTaskRequest updateIntegratedTaskRequest = new UpdateIntegratedTaskRequest()
+       .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+       .setTasks(java.util.Arrays.asList(
+         tasks0
+       ));
+     try {
+       UpdateIntegratedTaskResponse updateIntegratedTaskWithOptions = client.updateIntegratedTaskWithOptions(updateIntegratedTaskRequest, updateIntegratedTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+     } catch (TeaException err) {
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     } catch (Exception _err) {
+       TeaException err = new TeaException(_err.getMessage(), _err);
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：OA承認のワークフローインスタンス ID。
+   - `taskId`：OA承認タスク ID。
+   - `status`：変更後のタスクステータス。
+
+### レスポンスフィールド
+
+   - `success`：更新結果。
+
+   OR 承認（いずれか 1 名の承認者が決裁できる方式）などのシナリオでは、[プロセスセンターの未処理タスクを一括キャンセルする](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出し、承認インスタンス配下の進行中のToDoをすべて CANCELED に設定します。
+
+   ```java
+   public void getCancelIntegratedTask() throws Exception {
+     Config config = new Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+     CancelIntegratedTaskHeaders cancelIntegratedTaskHeaders = new CancelIntegratedTaskHeaders();
+     cancelIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+     CancelIntegratedTaskRequest cancelIntegratedTaskRequest = new CancelIntegratedTaskRequest()
+       .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+       .setActivityId("act_xxxx");
+     try {
+       CancelIntegratedTaskResponse cancelIntegratedTaskWithOptions = client.cancelIntegratedTaskWithOptions(cancelIntegratedTaskRequest, cancelIntegratedTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+     } catch (TeaException err) {
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     } catch (Exception _err) {
+       TeaException err = new TeaException(_err.getMessage(), _err);
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：OA承認のワークフローインスタンス ID。
+   - `activityId`：ToDoグループ ID。
+
+### レスポンスフィールド
+
+   - `success`：アクションが成功したかどうか。
+10. **承認インスタンスのステータスを DingTalk に同期する**：承認タスクイベント（開始、完了、転送）または承認インスタンスイベント（開始、完了、終了、削除）を利用し、承認インスタンスの `processInstanceId`、インスタンスのステータス、インスタンスの結果などのデータに基づいてインスタンスのステータスを更新します。
+11. **業務グループを削除する**：業務グループを削除するには、業務グループを削除する API を呼び出します。これにより、サードパーティシステムから DingTalk のOA承認に同期されたグループと、DingTalk のToDoのOA承認カテゴリ配下にある対応する第2階層カテゴリが削除されます。そのカテゴリ内の DingTalk のToDoデータは、OA承認カテゴリ配下の **その他** グループに移動します。
+12. 承認テンプレートのデータを整理するには、[テンプレートを削除する](/ja/open/development/self-owned-approval-deletion-template) API を呼び出します。これにより、組織用に作成された承認テンプレートと、その配下で作成されたインスタンスおよびToDoタスクが削除されます。
+
+    ```java
+    public void deleteProcessHeaders() throws Exception {
+      Config config = new Config();
+      config.protocol = "https";
+      config.regionId = "central";
+      com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+      DeleteProcessHeaders deleteProcessHeaders = new DeleteProcessHeaders();
+      deleteProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+      DeleteProcessRequest deleteProcessRequest = new DeleteProcessRequest()
+        .setProcessCode("proc-abc")
+        .setCleanRunningTask(false);
+      try {
+        DeleteProcessResponse deleteProcessResponse = client.deleteProcessWithOptions(deleteProcessRequest, deleteProcessHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+      } catch (TeaException err) {
+        if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+          // err には問題の特定に役立つ code 属性と message 属性が含まれます
+          System.out.println(err.code);
+          System.out.println(err.message);
+        }
+      } catch (Exception _err) {
+        TeaException err = new TeaException(_err.getMessage(), _err);
+        if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+          // err には問題の特定に役立つ code 属性と message 属性が含まれます
+          System.out.println(err.code);
+          System.out.println(err.message);
+        }
+      }
+    }
+    ```
+
+### リクエストパラメータ
+
+    - `processCode`：テンプレートコード。
+    - `cleanRunningTask`：進行中のタスクを整理するかどうか。
+
+### レスポンスフィールド
+
+    - `processCode`：テンプレートコード。
+
+### 実装チェックリスト
+
+- ✅ アプリを作成し、Client ID と Client Secret を取得済みである。
+- ✅ `qyapi_aflow`、`Workflow.Form.Write`、`Workflow.Form.Read`、`Premium.Workflow.ReadWrite.All` の各権限が付与されている。
+- ✅ アクセストークンを取得し、キャッシュ戦略を設定済みである。
+- ✅ 業務グループを作成し、dirId を取得済みである。
+- ✅ 承認テンプレートを保存し、AFFILIATION_DIR が dirId を正しく参照している。
+- ✅ 承認ToDoタスクが作成され、対応する業務グループに自動で振り分けられている。
+- ✅ 承認インスタンスのコールバックイベントを登録し、正しく受信できている。
+- ✅ DingTalk のToDoセンターの **OA承認** カテゴリ配下に、カスタムの第2階層グループが表示されている。
+- ✅ 承認者がグループ単位でサードパーティのToDoを正確に絞り込める。
+- ✅ 多言語のグループ名が各言語環境で正しく表示される。
+- ✅ グループの追加や変更が DingTalk の承認センターにリアルタイムで同期される。
+- ✅ 権限による絞り込みが機能し、役割の異なるユーザーにそれぞれ異なる承認タスクが表示される。
+
+## FAQ
+
+- **Q：サードパーティシステムで作成できる業務グループの数はいくつですか？**
+
+  1 つのアプリにつき最大 10 個の業務グループを作成できます。実際の事業部門の数に基づいてグループを設計してください。細かく分けすぎると承認者が混乱する原因になるため、避けてください。
+- **Q：業務グループの作成後に名前を変更できますか？**
+
+  はい、変更できます。業務グループを作成または更新する API を再度呼び出し、同じ `bizGroup` 識別子と新しい `name` を渡すと、グループ名が更新されます。
+- **Q：業務グループを削除すると、関連する承認タスクはどうなりますか？**
+
+  業務グループを削除しても、既存の承認タスクやテンプレートは削除されません。ただし、これらのタスクはグループへの割り当てが解除され、ToDoセンターでは未分類として表示されます。グループを削除する前に、そのグループに関連付けられた進行中のタスクがないことを確認してください。

@@ -1,0 +1,740 @@
+---
+title: "Comment on and Revoke Approval Workflows"
+description: "Call this API to add comments with attachments to an OA Approval instance and terminate the Approval process. This closes the loop on attachment supplements, communication records, and status sync."
+---
+
+# Integrate OA Approval Workflows: Add Approval Comments and Terminate Approvals
+
+## Overview
+
+### Background
+
+Business systems that organizations build or purchase often need to attach supporting materials to an approval instance during the approval workflow, such as scanned contracts or acceptance reports. These systems usually lack a unified attachment upload entry point. They also lack a standard way to revoke an approval when it was submitted in error or when requirements change. Connect approval comments and revocation to the DingTalk OA Approval Center so that users can add attachments and terminate approvals directly in DingTalk.
+
+- **No entry point for attachments:** Approval initiators cannot add supporting materials outside the business system. Approval information stays incomplete, and decisions lack a solid basis.
+- **Non-standard revocation:** Approval forms submitted in error are recalled through offline communication. No system-level revocation record or status sync exists.
+- **Disconnected Drive spaces:** Approval attachments are scattered across personal Drive folders or local storage. They cannot be linked to approval instances, which makes audits difficult.
+- **No schema confirmation:** Form structures are not validated before an approval is initiated. This causes runtime errors such as mismatched control IDs and failed data submission.
+
+### Core Value
+
+This solution reuses the Drive space management and comment engine of the official OA Approval. It integrates attachment upload, comment creation, and revocation into your business system to manage the full approval lifecycle.
+
+- **Centralized attachment management:** All approval attachments are uploaded to a dedicated approval Drive space and bound to the instance. Download them in one click and trace them during audits.
+- **Traceable comments:** Approval comments with attachments are kept permanently. They form a complete communication trail and prevent information loss.
+- **Standardized revocation:** Trigger revocation through the API. The approval status automatically updates to "Terminated," and a synchronous callback notifies the business system.
+- **Schema pre-validation:** Get the form schema before initiating an approval. Confirm that control settings match the template and reduce integration and debugging costs.
+
+### Use Cases
+
+This solution suits the following typical scenarios for integrating approval comments and revocation:
+
+- A law firm needs to attach evidence and add lawyer review comments during a case approval process.
+- An education and training organization needs to revoke a submitted course change approval after finding a scheduling conflict, then initiate it again.
+- A medical organization needs to add supplier qualification documents as comment attachments during a drug procurement approval.
+- A construction project needs to terminate the current acceptance approval after finding incorrect inspection data, then correct and resubmit it.
+
+## Typical Business Scenarios
+
+### Scenario 1: Add Evidence to a Law Firm Case Approval
+
+#### Pain Points
+
+A law firm uses an in-house case management system to handle case approvals. After lawyers submit a case filing approval, they often need to add new evidence or legal opinions. The original process had the following issues:
+
+- **No channel for adding evidence:** After a case filing approval starts, lawyers cannot attach newly collected evidence through the system. They email partners offline, so the approval materials remain incomplete.
+- **Scattered communication records:** Lawyers' additional notes are spread across WeChat, email, and other channels. Approvers cannot view all communication in the approval form, which slows decisions.
+- **Disorganized attachments:** Evidence files are stored on personal computers or shared network drives and are not linked to approval instances. Audits require manual matching.
+- **Hard to correct erroneous approvals:** When filing information is wrong, no systematic revocation exists. Lawyers ask approvers to reject verbally, leaving no formal termination record or status sync.
+
+#### Value Validation
+
+- **Automated Workflow**
+
+  The automated approval flow runs in five steps:
+
+  1. A lawyer initiates case filing, enters case information, and uploads evidence materials.
+  2. An **approval instance** is created and initialized through the **DingTalk OA** API.
+  3. The partner reviews the case in DingTalk, where the Approval is routed and the form is displayed.
+  4. The **approver** acts on mobile and selects **Reject** or **Approve**.
+  5. The result is synced back to the system, which writes the status and synchronizes data.
+
+  Compared with a manual process (cross-channel switching, out-of-sync status, and scattered notifications), the automated integration provides a unified entry point, real-time sync, and message delivery.
+- **Key Advantages**
+
+  - **Add evidence online:** Lawyers can attach evidence files to the approval form at any time through the approval comment API. Approvers view the complete materials in DingTalk and make decisions.
+  - **Complete communication trail:** All notes and attachments are permanently linked to the approval instance through comments. This creates a complete case approval record for later audits.
+  - **Standardized revocation:** When filing information is wrong, the revocation API formally terminates the Approval process. The system records the revocation reason and syncs the status, avoiding unclear responsibilities caused by verbal communication.
+
+### Scenario 2: Revoke and Resubmit a Course Change Approval at a Training Organization
+
+#### Pain Points
+
+An education and training organization uses an in-house academic affairs system to manage course change approvals. After submitting a schedule change request, staff sometimes find a time conflict or a lack of classroom resources. The original process had the following issues:
+
+- **Late conflict detection:** Time overlaps with other courses are found only after the approval is submitted. By then the approval is already in progress and cannot be recalled through the system.
+- **Incomplete change information:** Approvers see only the change request form. They cannot view affected students, teacher schedules, or classroom usage in the approval form, which makes impact assessment difficult.
+- **Non-standard revocation:** Erroneous requests can only be rejected by notifying approvers offline. No system-level revocation record exists, so academic logs do not match the actual status.
+- **Inefficient resubmission:** After revocation, staff must refill the entire form to initiate a new approval. Data from the original form cannot be reused, which adds workload.
+
+#### Value Validation
+
+- **Automated Workflow**
+
+  The end-to-end integrated flow runs in five steps:
+
+  1. **Academic affairs initiates a schedule change:** Fill in the change request and tag affected students.
+  2. **Create an approval instance:** Call the DingTalk OA Approval API to initialize the instance.
+  3. **Review in the academic admin console:** Route the Approval form and run conflict detection. The form includes fields such as **Course name**, **Original time**, **New time**, **Classroom**, **Applicant teacher**, and **Affected headcount**.
+  4. **Approver acts:** The approver reviews on mobile and taps **Approve** or **Reject**.
+  5. **Sync the result back to the academic system:** Update the timetable and sync the data.
+- **Key Advantages**
+
+  - **Revoke conflicting schedules immediately:** When a change request is wrong, the revocation API immediately terminates the Approval process. The system records the revocation reason and prevents the erroneous approval from affecting teaching arrangements.
+  - **Assess change impact online:** Staff can use comments to add affected student lists and classroom adjustment plans to the approval form. Approvers view all change information in one place in DingTalk.
+  - **Real-time status sync:** Revocation results are written back to the academic system in real time, keeping the timetable consistent with the approval status. Staff can quickly correct data when initiating a new approval and reduce repeated data entry.
+
+## Implementation Guide
+
+### Technical Architecture
+
+The technical architecture of this solution includes the following core components:
+
+- **Authentication layer**: Manages App credentials and obtains access tokens to verify the identity of every API call.
+- **Template management layer**: Creates and updates approval form templates and defines the structure and fields of the Approval process.
+- **Instance execution layer**: Initiates, queries, and revokes approval instances to drive the Approval process.
+- **Comment and attachment layer**: Manages the approval Drive space and adds comments to close the approval communication loop.
+
+### Prerequisites
+
+- **App preparation**: Complete [App creation and configuration](/open/dingstart/create-application).
+- **Permissions**: Have DingTalk Organization Admin or Sub Admin permissions, and apply for the following API permissions:
+
+  - `Workflow.Form.Write` (workflow template write permission)
+  - `Workflow.Form.Read` (workflow template read permission)
+  - `Workflow.Instance.Write` (workflow instance write permission)
+  - `Workflow.Instance.Read` (workflow instance read permission)
+- **Development environment**: Install a Java development environment (JDK 1.6 or later) and the Maven build tool.
+- **SDK preparation**: Download the DingTalk Server-side SDK, which supports Java, Python, Go, and other languages.
+
+### Code Implementation
+
+Step 1: Go to the App details page and get the client ID and Client Secret.
+
+Step 2: Apply for API permissions. Apply for the relevant "OA Approval" permissions.
+
+Step 3: Get the App access credential. See [Get the Access Token of an Internal App](/open/development/obtain-the-access-token-of-an-internal-app). When calling APIs, use the access token to authenticate the caller.
+
+Step 4: Call the OA Approval APIs:
+
+Step 1: Go to the App details page and get the client ID and Client Secret.
+
+Step 2: Apply for API permissions. Apply for the relevant "OA Approval" permissions.
+
+Step 3: Get the App access credential. See [Get the Access Token of an Internal App](/open/development/obtain-the-access-token-of-an-internal-app). When calling APIs, use the access token to authenticate the caller.
+
+Step 4: Call the OA Approval APIs:
+
+1. Call the new Server API [Create or Update an Approval Form Template](/open/development/create-an-approval-form-template) to get the unique template code `processCode`.
+2. Use `processCode` to call the new Server API [Get the Form Schema](/open/development/obtain-the-form-schema) and get the form template schema. Review and confirm the schema details of the form template.
+3. Use `processCode` to call the new Server API [Create an Approval Instance](/open/development/create-an-approval-instance) to initiate an approval instance and get the approval instance `instanceId`.
+4. Use `instanceId` to call the new Server API [Get the Details of a Single Approval Instance](/open/development/obtains-the-details-of-a-single-approval-instance-pop) to get the approval instance details.
+5. To add attachments to approval comments, upload the files to the approval Drive space. This provides the API parameters spaceId, fileType, fileName, fileId, and fileSize. Get them as follows:
+
+   1. Call the new Server API [Get Approval Drive Space Information](/open/development/obtains-the-information-about-approval-nail-disk) to get upload permissions for the Drive space and the approval Drive space spaceId.
+   2. Call the Client-side JSAPI for getting approval Drive space information to get basic file information.
+6. After you get the approval Drive space spaceId, use `instanceId` to call the new Server API [Add Approval Comments](/open/development/official-approval-adds-approval-comments) to add comments to the Approval form.
+7. After reviewing the approval, use `instanceId` to call the new Server API [Revoke an Approval Instance](/open/development/revoke-an-approval-instance) to revoke the Approval form.
+
+## Implementation Steps
+
+### **Step 1:** **Get App Credentials**
+
+1. Sign in to the [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Select the target App to open its details page.
+3. Click **Basic Information** > **Credentials and Basic Information**.
+4. Record the App's `Client ID` and `Client Secret`.
+
+### Note
+
+   Keep the `Client Secret` secure and do not share it with third parties. Store it in environment variables or a key management system instead of hard-coding it.
+
+### Step 2: Add API Permissions
+
+1. On the App details page, click **Manage permissions**.
+2. Enter the following permission identifiers in the permission search box and apply for them:
+
+   - `Workflow.Form.Write` (workflow template write permission): Creates and updates approval form templates.
+   - `Workflow.Form.Read` (workflow template read permission): Gets the form schema.
+   - `Workflow.Instance.Write` (workflow instance write permission): Initiates and revokes approval instances.
+   - `Workflow.Instance.Read` (workflow instance read permission): Queries approval instance details.
+
+<Note>
+Different business scenarios may require different permission combinations. Apply based on your actual needs. For example, batch import scenarios also require permissions for batch user operations.
+</Note>
+
+### Step 3: Get the Access Credential (Access Token)
+
+Use the Client ID and Client Secret from Step 1 to get the App access credential. See [Get the Access Token of an Internal App](/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**Best practices**:
+
+- **Caching**: The `accessToken` is valid for 2 hours. Cache it in memory or Redis and refresh it 5 minutes before it expires.
+- **Concurrency control**: Prevent multiple threads from refreshing the token at the same time. Use a distributed lock.
+- **Error retries**: Retry automatically on network fluctuations, up to 3 times with increasing intervals (1s → 2s → 4s).
+
+### Step 4: Call the Core APIs
+
+1. **Create or update an approval form template**: Call the new Server API [Create or Update an Approval Form Template](/open/development/create-an-approval-form-template) to get the unique template code `processCode`.
+
+### Note
+
+   If you did not save the `processCode` returned by the API, see [processCode](/open/development/workflow-overview).
+
+   ```java
+     public void createProcessTemplate() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           FormCreateHeaders formCreateHeaders = new FormCreateHeaders();
+           formCreateHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. Single-line text control
+           FormComponentProps formComponentProps1 = new FormComponentProps()
+                   .setComponentId("TextField-sys1001")
+                   .setPlaceholder("Enter a value")
+                   .setLabel("Customer Name")
+                   .setRequired(false);
+           FormComponent formComponent1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(formComponentProps1);
+           // 2. Multi-line text control
+           FormComponentProps formComponentProps2 = new FormComponentProps()
+                   .setComponentId("TextareaField-sys1002")
+                   .setPlaceholder("Enter a value")
+                   .setLabel("Customer Description")
+                   .setRequired(false);
+           FormComponent formComponent2 = new FormComponent()
+                   .setComponentType("TextareaField")
+                   .setProps(formComponentProps2);
+
+           // 3. Multiselect control
+           SelectOption option3 = new SelectOption();
+           option3.setKey("option1");
+           option3.setValue("Important");
+           SelectOption option4 = new SelectOption();
+           option4.setKey("option2");
+           option4.setValue("Normal");
+           FormComponentProps formComponentProps3 = new FormComponentProps()
+                   .setComponentId("DDMultiSelectField-sys1003")
+                   .setLabel("Customer Tags")
+                   .setOptions(java.util.Arrays.asList(option3, option4));
+           FormComponent formComponent3 = new FormComponent()
+                   .setComponentType("DDMultiSelectField")
+                   .setProps(formComponentProps3);
+
+           // 4. Date range control
+           FormComponentProps formComponentProps4 = new FormComponentProps()
+                   .setComponentId("DDDateRangeField-sys1004")
+                   .setLabel("[\"Customer Intent Start Time\",\"Customer Intent End Time\"]")
+                   .setUnit("Hours")
+                   .setPlaceholder("Select a time")
+                   .setFormat("yyyy-MM-dd HH:mm");
+           FormComponent formComponent4 = new FormComponent()
+                   .setComponentType("DDDateRangeField")
+                   .setProps(formComponentProps4);
+
+           // 5. Detail control
+           // Detail child control statistics
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField2 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("Number Input");
+
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField1 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("Amount (CNY)");
+
+           // Detail child controls
+           // 5.1 Detail single-line text field
+           FormComponentProps childProp1 = new FormComponentProps()
+                   .setComponentId("TextField-sysC1005")
+                   .setLabel("Name");
+           FormComponent child1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(childProp1);
+
+           // 5.2 Detail amount field
+           FormComponentProps childProp2 = new FormComponentProps()
+                   .setComponentId("MoneyField-sysC1005")
+                   .setLabel("Unit Price (CNY)");
+           FormComponent child2 = new FormComponent()
+                   .setComponentType("MoneyField")
+                   .setProps(childProp2);
+
+           // 5.3 Detail number field
+           FormComponentProps childProp3 = new FormComponentProps()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("Quantity");
+           FormComponent child3 = new FormComponent()
+                   .setComponentType("NumberField")
+                   .setProps(childProp3);
+           // 5.4 Formula component
+           JSONObject jsonObject1 = new JSONObject();
+           jsonObject1.put("id", "NumberField-sysC1005");
+           String s = "*";
+           JSONObject jsonObject2 = new JSONObject();
+           jsonObject2.put("id", "MoneyField-sysC1005");
+           Object objects[] = new Object[]{jsonObject1, s, jsonObject2};
+           FormComponentProps childProp4 = new FormComponentProps()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("Total")
+                   .setPlaceholder("Calculated automatically")
+                   .setRequired(false)
+                   .setFormula(JSON.toJSONString(objects));
+           FormComponent child4 = new FormComponent()
+                   .setComponentType("CalculateField")
+                   .setProps(childProp4);
+
+           FormComponentProps formComponentProps5 = new FormComponentProps()
+                   .setComponentId("TableField-sys1005")
+                   .setTableViewMode("table")
+                   .setLabel("Details")
+                   .setVerticalPrint(true)
+                   .setStatField(Arrays.asList(formComponentPropsStatField1, formComponentPropsStatField2));
+           FormComponent formComponent5 = new FormComponent()
+                   .setComponentType("TableField")
+                   .setChildren(Arrays.asList(child1, child2, child3, child4))
+                   .setProps(formComponentProps5);
+
+           // 6. Contact control
+           FormComponentProps formComponentProps6 = new FormComponentProps()
+                   .setComponentId("InnerContactField-sys1006")
+                   .setLabel("Contact")
+                   .setPlaceholder("Select a contact")
+                   .setChoice("1");
+           FormComponent formComponent6 = new FormComponent()
+                   .setComponentType("InnerContactField")
+                   .setProps(formComponentProps6);
+
+           // 7. Department control
+           FormComponentProps formComponentProps7 = new FormComponentProps()
+                   .setComponentId("DepartmentField-sys1007")
+                   .setLabel("Contact Department")
+                   .setPlaceholder("Select a department")
+                   .setMultiple(false);
+           FormComponent formComponent7 = new FormComponent()
+                   .setComponentType("DepartmentField")
+                   .setProps(formComponentProps7);
+
+           // 8. Province/city/district control
+           FormComponentProps formComponentProps8 = new FormComponentProps()
+                   .setComponentId("AddressField-sys1008")
+                   .setLabel("Customer Address")
+                   .setPlaceholder("Select")
+                   .setAddressModel("city");
+           FormComponent formComponent8 = new FormComponent()
+                   .setComponentType("AddressField")
+                   .setProps(formComponentProps8);
+
+           // 9. Single-select control
+           SelectOption selectOption1 = new SelectOption();
+           selectOption1.setKey("option1");
+           selectOption1.setValue("Urgent");
+           SelectOption selectOption2 = new SelectOption();
+           selectOption2.setKey("option2");
+           selectOption2.setValue("Normal");
+           FormComponentProps formComponentProps9 = new FormComponentProps()
+                   .setComponentId("DDSelectField-sys1009")
+                   .setLabel("Approval Request Status")
+                   .setOptions(Arrays.asList(selectOption1, selectOption2));
+           FormComponent formComponent9 = new FormComponent()
+                   .setComponentType("DDSelectField")
+                   .setProps(formComponentProps9);
+
+           FormCreateRequest formCreateRequest = new FormCreateRequest()
+                   .setName("Customer Form")
+                   .setDescription("Customer Form")
+                   // With processCode, the template is updated; without processCode, a template is created. This example creates a template.
+                   //.setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setFormComponents(java.util.Arrays.asList(
+                           formComponent1, formComponent2, formComponent3, formComponent4,
+                           formComponent5, formComponent6, formComponent7, formComponent8,
+                           formComponent9
+                   ));
+           try {
+               FormCreateResponse formCreateResponse = client.formCreateWithOptions(formCreateRequest, formCreateHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(formCreateResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Request Parameters
+
+   - `name`: The name of the approval form template.
+   - `description`: The description of the approval form template.
+   - `formComponents`: The list of form controls that defines the structure and fields of the approval form.
+
+### Response Fields
+
+   - `processCode`: The unique code of the approval template.
+2. **Get the form schema**: Use `processCode` to call the new Server API [Get the Form Schema](/open/development/obtain-the-form-schema) and get the form template schema. Review and confirm the schema details of the form template.
+
+   ```java
+   public void processSchemasInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeHeaders querySchemaByProcessCodeHeaders = new com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeHeaders();
+           querySchemaByProcessCodeHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeRequest querySchemaByProcessCodeRequest = new com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeRequest()
+                   .setProcessCode("PROC-17428B8C-6C60-xxxx-924C-64F1037AE067");
+           try {
+               QuerySchemaByProcessCodeResponse processSchemaWithOptions = client.querySchemaByProcessCodeWithOptions(querySchemaByProcessCodeRequest, querySchemaByProcessCodeHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processSchemaWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Request Parameters
+
+   - `processCode`: The unique code of the approval template.
+
+### Response Fields
+
+   - `schemaContent`: The complete schema of the form template, including the form type, engine type, and status.
+3. **Initiate an approval instance**: Use `processCode` to call the new Server API [Create an Approval Instance](/open/development/create-an-approval-instance) to initiate an approval instance and get the approval instance `instanceId`.
+
+   ```java
+   public void ProcessInstances() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           StartProcessInstanceHeaders startProcessInstanceHeaders = new StartProcessInstanceHeaders();
+           startProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. Single-line text component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Customer Name")
+                   .setValue("Acme Corp");
+
+           // 2. Multi-line text component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Customer Description")
+                   .setValue("Potential high-value customer");
+
+           // 3. Multiselect component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues3;
+           formComponentValues3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Customer Tags")
+                   .setValue("[\"Important\",\"Normal\"]")
+                   .setComponentType("DDMultiSelectField");
+
+           // 4. Date range component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("[\"Customer Intent Start Time\",\"Customer Intent End Time\"]")
+                   .setValue("[\"2022-08-14 15:00\",\"2022-08-15 15:00\"]");
+
+           // 5. Details table component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Name")
+                   .setValue("DingTalk F2 Smart Video Conferencing All-in-One");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Unit Price (CNY)")
+                   .setValue("29999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Quantity")
+                   .setValue("1");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Name")
+                   .setValue("DingTalk F1 Smart Video Conferencing All-in-One");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Unit Price (CNY)")
+                   .setValue("4999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Quantity")
+                   .setValue("5");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Details")
+                   .setValue(JSON.toJSONString(Arrays.asList(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3), Arrays.asList(formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6))))
+                   .setDetails(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3, formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6));
+
+           // 6. Contact component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Contact")
+                   .setValue(JSON.toJSONString(Arrays.asList("Contact userId")));
+
+           // 7. Department component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues7 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Contact Department")
+                   .setValue("Department ID");
+
+           // 8. Province/city/district component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues8 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Customer Address")
+                   .setValue(JSON.toJSONString(Arrays.asList("Beijing,Beijing,Chaoyang District,Donghu Subdistrict,Building A xxxxxxx")));
+
+           // 9. Single-select component
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues9 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Approval Request Status")
+                   .setValue("Urgent");
+
+           // Set approvers
+           // Countersign approval (all approvers must approve)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("AND")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           // Or-sign approval (any one approver can approve)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers1 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("OR")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           StartProcessInstanceRequest startProcessInstanceRequest = new StartProcessInstanceRequest()
+                   .setOriginatorUserId("Initiator userId")
+                   .setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setDeptId(1L)
+                   .setMicroappAgentId(118*****5L)
+                   .setApprovers(java.util.Arrays.asList(
+                           approvers0, approvers1
+                   ))
+             			// CC recipients
+                   .setCcList(java.util.Arrays.asList(
+                           "CC recipient userId"
+                   ))
+                   .setCcPosition("FINISH")
+                   .setFormComponentValues(java.util.Arrays.asList(
+                           formComponentValues1, formComponentValues2, formComponentValues3, formComponentValues4,
+                           formComponentValues5, formComponentValues6, formComponentValues7, formComponentValues8,
+                           formComponentValues9
+                   ));
+           try {
+               StartProcessInstanceResponse startProcessInstanceResponse = client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Request Parameters
+
+   - `processCode`: The unique code of the approval template.
+   - `originatorUserId`: The user ID of the initiator.
+   - `formComponentValues`: The list of form control values, corresponding to the fields defined in the template.
+   - `approvers`: The list of approvers, specifying the approvers and action type for each node.
+
+### Response Fields
+
+   - `instanceId`: The unique ID of the approval instance.
+4. **Get the details of a single approval instance**: Use `instanceId` to call the new Server API [Get the Details of a Single Approval Instance](/open/development/obtains-the-details-of-a-single-approval-instance-pop) to get the approval instance details.
+
+   ```java
+   public void processInstancesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders getProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders();
+           getProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest getProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest()
+                   .setProcessInstanceId("zRfPT*********************159");
+           try {
+               GetProcessInstanceResponse processInstanceWithOptions = client.getProcessInstanceWithOptions(getProcessInstanceRequest, getProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processInstanceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Request Parameters
+
+   - `processInstanceId`: The unique ID of the approval instance.
+
+### Response Fields
+
+   - `taskId`: The ID of the approval task node.
+   - `status`: The current status of the approval instance.
+5. To add attachments to approval comments, upload the files to the approval Drive space.
+
+   1. Call the new Server API [Get Approval Drive Space Information](/open/development/obtains-the-information-about-approval-nail-disk) to get upload permissions for the Drive space and the approval Drive space spaceId.
+
+### Important
+
+      Before calling this method, call the API for getting approval Drive space information to complete authorization.
+6. **Add approval comments**: After you get the approval Drive space `spaceId`, use `instanceId` to call the new Server API [Add Approval Comments](/open/development/official-approval-adds-approval-comments) to add comments to the Approval form.
+
+   ```java
+   public void attachmentSpaceInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders getAttachmentSpaceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders();
+           getAttachmentSpaceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest getAttachmentSpaceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest()
+                   .setUserId("user123")
+                   .setAgentId(8345000L);
+           try {
+               GetAttachmentSpaceResponse attachmentSpaceWithOptions = client.getAttachmentSpaceWithOptions(getAttachmentSpaceRequest, getAttachmentSpaceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+               System.out.println(JSON.toJSONString(attachmentSpaceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+7. **Revoke an approval instance**: After reviewing the approval, use `instanceId` to call the new Server API [Revoke an Approval Instance](/open/development/revoke-an-approval-instance) to revoke the Approval form.
+
+   ```java
+   public void processInstancesTerminate() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceHeaders terminateProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceHeaders();
+           terminateProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceRequest terminateProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceRequest()
+                   .setProcessInstanceId("zRfPT*********************159")
+                   .setIsSystem(false)
+                   .setRemark("Approval form submitted in error. Revocation required.")
+                   .setOperatingUserId("Initiator userId");
+           try {
+               TerminateProcessInstanceResponse terminateProcessInstanceResponse = client.terminateProcessInstanceWithOptions(terminateProcessInstanceRequest, terminateProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(terminateProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err contains code and message attributes that help locate the issue
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Request Parameters
+
+   - `processInstanceId`: The unique ID of the approval instance.
+   - `operatingUserId`: The user ID of the user who performs the revocation.
+   - `remark`: The reason for the revocation.
+
+### Response Fields
+
+   - `result`: The result of the action.
+
+### Implementation Checklist
+
+- ✅ The App's Client ID and Client Secret are obtained and stored securely.
+- ✅ OA Approval permissions (template read/write, instance read/write, and instance read) are applied for and approved.
+- ✅ The access token API call succeeded, and the credential works within its validity period.
+- ✅ The approval template is created, and processCode is saved to the business system configuration.
+- ✅ The form schema is retrieved, and the control structure matches the template definition.
+- ✅ The approval instance is initiated, and instanceId is available for subsequent task actions.
+- ✅ The approval Drive space is retrieved, and spaceId and the upload credential are valid.
+- ✅ The approval comment is added, and attachments are correctly linked to the approval instance.
+- ✅ Approval instance revocation is verified, and status sync works as expected.
+
+## FAQ
+
+- **Q1: What should I do if a 403 error is returned when I get the form schema?**
+
+  Check that the `Workflow.Form.Read` permission has been granted and that the access token has not expired. Permissions take 1 to 2 minutes to take effect after approval.
+- **Q2: Why are attachments not displayed after I add an approval comment?**
+
+  Confirm that all required parameters are correctly obtained from the approval Drive space API and the Client-side JSAPI, and that the files are successfully uploaded to the corresponding Drive space.
+- **Q3: Why is the status not updated after I revoke an approval instance?**
+
+  Revocation runs asynchronously. Subscribe to the approval instance change callback event to monitor status changes, or poll the API for getting the details of a single approval instance to confirm.
+- **Q4: Can I add comments to a revoked approval instance?**
+
+  No. A revoked approval instance is in a final state and does not accept any comments or attachments. To add more information, initiate a new approval instance.

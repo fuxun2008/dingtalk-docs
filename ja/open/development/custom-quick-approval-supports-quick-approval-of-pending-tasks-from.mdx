@@ -1,0 +1,565 @@
+---
+title: "カスタムクイック承認：サードパーティ業務システムの未処理タスクを ToDo センターと OA承認メッセージカードで承認"
+description: "DingTalk のカスタムクイック承認 API とコールバックを使い、サードパーティシステムの承認タスクを承認センターに同期する方法を解説します。ToDo リストやメッセージカードからワンクリックで承認でき、ステータスも自動で同期されます。"
+---
+
+# サードパーティシステム向けクイック承認連携：ToDo センターとメッセージカードでワンクリック承認
+
+## 概要
+
+本ソリューションは、承認タスクが複数の業務システムに分散している組織を対象としています。DingTalk から離れずにサードパーティの承認を処理したい管理職にも適しています。OA承認のプロセスセンターは、カスタムクイック承認 API とコールバックの仕組みを提供しています。サードパーティの業務システムはこれらを利用して、承認タスクを DingTalk の承認センターに同期します。同期後、ToDo センターのリストと OA承認メッセージカードにカスタムのクイック承認ボタンが表示されます。承認者がボタンをクリックすると、DingTalk がサードパーティシステムをコールバックします。サードパーティシステムはタスクのステータスを更新し、その結果を DingTalk の承認センターに同期します。これにより、承認者はシームレスで一元化された承認体験を得られます。
+
+### 背景
+
+組織では、経費管理・購買・人事などのサードパーティ業務システムで大量の承認タスクが発生します。従業員は各システムにログインし、タスクを 1 件ずつ処理しなければなりません。手順が長く、非効率です。本ソリューションは、サードパーティの承認を DingTalk の ToDo センターに連携し、メッセージカード上でのワンクリック承認を実現します。従業員は元のシステムに切り替えることなく、DingTalk 上ですべての承認を一元的に処理できます。
+
+組織が抱える一般的な課題は次のとおりです。
+
+- **システムごとに繰り返されるログイン：** 従業員は承認処理のために毎日 5 つ以上の業務システムにログインしています。承認 1 件あたり平均 3 分かかり、1 日に 40 分以上を費やしています。
+- **承認の進捗が見えない：** 承認を申請した後、従業員は DingTalk 上でそのステータスをリアルタイムに確認できません。確認のたびに元のシステムへログインする必要があり、催促も手作業でのやり取りに頼っています。
+- **モバイルでの承認体験が悪い：** 多くのサードパーティシステムはモバイルに最適化されていません。出張中や在宅勤務中の従業員が緊急の承認を適時に処理できず、業務の遅延につながります。
+- **承認データを集計しにくい：** 部門ごとの承認件数や平均処理時間などの指標が各システムに分散しています。管理職は DingTalk 上で全体像を把握できません。
+
+### 主な価値
+
+本ソリューションは、次の 3 つの価値を提供します。
+
+- **ワンクリック承認：** サードパーティシステムのクイック承認ボタンが、DingTalk の ToDo センターのリストと OA承認メッセージカードに直接表示されます。承認者は業務システムに切り替えることなく、簡単な承認を完了できます。
+- **双方向の同期：** 承認者がクイックボタンをクリックすると、DingTalk がサードパーティシステムをコールバックしてタスクのステータスを更新します。サードパーティシステムは最新のステータスを DingTalk の承認センターに同期し、データの流れが完結します。
+- **柔軟なカスタマイズ：** サードパーティシステム側で、クイックボタンのラベル・アイコン・表示条件をカスタマイズできます。業務ニーズに応じて、承認の種類ごとに異なるクイック操作を設定してください。
+
+### ユースケース
+
+本ソリューションは、承認の発生元が多岐にわたり、簡易な承認の割合が高い組織に適しています。代表的なユースケースは次のとおりです。
+
+- **経営層のワンストップ承認：** CEO や CFO などの経営層は、毎日複数のサードパーティシステムからの承認を処理しています。その多くは簡単な確認であり、システムを切り替えずに DingTalk 上でワンクリックで完了したいというニーズがあります。
+- **高頻度で軽量な承認：** 経費精算の確認、休暇の延長、打刻修正の申請などは、頻度が高く内容も単純です。承認者は ToDo リストから直接処理できます。
+- **メッセージカードからの即時承認：** OA承認メッセージカードの通知を受け取った承認者は、詳細ページを開かずにカード上で直接承認を完了できます。
+
+## 代表的な業務シナリオ
+
+### シナリオ 1：ホテルチェーンにおける運営業務のクイック承認（ホスピタリティ・観光業）
+
+#### 課題
+
+ある全国展開のホテルチェーンは、80 以上の施設を運営しています。客室予約の承認には自社開発の PMS、備品申請の承認には購買システム、スタッフのシフト設定と代休には人事システムを使用しています。承認タスクは 3 つのシステムで別々に処理されています。グループの運営責任者や店舗マネージャーは、毎日大量の承認を処理しています。現行のプロセスには次の問題があります。
+
+- **簡易な承認に時間がかかる：** 1 日の承認件数は 60 件を超え、そのうち 40% はオーバーブッキングの確認や補充の確認といった簡単な操作です。それでも 1 件ごとに PMS や購買システムにログインし、タスクを探して「承認」をクリックする必要があり、平均 2 分かかります。
+- **モバイルでの操作性が悪い：** 店舗マネージャーは施設の巡回中にスマートフォンで承認を処理します。DingTalk のメッセージ内のリンクから PMS のモバイルページを開きますが、読み込みが遅く操作も煩雑です。緊急のオーバーブッキング確認への対応が遅れ、宿泊客の満足度を損なっています。
+- **メッセージカード上で操作できない：** 「客室のオーバーブッキングの確認が必要です」というメッセージカードが届いても、マネージャーはクリックして詳細を見ることしかできません。カード上で直接確認できないため、客室変更を調整する最適なタイミングを逃してしまいます。
+
+#### 価値の検証
+
+- **自動化されたワークフロー**
+
+  連携は次の 5 つのステップで進みます。
+
+  1. **複数システムの連携** – 公式 OA 承認、PMS、人事システム、購買システムを接続します。
+  2. **ToDo の集約表示** – 統一された ToDo リストで、発生元システムごとに絞り込めます。
+  3. **クイックボタンの登録** – 「確認」「却下」の操作とそのコールバックを設定します。
+  4. **カード上での承認** – 詳細ページを開かずに、カード上で直接操作します。
+  5. **ステータスの双方向同期** – コールバックイベントにより、システム間のデータの整合性を保ちます。
+
+  OA承認カードには **申請者**、**申請日時**、**金額**、**理由** の各フィールドと、埋め込み型の **承認**、**却下**、**その他** ボタンが表示されます。
+- **主なメリット**
+
+  - **ワンクリックで効率化：** 確認型の簡易な承認にかかる時間が 2 分から 5 秒に短縮され、1 日あたり 40 分を節約できます。オーバーブッキング確認の応答時間も 15 分から 30 秒に短縮されます。
+  - **モバイルに最適：** 店舗マネージャーは PMS のモバイルページを開かずに、スマートフォンの DingTalk ToDo リストから直接承認できます。巡回中でも緊急のオーバーブッキングにリアルタイムで対応できます。
+  - **カード上で直接操作：** OA承認メッセージカードにクイックボタンが埋め込まれます。オーバーブッキングの通知が届いたらカード上ですぐに確認でき、客室変更を調整するタイミングを逃しません。
+
+### シナリオ 2：大規模建設プロジェクトにおける複数関係者の承認連携（建設・エンジニアリング業）
+
+#### 課題
+
+ある大手建設会社は、15 件のプロジェクトを同時に進めています。施工進捗の承認には自社開発のプロジェクト管理システム、資材の納品検収の承認には資材システム、危険箇所の点検と是正の承認には安全管理システムを使用しています。3 つの承認プロセスはそれぞれ独立して運用されています。プロジェクトマネージャーや安全管理責任者は、毎日大量の承認を処理しています。現行のプロセスには次の問題があります。
+
+- **現場での承認が不便：** プロジェクトマネージャーは現場で作業しています。モバイル回線が不安定な場合、プロジェクト管理システムのモバイルページの読み込みが遅くなります。資材納品の確認が遅れ、施工の進捗に影響が出ます。
+- **安全上の危険への対応が遅い：** 安全担当者は危険箇所を発見すると、是正の承認を申請します。安全管理責任者は判断する前に、メッセージカードから詳細ページを開いて危険箇所の写真や場所を確認する必要があります。従来のプロセスでは時間がかかりすぎ、是正の最適なタイミングを逃すと事故につながるおそれがあります。
+- **複数関係者による連携が非効率：** 資材検収の承認 1 件につき、プロジェクト部門・資材部門・監理者の確認がそれぞれ別のシステムで必要です。調整に最大 2 日かかります。
+
+#### 価値の検証
+
+- **自動化されたワークフロー**
+
+  統合フローは次の 5 つの段階で構成されます。
+
+  1. **複数システムの接続** — プロジェクト、資材、安全の各システムを DingTalk に接続します。
+  2. **ToDo の集約表示** — すべての発生元からの未処理項目が統一された **ToDo センター** に表示され、**すべて**、**プロジェクト**、**資材**、**安全** で絞り込めます。
+  3. **クイック操作ボタンの登録** — 検収・再確認・是正の各操作に対応するボタンを設定します。
+  4. **カードから直接承認** — 詳細ページを開かずに、OA承認カード上の **承認**、**却下**、**その他** ボタンで操作します。
+  5. **ステータスのリアルタイム同期** — コールバックイベントにより、発生元システムのデータの整合性を保ちます。
+
+  承認カードには、申請タイトル、**発生元**、申請者、提出時間、内容が表示されます。
+- **主なメリット**
+
+  - **現場での効率化：** 資材検収の確認にかかる時間が 3 分から 5 秒に短縮されます。現場の電波が弱くても DingTalk 上ですばやく完了でき、施工の遅れを防げます。
+  - **安全対応の迅速化：** 危険箇所の是正承認をメッセージカードから直接処理できます。応答時間が 1 時間から 5 分に短縮され、安全事故のリスクを低減します。
+  - **関係者間の連携を完結：** 複数関係者による確認型の承認は、クイックボタンとコールバックによってステータスをリアルタイムに同期します。調整時間が 2 日から 4 時間に短縮されます。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+技術アーキテクチャは、次のコアコンポーネントで構成されます。
+
+- **認証レイヤー：** アプリ認証情報を管理し、アクセストークンを取得して、すべての API 呼び出しの ID を検証します。
+- **テンプレート同期レイヤー：** プロセスセンターに外部統合承認テンプレートを保存する API を呼び出します。サードパーティ業務システムの承認テンプレートを DingTalk の承認センターに同期し、一意のテンプレートコード `processCode` を取得します。
+- **タスク作成レイヤー：** 承認 ToDo タスクを作成または更新する API を呼び出します。サードパーティシステムの承認タスクを DingTalk の承認センターに同期し、カスタムクイック承認ボタンとコールバック URL を登録します。
+- **コールバック処理レイヤー：** サードパーティシステムが HTTPS のコールバック API を提供します。DingTalk からのクイック承認コールバックを受信してローカルのタスクステータスを更新し、最新のステータスを DingTalk の承認センターに同期してデータの流れを完結させます。
+- **イベントコールバックレイヤー：** 承認タスクのステータス変更イベントをリッスンし、サードパーティシステムと DingTalk の承認センターの整合性を保ちます。
+
+### 前提条件
+
+- **アプリの準備：** [アプリの作成と設定](/ja/open/dingstart/create-application) の手順を完了してください。
+- **権限要件：** DingTalk の組織管理者またはサブ管理者の権限を持ち、次の API 権限を申請してください。
+
+  - `qyapi_aflow`（承認フローデータの管理権限）
+  - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）
+  - `Workflow.Form.Read`（作業フローテンプレートの読み取り権限）
+  - `Workflow.Instance.Write`（ワークフローインスタンスの書き込み権限）
+  - `Premium.Workflow.ReadWrite.All`（OA承認の作業フローの読み取り / 書き込み権限。OA プレミアム版専用）
+- **開発環境：** Java 開発環境（JDK 1.6 以降）と Maven ビルドツールをインストールしてください。
+- **SDK の準備：** DingTalk のサーバーサイド SDK をダウンロードしてください。Java、Python、Go などの言語に対応しています。
+- **ゲートウェイの準備：** サードパーティシステムのコールバック API を、DingTalk の「データソース管理」でゲートウェイとして登録してください。詳細は「データソース」を参照してください。
+
+### コードの実装
+
+ステップ 1：アプリの詳細ページで、アプリの Client ID と Client Secret を取得します。
+
+ステップ 2：API 権限を申請します。「OA承認」関連の権限を申請してください。
+
+ステップ 3：アプリのアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) を参照してください。API を呼び出す際は、アクセストークンを使用して呼び出し元を認証します。
+
+ステップ 4：コア API を呼び出します。
+
+1. カスタムクイック承認ボタンのコールバック API を登録します。DingTalk 外部のデータ API へのゲートウェイコールバックは、すべて「データソース管理」でゲートウェイとして登録する必要があります。詳細は「データソース」を参照してください。
+2. プロセスセンターに外部統合承認テンプレートを保存する新しいサーバー API を呼び出し、一意のテンプレートコード `processCode` を取得します。
+3. `processCode` を保存していない場合は、[テンプレートコードを取得する](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。
+4. 承認テンプレートの作成後、DingTalk の OA承認の管理コンソールに移動します。サードパーティの承認フォームテンプレートの確認、テンプレートデータの表示・検索、テンプレートデータのエクスポート・削除を行えます。
+5. テンプレートコード `processCode` を使用して、プロセスセンターに外部統合承認インスタンスを保存する API を呼び出します。承認インスタンスが開始され、承認インスタンス ID `processInstanceId` が返されます。
+6. 承認インスタンスの作成後、DingTalk の OA承認の承認センターに移動します。承認リスト（未処理、処理済み、申請済み、受信済み）の確認、承認インスタンスデータの検索、承認操作を行えます。
+7. 承認インスタンスの `processInstanceId` と ToDo リストのタスクを使用して、プロセスセンターに外部統合承認タスクを保存する API を呼び出します。サードパーティシステムの承認ノード情報が DingTalk の OA承認に同期され、各 ToDo 項目の taskId が返されるとともに、対応する DingTalk の ToDo タスクが生成されます。
+8. [プロセスセンター経由で統合された OA承認タスクを照会する](/ja/open/development/query-oa-approval-tasks-integrated-through-process-center) API を呼び出し、ユーザーの進行中の承認タスクを照会します。
+9. 承認インスタンスの `processInstanceId` と承認 ToDo の taskId を使用して [プロセスセンターのタスクステータスを更新する](/ja/open/development/update-process-center-task-status) API を呼び出し、自社の承認 ToDo 項目のステータスを同期します。
+
+### 注意
+
+   いずれか 1 名の承認で完了する（OR 承認）シナリオなどでは、[プロセスセンターの未処理タスクを一括キャンセルする](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出し、承認インスタンス配下の進行中の ToDo 項目をすべて一括で CANCELED に設定します。
+10. 承認インスタンスの `processInstanceId`、インスタンスのステータス、インスタンスの結果などのデータを使用して、承認タスクの開始・終了・転送や、承認インスタンスの開始・終了・中止・削除などのイベントをトリガーします。これらのイベントによってインスタンスのステータスが更新されます。
+11. 承認テンプレートのデータをクリーンアップするには、[テンプレートを削除する](/ja/open/development/self-owned-approval-deletion-template) API を呼び出します。組織向けに作成された承認テンプレートと、そのテンプレートから作成されたすべてのインスタンスおよび ToDo タスクが削除されます。
+
+## 実装手順
+
+### **ステップ 1：アプリ認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/) にログインします。
+2. 対象のアプリを選択して、詳細ページを開きます。
+3. **基本情報** > **認証情報と基本情報** をクリックします。
+4. アプリの `Client ID` と `Client Secret` を控えておきます。
+
+### 注意
+
+   `Client Secret` は安全に保管し、第三者と共有しないでください。ハードコードせず、環境変数またはキー管理システムに保存してください。
+
+### ステップ 2：API 権限を追加する
+
+1. アプリの詳細ページで、**権限管理** をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `qyapi_aflow`（承認フローデータの管理権限）：プロセスセンターのタスクステータスを更新します。
+   - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）：テンプレートコードを取得します。
+   - `Workflow.Form.Read`（作業フローテンプレートの読み取り権限）：承認インスタンスを作成または更新します。
+   - `Workflow.Instance.Write`（ワークフローインスタンスの書き込み権限）：プロセスセンターの未処理タスクを一括でキャンセルします。
+   - `Premium.Workflow.ReadWrite.All`（OA承認の作業フローの読み取り / 書き込み権限。OA プレミアム版専用）：DingTalk の承認センターにおけるユーザーの未処理・処理済み・申請済み・受信済みリストのデータを取得します。
+
+<Note>
+業務シナリオによって必要な権限の組み合わせは異なります。実際のニーズに応じて申請してください。
+</Note>
+
+### ステップ 3：アクセス認証情報（アクセストークン）を取得する
+
+ステップ 1 で取得した Client ID と Client Secret を使用して、アプリのアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) を参照してください。
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略**：`accessToken` の有効期間は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に更新してください。
+- **同時実行の制御**：複数のスレッドが同時にトークンを更新して競合が発生しないよう、分散ロックを使用してください。
+- **エラー時のリトライ**：ネットワークが不安定な場合は自動でリトライします。リトライは最大 3 回とし、間隔を段階的に延ばしてください（1 秒 → 2 秒 → 4 秒）。
+
+### ステップ 4：コア API を呼び出す
+
+1. **カスタムクイック承認ボタンのコールバック API を登録する：** 承認者が DingTalk の ToDo センターまたは OA承認メッセージカード上で直接操作すると、DingTalk がサードパーティシステムをコールバックします。サードパーティシステムはタスクを更新し、新しいタスク情報を DingTalk の承認センターに同期して、処理を完結させます。
+
+### 注意
+
+   DingTalk 外部のデータ API へのゲートウェイコールバックは、すべて「データソース管理」でゲートウェイとして登録する必要があります。詳細は「データソース」を参照してください。
+2. **承認テンプレートのデータを DingTalk に同期する：** プロセスセンターに外部統合承認テンプレートを保存する新しいサーバー API を呼び出し、一意のテンプレートコード `processCode` を取得します。**このシナリオでは、プロセスセンター連携用の processFeatureConfig を設定する必要はありません。**
+
+   ```json
+   {
+     "name": "クイック承認",
+     "description": "プロセスセンターに外部統合承認テンプレートを保存（プレミアム版 API）",
+     "formComponents": [
+       {
+         "componentType": "TextField",
+         "props": {
+           "componentId": "TextField-1",
+           "label": "一行テキストフィールド",
+           "required": true,
+           "bizAlias": "TextField-bizAlias",
+           "disabled": false
+         }
+       }
+     ],
+     "templateConfig": {
+       "disableSendCard": false
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `name`：承認テンプレートの名前。
+   - `description`：テンプレートの説明。
+   - `formComponents`：フォームコンポーネントの設定の配列。
+   - `templateConfig`：テンプレートの設定。`disableSendCard` は、メッセージカードの送信を無効にするかどうかを指定します。
+
+### レスポンスフィールド
+
+   - `processCode`：承認フォームテンプレートの一意のコード。
+3. `processCode` を保存していない場合は、[テンプレートコードを取得する](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。
+
+   ```java
+   public void getProcessCodeByName() throws Exception {
+       Config config = new Config();
+       config.protocol = "https";
+       config.regionId = "central";
+
+       com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+
+       GetProcessCodeByNameHeaders getProcessCodeByNameHeaders = new GetProcessCodeByNameHeaders();
+       getProcessCodeByNameHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+       GetProcessCodeByNameRequest request = new GetProcessCodeByNameRequest()
+               .setName("名前");
+
+       try {
+           GetProcessCodeByNameResponse getProcessCodeByNameResponse = client.getProcessCodeByNameWithOptions(
+                   getProcessCodeByNameRequest,
+                   getProcessCodeByNameHeaders,
+                   new com.aliyun.teautil.models.RuntimeOptions()
+           );
+       } catch (TeaException err) {
+           if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+               // err には問題の特定に役立つ code 属性と message 属性が含まれます
+               System.out.println(err.code);
+               System.out.println(err.message);
+           }
+       } catch (Exception _err) {
+           TeaException err = new TeaException(_err.getMessage(), _err);
+           if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+               // err には問題の特定に役立つ code 属性と message 属性が含まれます
+               System.out.println(err.code);
+               System.out.println(err.message);
+           }
+       }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `name`：テンプレートの名前。
+
+### レスポンスフィールド
+
+   - `processCode`：承認フォームテンプレートの一意のコード。
+4. 承認テンプレートの作成後、ユーザーは DingTalk の OA承認の管理コンソールに移動できます。サードパーティの承認フォームテンプレートの確認、テンプレートデータの表示・検索、テンプレートデータのエクスポート・削除を行えます。
+5. **承認インスタンスのデータを DingTalk に同期する：** テンプレートコード `processCode` を使用して、プロセスセンターに外部統合承認インスタンスを保存する新しいサーバー API を呼び出します。承認インスタンスが開始され、承認インスタンス ID `processInstanceId` が返されます。このシナリオでは、プロセスセンター連携用の `featureConfig` を設定する必要はありません。
+
+   ```json
+   {
+     "formComponentValueList": [
+       {
+         "name": "一行テキストフィールド",
+         "value": "[DingTalk](https://www.dingtalk.io/)"
+       }
+     ],
+     "title": "クイック承認",
+     "processCode": "PROC-C818F3C2-BDAB-4055-847A-CAF1EB56E1A8",
+     "originatorUserId": "1451694214729725262",
+     "url": "http://www.dingtalk.io",
+     "notifiers": [
+       {
+         "userid": "1451694214729725262",
+         "position": "start"
+       }
+     ]
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `formComponentValueList`：フォームコンポーネントの値のリスト。
+   - `title`：承認インスタンスのタイトル。
+   - `processCode`：承認テンプレートの一意のコード。
+   - `originatorUserId`：申請者のユーザー ID。
+   - `url`：承認詳細ページの URL。
+   - `notifiers`：通知先ユーザーのリスト。
+
+### レスポンスフィールド
+
+   - `processInstanceId`：承認インスタンスの一意の ID。
+6. 承認インスタンスの作成後、ユーザーは DingTalk の OA承認の承認センターにも移動できます。4 種類の承認リスト（未処理、処理済み、申請済み、受信済み）の確認、承認インスタンスデータの検索、承認操作を行えます。
+7. **承認タスクのデータを DingTalk に同期する**：承認インスタンスの `processInstanceId` と ToDo リストのタスクを使用して、プロセスセンターに外部統合承認タスクを保存する API を呼び出します。サードパーティシステムの承認ノード情報が DingTalk の OA承認に同期され、各 ToDo 項目の taskId が返されるとともに、対応する DingTalk の ToDo タスクが生成されます。
+
+   **注意** 
+   - **サードパーティシステムで** **featureConfig** **を使用して、承認タスクのコールバック API を設定してください。これにより、承認者は DingTalk の ToDo センターと OA承認メッセージカード上で直接操作できるようになります。**
+   - **callback の apiKey には、ステップ 1 で登録したデータソースを指定します。**
+
+   ```json
+   {
+     "processInstanceId": "OW3kMrjfT9Crje23kP-C3g06701727322896",
+     "activityId": "xxx-1",
+     "tasks": [
+       {
+         "userId": "1451694214729725262",
+         "url": "https://www.dingtalk.io"
+       }
+     ],
+     "featureConfig": {
+       "features": [
+         {
+           "name": "CUSTOM_SHORTCUT",
+           "runType": "REDIRECT",
+           "callback": {
+             "apiKey": "applyIntegratedCustomAction",
+             "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+             "version": "1"
+           }
+         }
+       ]
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：承認インスタンスの一意の ID。
+   - `activityId`：承認ノードのアクティビティ ID。
+   - `tasks`：ToDo リスト。承認者のユーザー ID と詳細ページの URL を含みます。
+   - `featureConfig`：機能設定のリスト。`CUSTOM_SHORTCUT` はカスタムクイック承認ボタンを表し、`callback.apiKey` は登録済みデータソースの識別子です。
+
+### レスポンスフィールド
+
+   - `taskId`：承認 ToDo タスクの一意の ID。
+8. [プロセスセンター経由で統合された OA承認タスクを照会する](/ja/open/development/query-oa-approval-tasks-integrated-through-process-center) API を呼び出し、ユーザーの進行中の承認タスクを照会します。未処理タスクが正常に作成されると、次のように動作します。
+
+   タスクは **ToDo** リストの **優先処理** に表示されます。従来は別画面に遷移する **表示** ボタンが 1 つあるだけでしたが、統合された各承認タスクに **却下** と **承認** のインライン操作ボタンが表示されるようになります。ユーザーは ToDo リストから直接タスクを処理できます。
+
+   ```java
+       public void getPremiumRedirectTasksByManager() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           QueryIntegratedTodoTaskHeaders queryIntegratedTodoTaskHeaders = new QueryIntegratedTodoTaskHeaders();
+           queryIntegratedTodoTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+           QueryIntegratedTodoTaskRequest queryIntegratedTodoTaskRequest = new QueryIntegratedTodoTaskRequest()
+                   .setUserId("manager001")
+                   .setPageSize(1)
+                   .setPageNumber(1)
+                   .setCreateBefore(1660036833411L);
+           try {
+               QueryIntegratedTodoTaskResponse queryIntegratedTodoTaskWithOptions = client.queryIntegratedTodoTaskWithOptions(queryIntegratedTodoTaskRequest, queryIntegratedTodoTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ
+
+   - `userId`：タスク担当者のユーザー ID。
+   - `pageSize`：1 ページあたりの件数。1 から始まり、最大値は 40 です。
+   - `pageNumber`：ページ番号。1 から始まります。
+   - `createBefore`：照会する時間範囲の起点。
+
+### レスポンスフィールド
+
+   - `list`：タスクリスト。taskId（OA承認タスク ID）、activityId（ToDo グループ ID）、processInstanceId（ワークフローインスタンス ID）などを含みます。
+9. **承認タスクのステータスを DingTalk に同期する：** 承認インスタンスの `processInstanceId` と承認 ToDo の taskId を使用して [プロセスセンターのタスクステータスを更新する](/ja/open/development/update-process-center-task-status) API を呼び出し、自社の承認 ToDo 項目のステータスを同期します。
+
+   ```java
+   public void getPremiumGetDoneTasks() throws Exception {
+     Config config = new Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+     UpdateIntegratedTaskHeaders updateIntegratedTaskHeaders = new UpdateIntegratedTaskHeaders();
+     updateIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+     UpdateIntegratedTaskRequest.UpdateIntegratedTaskRequestTasks tasks0 = new UpdateIntegratedTaskRequest.UpdateIntegratedTaskRequestTasks();
+     tasks0.setTaskId(1234567L);
+     tasks0.setStatus("COMPLETED");
+     UpdateIntegratedTaskRequest updateIntegratedTaskRequest = new UpdateIntegratedTaskRequest()
+       .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+       .setTasks(java.util.Arrays.asList(
+         tasks0
+       ));
+     try {
+       UpdateIntegratedTaskResponse updateIntegratedTaskWithOptions = client.updateIntegratedTaskWithOptions(updateIntegratedTaskRequest, updateIntegratedTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+     } catch (TeaException err) {
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     } catch (Exception _err) {
+       TeaException err = new TeaException(_err.getMessage(), _err);
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：OA承認のワークフローインスタンス ID。
+   - `taskId`：OA承認タスク ID。
+   - `status`：変更後のタスクステータス。
+
+### レスポンスフィールド
+
+   - `success`：更新結果。
+
+   いずれか 1 名の承認で完了する（OR 承認）シナリオなどでは、[プロセスセンターの未処理タスクを一括キャンセルする](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出し、承認インスタンス配下の進行中の ToDo 項目をすべて一括で CANCELED に設定します。
+
+   ```java
+   public void getCancelIntegratedTask() throws Exception {
+     Config config = new Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+     CancelIntegratedTaskHeaders cancelIntegratedTaskHeaders = new CancelIntegratedTaskHeaders();
+     cancelIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+     CancelIntegratedTaskRequest cancelIntegratedTaskRequest = new CancelIntegratedTaskRequest()
+       .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+       .setActivityId("act_xxxx");
+     try {
+       CancelIntegratedTaskResponse cancelIntegratedTaskWithOptions = client.cancelIntegratedTaskWithOptions(cancelIntegratedTaskRequest, cancelIntegratedTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+     } catch (TeaException err) {
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     } catch (Exception _err) {
+       TeaException err = new TeaException(_err.getMessage(), _err);
+       if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+         // err には問題の特定に役立つ code 属性と message 属性が含まれます
+         System.out.println(err.code);
+         System.out.println(err.message);
+       }
+     }
+   }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：OA承認のワークフローインスタンス ID。
+   - `activityId`：ToDo グループ ID。
+
+### レスポンスフィールド
+
+   - `success`：操作が成功したかどうか。
+10. **承認インスタンスのステータスを DingTalk に同期する：** 承認インスタンスの `processInstanceId`、インスタンスのステータス、インスタンスの結果などのデータを使用して、承認タスクの開始・終了・転送や、承認インスタンスの開始・終了・中止・削除などのイベントをトリガーします。これらのイベントによってインスタンスのステータスが更新されます。
+11. 承認テンプレートのデータをクリーンアップするには、[テンプレートを削除する](/ja/open/development/self-owned-approval-deletion-template) API を呼び出します。組織向けに作成された承認テンプレートと、そのテンプレートから作成されたすべてのインスタンスおよび ToDo タスクが削除されます。
+
+    ```java
+    public void deleteProcessHeaders() throws Exception {
+      Config config = new Config();
+      config.protocol = "https";
+      config.regionId = "central";
+      com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+      DeleteProcessHeaders deleteProcessHeaders = new DeleteProcessHeaders();
+      deleteProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+      DeleteProcessRequest deleteProcessRequest = new DeleteProcessRequest()
+        .setProcessCode("proc-abc")
+        .setCleanRunningTask(false);
+      try {
+        DeleteProcessResponse deleteProcessResponse = client.deleteProcessWithOptions(deleteProcessRequest, deleteProcessHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+      } catch (TeaException err) {
+        if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+          // err には問題の特定に役立つ code 属性と message 属性が含まれます
+          System.out.println(err.code);
+          System.out.println(err.message);
+        }
+      } catch (Exception _err) {
+        TeaException err = new TeaException(_err.getMessage(), _err);
+        if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+          // err には問題の特定に役立つ code 属性と message 属性が含まれます
+          System.out.println(err.code);
+          System.out.println(err.message);
+        }
+      }
+    }
+    ```
+
+### リクエストパラメータ
+
+    - `processCode`：テンプレートコード。
+    - `cleanRunningTask`：進行中のタスクをクリーンアップするかどうか。
+
+### レスポンスフィールド
+
+    - `processCode`：テンプレートコード。
+
+### 実装チェックリスト
+
+- ✅ アプリを作成し、Client ID と Client Secret を取得した。
+- ✅ `qyapi_aflow`、`Workflow.Form.Write`、`Workflow.Form.Read`、`Workflow.Instance.Write`、`Premium.Workflow.ReadWrite.All` の権限が付与されている。
+- ✅ アクセストークンを取得し、キャッシュ戦略を設定した。
+- ✅ 外部統合承認テンプレートをプロセスセンターに保存した。
+- ✅ 承認 ToDo タスクを作成し、クイック承認ボタンを正しく設定した。
+- ✅ コールバック API をデータソース管理でゲートウェイとして登録した。
+- ✅ クイック承認のコールバック処理ロジックがテストに合格した。
+- ✅ DingTalk の承認センターへのタスクステータスの同期を検証した。
+- ✅ 承認インスタンスのコールバックイベントを登録し、正常に受信できている。
+- ✅ DingTalk の ToDo センターのリストにクイックボタンが正しく表示される。
+- ✅ OA承認メッセージカードにクイックボタンが正しく表示される。
+
+## FAQ
+
+- **Q：コールバック API のタイムアウトにはどう対処すればよいですか？**
+
+  DingTalk からサードパーティシステムの API へのコールバックは、5 秒でタイムアウトします。サードパーティシステムが 5 秒以内に HTTP 200 を返さない場合、DingTalk は 1 秒、2 秒、4 秒の間隔で最大 3 回リトライします。コールバック API は軽量に保ち、複雑なロジックは非同期で処理してください。
+- **Q：承認者がクイックボタンをクリックした後、再度確認する必要はありますか？**
+
+  デフォルトでは再確認は不要で、クリックするとすぐに操作が実行されます。業務シナリオで再確認が必要な場合は、サードパーティのコールバック API から特定のステータスコードを返してください。DingTalk が操作の実行前に確認ダイアログを表示します。

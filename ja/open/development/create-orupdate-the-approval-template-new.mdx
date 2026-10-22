@@ -1,0 +1,1654 @@
+---
+title: "承認テンプレートの作成または更新"
+description: "DingTalk のサーバー API で承認テンプレートを作成・更新する方法を解説します。フォームコントロールの構成やプロセスセンター連携の設定方法、リクエスト例、エラーコードを確認し、processCode を取得できます。"
+---
+
+この API を呼び出して、承認テンプレートを作成または更新します。
+
+## API 呼び出し説明
+
+- 1 つの組織がプロセスセンターで作成できるテンプレートは最大 200 個です。上限に達すると、この API の呼び出しはエラーを返します。
+- DingTalk クライアントの承認リストには、テンプレートフォームの先頭 3 つのフィールドのみが表示されます。
+- 自社構築の承認作業フローテンプレートを作成したら、テンプレート名と、この API が返す processCode を保存してください。これらの値は他の API で必要になります。
+- 自社 OA 承認テンプレートでサポートされる承認コンポーネントは、本ドキュメントに記載されているもののみです。その他のコンポーネントはサポートされません。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processCentres/schemas |
+| HTTP メソッド | POST |
+| サポートされるアプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-Workflow.Form.Write-作業フローテンプレートの書き込み権限 |
+
+### リクエストヘッダー
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。次の方法で取得します。   - 社内アプリ：社内アプリのアクセストークンを取得する API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリを承認した組織のアクセストークンを取得する API を呼び出します。 |
+
+### リクエストボディ
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| processCode | String | いいえ | フォームの ProcessCode です。フォームテンプレートを更新する場合に指定します。processCode の値は、[テンプレートコードの取得](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。      ProcessCode を渡してフォームコンポーネントを変更・更新する場合、ワークフロー設計で条件分岐として使用済みのコントロールは削除・変更できません。たとえば、元のフォームで単一選択コントロール【社員区分】を分岐条件として使用している場合、このフォームを更新する際に【社員区分】フィールドのコントロールタイプを変更したり、削除したりすることはできません。     - 新しいテンプレートを作成する場合は、このパラメータを空のままにします。 - このパラメータを指定すると、渡した値に一致する承認テンプレートが更新されます。 |
+| name | String | はい | フォームテンプレート名です。最大 200 文字です。 |
+| description | String | いいえ | フォームテンプレートの説明です。最大 300 文字です。 |
+| formComponents | Array | はい | フォームコントロールのリストです。サポートされるコントロールは以下のとおりです。1 つのフォームに含められるコンポーネントは最大 200 個です。 サポートされるコントロールタイプの詳細は、本ドキュメントの **FormComponent パラメータの補足説明** を参照してください。   - **TextField**：単一行入力 - **TextareaField**：複数行入力 - **NumberField**：数値入力 - **DDSelectField**：単一選択 - **DDMultiSelectField**：複数選択 - **DDDateField**：日付コントロール - **DDDateRangeField**：期間コントロール - **TextNote**：説明テキストコントロール - **DDPhotoField**：画像コントロール - **MoneyField**：金額コントロール - **TableField**：明細コントロール（テーブルコントロール） - **DDAttachment**：添付 - **InnerContactField**：連絡先コントロール - **RelateField**：関連承認フォーム - **AddressField**：省/市/区コントロール - **StarRatingField**：評価点コントロール - **DepartmentField**：部門コントロール |
+| FormComponent | FormComponent | はい | フォームコントロールです。サポートされるコントロールについては、[FormComponent パラメータの説明](/ja/open/development/oa-formcomponent-message) を参照してください。1 つのフォームに含められるコンポーネントは最大 200 個です。 |
+| processFeatureConfig | Object | いいえ | プロセスセンター連携の設定です。 |
+| features | Array | いいえ | 設定リストです。 |
+| name | String | いいえ | サードパーティがカスタマイズできる機能モジュールの名前です。指定できる値：   - **TASK_EXECUTE**：タスク実行モジュール。詳細ページの「承認」ボタンと「却下」ボタンを指します - **SYNC_BOXSTER**：タスクを To-Do に同期する方法 - **CUSTOM_SHORTCUT**：To-Do 項目およびカード通知内のショートカットアクションボタン - **AFFILIATION_DIR**：To-Do の業務グループを指定します |
+| pcUrl | String | いいえ | PC 版のサードパーティカスタムリダイレクトリンクです。最大 1,024 文字です。 |
+| mobileUrl | String | いいえ | モバイル版のサードパーティカスタムリダイレクトリンクです。最大 1,024 文字です。 |
+| runType | String | いいえ | 実行モードです。features.name が `TASK_EXECUTE` の場合、指定できる値：   - **ORIGIN**：ネイティブ実行。公式の承認アプリ内で機能が実行され、callback に設定したコールバック API がトリガーされます。 - **REDIRECT**：外部リダイレクト実行。サードパーティのアドレスで機能が実行され、ユーザーは pcUrl または mobileUrl に設定したアドレスにリダイレクトされます。   features.name が `SYNC_BOXSTER` の場合、指定できる値：   - **DEFAULT**：デフォルトで承認タスクを To-Do に同期します。 - **OUTBIZ_CUSTOM**：To-Do に同期しません。業務側でカスタム処理を実装します。   features.name が `CUSTOM_SHORTCUT` の場合、指定できる値：   - **ORIGIN**：ネイティブ実行。To-Do の詳細ページを開くと、公式の承認アプリの詳細ページにリダイレクトされます。 - **REDIRECT**：外部リダイレクト実行。To-Do の詳細ページを開くと、pcUrl または mobileUrl に設定したアドレスにリダイレクトされます。   features.name が `AFFILIATION_DIR` の場合、指定できる値：   - **OUTBIZ_CUSTOM**：To-Do のグループを指定します。業務側で To-Do 項目のカテゴリを指定します。 |
+| callback | Object | いいえ | ゲートウェイのコールバック設定です。runType が ORIGIN の場合は必須です。 ゲートウェイがコールバックするすべての外部データ API は、「データソース管理」でゲートウェイとして登録してください。詳細は「データソースの作成」を参照してください。 |
+| appUuid | String | いいえ | ゲートウェイの appUuid です。runType が ORIGIN の場合は必須です。 データソースを作成した組織の組織 ID（corpId）を渡します。 |
+| apiKey | String | いいえ | ゲートウェイの apiKey です。runType が ORIGIN の場合は必須です。作成済みのデータソースから `apiKey` を取得します。       - ゲートウェイが外部 API を呼び出す際、DingTalk は業務シナリオに応じて業務処理に必要なパラメータを返します。コールバックリクエストの受信後にこれらのパラメータを解析するため、ISV はデータソースの作成時に対応するパラメータキーを設定する必要があります。   たとえば、TASK_EXECUTE モジュール（詳細ページの「承認」ボタンと「却下」ボタン）にコールバックを設定した場合、DingTalk は次の固定パラメータを返します：`&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"同意します","title":"xxx が提出した備品受領申請","taskId":111,"operator":"manager0001"&#125;`。 - ISV はデータソースの作成時に、業務要件に応じて解析に必要な次のキーを設定してください：outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | いいえ | ゲートウェイ API のバージョンです。       - runType が ORIGIN の場合は必須です。 - デフォルト：1。 |
+| config | String | いいえ | サードパーティがカスタマイズする機能モジュールの設定です。 |
+| templateConfig | Object | いいえ | プロセスセンターのテンプレート設定です。 |
+| hidden | Boolean | いいえ | テンプレートを非表示にするかどうか：   - **true**：非表示テンプレート - **false**：非表示テンプレートではない |
+| createInstanceMobileUrl | String | いいえ | フォーム作成用のモバイル版 URL です。最大 1,024 文字です。 |
+| createInstancePcUrl | String | いいえ | フォーム作成用の PC 版 URL です。最大 1,024 文字です。 |
+| templateEditUrl | String | いいえ | テンプレート編集用の URL です。最大 1,024 文字です。 |
+| disableSendCard | Boolean | いいえ | プロセスセンターで保留中のタスクを作成する際に、メッセージカード通知を無効にするかどうか：   - **true**：無効。メッセージカード通知は送信されません。 - **false**：デフォルト。無効にしません。メッセージカード通知が送信されます。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/schemas HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:BExxx
+Content-Type:application/json
+
+{
+    "name":"出張旅費精算",
+    "description":"社員の出張旅費精算に使用します",
+    // processCode を指定するとテンプレートを更新し、指定しない場合はテンプレートを作成します。この例ではテンプレートを作成します。
+    // "processCode":"PROC-9EA4B75F-****-****-****-AC70E0704E3D",
+    "formComponents": [
+        {
+            "componentType": "TextField",
+            "props": {
+                "label": "単一行入力", // コントロールのタイトル
+                "placeholder": "入力してください", // 入力ヒント
+                "componentId": "TextField_17EZKEGSOCTC0", // コントロール ID。フォーム内で一意であり、業務上の意味はありません
+                "required": false, // 必須かどうか。デフォルトは任意です
+                "bizAlias": "staffId" // コントロールの業務識別子。フォーム内で一意です。componentId とどちらか一方を指定します
+            }
+        },
+        {
+            "componentType": "TextareaField",
+            "props": {
+                "label": "複数行入力",
+                "placeholder": "入力してください",
+                "componentId": "TextareaField_17EZKEGSOCTC0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "NumberField",
+            "props": {
+                "label": "数値入力",
+                "placeholder": "数値を入力してください",
+                "componentId": "NumberField_108PIFZM21F40",
+                "required": false,
+                "unit": "元", // 数値の単位
+                "defaultValue": "10" // デフォルト値
+            }
+        },
+        {
+            "componentType": "DDSelectField",
+            "props": {
+                "options": [ // 選択肢のリスト
+                    {
+                        "value": "選択肢1", // 選択肢の表示名
+                        "key": "option_0" // コントロール内で一意のキー。任意。デフォルトではシステムが生成します
+                    },
+                    {
+                        "value": "選択肢2",
+                        "key": "option_1"
+                    },
+                    {
+                        "value": "選択肢3",
+                        "key": "option_2"
+                    },
+                    {
+                        "key": "other", // 「その他」選択肢用の特殊キー
+                        "value": "その他"
+                    }
+                ],
+                "label": "単一選択",
+                "placeholder": "選択してください",
+                "componentId": "DDSelectField_14T8M4EKXAV40",
+                "required": false
+            }
+        },
+        {
+            "componentType": "DDMultiSelectField",
+            "props": {
+                "options": [
+                    {
+                        "value": "選択肢1",
+                        "key": "option_0"
+                    },
+                    {
+                        "value": "選択肢2",
+                        "key": "option_1"
+                    },
+                    {
+                        "value": "選択肢3",
+                        "key": "option_2"
+                    },
+                    {
+                        "key": "other", // 「その他」選択肢用の特殊キー
+                        "value": "その他"
+                    }
+                ],
+                "label": "複数選択",
+                "placeholder": "選択してください",
+                "componentId": "DDMultiSelectField_1XJ7NG1GSD6O0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "DDDateField",
+            "props": {
+                "unit": "小时", // 日付の単位。列挙値：小时（時間）、天（日）
+                "format": "yyyy-MM-dd HH:mm", // 日付形式。任意。小时（時間）は yyyy-MM-dd HH:mm、天（日）は yyyy-MM-dd HH:mm に対応します
+                "bizAlias": "",
+                "label": "日付",
+                "placeholder": "選択してください",
+                "componentId": "DDDateField_SQL0DF3MS9C0",
+                "required": false,
+                "defaultValue": "2021-12-21 17:46" // デフォルト値
+            }
+        },
+        {
+            "componentType": "DDDateRangeField",
+            "props": {
+                "unit": "小时", // 時間
+                "format": "yyyy-MM-dd HH:mm",
+                "bizAlias": "",
+                "label": "[\"開始時刻\",\"終了時刻\"]",
+                "placeholder": "選択してください",
+                "componentId": "DDDateRangeField_7MPG14N3OOO0",
+                "duration": true, // 所要時間を自動計算するかどうか
+                "durationLabel": "所要時間", // 計算された所要時間の表示テキスト
+                "required": false
+            }
+        },
+         {
+            "componentType": "TextNote",
+            "props": {
+                "link": "https://www.dingtalk.io/", // ハイパーリンク
+                "notPrint": "0",
+                "bizAlias": "",
+                "componentId": "TextNote_13RP7230RAF40",
+                "content": "説明テキスト" // 説明テキスト
+            }
+        },
+        {
+            "componentType": "DDPhotoField",
+            "props": {
+                "label": "画像",
+                "componentId": "DDPhotoField_P50A0HMHB280",
+                "required": false
+            }
+        },
+        {
+            "componentType": "MoneyField",
+            "props": {
+                "upper": "0", // 金額を中国語の大写数字で表示するかどうか（0：表示しない、1：表示する）。デフォルト：表示する
+                "label": "金額（元）",
+                "placeholder": "金額を入力してください",
+                "componentId": "MoneyField_L1PP26ZDV400",
+                "required": false
+            }
+        },
+        {
+            "children": [ // 明細コントロール内の子コントロールのリスト。子コントロールは各コントロールの属性仕様に従います
+                {
+                    "componentType": "TextField",
+                    "props": {
+                        "label": "単一行入力",
+                        "placeholder": "入力してください",
+                        "componentId": "TextField_1UE1ZY1A28AO0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "MoneyField",
+                    "props": {
+                        "payEnable": false,
+                        "upper": "0",
+                        "bizAlias": "",
+                        "label": "金額（元）",
+                        "placeholder": "金額を入力してください",
+                        "componentId": "MoneyField_1S85G4YLMM5C0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "NumberField",
+                    "props": {
+                        "unit": "元",
+                        "payEnable": false,
+                        "bizAlias": "",
+                        "label": "数値入力",
+                        "placeholder": "数値を入力してください",
+                        "componentId": "NumberField_1XP6AWG50SE80",
+                        "required": false
+                    }
+                }
+            ],
+            "componentType": "TableField",
+            "props": {
+                "tableViewMode": "table", // 明細の入力モード。列挙値：list：リスト表示、table：テーブル表示
+                "verticalPrint": true, // 明細の印刷方向。true：縦向き、false：横向き
+                "statField": [ // 数値コントロールと金額コントロールの合計を設定します
+                    {
+                        "upper": "1",
+                        "componentId": "MoneyField_1S85G4YLMM5C0",
+                        "label": "金額（元）"
+                    },
+                    {
+                        "componentId": "NumberField_1XP6AWG50SE80",
+                        "label": "数値入力"
+                    }
+                ],
+                "bizAlias": "",
+                "label": "テーブル",
+                "componentId": "TableField_1MLEPEAQSXHC0"
+            }
+        },
+        {
+            "componentType": "DDAttachment",
+            "props": {
+                "label": "添付",
+                "componentId": "DDAttachment_18U4QTOWLMPS0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "InnerContactField",
+            "props": {
+                "label": "連絡先",
+                "placeholder": "選択してください",
+                "componentId": "InnerContactField_162USP4V1BC00",
+                "choice": "1", // 列挙値：1 は複数選択、0 は単一選択。デフォルト：0
+                "required": false,
+                "bizAlias": ""
+            }
+        },
+        {
+            "componentType": "DepartmentField",
+            "props": {
+                "multiple": false, // 複数選択に対応するかどうか。true：複数選択、false：単一選択
+                "label": "部門",
+                "placeholder": "選択してください",
+                "componentId": "DepartmentField_1GY5JSPOCY000",
+                "required": false
+            }
+        },
+        {
+            "componentType": "RelateField",
+            "props": {
+                "label": "関連承認フォーム",
+                "placeholder": "選択してください",
+                "componentId": "RelateField_5X1DL4KMKUW0",
+                "required": false,
+                "bizAlias": "",
+                "availableTemplates": [ // 関連付け可能な承認テンプレート。空の場合、すべての承認テンプレートのインスタンスを関連付けできます
+                    {
+                        "name": "マイテンプレート", // 関連付け可能な承認フォームの名前
+                        "processCode": "PROC-9EA4B75F-****-****-****-AC70E0704E3D" // 関連付け可能な承認フォームの formCode
+                    }
+                ]
+            }
+        },
+        {
+            "componentType": "AddressField",
+            "props": {
+                "addressModel": "district", // 列挙値：city：省/市、district：省/市/区、street：省/市/区/街道
+                "bizAlias": "",
+                "label": "省/市/区",
+                "componentId": "AddressField_1P9H21H8R2LC0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "StarRatingField",
+            "props": {
+                "limit": 5, // 列挙値：5 段階評価、10 段階評価
+                "label": "評価点",
+                "placeholder": "入力してください",
+                "componentId": "StarRatingField_10E5NHTA2W0G0",
+                "required": false,
+                "bizAlias": ""
+            }
+        }
+    ],
+    "processFeatureConfig":{
+        "features":[
+            {
+                "name":"TASK_EXECUTE",
+                "pcUrl":"https://www.dingtalk.io",
+                "mobileUrl":"https://www.dingtalk.io",
+                "runType":"REDIRECT"
+            }
+        ]
+    }
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されたものです。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.teautil.models.*;
+import com.aliyun.dingtalkworkflow_1_0.*;
+import com.aliyun.dingtalkworkflow_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        SaveProcessHeaders saveProcessHeaders = new SaveProcessHeaders();
+        saveProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        // 1. 単一行入力コントロール
+        FormComponentProps formComponentProps1 = new FormComponentProps()
+                .setComponentId("TextField-abcd")
+                .setPlaceholder("入力してください")
+                .setLabel("単一行入力")
+                .setRequired(true);
+        FormComponent formComponent1 = new FormComponent()
+                .setComponentType("TextField")
+                .setProps(formComponentProps1);
+        // 2. 複数行入力コントロール
+        FormComponentProps formComponentProps2 = new FormComponentProps()
+                .setComponentId("TextareaField-abcd")
+                .setPlaceholder("入力してください")
+                .setLabel("複数行入力")
+                .setRequired(true);
+        FormComponent formComponent2 = new FormComponent()
+                .setComponentType("TextareaField")
+                .setProps(formComponentProps2);
+        // 3. 数値入力コントロール
+        FormComponentProps formComponentProps3 = new FormComponentProps()
+                .setComponentId("NumberField-abcd")
+                .setPlaceholder("入力してください")
+                .setLabel("数値入力")
+                .setUnit("元")
+                .setRequired(true);
+        FormComponent formComponent3 = new FormComponent()
+                .setComponentType("NumberField")
+                .setProps(formComponentProps3);
+        // 4. 単一選択コントロール
+        SelectOption option1 = new SelectOption();
+        option1.setKey("option1");
+        option1.setValue("選択肢1");
+        SelectOption option2 = new SelectOption();
+        option2.setKey("option2");
+        option2.setValue("選択肢2");
+        FormComponentProps formComponentProps4 = new FormComponentProps()
+                .setComponentId("DDSelectField-abcd")
+                .setPlaceholder("選択してください")
+                .setLabel("単一選択")
+                .setBizAlias("staff_type")
+                .setOptions(java.util.Arrays.asList(option1, option2))
+                .setRequired(true);
+        FormComponent formComponent4 = new FormComponent()
+                .setComponentType("DDSelectField")
+                .setProps(formComponentProps4);
+
+        // 5. 複数選択コントロール
+        SelectOption option3 = new SelectOption();
+        option3.setKey("option1");
+        option3.setValue("選択肢1");
+        SelectOption option4 = new SelectOption();
+        option4.setKey("option2");
+        option4.setValue("選択肢2");
+        FormComponentProps formComponentProps5 = new FormComponentProps()
+                .setComponentId("DDMultiSelectField-abcd")
+                .setPlaceholder("選択してください")
+                .setLabel("複数選択")
+                .setOptions(java.util.Arrays.asList(option3, option4))
+                .setRequired(true);
+        FormComponent formComponent5 = new FormComponent()
+                .setComponentType("DDMultiSelectField")
+                .setProps(formComponentProps5);
+
+        // 6. 日付コントロール
+        FormComponentProps formComponentProps6 = new FormComponentProps()
+                .setComponentId("DDDateField-abcd")
+                .setPlaceholder("選択してください")
+                .setLabel("日付")
+                .setUnit("小时") // 時間
+                .setFormat("yyyy-MM-dd HH:mm")
+                .setRequired(true);
+        FormComponent formComponent6 = new FormComponent()
+                .setComponentType("DDDateField")
+                .setProps(formComponentProps6);
+
+        // 7. 期間コントロール
+        FormComponentProps formComponentProps7 = new FormComponentProps()
+                .setComponentId("DDDateRangeField-abcd")
+                .setPlaceholder("選択してください")
+                .setLabel("[\"開始時刻\",\"終了時刻\"]")
+                .setUnit("小时") // 時間
+                .setFormat("yyyy-MM-dd HH:mm")
+                .setRequired(true);
+        FormComponent formComponent7 = new FormComponent()
+                .setComponentType("DDDateRangeField")
+                .setProps(formComponentProps7);
+
+        // 8. 説明テキストコントロール
+        FormComponentProps formComponentProps8 = new FormComponentProps()
+                .setComponentId("TextNote-abcd")
+                .setLabel("備考")
+                .setContent("詳細説明")
+                .setLink("https://www.dingtalk.io/")
+                .setPrint("0")
+                .setRequired(false);
+        FormComponent formComponent8 = new FormComponent()
+                .setComponentType("TextNote")
+                .setProps(formComponentProps8);
+
+        // 10. 画像コントロール
+        FormComponentProps formComponentProps10 = new FormComponentProps()
+                .setComponentId("DDPhotoField-abcd")
+                .setLabel("画像");
+        FormComponent formComponent10 = new FormComponent()
+                .setComponentType("DDPhotoField")
+                .setProps(formComponentProps10);
+
+        // 11. 金額コントロール
+        FormComponentProps formComponentProps11 = new FormComponentProps()
+                .setComponentId("MoneyField-abcd")
+                .setUpper("0")
+                .setPlaceholder("金額を入力してください")
+                .setLabel("賞与（元）");
+        FormComponent formComponent11 = new FormComponent()
+                .setComponentType("MoneyField")
+                .setProps(formComponentProps11);
+                
+        // 12. 明細コントロール
+        // 12.1. 明細コントロール内の子コントロール：数値入力コントロール
+        FormComponentProps childFormComponentProps1 = new FormComponentProps()
+                .setComponentId("NumberField-child-1")
+                .setPlaceholder("入力してください")
+                .setLabel("数値入力")
+                .setUnit("元")
+                .setRequired(true);
+        FormComponent childFormComponentChild1 = new FormComponent()
+                .setComponentType("NumberField")
+                .setProps(childFormComponentProps1);
+
+        // 12.2. 明細コントロール内の子コントロール：単一行入力コントロール
+        FormComponentProps childFormComponentProps2 = new FormComponentProps()
+                .setComponentId("TextField-child-2")
+                .setPlaceholder("入力してください")
+                .setLabel("単一行入力")
+                .setRequired(true);
+        FormComponent childFormComponent2 = new FormComponent()
+                .setComponentType("TextField")
+                .setProps(childFormComponentProps2);
+        // 12.2. 明細コントロール内の子コントロールの数値合計
+        FormComponentProps.FormComponentPropsStatField statField1 = new FormComponentProps.FormComponentPropsStatField();
+        statField1.setComponentId("NumberField-child-1");
+        statField1.setLabel("数値入力");
+
+        FormComponentProps formComponentProps12 = new FormComponentProps()
+                .setComponentId("TableField-abcd")
+                .setUpper("0")
+                .setTableViewMode("table")
+                .setLabel("明細")
+                .setStatField(java.util.Arrays.asList(statField1));
+        FormComponent formComponent12 = new FormComponent()
+                .setComponentType("TableField")
+                .setProps(formComponentProps12)
+                .setChildren(java.util.Arrays.asList(childFormComponentChild1, childFormComponent2));  
+
+        // 13. 添付コントロール
+        FormComponentProps formComponentProps13 = new FormComponentProps()
+                .setComponentId("DDAttachment-abcd")
+                .setLabel("添付");
+        FormComponent formComponent13 = new FormComponent()
+                .setComponentType("DDAttachment")
+                .setProps(formComponentProps13);
+
+        // 14. 連絡先コントロール
+        FormComponentProps formComponentProps14 = new FormComponentProps()
+                .setComponentId("InnerContactField-abcd")
+                .setLabel("連絡先")
+                .setChoice("1");
+        FormComponent formComponent14 = new FormComponent()
+                .setComponentType("InnerContactField")
+                .setProps(formComponentProps14);
+
+        // 15. 部門コントロール
+        FormComponentProps formComponentProps15 = new FormComponentProps()
+                .setComponentId("DepartmentField-abcd")
+                .setLabel("部門")
+                .setMultiple(false);
+        FormComponent formComponent15 = new FormComponent()
+                .setComponentType("DepartmentField")
+                .setProps(formComponentProps15);
+
+        // 16. 関連承認フォームコントロール
+        AvaliableTemplate template = new AvaliableTemplate();
+        template.setName("出張申請");
+        template.setProcessCode("出張申請フォームの ProcessCode");
+        FormComponentProps formComponentProps16 = new FormComponentProps()
+                .setComponentId("RelateField-abcd")
+                .setLabel("関連承認フォーム")
+                .setAvailableTemplates(java.util.Arrays.asList(template));
+        FormComponent formComponent16 = new FormComponent()
+                .setComponentType("RelateField")
+                .setProps(formComponentProps16);
+
+        // 17. 省/市/区コントロール
+        FormComponentProps formComponentProps17 = new FormComponentProps()
+                .setComponentId("AddressField-abcd")
+                .setLabel("省/市/区")
+                .setPlaceholder("選択してください")
+                .setAddressModel("city");
+        FormComponent formComponent17 = new FormComponent()
+                .setComponentType("AddressField")
+                .setProps(formComponentProps17);
+
+        // 18. 評価点コントロール
+        FormComponentProps formComponentProps18 = new FormComponentProps()
+                .setComponentId("StarRatingField-abcd")
+                .setLabel("入力してください")
+                .setLimit(5);
+        FormComponent formComponent18 = new FormComponent()
+                .setComponentType("StarRatingField")
+                .setProps(formComponentProps18);        
+            
+        SaveProcessRequestProcessFeatureConfigFeatures features1 = new SaveProcessRequestProcessFeatureConfigFeatures()
+            .setName("TASK_EXECUTE")
+            .setRunType("REDIRECT")
+            .setPcUrl("https://www.dingtalk.io")
+            .setMobileUrl("https://www.dingtalk.io");
+
+      	SaveProcessRequestProcessFeatureConfig processFeatureConfig = new SaveProcessRequestProcessFeatureConfig()
+        		.setFeatures(java.util.Arrays.asList(features1));
+        
+        SaveProcessRequest saveProcessRequest = new SaveProcessRequest()
+                .setName("出張旅費精算")
+                .setDescription("社員の出張旅費精算に使用します")
+                .setFormComponents(java.util.Arrays.asList(
+                        formComponent1, formComponent2, formComponent3, formComponent4, formComponent5,
+                        formComponent6, formComponent7, formComponent8, formComponent9, formComponent10,
+                        formComponent11, formComponent12, formComponent13, formComponent14, formComponent15,
+                        formComponent16, formComponent17
+                ))
+                .setProcessFeatureConfig(processFeatureConfig)
+;
+        try {
+            client.saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されたものです。編集しないでください。
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Token を使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_Process_headers = dingtalkworkflow__1__0_models.SaveProcessHeaders()
+        save_Process_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_components_0children_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='財務'
+        )
+        form_components_0children_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='氏名',
+            required=True,
+            print='1',
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0children_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFields(
+            props=form_components_0children_0children_0props_fields_0props
+        )
+        form_components_0children_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSourceTarget()
+        form_components_0children_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSource(
+            target=form_components_0children_0children_0props_data_source_target
+        )
+        form_components_0children_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsStatField()
+        form_components_0children_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsOptions(
+            value='選択肢1',
+            key='option_1'
+        )
+        form_components_0children_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenProps(
+            label='氏名',
+            async_condition=True,
+            required=False,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0children_0props_options_0
+            ],
+            stat_field=[
+                form_components_0children_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0children_0props_data_source,
+            fields=[
+                form_components_0children_0children_0props_fields_0
+            ]
+        )
+        form_components_0children_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildren(
+            props=form_components_0children_0children_0props
+        )
+        form_components_0children_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsAvailableTemplates(
+            name='出張承認フォーム',
+            process_code='PROC-abcd'
+        )
+        form_components_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='財務'
+        )
+        form_components_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='氏名',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0props_fields_0props_options_0
+            ],
+            not_upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFields(
+            props=form_components_0children_0props_fields_0props
+        )
+        form_components_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSourceTarget()
+        form_components_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSource(
+            target=form_components_0children_0props_data_source_target
+        )
+        form_components_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsStatField()
+        form_components_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsOptions(
+            value='選択肢1',
+            key='option_1'
+        )
+        form_components_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenProps(
+            label='氏名',
+            async_condition=True,
+            required=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0props_data_source,
+            fields=[
+                form_components_0children_0props_fields_0
+            ],
+            address_model='city',
+            limit=5,
+            available_templates=[
+                form_components_0children_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildren(
+            component_type='NumberField',
+            props=form_components_0children_0props,
+            children=[
+                form_components_0children_0children_0
+            ]
+        )
+        form_components_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsAvailableTemplates(
+            name='出張申請',
+            process_code='PROC-abcd'
+        )
+        form_components_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsPropsOptions(
+            key='finance',
+            value='財務'
+        )
+        form_components_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsProps(
+            component_id='TextField-1',
+            label='氏名',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            print='1',
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFields(
+            component_type='TextField',
+            props=form_components_0props_fields_0props
+        )
+        form_components_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSourceTarget(
+            app_uuid='SWAPP-abcd',
+            app_type=0
+        )
+        form_components_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSource(
+            type='form',
+            target=form_components_0props_data_source_target
+        )
+        form_components_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsStatField(
+            component_id='NumberField-abcd',
+            label='金額'
+        )
+        form_components_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsOptions(
+            value='選択肢1',
+            key='option_1'
+        )
+        form_components_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsProps(
+            component_id='TextField-abcd',
+            label='氏名',
+            async_condition=True,
+            required=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0props_stat_field_0
+            ],
+            data_source=form_components_0props_data_source,
+            fields=[
+                form_components_0props_fields_0
+            ],
+            multiple=True,
+            limit=5,
+            available_templates=[
+                form_components_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponents(
+            component_type='TextField',
+            props=form_components_0props,
+            children=[
+                form_components_0children_0
+            ]
+        )
+        save_process_request = dingtalkworkflow__1__0_models.SaveProcessRequest(
+            name='出張旅費精算',
+            description='社員の出張旅費精算に使用します',
+            form_components=[
+                form_components_0
+            ]
+        )
+        try:
+            client.save_process_with_options(save_process_request, save_process_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_process_headers = dingtalkworkflow__1__0_models.SaveProcessHeaders()
+        save_process_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_components_0children_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='財務'
+        )
+        form_components_0children_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='氏名',
+            required=True,
+            print='1',
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0children_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFields(
+            props=form_components_0children_0children_0props_fields_0props
+        )
+        form_components_0children_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSourceTarget()
+        form_components_0children_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSource(
+            target=form_components_0children_0children_0props_data_source_target
+        )
+        form_components_0children_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsStatField()
+        form_components_0children_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsOptions(
+            value='選択肢1',
+            key='option_1'
+        )
+        form_components_0children_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenProps(
+            label='氏名',
+            async_condition=True,
+            required=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0children_0props_options_0
+            ],
+            stat_field=[
+                form_components_0children_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0children_0props_data_source,
+            fields=[
+                form_components_0children_0children_0props_fields_0
+            ]
+        )
+        form_components_0children_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildren(
+            props=form_components_0children_0children_0props
+        )
+        form_components_0children_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsAvailableTemplates(
+            name='出張承認フォーム',
+            process_code='PROC-abcd'
+        )
+        form_components_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='財務'
+        )
+        form_components_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='氏名',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0props_fields_0props_options_0
+            ],
+            not_upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFields(
+            props=form_components_0children_0props_fields_0props
+        )
+        form_components_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSourceTarget()
+        form_components_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSource(
+            target=form_components_0children_0props_data_source_target
+        )
+        form_components_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsStatField()
+        form_components_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsOptions(
+            value='選択肢1',
+            key='option_1'
+        )
+        form_components_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenProps(
+            label='氏名',
+            async_condition=True,
+            required=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0props_data_source,
+            fields=[
+                form_components_0children_0props_fields_0
+            ],
+            address_model='city',
+            limit=5,
+            available_templates=[
+                form_components_0children_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildren(
+            component_type='NumberField',
+            props=form_components_0children_0props,
+            children=[
+                form_components_0children_0children_0
+            ]
+        )
+        form_components_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsAvailableTemplates(
+            name='出張申請',
+            process_code='PROC-abcd'
+        )
+        form_components_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsPropsOptions(
+            key='finance',
+            value='財務'
+        )
+        form_components_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsProps(
+            component_id='TextField-1',
+            label='氏名',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            print='1',
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFields(
+            component_type='TextField',
+            props=form_components_0props_fields_0props
+        )
+        form_components_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSourceTarget(
+            app_uuid='SWAPP-abcd',
+            app_type=0
+        )
+        form_components_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSource(
+            type='form',
+            target=form_components_0props_data_source_target
+        )
+        form_components_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsStatField(
+            component_id='NumberField-abcd',
+            label='金額'
+        )
+        form_components_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsOptions(
+            value='選択肢1',
+            key='option_1'
+        )
+        form_components_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsProps(
+            component_id='TextField-abcd',
+            label='氏名',
+            async_condition=True,
+            required=True,
+            content='これは説明テキストコントロールです',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # 日
+            placeholder='入力してください',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0props_stat_field_0
+            ],
+            data_source=form_components_0props_data_source,
+            fields=[
+                form_components_0props_fields_0
+            ],
+            multiple=True,
+            limit=5,
+            available_templates=[
+                form_components_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponents(
+            component_type='TextField',
+            props=form_components_0props,
+            children=[
+                form_components_0children_0
+            ]
+        )
+        save_process_request = dingtalkworkflow__1__0_models.SaveProcessRequest(
+            name='出張旅費精算',
+            description='社員の出張旅費精算に使用します',
+            form_components=[
+                form_components_0
+            ]
+        )
+        try:
+            await client.save_process_with_options_async(save_process_request, save_process_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// このファイルは自動生成されたものです。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest\formComponents;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest\formComponents\props;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest\processFeatureConfig;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $saveProcessHeaders = new SaveProcessHeaders([]);
+        $saveProcessHeaders->xAcsDingtalkAccessToken = "<your access token>";
+           $formComponents0Props = new \AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\FormCreateRequest\formComponents\props([
+            "componentId" => "TextField-abcd",
+            "label" => "氏名",
+            "required" => true,
+            "content" => "これは説明テキストコントロールです",
+            "placeholder" => "入力してください",
+            "bizAlias" => "finance_name",
+            "disabled" => true,         
+        ]);
+        $formComponents0 = new formComponents([
+            "componentType" => "TextField",
+            "props" => $formComponents0Props,
+        ]);
+        
+$processFeatureConfig0 = new processFeatureConfig([
+        ]);
+        $saveProcessRequest = new SaveProcessRequest([
+            "name" => "出張旅費精算",
+            "description" => "社員の出張旅費精算に使用します",
+            "formComponents" => [
+                $formComponents0
+            ],
+            "processFeatureConfig" => [
+                $processFeatureConfig0 
+            ]
+        ]);
+        try {
+            $client->saveProcessWithOptions($saveProcessRequest, $saveProcessHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されたものです。編集しないでください。
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Token を使用してアカウント Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  saveProcessHeaders := &dingtalkworkflow_1_0.SaveProcessHeaders{}
+  saveProcessHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  formComponents0Props := &dingtalkworkflow_1_0.SaveProcessRequestFormComponentsProps{
+    ComponentId: tea.String("TextField-abcd"),
+    Label: tea.String("氏名"),
+    Required: tea.Bool(true),
+    Content: tea.String("これは説明テキストコントロールです"),
+    Placeholder: tea.String("入力してください"),
+    BizAlias: tea.String("finance_name"),
+    Duration: tea.Bool(true),
+  
+  formComponents0 := &dingtalkworkflow_1_0.SaveProcessRequestFormComponents{
+    ComponentType: tea.String("TextField"),
+    Props: formComponents0Props,
+  }
+  processFeatureConfig0 := &dingtalkworkflow_1_0.SaveProcessRequestProcessFeatureConfig{
+  }
+  saveProcessRequest := &dingtalkworkflow_1_0.SaveProcessRequest{
+    Name: tea.String("出張旅費精算"),
+    Description: tea.String("社員の出張旅費精算に使用します"),
+    FormComponents: []*dingtalkworkflow_1_0.SaveProcessRequestFormComponents{formComponents0},
+    ProcessFeatureConfig: dingtalkworkflow_1_0.SaveProcessRequestProcessFeatureConfig{processFeatureConfig0}
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.SaveProcessWithOptions(saveProcessRequest, saveProcessHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// このファイルは自動生成されたものです。編集しないでください
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Token を使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let saveProcessHeaders = new $dingtalkworkflow_1_0.SaveProcessHeaders({ });
+    saveProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let formComponents0Props = new $dingtalkworkflow_1_0.SaveProcessRequestFormComponentsProps({
+      componentId: "TextField-abcd",
+      label: "氏名",
+      required: true,
+      content: "これは説明テキストコントロールです",
+      placeholder: "入力してください",
+      bizAlias: "finance_name",
+      disabled: true,  
+    });
+    let formComponents0 = new $dingtalkworkflow_1_0.SaveProcessRequestFormComponents({
+      componentType: "TextField",
+      props: formComponents0Props,
+    });
+    let processFeatureConfig0 = new $dingtalkworkflow_1_0.SaveProcessRequestFormComponents({
+    });
+    let saveProcessRequest = new $dingtalkworkflow_1_0.SaveProcessRequest({
+      name: "出張旅費精算",
+      description: "社員の出張旅費精算に使用します",
+      formComponents: [
+        formComponents0
+      ],
+      processFeatureConfig: processFeatureConfig0,
+    });
+    try {
+      await client.saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// このファイルは自動生成されたものです。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Token を使用してアカウント Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessHeaders saveProcessHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessHeaders();
+            saveProcessHeaders.XAcsDingtalkAccessToken = "<your access token>";
+                   AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents.SaveProcessRequestFormComponentsProps formComponents0Props = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents.SaveProcessRequestFormComponentsProps
+            {
+                ComponentId = "TextField-abcd",
+                Label = "氏名",
+                Required = true,
+                Content = "これは説明テキストコントロールです",
+                BizAlias = "finance_name",
+                Disabled = true,
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents formComponents0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents
+            {
+                ComponentType = "TextField",
+                Props = formComponents0Props,
+ 
+            };
+
+AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestProcessFeatureConfig processFeatureConfig0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestProcessFeatureConfig
+            {
+        
+ 
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest saveProcessRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest
+            {
+                Name = "出張旅費精算",
+                Description = "社員の出張旅費精算に使用します",
+                FormComponents = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents>
+                {
+                    formComponents0
+                },
+ProcessFeatureConfig = processFeatureConfig0,
+            };
+            try
+            {
+                client.SaveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+C++
+
+```cpp
+// このファイルは自動生成されたものです。編集しないでください。
+
+#include <alibabacloud/dingtalkworkflow__1__0.hpp>
+#include <alibabacloud/open_api.hpp>
+#include <boost/any.hpp>
+#include <darabonba/core.hpp>
+#include <darabonba/util.hpp>
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+Alibabacloud_Dingtalkworkflow_1_0::Client createClient() {
+  shared_ptr<Alibabacloud_OpenApi::Config> config = make_shared<Alibabacloud_OpenApi::Config>();
+  config->protocol = make_shared<string>("https");
+  config->regionId = make_shared<string>("central");
+  return Alibabacloud_Dingtalkworkflow_1_0::Client(config);
+}
+
+int main(int argc, char *args[]) {
+  args++;
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::Client> client = make_shared<Alibabacloud_Dingtalkworkflow_1_0::Client>(createClient());
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessHeaders> saveProcessHeaders = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessHeaders>();
+  saveProcessHeaders->xAcsDingtalkAccessToken = make_shared<string>("<your access token>");
+  
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponentsProps> formComponents0Props = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponentsProps>(map<string, boost::any>({
+    {"componentId", boost::any(string("TextField-abcd"))},
+    {"label", boost::any(string("氏名"))},
+    {"required", boost::any(true)},
+    {"content", boost::any(string("これは説明テキストコントロールです"))},
+    {"placeholder", boost::any(string("入力してください"))},
+    {"bizAlias", boost::any(string("finance_name"))},
+  }));
+
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestProcessFeatureConfig> processFeatureConfig0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestProcessFeatureConfig>();
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponents> formComponents0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponents>(map<string, boost::any>({
+    {"componentType", boost::any(string("TextField"))},
+    {"props", !formComponents0Props ? boost::any() : boost::any(*formComponents0Props)},
+
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequest> saveProcessRequest = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequest>(map<string, boost::any>({
+    {"name", boost::any(string("出張旅費精算"))},
+    {"description", boost::any(string("社員の出張旅費精算に使用します"))},
+    {"formComponents", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponents>({
+      formComponents0
+    }))}
+    {"processFeatureConfig", processFeatureConfig}
+  }));
+  try {
+    client->saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, make_shared<Darabonba_Util::RuntimeOptions>(Darabonba_Util::RuntimeOptions()));
+  }
+  catch (std::exception &err) {
+    if (!Darabonba_Util::Client::empty(err.code) && !Darabonba_Util::Client::empty(err.message)) {
+      // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+    }
+  }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| result | Object | フォームテンプレートの情報です。 |
+| processCode | String | 保存または更新したフォームのコードです。 |
+
+### レスポンスボディの例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "processCode" : "PROC-abcdef-example"
+  }
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、[グローバルエラーコード](/ja/open/development/server-api-error-codes-1) でエラーメッセージから解決方法を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | formschema.error | 作業フローの条件分岐で使用されているフォームコントロールは変更・削除できません | 作業フローの条件分岐で使用されているフォームコントロールは、タイプの変更も削除もできません |
+| 400 | permission.error | アクセス権限がありません | アクセス権限がありません |
+| 400 | processcode.error | この processCode に対応する承認フローが存在しません | この processCode に対応する承認フローが存在しません |
+| 400 | formschema.error | %s | フォームスキーマが無効です |
+| 400 | formName.error | 同じ名前のフォームがすでに存在します | フォーム名が無効です |
+| 400 | parameter.error | プロセスセンターの設定パラメータエラー：%s | プロセスセンターの設定パラメータエラー |
+| 400 | processes.error | テンプレートリストの取得に失敗しました | テンプレートリストの取得に失敗しました |
+| 400 | processes.error | 承認作業フローの数が上限を超えています | 承認作業フローの数が上限を超えています |
+| 400 | needAuth | 承認を申請する権限がありません | 承認を申請する権限がありません |
+| 400 | invalidAgentId | マイクロアプリ ID が無効です | マイクロアプリ ID が無効です |
+| 400 | invalidSuiteKey | suiteKey が無効です | suiteKey が無効です |
+| 400 | internalError | %s | システム内部エラー |
+| 400 | system.error | フォーム拡張情報の追加に失敗しました | プロセス拡張属性の追加に失敗しました |
+| 400 | aflowProcessSetupNoPermission | この承認作業フローを操作する権限がありません。processCode が正しいか確認してください。 | この承認作業フローを操作する権限がありません。processCode が正しいか確認してください。 |
+| 500 | system.error | システムエラー | システムエラー |

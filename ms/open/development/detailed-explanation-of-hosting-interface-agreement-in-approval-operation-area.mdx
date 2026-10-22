@@ -1,0 +1,1113 @@
+---
+title: "Protokol API pengehosan kawasan tindakan kelulusan"
+description: "Ketahui cara aplikasi pihak ketiga menyesuaikan butang kawasan tindakan kelulusan DingTalk melalui callback Pusat Proses, lengkap dengan model, enum dan contoh API."
+---
+
+## Gambaran keseluruhan kawasan tindakan kelulusan
+
+Kawasan tindakan kelulusan terletak di bahagian bawah halaman butiran kelulusan dan mengandungi butang tindakan. Dalam contoh ini, kawasan tersebut mengandungi **Komen**, **Cipta perbincangan kumpulan**, **Padam**, **Kembali ke borang asal**, **Tolak** dan **Luluskan**. Aplikasi pihak ketiga boleh menyesuaikan butang dalam kawasan ini.
+
+## Cara kawasan tindakan kelulusan berfungsi
+
+Semasa mencipta templat kelulusan atau instans kelulusan, aplikasi pihak ketiga boleh mendaftarkan callback untuk memaparkan butang tersuai dalam kawasan tindakan kelulusan dan menghantar permintaan. Aplikasi perlu menyediakan dua API, iaitu satu untuk pemaparan yang dihoskan dan satu untuk memproses permintaan pengguna:
+
+- **Pemaparan butang:** DingTalk memanggil semula aplikasi pihak ketiga untuk mendapatkan definisi butang bagi kawasan tindakan.
+- **Operasi kelulusan:** DingTalk memanggil semula API pihak ketiga untuk menerima dan memproses tindakan kelulusan yang dihantar oleh pengguna.
+
+Aliran integrasi bermula daripada **Aplikasi pihak ketiga** ke **Backend kelulusan: OA Open API**, kemudian ke **Frontend kelulusan**. Frontend kelulusan memaparkan hasilnya pada tiga permukaan: **To-Do**, **Pusat Kelulusan** dan **Kad interaktif IM**. Aplikasi pihak ketiga melengkapkan langkah berikut mengikut urutan:
+
+1. Cipta templat
+2. Cipta instans
+3. Daftarkan callback Butang pemaparan tersuai & Hantar permintaan bagi kawasan tindakan kelulusan
+4. Cipta tugasan
+
+Semasa pemaparan dan penghantaran, Frontend kelulusan memanggil aplikasi pihak ketiga melalui **callback SPI (pemaparan / operasi kelulusan)**. **Backend kelulusan: Open gateway** menghalakan callback ini. Permukaan **To-Do** dan **Kad interaktif IM** mencetuskan callback operasi kelulusan.
+
+## Definisi model teras
+
+- **ProcessFeatureConfig: Konfigurasi integrasi Pusat Proses**
+
+  Dalam mod integrasi Pusat Proses, konfigurasi ini membolehkan aplikasi pihak ketiga mentakrifkan logik tersuai bagi modul ciri perniagaan tertentu. Penyelesaian pengehosan halaman kelulusan dibina berdasarkan konfigurasi ini. Aplikasi pihak ketiga boleh menyesuaikan setiap butang dalam kawasan tindakan kelulusan pada halaman butiran. Konfigurasikan dua API callback tambahan:
+
+  - CUSTOM_ACTION_DEFINITION: DingTalk memanggil semula aplikasi pihak ketiga untuk mendapatkan definisi butang bagi kawasan tindakan (pemaparan butang).
+  - CUSTOM_ACTION_APPLY: DingTalk memanggil semula API pihak ketiga untuk menerima dan memproses tindakan kelulusan yang dihantar oleh pengguna (operasi kelulusan).
+
+  ```text
+  "featureConfig":{
+    "features":  [
+      {
+        // URL callback untuk mendapatkan data kawasan tindakan (butang) (pemaparan butang)
+        "name":"CUSTOM_ACTION_DEFINITION",  
+        "runType":"OUTBIZ_CUSTOM",
+        "callback":{
+          "apiKey":"customActionDefinitionApiKey",
+          "appUuid":"appUuid",
+          "version":"1"
+        }
+      },
+      {
+        // URL callback yang dipanggil apabila tindakan kelulusan dilaksanakan (operasi kelulusan)
+        "name":"CUSTOM_ACTION_APPLY",  
+        "runType":"OUTBIZ_CUSTOM",
+        "callback":{
+          "apiKey":"customActionApplyApiKey",
+          "appUuid":"appUuid",
+          "version":"1"
+        }
+      }
+    ]
+  }
+  ```
+- **CustomActionDefinition: Butang tindakan tersuai**
+
+  - **Kawasan tindakan halaman butiran**
+
+    |  |  |
+    | --- | --- |
+    | Kelulusan OA rasmi:  Kongsi, Muat turun, Cetak, Hantar semula, Edit templat  Terima, Tolak, Ubah suai, Buat asal, Serahkan, Tandatangani permintaan, Kembalikan, Komen, Perbualan Baharu, Automasi, Padam borang kelulusan  imej | Mod pengehosan ORIGIN Pusat Proses:  Kongsi, Muat turun, Cetak  Terima, Tolak, Komen, Cipta perbincangan kumpulan, Padam, Kembali ke borang asal  imej |
+  - **Kategori butang kawasan tindakan halaman butiran**
+
+    - ##### **Butang umum**
+
+      Platform pengehosan halaman butiran borang Kelulusan OA DingTalk menyediakan butang ini secara lalai. Gunakannya secara terus. Pihak yang berintegrasi tidak perlu mengembalikan sebarang data untuk butang ini. Pelaksanaan lalai mentakrifkan interaksinya. Pihak perniagaan boleh mengkonfigurasikan sama ada setiap butang dipaparkan.
+
+      |  |  |  |  |
+      | --- | --- | --- | --- |
+      | ID butang [actionType] | Keupayaan | Jenis interaksi | Penerangan |
+      | INSTANCE_SHARE | Kongsi borang kelulusan ke Sembang Kumpulan | Klik untuk membuka pemilih kumpulan. Callback dijalankan selepas pengesahan. | Pelaksanaan lalai mentakrifkan interaksi. Pihak perniagaan boleh mengkonfigurasikan sama ada butang dipaparkan. |
+      | INSTANCE_DOWNLOAD | Muat turun borang kelulusan. DingTalk menghantar fail melalui Notifikasi Kerja. | Klik untuk menjalankan callback dan memaparkan prompt. | Pelaksanaan lalai mentakrifkan interaksi. Pihak perniagaan boleh mengkonfigurasikan sama ada butang dipaparkan. |
+      | INSTANCE_PRINT | Cetak borang kelulusan | Klik untuk membuka kumpulan butang. | Pelaksanaan lalai mentakrifkan interaksi. Pihak perniagaan boleh mengkonfigurasikan sama ada butang dipaparkan. |
+      | INSTANCE_DING | Peringatan: pemohon proses kelulusan menghantar peringatan kepada penyokong nod semasa | Klik untuk membuka komponen DING. | Pelaksanaan lalai mentakrifkan interaksi. Pihak perniagaan boleh mengkonfigurasikan sama ada butang dipaparkan. |
+      | INSTANCE_IM_GROUP | Cipta perbincangan kumpulan berdasarkan instans | Klik untuk membuka pemilih pengguna. Dialog pengesahan dipaparkan selepas pemilihan. | Pelaksanaan lalai mentakrifkan interaksi. Pihak perniagaan boleh mengkonfigurasikan sama ada butang dipaparkan. |
+      | INSTANCE_COMMENT | Beri komen pada borang kelulusan | Klik untuk membuka dialog pengesahan komen. | Pelaksanaan lalai mentakrifkan interaksi. Pihak perniagaan boleh mengkonfigurasikan sama ada butang dipaparkan. |
+    - ##### **Butang pratakrif**
+
+      Pengehosan borang mempratetapkan butang tindakan kelulusan ini dan melaksanakan mekanisme interaksi biasa untuknya secara automatik. Pihak perniagaan menghantar butang ini mengikut keperluan, berdasarkan proses dan pengguna semasa. Pihak yang berintegrasi melaksanakan keupayaan sebenar, jadi tingkah laku mungkin berbeza sedikit antara enjin proses.
+
+      |  |  |  |
+      | --- | --- | --- |
+      | ID butang [actionType] | Keupayaan | Penerangan |
+      | TASK_APPROVE | Terima tugasan kelulusan | Interaksi tetap. Teks butang dan logik callback boleh disesuaikan. |
+      | TASK_REJECT | Tolak tugasan kelulusan | Interaksi tetap. Teks butang dan logik callback boleh disesuaikan. |
+      | TASK_FORWARD | Serahkan tugasan kelulusan | Interaksi tetap. Teks butang, senarai pengguna yang boleh dipilih dan logik callback boleh disesuaikan. |
+      | TASK_APPEND | Tandatangani permintaan | Interaksi tetap. Teks butang, penyokong yang boleh dipilih untuk Tandatangani permintaan, kaedah Tandatangani permintaan dan logik callback boleh disesuaikan. |
+      | INSTANCE_REVERT | Kembalikan | Interaksi tetap. Teks butang, senarai nod untuk dikembalikan dan logik callback boleh disesuaikan. |
+      | INSTANCE_MODIFY | Ubah suai borang kelulusan | Interaksi tetap. Teks butang, keadaan dikelabukan, sebab dikelabukan dan sifat yang serupa boleh disesuaikan. |
+      | INSTANCE_TERMINATE | Buat asal borang kelulusan | Interaksi tetap. Teks butang, teks prompt pengesahan dan logik callback boleh disesuaikan. |
+      | INSTANCE_DELETE | Padam borang kelulusan | Interaksi tetap. Teks butang, teks prompt pengesahan dan logik callback boleh disesuaikan. |
+      | INSTANCE_EXTERNAL_DETAIL | Kembali ke borang asal: memaparkan butang pada halaman butiran kelulusan yang membuka halaman butiran luaran | Interaksi tetap. Teks butang dan keterlihatan boleh disesuaikan. |
+    - ##### **Butang perniagaan tersuai**
+
+      Sistem pihak ketiga yang berintegrasi mentakrifkan butang ini. Gunakan konfigurasi ringkas untuk memberikan gaya yang serupa dengan butang pratakrif. Apabila pengguna mengklik salah satu butang ini, DingTalk memanggil semula sistem pihak yang berintegrasi melalui API operasi kelulusan. Sistem tersebut kemudian menjalankan logik tindakan tersuai.
+
+      |  |  |  |  |
+      | --- | --- | --- | --- |
+      | ID butang [actionType] | Keupayaan | Jenis interaksi | Penerangan |
+      | CUSTOM_ACTION_xxx | Butang perniagaan tersuai | Jenis interaksi standard yang disokong oleh platform:  - link: ubah hala secara terus - confirm: dialog pengesahan - modal: buka dialog (pihak perniagaan boleh menyesuaikan komponen dalam dialog) | Tidak boleh sama dengan mana-mana ID yang dikhaskan oleh platform pengehosan. |
+  - **Peraturan pengisihan dan pemaparan butang**
+
+    Secara lalai, platform pengehosan mengisih dan memformat butang yang dihantar oleh pihak yang berintegrasi.
+
+    - Platform pengehosan menyemak sama ada butang umum perlu ditambah dan menambahnya jika perlu.
+    - DingTalk memanggil semula aplikasi pihak ketiga untuk mendapatkan definisi butang bagi kawasan tindakan (pemaparan butang). DingTalk kemudian memaparkan butang berdasarkan data yang dikembalikan. Jika callback mengembalikan ralat, DingTalk kembali menggunakan butang sedia ada penyelesaian pengehosan ORIGIN: Kongsi, Muat turun, Cetak, Terima, Tolak, Komen, Cipta perbincangan kumpulan, Padam dan Kembali ke borang asal.
+    - Pengisihan semua butang:
+
+      - Butang umum dipaparkan dahulu, dalam susunan tetap.
+      - Butang pratakrif dan butang tersuai menyusul, mengikut susunan ia dihantar.
+- **Rujukan model CustomActionDefinition**
+
+  Model butang tindakan di bawah diterbitkan daripada kategori butang dan jenis interaksi yang diterangkan di atas:
+
+  | **Nama** | **Jenis** | **Maksud** | **Penerangan** |
+  | --- | --- | --- | --- |
+  | actions | list | Butang tindakan kelulusan |  |
+  | ∟context | string | Konteks kelulusan yang ditakrifkan oleh pihak perniagaan. API ApplyAction menghantarnya tanpa sebarang perubahan. | Konteks ialah string yang ditakrifkan oleh pihak perniagaan. DingTalk mengembalikan string ini dalam callback kelulusan supaya pihak perniagaan dapat mengenal pasti senario semasa. |
+  | ∟actionKey | string | Kunci tindakan yang ditakrifkan oleh pihak perniagaan. API ApplyAction menghantarnya tanpa sebarang perubahan. Jika dikonfigurasi, nilai ini mesti unik dalam tatasusunan actions. | Pilihan. Abaikan secara lalai. |
+  | ∟actionType | string | Jenis tindakan kelulusan, iaitu jenis butang | Enum. Untuk butiran, lihat enum ProcessFeatureEnum dalam [**Kategori butang kawasan tindakan halaman butiran**]. |
+  | ∟name | i18n | Nama tindakan kelulusan | Pilihan. Abaikan secara lalai. Jika diabaikan, nama lalai `actionType` digunakan. |
+  | ∟icon | string | Ikon butang | Pilihan. Abaikan secara lalai. Jika diabaikan, ikon lalai digunakan.  Nilai URL disokong. Dimensi ikon mesti mematuhi spesifikasi reka bentuk DingTalk. |
+  | ∟hidden | boolean | Sama ada butang disembunyikan | Pihak perniagaan boleh menyembunyikan butang umum terbina dalam platform, seperti Kongsi, Muat turun, Cetak, Komen dan Cipta kumpulan. |
+  | ∟disabled | boolean | Nyahaktifkan | Butang dipaparkan dalam warna kelabu dan tidak boleh diklik pada frontend. |
+  | ∟disabledReason | i18n | Sebab butang dinyahaktifkan | Apabila butang dinyahaktifkan, tooltip memaparkan teks ini. |
+  | ∟primary | boolean | Sama ada butang ini ialah butang utama | Butang utama dipaparkan lebih besar, seperti butang Terima dan Tolak. Jika lebih daripada 2 butang utama dipaparkan pada halaman pada masa yang sama, butang tersebut diturunkan menjadi butang biasa. |
+  | ∟behavior | string | Tingkah laku pembukaan. Pilihan. | Enum. Untuk butiran, lihat enum BehaviorType.  - link: buka pautan - modal: buka dialog - confirm: buka dialog pengesahan |
+  | ∟behaviorProps | object |  | Sifat tingkah laku bagi jenis tingkah laku yang dipilih  - link: konfigurasikan URL untuk dibuka - modal: konfigurasikan skema kawalan borang dalam dialog - confirm: konfigurasikan tajuk dan teks prompt dialog pengesahan |
+  | ∟title | string | Tajuk. Pilihan. Wajib apabila behavior ialah confirm. |  |
+  | ∟message | string | Teks prompt. Pilihan. Wajib apabila behavior ialah confirm. |  |
+  | ∟link | string | Pautan untuk dibuka. Pilihan. Wajib apabila behavior ialah link. |  |
+  | ∟schema | json Array  [&#123;  componentName: 'TextareaField',  **props: &#123;**  **id: 'comment',**  **&#125;,**  &#125;] | Senarai komponen borang dalam dialog. Wajib apabila behavior ialah modal. | Lihat [**Nota parameter FormComponent**] dalam Simpan templat kelulusan integrasi luaran Pusat Proses.  - **TextField**: input satu baris - **TextareaField**: input pelbagai baris - **DDSelectField**: pilih satu - **DDMultiSelectField**: Pilih Banyak - **TextNote**: kawalan teks penerangan - **DDPhotoField**: kawalan imej - **DDAttachment**: Lampiran - **InnerContactField**: kawalan Kenalan    - users string[]: senarai staffId |
+  | ∟componentName | string | Jenis kawalan |  |
+  | ∟props | json | Atribut kawalan | `{  "label": "Input satu baris", // Tajuk kawalan  "placeholder": "Sila masukkan", // Petunjuk input  "componentId": "TextField_17EZKEGSOCTC0", // ID kawalan; unik dalam borang; tiada makna perniagaan  "required": false, // Sama ada medan wajib; Pilihan secara lalai  "bizAlias": "staffId" // Alias perniagaan kawalan; unik dalam borang; gunakan sama ada ini atau componentId  }` |
+  | ∟value | string | Nilai kawalan | Lihat contoh dalam Simpan templat kelulusan integrasi luaran Pusat Proses. |
+
+  - **Enum kategori butang kawasan tindakan halaman butiran: ProcessFeatureEnum**
+
+    ```text
+    public enum ProcessFeatureEnum {
+      /**
+      * Padam tugasan
+      */
+      TASK_DELETE,
+
+      /**
+      * Serahkan tugasan
+      */
+      TASK_FORWARD,
+
+      /**
+      * Tambah Tandatangani permintaan pada tugasan
+      */
+      TASK_APPEND,
+
+      /**
+      * Tandatangan dan baca tugasan
+      */
+      TASK_SIGN,
+
+      /**
+      * Kongsi borang kelulusan
+      */
+      INSTANCE_SHARE,
+
+      /**
+      * Muat turun borang kelulusan
+      */
+      INSTANCE_DOWNLOAD,
+
+      /**
+      * Cetak borang kelulusan
+      */
+      INSTANCE_PRINT,
+
+      /**
+      * Hantar semula borang kelulusan
+      */
+      INSTANCE_RESUBMIT,
+
+      /**
+      * Mulakan kelulusan
+      */
+      INSTANCE_START,
+
+      /**
+      * Padam instans kelulusan
+      */
+      INSTANCE_DELETE,
+
+      /**
+      * Paparkan halaman butiran
+      */
+      INSTANCE_DETAIL,
+
+      /**
+      * Buat asal borang kelulusan
+      */
+      INSTANCE_TERMINATE,
+
+      /**
+      * Ubah suai borang kelulusan
+      */
+      INSTANCE_MODIFY,
+
+      /**
+      * Batalkan pengubahsuaian
+      */
+      INSTANCE_REVOKE_MODIFY,
+
+      /**
+      * Beri komen pada borang kelulusan
+      */
+      INSTANCE_COMMENT,
+
+      /**
+      * Cipta perbincangan kumpulan berdasarkan instans
+      */
+      INSTANCE_IM_GROUP,
+
+      /**
+      * Kembalikan borang kelulusan
+      */
+      INSTANCE_REVERT,
+
+      /**
+      * Hantar peringatan
+      */
+      INSTANCE_DING,
+
+      /**
+      * Paparkan butang pada halaman butiran kelulusan yang membuka halaman butiran luaran
+      */
+      INSTANCE_EXTERNAL_DETAIL
+    }
+    ```
+  - **Enum jenis tingkah laku interaksi butang: CustomActionBehaviorTypeEnum**
+
+    ```text
+    public enum CustomActionBehaviorTypeEnum {
+        /**
+         * Buka pautan
+         */
+        LINK("link"),
+
+        /**
+         * Buka dialog
+         */
+        MODAL("modal"),
+
+        /**
+         * Buka dialog pengesahan
+         */
+        CONFIRM("confirm")
+    }
+    ```
+  - **Komponen borang dalam dialog (wajib apabila behavior ialah modal)**
+
+    Lihat [**Nota parameter FormComponent**] dalam [Cipta atau kemas kini templat kelulusan](/ms/open/development/create-orupdate-the-approval-template-new). Jenis komponen borang berikut disokong buat masa ini:
+
+    - **TextField**: input satu baris
+    - **TextareaField**: input pelbagai baris
+    - **DDSelectField**: pilih satu
+    - **DDMultiSelectField**: Pilih Banyak
+    - **TextNote**: kawalan teks penerangan
+    - **DDPhotoField**: kawalan imej
+    - **DDAttachment**: Lampiran
+    - **InnerContactField**: kawalan Kenalan
+
+      - users string[]: senarai staffId
+- **Contoh model CustomActionDefinition**
+
+  ```json
+  {
+    "code": 200,
+    "body": [
+      {
+        "actionKey": "default",
+        "actionType": "INSTANCE_COMMENT",
+        "name": "Beri komen pada borang kelulusan",
+        "hidden": true
+      },
+      {
+        "actionKey": "default",
+        "actionType": "INSTANCE_DING",
+        "name": "Hantar peringatan",
+        "disabled": true,
+        "disabledReason": "Borang kelulusan ini tidak menyokong ciri ini"
+      },
+      {
+        "actionKey": "custom",
+        "actionType": "INSTANCE_EXTERNAL_DETAIL",
+        "name": "Kembali ke borang asal",
+        "icon": "icon1",
+        "primary": false,
+        "behavior": "link",
+        "behaviorProps": {
+          "link": "https://www.dingtalk.io"
+        }
+      },
+      {
+        "actionKey": "general",
+        "actionType": "TASK_APPROVE",
+        "name": "Terima",
+        "icon": "icon1",
+        "primary": true,
+        "behavior": "modal",
+        "behaviorProps": {
+          "schema": [
+            {
+              "componentName": "TextareaField",
+              "props": {
+                "label": "Komen",
+                "placeholder": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n",
+                "id": "TextareaField_comment",
+                "required": true,
+                "bizAlias": "comment",
+                "value": "Ini ialah komen kelulusan\r\n"
+              }
+            }
+          ]
+        },
+        "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+        "disabled": false
+      },
+      {
+        "key": "general",
+        "actionType": "TASK_FORWARD",
+        "name": "Terima dan serahkan",
+        "icon": "icon2",
+        "primary": true,
+        "behavior": "modal",
+        "behaviorProps": {
+          "schema": [
+            {
+              "componentName": "InnerContactField",
+              "props": {
+                "label": "Serahkan kepada",
+                "placeholder": "Pilih penerima serahan",
+                "id": "InnerContactField_forward_user",
+                "choice": "1",
+                "required": false,
+                "bizAlias": "taskForward",
+                "users": "[\"0135185610551036178639\",\"0135185610551036178639\"]",
+                "value": "[\"0135185610551036178639\"]"
+              }
+            },
+            {
+              "componentName": "TextareaField",
+              "props": {
+                "label": "Komen",
+                "placeholder": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n",
+                "id": "TextareaField_comment",
+                "required": true,
+                "bizAlias": "comment",
+                "value": "Ini ialah komen kelulusan\r\n"
+                          }
+                      }
+                  ]
+              },
+              "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+              "disabled": false
+          }
+      ]
+  }
+  ```
+
+## Contoh langkah integrasi
+
+### Langkah 1: Daftarkan callback butang tindakan tersuai
+
+1. Daftarkan callback untuk butang tindakan kelulusan tersuai, seperti dalam contoh berikut.
+
+   ```json
+   {
+     // URL callback untuk mendapatkan data kawasan tindakan (butang) (pemaparan butang)
+     "name": "CUSTOM_ACTION_DEFINITION",
+     "runType": "OUTBIZ_CUSTOM",
+     "callback": {
+       "apiKey": "getIntegratedCustomActionDefinitions",
+       "appUuid": "dingecxxxx97fcb1e09",
+       "version": "1"
+     }
+   },
+   {
+     // URL callback yang dipanggil apabila tindakan kelulusan dilaksanakan (operasi kelulusan)
+     "name": "CUSTOM_ACTION_APPLY",
+     "runType": "OUTBIZ_CUSTOM",
+     "callback": {
+       "apiKey": "applxxxxction",
+       "appUuid": "dingecxxxxb1e09",
+       "version": "1"
+     }
+   }
+   ```
+2. Pusat Proses mendapatkan senarai butang tersuai bagi kawasan tindakan kelulusan.
+
+   - apiKey: getIntegratedCustomActionDefinitions
+   - URL: https://connector.dingtalk.io/webhook/flow/d8c375d76acb7eb01019fe0b
+   - Parameter: corpId,processInstanceId,activityId,taskId,operator,platform,locale,context,customData
+   - apiSecret: getIntegratedCustomActionDefinitions
+
+### Contoh permintaan
+
+     ```json
+     {
+         "activityId": "001",
+         "processInstanceId": "fR7Adxxxx1716975",
+         "corpId": "dingecxxxxcb1e09",
+         "locale": "zh_CN",
+         "operator": "manager9814",
+         "platform": "pc",
+         "taskId": 876xxxx3607,
+         "customData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+     }
+     ```
+
+### Contoh respons berjaya
+
+     ```json
+     {
+       "success": true,
+       "errorCode": "",
+       "errorMessage": "",
+       "result": [
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_EXTERNAL_DETAIL",
+           "name": "Kembali ke borang asal",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "link",
+           "behaviorProps": {
+             "link": "https://www.dingtalk.io"
+           }
+         },
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_DELETE",
+           "name": "Padam borang kelulusan",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "confirm",
+           "behaviorProps": {
+             "title": "Adakah anda pasti mahu memadam borang kelulusan ini?",
+             "message": "Borang tidak boleh dipulihkan selepas dipadam. Teruskan dengan berhati-hati."
+           }
+         },
+         {
+           "actionKey": "general",
+           "actionType": "TASK_APPROVE",
+           "name": "Terima",
+           "icon": "icon1",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komen",
+                   "placeholder": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini ialah komen kelulusan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         },
+         {
+           "key": "general",
+           "actionType": "TASK_FORWARD",
+           "name": "Terima dan serahkan",
+           "icon": "icon2",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "InnerContactField",
+                 "props": {
+                   "label": "Serahkan kepada",
+                   "placeholder": "Pilih penerima serahan",
+                   "id": "InnerContactField_forward_user",
+                   "choice": "0",
+                   "required": false,
+                   "bizAlias": "taskForward",
+                   "users": [
+                     "0213523642-1025002834",
+                     "14516942141077447"
+                   ]
+                 }
+               },
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komen",
+                   "placeholder": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini ialah komen kelulusan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         }
+       ]
+     }
+     ```
+
+### Contoh respons ralat
+
+     ```json
+     {
+         "success": false,
+         "errorCode": "FORM_SPI_CUSTOM_ERROR",
+         "errorMessage": "Ralat callback pihak ketiga: gagal mendapatkan senarai butang tersuai bagi kawasan tindakan kelulusan",
+         "result": []
+     }
+     ```
+3. Pusat Proses menjalankan tindakan kelulusan bagi butang tersuai.
+
+   - apiKey: applyIntegratedCustomAction
+   - URL: https://connector.dingtalk.io/webhook/flow/a8d743d0afd948bd5d9dc2a8
+   - Parameter: corpId,processInstanceId,activityId,taskId,operator,platform,locale,context,customData,formDataArray,actionKey,actionType
+   - apiSecret: applyIntegratedCustomAction
+
+### Contoh permintaan
+
+     ```json
+     {
+       "activityId": "001",
+       "processInstanceId": "fR7Adw93Rxxxx716975",
+       "corpId": "dingecxxxxfcb1e09",
+       "locale": "zh_CN",
+       "operator": "manager9814",
+       "platform": "pc",
+       "taskId": 87622494607,
+       "customData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+     }
+     ```
+
+### Contoh respons berjaya
+
+     ```json
+     {
+       "success": true,
+       "errorCode": "",
+       "errorMessage": "",
+       "result": [
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_EXTERNAL_DETAIL",
+           "name": "Kembali ke borang asal",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "link",
+           "behaviorProps": {
+             "link": "https://www.dingtalk.io"
+           }
+         },
+         {
+           "actionKey": "custom",
+           "actionType": "INSTANCE_DELETE",
+           "name": "Padam borang kelulusan",
+           "icon": "icon1",
+           "primary": false,
+           "behavior": "confirm",
+           "behaviorProps": {
+             "title": "Adakah anda pasti mahu memadam borang kelulusan ini?",
+             "message": "Borang tidak boleh dipulihkan selepas dipadam. Teruskan dengan berhati-hati."
+           }
+         },
+         {
+           "actionKey": "general",
+           "actionType": "TASK_APPROVE",
+           "name": "Terima",
+           "icon": "icon1",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komen",
+                   "placeholder": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini ialah komen kelulusan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         },
+         {
+           "key": "general",
+           "actionType": "TASK_FORWARD",
+           "name": "Terima dan serahkan",
+           "icon": "icon2",
+           "primary": true,
+           "behavior": "modal",
+           "behaviorProps": {
+             "schema": [
+               {
+                 "componentName": "InnerContactField",
+                 "props": {
+                   "label": "Serahkan kepada",
+                   "placeholder": "Pilih penerima serahan",
+                   "id": "InnerContactField_forward_user",
+                   "choice": "0",
+                   "required": false,
+                   "bizAlias": "taskForward",
+                   "users": [
+                     "0213523642-1025002834",
+                     "14516942141077447"
+                   ]
+                 }
+               },
+               {
+                 "componentName": "TextareaField",
+                 "props": {
+                   "label": "Komen",
+                   "placeholder": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n",
+                   "id": "TextareaField_comment",
+                   "required": true,
+                   "bizAlias": "comment",
+                   "value": "Ini ialah komen kelulusan\r\n"
+                 }
+               }
+             ]
+           },
+           "context": "{\"command_id\":\"HandleCommand_2\",\"task_id\":\"1xxxxx6-2xx6-4xxd-bxxf-6xxxxxxxxf\",\"node_id\":\"UserTask_4\"}",
+           "disabled": false
+         }
+       ]
+     }
+     ```
+
+### Contoh respons ralat
+
+     ```json
+     {
+       "success": false,
+       "errorCode": "FORM_SPI_CUSTOM_ERROR",
+       "errorMessage": "Ralat callback pihak ketiga: gagal mendapatkan senarai butang tersuai bagi kawasan tindakan kelulusan",
+       "result": []
+     }
+     ```
+
+### Langkah 2: Simpan templat kelulusan Pusat Proses
+
+**Segerakkan data templat kelulusan ke DingTalk:** Panggil Server API baharu Simpan templat kelulusan integrasi luaran Pusat Proses untuk mendapatkan kod unik templat, `processCode`.
+
+<Note>
+Dalam senario ini, sesuaikan dua modul dalam processFeatureConfig. CUSTOM_ACTION_DEFINITION ialah URL callback untuk mendapatkan data butang kawasan tindakan (callback pemaparan butang). CUSTOM_ACTION_APPLY ialah URL callback yang dipanggil apabila tindakan kelulusan dilaksanakan (callback operasi kelulusan).
+</Note>
+
+```json
+{
+  "name": "Mod integrasi pengehosan halaman kelulusan",
+  "description": "Mod pengehosan tersuai Pusat Proses: kawasan tindakan kelulusan tersuai",
+  "formComponents": [
+    {
+      "componentType": "TextField",
+      "props": {
+        "componentId": "TextField-1",
+        "label": "Input satu baris",
+        "required": true,
+        "bizAlias": "TextField-bizAlias",
+        "disabled": false
+      }
+    },
+    {
+      "componentType": "TextareaField",
+      "props": {
+        "placeholder": "Sila masukkan",
+        "label": "Input pelbagai baris"
+      }
+    },
+    {
+      "componentType": "NumberField",
+      "props": {
+        "placeholder": "Masukkan nombor",
+        "label": "Input nombor",
+        "id": "NumberField-1"
+      }
+    },
+    {
+      "componentType": "DDSelectField",
+      "props": {
+        "options": [ // Senarai pilihan yang boleh dipilih
+          {
+            "value": "Pilihan 1", // Nama paparan pilihan
+            "key": "option_0" // Kunci unik dalam kawalan; Pilihan; sistem menjana kunci secara lalai
+          },
+          {
+            "value": "Pilihan 2",
+            "key": "option_1"
+          },
+          {
+            "value": "Pilihan 3",
+            "key": "option_2"
+          },
+          {
+            "key": "other", // Kunci khas untuk pilihan "Lain-lain"
+            "value": "Lain-lain"
+          }
+        ],
+        "label": "Pilih satu",
+        "placeholder": "Sila pilih",
+        "componentId": "DDSelectField_1",
+        "required": false
+      }
+    },
+    {
+      "componentType": "DDMultiSelectField",
+      "props": {
+        "options": [
+          {
+            "value": "Pilihan 1",
+            "key": "option_0"
+          },
+          {
+            "value": "Pilihan 2",
+            "key": "option_1"
+          },
+          {
+            "value": "Pilihan 3",
+            "key": "option_2"
+          },
+          {
+            "key": "other", // Kunci khas untuk pilihan "Lain-lain"
+            "value": "Lain-lain"
+          }
+        ],
+        "label": "Pilih Banyak",
+        "placeholder": "Sila pilih",
+        "componentId": "DDMultiSelectField_1",
+        "required": false
+      }
+    },
+    {
+      "componentType": "DDDateField",
+      "props": {
+        "unit": "小时", // Jam. Unit tarikh; Nilai enum: 小时 (jam), 天 (hari)
+        "format": "yyyy-MM-dd HH:mm", // Format tarikh; Pilihan; jam menggunakan yyyy-MM-dd HH:mm, hari menggunakan yyyy-MM-dd
+        "bizAlias": "",
+        "label": "Tarikh",
+        "placeholder": "Sila pilih",
+        "componentId": "DDDateField_1",
+        "required": false,
+        "defaultValue": "2021-12-21 17:46" // Nilai lalai
+      }
+    },
+    {
+      "componentType": "DDDateRangeField",
+            "props": {
+                "unit": "天", // Hari
+                "format": "yyyy-MM-dd",
+                "bizAlias": "",
+                "label": "[\"Masa mula\",\"Masa tamat\"]",
+                "placeholder": "Sila pilih",
+                "componentId": "DDDateRangeField_1",
+                "duration": true, // Sama ada tempoh dikira secara automatik
+                "durationLabel": "Tempoh", // Teks paparan untuk tempoh yang dikira
+                "required": false
+            }
+        },
+        {
+            "componentType": "TextNote",
+            "props": {
+                "link": "https://www.dingtalk.io/", // Hiperpautan
+                "notPrint": "0",
+                "bizAlias": "",
+                "componentId": "TextNote_1",
+                "content": "Ini ialah penerangan" // Teks penerangan
+            }
+        },
+        {
+            "componentType": "DDPhotoField",
+            "props": {
+                "label": "Imej",
+                "componentId": "DDPhotoField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "MoneyField",
+            "props": {
+                "upper": "0", // Sama ada amaun dipaparkan dalam angka Cina huruf besar (0: tidak, 1: ya); huruf besar secara lalai
+                "label": "Amaun (CNY)",
+                "placeholder": "Masukkan amaun",
+                "componentId": "MoneyField_1",
+                "required": false
+            }
+        },
+        {
+            "children": [
+                {
+                    "componentType": "TextField",
+                    "props": {
+                        "label": "Input satu baris",
+                        "placeholder": "Sila masukkan",
+                        "componentId": "TextField_1UE1ZY1A28AO0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "MoneyField",
+                    "props": {
+                        "upper": "0",
+                        "bizAlias": "",
+                        "label": "Amaun (CNY)",
+                        "placeholder": "Masukkan amaun",
+                        "componentId": "MoneyField_1S85G0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "NumberField",
+                    "props": {
+                        "unit": "CNY",
+                        "bizAlias": "",
+                        "label": "Input nombor",
+                        "placeholder": "Masukkan nombor",
+                        "componentId": "NumberField_1XP6A",
+                        "required": false
+                    }
+                }
+            ],
+            "componentType": "TableField",
+            "props": {
+                "tableViewMode": "table",
+                "verticalPrint": true,
+                "statField": [
+                    {
+                        "componentId": "MoneyField_1S85G0",
+                        "label": "Amaun (CNY)"
+                    },
+                    {
+                        "componentId": "NumberField_1XP6A",
+                        "label": "Input nombor"
+                    }
+                ],
+                "bizAlias": "table",
+                "label": "Jadual",
+                "componentId": "TableField_1MLEPEA"
+            }
+        },
+        {
+            "componentType": "DDAttachment",
+            "props": {
+                "label": "Lampiran",
+                "componentId": "DDAttachment_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "InnerContactField",
+            "props": {
+                "label": "Kenalan",
+                "placeholder": "Sila pilih",
+                "componentId": "InnerContactField_1",
+                "choice": "1", // Nilai enum: 1 menyokong Pilih Banyak, 0 menyokong pilih satu; Lalai ialah 0
+                "required": false,
+                "bizAlias": ""
+            }
+        },
+        {
+            "componentType": "DepartmentField",
+            "props": {
+                "multiple": false, // Sama ada menyokong Pilih Banyak; true untuk Pilih Banyak, false untuk pilih satu
+                "label": "Jabatan",
+                "placeholder": "Sila pilih",
+                "componentId": "DepartmentField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "RelateField",
+            "props": {
+                "label": "Borang kelulusan berkaitan",
+                "placeholder": "Sila pilih",
+                "componentId": "RelateField_1",
+                "required": false,
+                "bizAlias": "",
+                "availableTemplates": [ // Templat kelulusan yang boleh dikaitkan; jika kosong, data instans semua templat kelulusan boleh dikaitkan
+                ]
+            }
+        },
+        {
+            "componentType": "AddressField",
+            "props": {
+                "addressModel": "district", // Nilai enum: city (wilayah/bandar), district (wilayah/bandar/daerah), street (wilayah/bandar/daerah/jalan)
+                "bizAlias": "",
+                "label": "Wilayah/Bandar/Daerah",
+                "componentId": "AddressField_1",
+                "required": false
+            }
+        },
+        {
+            "componentType": "StarRatingField",
+            "props": {
+                "limit": 5, // Nilai enum: skala 5 mata, skala 10 mata
+                "label": "Penilaian",
+                "placeholder": "Sila masukkan",
+                "componentId": "StarRatingField_1",
+                "required": false,
+                "bizAlias": ""
+            }
+        }
+    ],
+    "processFeatureConfig": {
+        "features": [
+            {
+                // URL callback untuk mendapatkan data kawasan tindakan (butang) (pemaparan butang)
+                "name": "CUSTOM_ACTION_DEFINITION",
+                "runType": "OUTBIZ_CUSTOM",
+                "callback": {
+                    "apiKey": "getIntegratedCustomActionDefinitions",
+                    "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            },
+            {
+                // URL callback yang dipanggil apabila tindakan kelulusan dilaksanakan (operasi kelulusan)
+                "name": "CUSTOM_ACTION_APPLY",
+                "runType": "OUTBIZ_CUSTOM",
+                "callback": {
+                    "apiKey": "applyIntegratedCustomAction",
+                    "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            }
+        ]
+    }
+}
+```
+
+### Langkah 3: Simpan instans kelulusan Pusat Proses
+
+**Segerakkan data instans kelulusan ke DingTalk:** Gunakan kod templat `processCode` untuk memanggil Server API baharu Simpan instans kelulusan integrasi luaran Pusat Proses. Panggilan ini memulakan instans kelulusan dan mengembalikan ID instans kelulusan, `processInstanceId`.
+
+<Note>
+Jika anda tidak mendaftarkan konfigurasi butang tindakan kelulusan tersuai semasa mencipta templat kelulusan, tetapkannya semasa mencipta instans. Jika anda mengkonfigurasikannya pada kedua-dua peringkat templat dan instans, konfigurasi peringkat instans diutamakan.
+</Note>
+
+```json
+{
+  "formComponentValueList": [
+    {
+      "name": "Input satu baris",
+      "value": "[DingTalk](https://www.dingtalk.io/)"
+    },
+    {
+      "name": "Input pelbagai baris",
+      "value": "Masukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\nMasukkan teks pelbagai baris. Untuk baris baharu, masukkan \r\n"
+    },
+    {
+      "name": "Input nombor",
+      "value": "100"
+    },
+    {
+      "name": "Pilih satu",
+      "value": "Pilihan 1"
+    },
+    {
+      "name": "Pilih Banyak",
+      "value": "[\"Pilihan 1\",\"Pilihan 2\"]"
+    },
+    {
+      "name": "Tarikh",
+      "value": "2021-08-17 11:11"
+    },
+    {
+      "name": "[\"Masa mula\",\"Masa tamat\"]",
+      "value": "[\"2019-02-19 11:11\",\"2019-02-25 11:11\"]"
+    },
+    {
+      "name": "Imej",
+      "value": "[\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"https://img.alicdn.com/imgextra/i3/O1CN01TDKbCW28HuskT5vnR_!!6000000007908-2-tps-2724-650.png\",\"http://url3\"]"
+    },
+    {
+      "name": "Jadual",
+      "value": "[[{\"name\":\"Input satu baris\",\"value\":\"[DingTalk](https://www.dingtalk.io/)\"},{\"name\":\"Input nombor\",\"value\":\"100\"}]]"
+    },
+    {
+      "name": "Amaun (CNY)",
+      "value": "100"
+    },
+    {
+      "name": "Lampiran",
+      "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": \"643xxxx140\"}]"
+    },
+    {
+      "name": "Kenalan",
+      "value": "[\"0135185610551036178639\"]"
+    },
+    {
+      "name": "Borang kelulusan berkaitan",
+      "value": "[\"9XCLWKxNTom6W_u88iKbug09641720074458\", \"9XCLWKxNTom6W_u88iKbug09641720074458\"]"
+    },
+    {
+      "name": "Telefon",
+      "value": "18015586666"
+    },
+    {
+      "name": "Wilayah/Bandar/Daerah",
+      "value": "Beijing,Beijing,Daerah Hedong"
+    },
+    {
+      "name": "Penilaian",
+      "value": "5"
+    },
+    {
+      "name": "Jabatan",
+      "value": "714738614"
+    }
+  ],
+  "title": "Mod integrasi pengehosan halaman kelulusan",
+  "processCode": "PROC-A807C4FF-93AF-409A-A0C5-197CC81E8FF9",
+  "originatorUserId": "manager9814",
+  "url": "http://www.dingtalk.io",
+  "notifiers": [
+    {
+      "userid": "manager9814",
+      "position": "start"
+    }
+  ],
+  "featureConfig": {
+    "features": [
+      {
+        // URL callback untuk mendapatkan data kawasan tindakan (butang) (pemaparan butang)
+        "name": "CUSTOM_ACTION_DEFINITION",
+        "runType": "OUTBIZ_CUSTOM",
+        "callback": {
+          "apiKey": "getIntegratedCustomActionDefinitions",
+          "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+          "version": "1"
+        }
+      },
+      {
+        // URL callback yang dipanggil apabila tindakan kelulusan dilaksanakan (operasi kelulusan)
+        "name": "CUSTOM_ACTION_APPLY",
+        "runType": "OUTBIZ_CUSTOM",
+        "callback": {
+          "apiKey": "applyIntegratedCustomAction",
+          "appUuid": "dingec6f7227666ad00ba39a90f97fcb1e09",
+                    "version": "1"
+                }
+            }
+        ]
+    },
+    "bizData": "{\"apiKey\":\"customActionDefinitionApiKey2\",\"appUuid\":\"appUuid2\",\"version\":\"2\"}"
+}
+```
+
+### Langkah 4: Simpan tugasan kelulusan Pusat Proses
+
+**Segerakkan data tugasan kelulusan ke DingTalk:** Panggil Simpan tugasan kelulusan integrasi luaran Pusat Proses dengan ID instans kelulusan `processInstanceId` dan senarai To-Do `tasks`. Panggilan ini menyegerakkan maklumat nod kelulusan daripada sistem pihak ketiga ke Kelulusan OA DingTalk. Panggilan ini juga mengembalikan taskId bagi setiap item To-Do dan mencipta tugasan To-Do DingTalk yang sepadan.
+
+```json
+{
+  "processInstanceId": "snfwBxxxx392174",
+  "activityId": "001",
+  "tasks": [
+    {
+      "userId": "manager9814",
+      "url": "https://www.dingtalk.io"
+    },
+    {
+      "userId": "013xxxx639",
+      "url": "https://www.dingtalk.io"
+    }
+  ]
+}
+```
+
+### Langkah 5: Kemas kini status tugasan kelulusan Pusat Proses
+
+**Terima atau tolak tugasan kelulusan dengan logik tersuai:** Penyokong membuka halaman kelulusan tersuai dalam DingTalk dan memilih tindakan seperti Terima atau Tolak. DingTalk kemudian memanggil API callback yang dikonfigurasi dalam modul `CUSTOM_ACTION_APPLY` bagi Simpan templat kelulusan integrasi luaran Pusat Proses. Selepas aplikasi pihak ketiga menjalankan logik perniagaannya, aplikasi tersebut mesti menyegerakkan status tugasan ke DingTalk. Untuk mengemas kini status item To-Do kelulusannya sendiri, panggil API [Kemas kini status tugasan Pusat Proses](/ms/open/development/update-process-center-task-status) dengan ID instans kelulusan `processInstanceId` dan ID tugasan To-Do kelulusan `taskId`.
+
+Dalam senario seperti tandatangan ATAU (OR-sign), panggil API [Batalkan berbilang tugasan belum selesai Pusat Proses](/ms/open/development/cancel-multiple-oa-approval-tasks). API ini menetapkan semua item To-Do yang sedang berjalan di bawah sesuatu instans kelulusan kepada CANCELED dalam satu kelompok.
+
+```json
+{
+  "processInstanceId": "qZpLKAxxxx43810",
+  "tasks": [
+    {
+      "taskId": 88094338042,
+      "status": "COMPLETED",
+      "result": "AGREE"
+    }
+  ]
+}
+```

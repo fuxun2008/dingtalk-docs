@@ -1,0 +1,203 @@
+---
+title: "Persetujuan OA resmi"
+description: "FAQ Persetujuan OA resmi dan mandiri di DingTalk: dapatkan skema formulir, kelola lampiran persetujuan, dan atasi error API templat serta instans."
+---
+
+# FAQ
+
+## Persetujuan OA resmi
+
+- **Mengambil skema formulir dari Aplikasi perusahaan pihak ketiga menghasilkan "code: 500, unknown error"**
+
+  J: Jika API [Dapatkan skema formulir](/id/open/development/obtain-the-form-schema) menghasilkan "code: 500, unknown error", penyebabnya mungkin masalah izin. Anda hanya dapat mengambil formulir yang telah diotorisasi oleh pengguna. Formulir tanpa otorisasi pengguna tidak akan dikembalikan. Untuk detail otorisasi pengambilan data instans persetujuan, lihat Memanggil pop-up Otorisasi.
+- **Bagaimana cara menambahkan lampiran ke persetujuan?**
+
+  J: Lampiran persetujuan memerlukan Server API sekaligus API frontend. Untuk proses lengkapnya, lihat kasus penggunaan [Alur kerja lampiran persetujuan](/id/open/development/new-version-of-attachment-approval-process).
+
+### Catatan
+
+  Penambahan lampiran persetujuan hanya melalui Server API belum didukung.
+
+  1. Panggil API [Dapatkan informasi ruang Drive persetujuan](/id/open/development/obtains-the-information-about-approval-nail-disk) untuk mendapatkan spaceId dari ruang Drive persetujuan yang khusus digunakan untuk lampiran persetujuan.
+  2. Panggil API untuk memilih resource lokal dan mengunggahnya ke ruang Drive lampiran persetujuan. Dapatkan parameter spaceId, fileId, fileName, fileSize, dan fileType.
+  3. Teruskan parameter dari langkah 2 ke komponen lampiran pada API yang memulai persetujuan.
+- **Bagaimana cara mendapatkan lampiran dalam persetujuan?**
+
+  J: Lampiran persetujuan memerlukan Server API sekaligus API frontend. Untuk proses lengkapnya, lihat kasus penggunaan [Alur kerja lampiran persetujuan](/id/open/development/new-version-of-attachment-approval-process).
+
+  1. Panggil API [Otorisasi pratinjau lampiran persetujuan](/id/open/development/official-authorized-preview-approval-attachment). API ini memberikan otorisasi. Hanya pengguna yang sesuai dengan userid yang diteruskan yang dapat melihat pratinjau lampiran.
+  2. Gunakan parameter space_id untuk memanggil Unggah lampiran ke Drive / Pilih file dari Drive dan dapatkan informasi lampiran Drive.
+- **Panggilan gagal pada API Persetujuan**
+
+  J: Jika panggilan API Persetujuan menghasilkan error, periksa hal berikut:
+
+  1. Saat membuat templat persetujuan di Aplikasi Persetujuan pada Admin Console OA, pilih hanya jenis komponen yang tercantum dalam [Buat instans persetujuan](/id/open/development/create-an-approval-instance). Jika tidak, API yang memulai persetujuan akan menghasilkan error.
+  2. Dalam templat persetujuan, komponen rincian hanya mendukung komponen kotak input dan gambar. Jenis komponen lain tidak didukung.
+  3. Satu templat persetujuan mendukung maksimal 20 komponen.
+- **Format kontrol apa saja yang dapat diteruskan dalam komponen rincian saat memulai instans Persetujuan OA?**
+
+  J: Komponen rincian pada API [Buat instans persetujuan](/id/open/development/create-an-approval-instance) menerima format kontrol berikut: kotak input satu baris, kotak input multibaris, kotak input angka, dan kontrol gambar.
+
+## Persetujuan OA mandiri
+
+### API Buat atau perbarui templat
+
+#### errcode=15
+
+- **Masalah**
+
+  Memanggil API Buat atau perbarui templat menghasilkan error berikut.
+
+  ```json
+  {
+     " errcode":15,
+     " sub_msg":"Service unavailable",
+     " sub_code":isp.-1,
+     " errmsg":"Remote service error"[
+        subcode=isp.-1,
+        "submsg=Service unavailable"
+     ]
+  }
+  ```
+- **Penyebab**
+
+  Parameter componentName tidak menerima nilai Kustom. Teruskan salah satu nilai tetap yang tercantum dalam dokumentasi.
+- **Solusi**
+
+  Ubah nilai componentName. Untuk detailnya, lihat [Buat atau perbarui templat persetujuan](/id/open/development/create-orupdate-the-approval-template-new).
+
+#### errcode=810002
+
+- **Masalah**
+
+  Memanggil API Buat atau perbarui templat menghasilkan error berikut.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"The number of copied approval flows has exceeded the maximum",
+     "request_id":"xsr5qth2j075"
+  }
+  ```
+- **Penyebab**
+
+  Batas 200 templat telah tercapai.
+- **Solusi**
+
+  Hapus templat yang tidak lagi diperlukan, lalu coba lagi.
+
+### API Buat instans
+
+- **Masalah**
+
+  Tidak ada izin untuk mengoperasikan alur persetujuan. Periksa apakah instans persetujuan atau templat sudah benar.
+
+  ```json
+  {
+      "errcode": 810007,
+      "errmsg": "No permission to operate on the approval flow",
+      "request_id": "xxx"
+  }
+  ```
+- **Penyebab**
+
+  Parameter processCode salah.
+- **Solusi**
+
+  Gunakan processCode yang dikembalikan oleh API [Buat atau perbarui templat persetujuan](/id/open/development/create-orupdate-the-approval-template-new), dan atur **fake_mode** ke **true**.
+
+### API Perbarui instans
+
+#### **errcode=810007** **Tidak ada izin untuk mengoperasikan alur persetujuan**
+
+- **Masalah**
+
+  Memanggil API Perbarui instans (process/workrecord/update) menghasilkan error berikut.
+
+  ```text
+  No permission to operate on the approval flow. Check whether the approval instance or template is correct.
+  ```
+
+  ```json
+  {
+      "errcode": 810007,
+      "errmsg": "No permission to operate on the approval flow",
+      "request_id": "xxx"
+  }
+  ```
+- **Penyebab**
+
+  Parameter ID instans (process_instance_id) salah.
+- **Solusi**
+
+  ID instans (process_instance_id) harus berupa nilai process_instance_id yang dikembalikan oleh API [Buat instans](/id/open/development/create-a-ticket-approval-instance). Nilai instans dari alur persetujuan resmi tidak diterima.
+
+#### errorcode=820008
+
+- **Masalah**
+
+  Memanggil API Perbarui instans (process/workrecord/update) menghasilkan error berikut.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"Approval system error. Reason: [The approval form has been modified by the admin]",
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Penyebab**
+
+  Parameter result tidak diteruskan.
+- **Solusi**
+
+  Saat memperbarui instans formulir Persetujuan, teruskan nilai result, lalu coba lagi.
+
+### API Buat tugas
+
+#### errorcode=820008
+
+- **Masalah**
+
+  Memanggil API Buat tugas (process/workrecord/task/create) menghasilkan error berikut.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"Approval system error. Reason: [Known engine error:{0}",
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Penyebab**
+
+  Parameter URL terlalu panjang.
+- **Solusi**
+
+  Persingkat parameter URL, lalu coba lagi.
+
+#### errorcode=820010
+
+- **Masalah**
+
+  Memanggil API Buat tugas (process/workrecord/task/create) menghasilkan error berikut.
+
+  ```json
+  {
+     "errcode":820010,
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Penyebab**
+
+  Jumlah tugas dalam instans melebihi batas.
+- **Solusi**
+
+  Setiap instans mendukung maksimal 100 tugas. Hapus tugas yang tidak lagi diperlukan, lalu coba lagi, atau buat instans baru.
+
+### Lainnya
+
+#### API Persetujuan OA mandiri menghasilkan "No Permission to Operate on the Approval Flow"
+
+Masalah ini terjadi ketika skenario "Persetujuan OA resmi" dan "Persetujuan OA mandiri" tercampur.
+
+1. Saat memanggil API Buat instans untuk Persetujuan OA mandiri, parameter process_code harus berasal dari API [Buat atau perbarui templat persetujuan](/id/open/development/create-orupdate-the-approval-template-new). Jangan gunakan process_code yang disalin dari address bar Admin Console Persetujuan.
+2. Saat memanggil API Perbarui status instans untuk Persetujuan OA mandiri, parameter process_instance_id harus berasal dari API [Buat instans](/id/open/development/create-a-ticket-approval-instance). Jangan teruskan process_instance_id yang dikembalikan oleh API Buat instans persetujuan dari alur persetujuan resmi.

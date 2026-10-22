@@ -1,0 +1,521 @@
+---
+title: "承認添付ファイルのプレビュー権限を付与する"
+description: "DingTalk の承認インスタンスに添付されたドライブファイルを、指定ユーザーがプレビューできるよう権限付与する API を解説します。インスタンス ID と添付ファイル ID による一括権限付与の方法、リクエスト例、エラーコードも紹介します。"
+---
+
+本 API を呼び出して、承認添付ファイルのプレビュー権限を付与します。
+
+## API 呼び出し説明
+
+<Note>
+本 API は、ドライブの JSAPI と組み合わせて使用してください。
+</Note>
+
+1. 承認用ドライブスペースの spaceId を取得します。[承認用ドライブスペース情報の取得](/ja/open/development/obtains-the-information-about-approval-nail-disk) API を呼び出して、承認用ドライブスペースの spaceId を取得します。
+2. 承認用ドライブスペースの spaceId を使って、Web アプリ（H5 マイクロアプリ）またはミニプログラムでドライブ添付ファイルの情報を取得します。取得するには、ドライブに添付ファイルをアップロードするか、ドライブからファイルを選択します。
+3. 承認インスタンスの processInstanceId を取得します。[承認インスタンスの作成](/ja/open/development/create-an-approval-instance) API を呼び出して、InstanceId パラメータの値を取得します。
+4. 上記の情報を使用して本 API を呼び出し、ユーザーに承認添付ファイルのプレビュー権限を付与します。承認添付ファイルをプレビューする前に、毎回本 API を呼び出して権限を付与してください。
+5. **ドライブファイルのプレビュー** API を呼び出して、ファイルをプレビューします。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processInstances/spaces/authPreview |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-Workflow.Instance.Write-ワークフローインスタンスの書き込み権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | 本 API を呼び出すためのアクセス認証情報です。取得方法は以下のとおりです。   - 社内アプリ：[社内アプリのアクセストークンの取得](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリに権限付与した組織のアクセストークンを取得する API を呼び出します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| userId | String | はい | 添付ファイルのプレビュー権限を付与するユーザーの userId です。 |
+| agentId | Long | いいえ | アプリの agentId です。   - 社内アプリ：AgentId 情報を確認します。 - サードパーティ社内アプリ：組織の権限付与情報を取得する API を呼び出して、`agentid` パラメータの値を取得します。 |
+| processInstanceId | String | はい | 承認インスタンス ID です。   - [承認インスタンスの作成](/ja/open/development/create-an-approval-instance) API を呼び出して、`InstanceId` パラメータの値を取得します。 - [承認インスタンス ID リストの取得](/ja/open/development/obtain-an-approval-list-of-instance-ids) API を呼び出して、`list` パラメータの値を取得します。 |
+| fileId | String | はい | 承認添付ファイルの ID です。      fileId は、作成済みの承認インスタンスの添付ファイルコンポーネント内にあるファイルの fileId と一致している必要があります。一致しない場合は、権限がない旨のエラーメッセージが返されます。 |
+| fileIdList | Array of String | いいえ | 添付ファイル ID のリストです。一括での権限付与に対応しています。リストの最大長は 20 です。 |
+| withCommentAttatchment | Boolean | いいえ | コメント内の添付ファイルを含めるかどうかを指定します。デフォルトでは、コメント内の添付ファイルは無視されます。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/workflow/processInstances/spaces/authPreview HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:6d1bxxxx
+Content-Type:application/json
+
+{
+  "userId" : "user123",
+  "agentId" : 8345000,
+  "processInstanceId" : "a17444d1-075b-4a4d-xxxx",
+  "fileId" : "111",
+  "fileIdList" : [ "123" ]
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthHeaders getSpaceWithDownloadAuthHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthHeaders();
+        getSpaceWithDownloadAuthHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthRequest getSpaceWithDownloadAuthRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthRequest()
+                .setUserId("user123")
+                .setAgentId(8345000L)
+                .setProcessInstanceId("a17444d1-075b-4a4d-xxxx")
+                .setFileId("111")
+                .setFileIdList(java.util.Arrays.asList(
+                    "123"
+                ));
+        try {
+            client.getSpaceWithDownloadAuthWithOptions(getSpaceWithDownloadAuthRequest, getSpaceWithDownloadAuthHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Token を使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_space_with_download_auth_headers = dingtalkworkflow__1__0_models.GetSpaceWithDownloadAuthHeaders()
+        get_space_with_download_auth_headers.x_acs_dingtalk_access_token = '<your access token>'
+        get_space_with_download_auth_request = dingtalkworkflow__1__0_models.GetSpaceWithDownloadAuthRequest(
+            user_id='user123',
+            agent_id=8345000,
+            process_instance_id='a17444d1-075b-4a4d-xxxx',
+            file_id='111',
+            file_id_list=[
+                '123'
+            ]
+        )
+        try:
+            client.get_space_with_download_auth_with_options(get_space_with_download_auth_request, get_space_with_download_auth_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        get_space_with_download_auth_headers = dingtalkworkflow__1__0_models.GetSpaceWithDownloadAuthHeaders()
+        get_space_with_download_auth_headers.x_acs_dingtalk_access_token = '<your access token>'
+        get_space_with_download_auth_request = dingtalkworkflow__1__0_models.GetSpaceWithDownloadAuthRequest(
+            user_id='user123',
+            agent_id=8345000,
+            process_instance_id='a17444d1-075b-4a4d-xxxx',
+            file_id='111',
+            file_id_list=[
+                '123'
+            ]
+        )
+        try:
+            await client.get_space_with_download_auth_with_options_async(get_space_with_download_auth_request, get_space_with_download_auth_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\GetSpaceWithDownloadAuthHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\GetSpaceWithDownloadAuthRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $getSpaceWithDownloadAuthHeaders = new GetSpaceWithDownloadAuthHeaders([]);
+        $getSpaceWithDownloadAuthHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $getSpaceWithDownloadAuthRequest = new GetSpaceWithDownloadAuthRequest([
+            "userId" => "user123",
+            "agentId" => 8345000,
+            "processInstanceId" => "a17444d1-075b-4a4d-xxxx",
+            "fileId" => "111",
+            "fileIdList" => [
+                "123"
+            ]
+        ]);
+        try {
+            $client->getSpaceWithDownloadAuthWithOptions($getSpaceWithDownloadAuthRequest, $getSpaceWithDownloadAuthHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されています。編集しないでください。
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Token を使用してアカウント Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  getSpaceWithDownloadAuthHeaders := &dingtalkworkflow_1_0.GetSpaceWithDownloadAuthHeaders{}
+  getSpaceWithDownloadAuthHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  getSpaceWithDownloadAuthRequest := &dingtalkworkflow_1_0.GetSpaceWithDownloadAuthRequest{
+    UserId: tea.String("user123"),
+    AgentId: tea.Int64(8345000),
+    ProcessInstanceId: tea.String("a17444d1-075b-4a4d-xxxx"),
+    FileId: tea.String("111"),
+    FileIdList: []*string{tea.String("123")},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.GetSpaceWithDownloadAuthWithOptions(getSpaceWithDownloadAuthRequest, getSpaceWithDownloadAuthHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// このファイルは自動生成されています。編集しないでください。
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Token を使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let getSpaceWithDownloadAuthHeaders = new $dingtalkworkflow_1_0.GetSpaceWithDownloadAuthHeaders({ });
+    getSpaceWithDownloadAuthHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let getSpaceWithDownloadAuthRequest = new $dingtalkworkflow_1_0.GetSpaceWithDownloadAuthRequest({
+      userId: "user123",
+      agentId: 8345000,
+      processInstanceId: "a17444d1-075b-4a4d-xxxx",
+      fileId: "111",
+      fileIdList: [
+        "123"
+      ],
+    });
+    try {
+      await client.getSpaceWithDownloadAuthWithOptions(getSpaceWithDownloadAuthRequest, getSpaceWithDownloadAuthHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Token を使用してアカウント Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.GetSpaceWithDownloadAuthHeaders getSpaceWithDownloadAuthHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.GetSpaceWithDownloadAuthHeaders();
+            getSpaceWithDownloadAuthHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.GetSpaceWithDownloadAuthRequest getSpaceWithDownloadAuthRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.GetSpaceWithDownloadAuthRequest
+            {
+                UserId = "user123",
+                AgentId = 8345000,
+                ProcessInstanceId = "a17444d1-075b-4a4d-xxxx",
+                FileId = "111",
+                FileIdList = new List<string>
+                {
+                    "123"
+                },
+            };
+            try
+            {
+                client.GetSpaceWithDownloadAuthWithOptions(getSpaceWithDownloadAuthRequest, getSpaceWithDownloadAuthHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| result | Object | 返される結果です。 |
+| spaceId | Long | ドライブスペース ID です。 |
+| success | Boolean | API 呼び出しが成功したかどうかを示します。 |
+
+### レスポンスボディの例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "spaceId" : 3996960664
+  },
+  "success" : true
+}
+```
+
+### エラーコード
+
+API 呼び出しでエラーが返された場合は、エラーメッセージを基に、[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | invalidParameter | 承認添付ファイルのプレビュー権限付与でパラメータエラーが発生しました | 承認添付ファイルのプレビュー権限付与でパラメータエラーが発生しました |
+| 400 | userNotExist | ユーザーが存在しません | ユーザーが存在しません |
+| 400 | noPermission | アクセスが拒否されました。組織で対応するマイクロアプリが有効になっていません | アクセスが拒否されました。組織で対応するマイクロアプリが有効になっていません |
+| 400 | invalidUserId | 承認添付ファイルのプレビュー権限付与：ユーザーの userId は空にできません | 承認添付ファイルのプレビュー権限付与：ユーザーの userId は空にできません |
+| 400 | invalidProcessInstanceId | 承認添付ファイルのプレビュー権限付与：インスタンス ID は空にできません | 承認添付ファイルのプレビュー権限付与：インスタンス ID は空にできません |
+| 400 | invalidParameterCspace | 認可コードで認証する場合、isvOrgId は空にできません | 認可コードで認証する場合、isvOrgId は空にできません |
+| 400 | hsfIntegrationErrorCspaceGetCustomSpace | ドライブスペース情報の取得に失敗しました | ドライブスペース情報の取得に失敗しました |
+| 400 | hsfIntegrationErrorCspaceGetSimpleMicroAppByRelatedAppId | relatedAppId によるマイクロアプリ情報の取得に失敗しました | relatedAppId によるマイクロアプリ情報の取得に失敗しました |
+| 400 | hsfIntegrationErrorCspaceDentryServiceGrant | ドライブへのアクセス権限の付与に失敗しました | ドライブへのアクセス権限の付与に失敗しました |
+| 400 | hsfIntegrationErrorCspace | ドライブ添付ファイルの外部依存サービスでエラーが発生しました | ドライブ添付ファイルの外部依存サービスでエラーが発生しました |
+| 400 | invalidFileId | 承認添付ファイルのプレビュー権限付与：承認添付ファイルの fileId は空にできません | 承認添付ファイルのプレビュー権限付与：承認添付ファイルの fileId は空にできません |
+| 400 | invalidFileList | 承認添付ファイルのプレビュー権限付与：承認添付ファイルの fileList は空にできません | 承認添付ファイルのプレビュー権限付与：承認添付ファイルの fileList は空にできません |
+| 400 | processInstNotExist | 承認インスタンスが存在しません | 承認インスタンスが存在しません |
+| 400 | noPermission | アクセス権限がありません | アクセス権限がありません |
+| 400 | internalError | %s | 内部システムエラー |
+| 500 | systemError | システムエラー | システムエラー |

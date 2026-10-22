@@ -1,0 +1,924 @@
+---
+title: "Cipta instans"
+description: "Panggil API DingTalk ini untuk mencipta instans kelulusan tanpa aliran kerja. Hantar kod templat, userId pemohon dan kawalan borang untuk mendapatkan ID instans."
+---
+
+Panggil API ini untuk mencipta instans kelulusan tanpa aliran kerja. Simpan ID instans kelulusan yang dikembalikan untuk digunakan dalam panggilan API seterusnya.
+
+## Penerangan panggilan API
+
+API ini mengenakan pengesahan yang lebih ketat terhadap data masuk untuk menghalang data tidak sah dihantar kepada API terbuka.
+
+- Untuk kawalan pilihan tunggal dan pilihan berbilang, setiap nilai pilihan yang dihantar mesti dikonfigurasi dalam senarai pilihan.
+- Untuk kawalan kenalan dalaman, userID yang dihantar mesti milik ahli aktif organisasi semasa.
+- Untuk kawalan jabatan, ID jabatan mesti merupakan ID jabatan yang sah dalam organisasi semasa.
+- Untuk kawalan borang kelulusan berkaitan, ID instans yang dihantar mesti merupakan ID instans kelulusan sedia ada dalam organisasi semasa.
+
+Borang kelulusan yang dimulakan tanpa mematuhi peraturan ini mungkin gagal dicipta selepas pengesahan data borang yang dipertingkatkan berkuat kuasa.
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/workflow/processCentres/instances |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran yang diperlukan | permission-Workflow.Instance.Write-Kebenaran tulis instans aliran kerja |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkannya seperti berikut:   - Aplikasi dalaman: Panggil API [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). - Aplikasi perusahaan pihak ketiga: Panggil API untuk mendapatkan access token organisasi yang telah memberikan kebenaran kepada aplikasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| processCode | String | Ya | Kod templat kelulusan. Panggil API [Dapatkan kod templat](/ms/open/development/obtain-the-template-code) untuk mendapatkan nilai processCode. |
+| originatorUserId | String | Ya | userId pemohon instans kelulusan. |
+| formComponentValueList | Array | Tidak | Senarai kawalan borang. Untuk butiran, lihat [Penerangan parameter FormComponentValues](/ms/open/development/oa-formcomponent-message). Bilangan elemen maksimum: 100.      API ini tidak menyokong **kawalan Lokasi** atau **kawalan Telefon**. |
+| name | String | Tidak | Nama medan borang. Nama setiap medan borang, yang sepadan dengan medan label komponen borang. Panjang maksimum: 64 aksara. |
+| value | String | Tidak | Nilai borang. Panjang maksimum: 65,535 aksara. |
+| extValue | String | Tidak | Nilai borang lanjutan. Panjang maksimum: 8,192 aksara.      Kawalan kenalan dan kawalan borang kelulusan berkaitan kini memerlukan nilai ini supaya instans berjaya dicipta. Isikan nilai ini mengikut contoh permintaan. |
+| id | String | Tidak | ID kawalan. Panjang maksimum: 64 aksara. Panggil API untuk mencipta atau mengemas kini templat kelulusan bagi mendapatkan nilai componentId yang diterangkan dalam [Penerangan parameter FormComponent](/ms/open/development/oa-formcomponent-message). |
+| bizAlias | String | Tidak | Alias kawalan. Panjang maksimum: 64 aksara. |
+| componentType | String | Tidak | Jenis kawalan. Panjang maksimum: 64 aksara. Untuk butiran, lihat [Penerangan parameter FormComponent](/ms/open/development/oa-formcomponent-message).   - **TextField**: Kotak input satu baris - **TextareaField**: Kotak input pelbagai baris - **NumberField**: Kotak input nombor - **DDSelectField**: Kotak pilihan tunggal       Nilai pilihan mesti dikonfigurasi dalam senarai pilihan     - **DDMultiSelectField**: Kotak pilihan berbilang       Semua nilai pilihan mesti dikonfigurasi dalam senarai pilihan     - **DDDateField**: Kawalan tarikh - **DDDateRangeField**: Kawalan julat masa - **TextNote**: Kawalan keterangan teks (dikonfigurasi pada templat kelulusan; tidak boleh diubah semasa memulakan instans kelulusan) - **DDPhotoField**: Kawalan imej - **MoneyField**: Kawalan amaun - **TableField**: Kawalan butiran - **DDAttachment**: Lampiran - **InnerContactField**: Kawalan kenalan       userID dalam kawalan kenalan mesti milik ahli aktif organisasi semasa     - **RelateField**: Borang kelulusan berkaitan       ID instans kelulusan yang dihantar untuk borang kelulusan berkaitan mesti wujud dalam organisasi semasa     - **AddressField**: Kawalan wilayah/bandar/daerah - **StarRatingField**: Kawalan penilaian - **DepartmentField**: Kawalan jabatan       Hantar ID jabatan yang wujud dalam organisasi semasa |
+| title | String | Tidak | Tajuk instans. Panjang maksimum: 64 aksara. |
+| url | String | Ya | URL halaman butiran borang kelulusan dalam sistem kelulusan pihak ketiga. Panjang maksimum: 1,024 aksara. |
+| notifiers | Array | Tidak | Senarai maklumat CC. Bilangan elemen maksimum: 20. |
+| userid | String | Tidak | userId penerima CC. |
+| position | String | Tidak | Masa CC. Nilai yang sah:   - **start**: Maklumkan penerima CC apabila kelulusan dimulakan - **finish**: Maklumkan penerima CC selepas kelulusan diluluskan - **start_finish**: Maklumkan penerima CC apabila kelulusan dimulakan dan selepas kelulusan diluluskan |
+| featureConfig | Object | Tidak | Konfigurasi integrasi Pusat Proses. Tentukan kumpulan kelulusan dan konfigurasi Callback pada peringkat instans. |
+| features | Array | Tidak | Senarai konfigurasi. |
+| name | String | Tidak | Nama modul ciri yang boleh disesuaikan oleh pihak ketiga. Kini disokong:   - **CUSTOM_SHORTCUT**: Butang tindakan pintasan dalam tugasan dan notifikasi kad - **AFFILIATION_DIR**: Tentukan kumpulan perniagaan tugasan |
+| pcUrl | String | Tidak | Pautan ubah hala tersuai untuk PC yang ditetapkan oleh pihak ketiga. Panjang maksimum: 1,024 aksara. |
+| mobileUrl | String | Tidak | Pautan ubah hala tersuai untuk mudah alih yang ditetapkan oleh pihak ketiga. Panjang maksimum: 1,024 aksara. |
+| runType | String | Tidak | Mod jalanan.  Apabila features.name ialah `CUSTOM_SHORTCUT`, nilai yang disokong:   - **ORIGIN**: Mod asli. Membuka halaman butiran tugasan akan mengubah hala ke halaman butiran kelulusan rasmi - **REDIRECT**: Mod ubah hala luaran. Membuka halaman butiran tugasan akan mengubah hala ke URL yang dikonfigurasi dalam pcUrl atau mobileUrl   Apabila features.name ialah `AFFILIATION_DIR`, nilai yang disokong:   - **OUTBIZ_CUSTOM**: Tentukan kumpulan tugasan. Pihak perniagaan menentukan kategori tugasan tersebut |
+| callback | Object | Tidak | Konfigurasi Callback get laluan. Wajib apabila butang tindakan pintasan perlu disokong.  API data luaran yang dipanggil balik oleh get laluan mesti didaftarkan sebagai get laluan dalam "Pengurusan Sumber Data". Untuk butiran, lihat Cipta Sumber Data. |
+| appUuid | String | Tidak | appUuid get laluan. Wajib apabila butang tindakan pintasan perlu disokong.  Hantar ID organisasi (corpId) bagi organisasi yang mencipta sumber data. |
+| apiKey | String | Tidak | apiKey get laluan. Wajib apabila butang tindakan pintasan perlu disokong. Dapatkan `apiKey` daripada sumber data yang telah dicipta.       - Apabila get laluan memanggil balik API luaran, DingTalk menghantar semula parameter yang diperlukan untuk pemprosesan perniagaan kepada ISV berdasarkan senario perniagaan. Untuk menghuraikan parameter ini selepas menerima permintaan Callback, ISV mesti mengkonfigurasi kunci parameter yang sepadan semasa mencipta sumber data.   Contohnya, apabila Callback dikonfigurasi untuk modul TASK_EXECUTE (butang Terima dan Tolak pada halaman butiran), DingTalk menghantar semula parameter tetap berikut: `&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"Terima","title":"Permohonan perolehan aset yang dihantar oleh xxx","taskId":111,"operator":"manager0001"&#125;`. - Semasa mencipta sumber data, ISV mesti mengkonfigurasi kunci yang perlu dihuraikan berdasarkan keperluan perniagaan: outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | Tidak | Versi API get laluan       - Wajib apabila butang tindakan pintasan perlu disokong. - Nilai lalai: 1. |
+| config | String | Tidak | Maklumat konfigurasi untuk modul ciri yang disesuaikan oleh pihak ketiga. Panjang maksimum: 1,024 aksara. |
+| bizData | String | Tidak | Parameter perniagaan tersuai dalam format string JSON. Panjang maksimum: 1,024 aksara. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/instances HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:6dexxx
+Content-Type:application/json
+
+{
+    /*
+      API ini belum menyokong semua kawalan dalam aplikasi Kelulusan. Hanya kawalan dalam contoh berikut disokong.
+      Untuk kawalan asas, hanya atribut name dan value diperlukan. Kedua-duanya ialah string.
+      Jika data dalam format JSON, tukarkannya kepada string (escape) terlebih dahulu.
+    */     
+  "processCode" : "proc",
+  "originatorUserId" : "manager1234",
+  "formComponentValueList" : [ 
+      {
+            "name": "Kotak input satu baris",
+            "value": "Contoh kotak input satu baris"
+        },
+        {
+            "name": "Kotak input pelbagai baris",
+            "value": "Masukkan teks pelbagai baris. Untuk menyisipkan baris baharu, masukkan \r\n"
+        },
+        {
+            "name": "Kotak input nombor",
+            "value": "100"
+        },
+        {
+            /*
+                value boleh merupakan nilai pilihan sebenar
+                Nilai pilihan, seperti "Pilihan 1", mesti terdapat dalam senarai pilihan yang dikonfigurasi
+                Nilai pilihan yang tidak sah mungkin menyebabkan permulaan gagal pada masa hadapan
+            */
+            "name": "Kotak pilihan tunggal",
+            "value": "Pilihan 1"
+        },
+        {
+            /*
+                value mesti merupakan tatasusunan nilai pilihan sebenar yang ditukar kepada string.
+                Gunakan tatasusunan walaupun hanya terdapat satu pilihan
+                Nilai pilihan, seperti "Pilihan 1" dan "Pilihan 2", mesti terdapat dalam senarai pilihan yang dikonfigurasi
+                Nilai pilihan yang tidak sah mungkin menyebabkan permulaan gagal pada masa hadapan
+            */
+            "name": "Kotak pilihan berbilang",
+            "value": "[\"Pilihan 1\",\"Pilihan 2\"]"
+        }, 
+        {
+            /*
+                value hanya menyokong format yyyy-MM-dd
+            */
+            "name": "Tarikh",
+            "value": "2021-08-17"
+        },
+        {
+            /*
+                value ialah tatasusunan masa dalam bentuk string. Hanya format yyyy-MM-dd disokong
+            */
+            "name": "[\"Masa mula\",\"Masa tamat\"]",
+            "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+            /*
+                value mesti merupakan tatasusunan URL sebenar yang ditukar kepada string.
+                Gunakan tatasusunan walaupun hanya terdapat satu item
+            */
+            "name": "Imej",
+            "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+            /*
+                Nilai kawalan jadual ialah tatasusunan dua dimensi objek JSON. Setiap baris dalam tatasusunan mewakili satu baris data dalam jadual,
+                dan setiap objek JSON dalam satu baris mewakili satu kawalan dalam jadual.
+            */
+            "name": "Jadual",
+            "value": "[[{\"name\":\"Kotak input satu baris\",\"value\":\"Kotak input satu baris butiran\"},{\"name\":\"Kotak input nombor\",\"value\":\"100\"}]]"
+        },
+        {
+            "name": "Amaun (CNY)",
+            "value": "100"
+        },
+        {
+            /*
+                Nilai kawalan lampiran ialah tatasusunan JSON yang ditukar kepada string. Setiap objek JSON dalam tatasusunan ialah satu fail lampiran.
+                Setiap fail mesti mengandungi medan spaceId, fileName, fileSize, fileType dan fileId. Dapatkan medan ini
+                dengan memanggil API Drive untuk memuat naik lampiran.
+            */
+            "name": "Lampiran",
+            "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+    "\"643xxxx140\"}]"
+        },
+        {
+            /*
+                Nilai yang dihantar untuk kenalan ialah userId
+                Jika userId bukan milik pengguna aktif organisasi semasa, permulaan mungkin gagal pada masa hadapan
+            */
+            "name": "Kenalan",
+            "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+            /*
+                value mesti merupakan tatasusunan borang kelulusan sebenar yang ditukar kepada string.
+                Gunakan tatasusunan walaupun hanya terdapat satu item
+                Menghantar ID instans kelulusan yang tidak wujud mungkin menyebabkan permulaan gagal pada masa hadapan
+            */
+            "name": "Borang kelulusan berkaitan",
+            "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        },
+        {
+            /*
+                Nilai wilayah/bandar/daerah mesti mengikut format kawalan alamat untuk dikenali, dipisahkan dengan koma Inggeris
+            */
+              "name": "Wilayah/Bandar/Daerah",
+              "value": "Beijing,Beijing,Hedong District"
+        },
+        {
+              "name": "Penilaian",
+              "value": "5"
+        },
+        {
+            /*
+                value ialah ID jabatan dalam Kenalan DingTalk. Untuk memilih berbilang jabatan, pisahkan nilai dengan koma Inggeris
+                Menghantar ID jabatan yang tidak sah mungkin menyebabkan permulaan kelulusan gagal pada masa hadapan
+            */
+              "name": "Jabatan",
+              "value": "ID jabatan 1 Kenalan DingTalk,ID jabatan 2 Kenalan DingTalk"
+        }
+  ],
+  "title" : "Kelulusan daripada xxx",
+  "url" : "https://www.dingtalk.io/",
+  "notifiers" : [ {
+    "userid" : "manager001",
+    "position" : "start"
+  } ]
+}
+```
+
+Java
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Mulakan Client akaun menggunakan Token</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceHeaders();
+        saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback()
+                .setAppUuid("corpId organisasi pembangun")
+                .setApiKey("apiKey yang dijana selepas mengkonfigurasi sumber data")
+                .setVersion("1");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeatures featureConfigFeatures0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeatures()
+                .setName("AFFILIATION_DIR")
+                .setPcUrl("www.dingtalk.io")
+                .setMobileUrl("www.dingtalk.io")
+                .setRunType("REDIRECT")
+                .setCallback(featureConfigFeatures0Callback)
+                .setConfig("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig featureConfig = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig()
+                .setFeatures(java.util.Arrays.asList(
+                    featureConfigFeatures0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers()
+                .setUserid("manager001")
+                .setPosition("start");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValueList0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                .setName("Kotak Teks")
+                .setValue("abc")
+                .setExtValue("abc")
+                .setId("TextField-abc")
+                .setBizAlias("abc")
+                .setComponentType("TextField");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest()
+                .setProcessCode("proc")
+                .setOriginatorUserId("manager1234")
+                .setFormComponentValueList(java.util.Arrays.asList(
+                    formComponentValueList0
+                ))
+                .setTitle("Kelulusan daripada xxx")
+                .setUrl("https://www.dingtalk.io/")
+                .setNotifiers(java.util.Arrays.asList(
+                    notifiers0
+                ))
+                .setFeatureConfig(featureConfig)
+                .setBizData("\"{\"mykey\": \"myData\"}\"");
+        try {
+            client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Mulakan Client akaun menggunakan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_integrated_instance_headers = dingtalkworkflow__1__0_models.SaveIntegratedInstanceHeaders()
+        save_integrated_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback(
+            app_uuid='corpId organisasi pembangun',
+            api_key='apiKey yang dijana selepas mengkonfigurasi sumber data',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeatures(
+            name='AFFILIATION_DIR',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        notifiers_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestNotifiers(
+            userid='manager001',
+            position='start'
+        )
+        form_component_value_list_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFormComponentValueList(
+            name='Kotak Teks',
+            value='abc',
+            ext_value='abc',
+            id='TextField-abc',
+            biz_alias='abc',
+            component_type='TextField'
+        )
+        save_integrated_instance_request = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequest(
+            process_code='proc',
+            originator_user_id='manager1234',
+            form_component_value_list=[
+                form_component_value_list_0
+            ],
+            title='Kelulusan daripada xxx',
+            url='https://www.dingtalk.io/',
+            notifiers=[
+                notifiers_0
+            ],
+            feature_config=feature_config,
+            biz_data='"{"mykey": "myData"}"'
+        )
+        try:
+            client.save_integrated_instance_with_options(save_integrated_instance_request, save_integrated_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu mengesan punca ralat
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_integrated_instance_headers = dingtalkworkflow__1__0_models.SaveIntegratedInstanceHeaders()
+        save_integrated_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback(
+            app_uuid='corpId organisasi pembangun',
+            api_key='apiKey yang dijana selepas mengkonfigurasi sumber data',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeatures(
+            name='AFFILIATION_DIR',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        notifiers_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestNotifiers(
+            userid='manager001',
+            position='start'
+        )
+        form_component_value_list_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFormComponentValueList(
+            name='Kotak Teks',
+            value='abc',
+            ext_value='abc',
+            id='TextField-abc',
+            biz_alias='abc',
+            component_type='TextField'
+        )
+        save_integrated_instance_request = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequest(
+            process_code='proc',
+            originator_user_id='manager1234',
+            form_component_value_list=[
+                form_component_value_list_0
+            ],
+            title='Kelulusan daripada xxx',
+            url='https://www.dingtalk.io/',
+            notifiers=[
+                notifiers_0
+            ],
+            feature_config=feature_config,
+            biz_data='"{"mykey": "myData"}"'
+        )
+        try:
+            await client.save_integrated_instance_with_options_async(save_integrated_instance_request, save_integrated_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu mengesan punca ralat
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig\features\callback;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig\features;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\notifiers;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\formComponentValueList;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $saveIntegratedInstanceHeaders = new SaveIntegratedInstanceHeaders([]);
+        $saveIntegratedInstanceHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $featureConfigFeatures0Callback = new callback([
+            "appUuid" => "corpId organisasi pembangun",
+            "apiKey" => "apiKey yang dijana selepas mengkonfigurasi sumber data",
+            "version" => "1"
+        ]);
+        $featureConfigFeatures0 = new features([
+            "name" => "AFFILIATION_DIR",
+            "pcUrl" => "www.dingtalk.io",
+            "mobileUrl" => "www.dingtalk.io",
+            "runType" => "REDIRECT",
+            "callback" => $featureConfigFeatures0Callback,
+            "config" => "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}"
+        ]);
+        $featureConfig = new featureConfig([
+            "features" => [
+                $featureConfigFeatures0
+            ]
+        ]);
+        $notifiers0 = new notifiers([
+            "userid" => "manager001",
+            "position" => "start"
+        ]);
+        $formComponentValueList0 = new formComponentValueList([
+            "name" => "Kotak Teks",
+            "value" => "abc",
+            "extValue" => "abc",
+            "id" => "TextField-abc",
+            "bizAlias" => "abc",
+            "componentType" => "TextField"
+        ]);
+        $saveIntegratedInstanceRequest = new SaveIntegratedInstanceRequest([
+            "processCode" => "proc",
+            "originatorUserId" => "manager1234",
+            "formComponentValueList" => [
+                $formComponentValueList0
+            ],
+            "title" => "Kelulusan daripada xxx",
+            "url" => "https://www.dingtalk.io/",
+            "notifiers" => [
+                $notifiers0
+            ],
+            "featureConfig" => $featureConfig,
+            "bizData" => "\"{\"mykey\": \"myData\"}\""
+        ]);
+        try {
+            $client->saveIntegratedInstanceWithOptions($saveIntegratedInstanceRequest, $saveIntegratedInstanceHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Penerangan:
+// 
+// Mulakan Client akaun menggunakan Token
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  saveIntegratedInstanceHeaders := &dingtalkworkflow_1_0.SaveIntegratedInstanceHeaders{}
+  saveIntegratedInstanceHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  featureConfigFeatures0Callback := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback{
+    AppUuid: tea.String("corpId organisasi pembangun"),
+    ApiKey: tea.String("apiKey yang dijana selepas mengkonfigurasi sumber data"),
+    Version: tea.String("1"),
+  }
+  featureConfigFeatures0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures{
+    Name: tea.String("AFFILIATION_DIR"),
+    PcUrl: tea.String("www.dingtalk.io"),
+    MobileUrl: tea.String("www.dingtalk.io"),
+    RunType: tea.String("REDIRECT"),
+    Callback: featureConfigFeatures0Callback,
+    Config: tea.String("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}"),
+  }
+  featureConfig := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfig{
+    Features: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures{featureConfigFeatures0},
+  }
+  notifiers0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers{
+    Userid: tea.String("manager001"),
+    Position: tea.String("start"),
+  }
+  formComponentValueList0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList{
+    Name: tea.String("Kotak Teks"),
+    Value: tea.String("abc"),
+    ExtValue: tea.String("abc"),
+    Id: tea.String("TextField-abc"),
+    BizAlias: tea.String("abc"),
+    ComponentType: tea.String("TextField"),
+  }
+  saveIntegratedInstanceRequest := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequest{
+    ProcessCode: tea.String("proc"),
+    OriginatorUserId: tea.String("manager1234"),
+    FormComponentValueList: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList{formComponentValueList0},
+    Title: tea.String("Kelulusan daripada xxx"),
+    Url: tea.String("https://www.dingtalk.io/"),
+    Notifiers: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers{notifiers0},
+    FeatureConfig: featureConfig,
+    BizData: tea.String("\"{\"mykey\": \"myData\"}\""),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.SaveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```text
+'use strict';
+// Fail ini dijana secara automatik, jangan suntingnya
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Mulakan Client akaun menggunakan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let saveIntegratedInstanceHeaders = new dingtalkworkflow_1_0.SaveIntegratedInstanceHeaders({ });
+    saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let featureConfigFeatures0Callback = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback({
+      appUuid: 'corpId organisasi pembangun',
+      apiKey: 'apiKey yang dijana selepas mengkonfigurasi sumber data',
+      version: '1',
+    });
+    let featureConfigFeatures0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures({
+      name: 'AFFILIATION_DIR',
+      pcUrl: 'www.dingtalk.io',
+      mobileUrl: 'www.dingtalk.io',
+      runType: 'REDIRECT',
+      callback: featureConfigFeatures0Callback,
+      config: '{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'测试\',\'zh_HK\':\'测试\',\'zh_TW\':\'测试\'}}","refuseBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'测试\',\'zh_HK\':\'测试\',\'zh_TW\':\'测试\'}}"}}',
+    });
+    let featureConfig = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfig({
+      features: [
+        featureConfigFeatures0
+      ],
+    });
+    let notifiers0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers({
+      userid: 'manager001',
+      position: 'start',
+    });
+    let formComponentValueList0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList({
+      name: 'Kotak Teks',
+      value: 'abc',
+      extValue: 'abc',
+      id: 'TextField-abc',
+      bizAlias: 'abc',
+      componentType: 'TextField',
+    });
+    let saveIntegratedInstanceRequest = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequest({
+      processCode: 'proc',
+      originatorUserId: 'manager1234',
+      formComponentValueList: [
+        formComponentValueList0
+      ],
+      title: 'Kelulusan daripada xxx',
+      url: 'https://www.dingtalk.io/',
+      notifiers: [
+        notifiers0
+      ],
+      featureConfig: featureConfig,
+      bizData: '"{"mykey": "myData"}"',
+    });
+    try {
+      await client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Penerangan:</b></term>
+        /// <description>
+        /// <para>Mulakan Client akaun menggunakan Token</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Pengecualian:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceHeaders();
+            saveIntegratedInstanceHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback
+            {
+                AppUuid = "corpId organisasi pembangun",
+                ApiKey = "apiKey yang dijana selepas mengkonfigurasi sumber data",
+                Version = "1",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures featureConfigFeatures0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures
+            {
+                Name = "AFFILIATION_DIR",
+                PcUrl = "www.dingtalk.io",
+                MobileUrl = "www.dingtalk.io",
+                RunType = "REDIRECT",
+                Callback = featureConfigFeatures0Callback,
+                Config = "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig featureConfig = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig
+            {
+                Features = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures>
+                {
+                    featureConfigFeatures0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers
+            {
+                Userid = "manager001",
+                Position = "start",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValueList0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList
+            {
+                Name = "Kotak Teks",
+                Value = "abc",
+                ExtValue = "abc",
+                Id = "TextField-abc",
+                BizAlias = "abc",
+                ComponentType = "TextField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest
+            {
+                ProcessCode = "proc",
+                OriginatorUserId = "manager1234",
+                FormComponentValueList = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList>
+                {
+                    formComponentValueList0
+                },
+                Title = "Kelulusan daripada xxx",
+                Url = "https://www.dingtalk.io/",
+                Notifiers = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers>
+                {
+                    notifiers0
+                },
+                FeatureConfig = featureConfig,
+                BizData = "\"{\"mykey\": \"myData\"}\"",
+            };
+            try
+            {
+                client.SaveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu mengesan punca ralat
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| result | Object | Hasil. |
+| processInstanceId | String | ID instans. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "processInstanceId" : "1234"
+  }
+}
+```
+
+### Kod ralat
+
+Jika panggilan API mengembalikan ralat, cari penyelesaian dalam dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1) berdasarkan mesej ralat.
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | aflowProcessFormContentInvalid | Format borang aliran kerja kelulusan tidak sah | Format borang aliran kerja kelulusan tidak sah |
+| 400 | process.error | Aliran kerja kelulusan tidak wujud | Aliran kerja kelulusan tidak wujud |
+| 400 | permission.error | Tiada kebenaran akses | Tiada kebenaran akses |
+| 400 | permission.error | Tiada kebenaran untuk mengendalikan aliran kerja kelulusan | Tiada kebenaran untuk mengendalikan aliran kerja kelulusan |
+| 400 | instance.error | Gagal memulakan instans kelulusan | Gagal memulakan instans kelulusan |
+| 400 | needAuth | Tiada kebenaran untuk memulakan kelulusan | Tiada kebenaran untuk memulakan kelulusan |
+| 400 | invalidAgentId | ID aplikasi mikro tidak sah | ID aplikasi mikro tidak sah |
+| 400 | invalidSuiteKey | suiteKey tidak sah | suiteKey tidak sah |
+| 400 | required.error | %s | Ralat pengesahan medan wajib |
+| 400 | internalError | %s | Ralat sistem dalaman |
+| 400 | userNotExist | Pengguna tidak wujud | Pengguna tidak wujud |
+| 400 | formConverterError | Gagal menukar balik data borang | Gagal menukar balik data borang |
+| 400 | parameter.invalid | Ralat parameter | Ralat parameter |
+| 400 | processCode.in.blackList | Kod templat semasa telah ditambah ke senarai sekat. Instans kelulusan tidak dapat dimulakan. | Semak sama ada templat mengalami masalah seperti gelung tak terhingga yang memulakan instans secara berterusan. |
+| 400 | isvOrgId.in.blackList | ID organisasi ISV semasa telah ditambah ke senarai sekat. Instans kelulusan tidak dapat dimulakan. | Semak sama ada organisasi ISV mengalami masalah seperti gelung tak terhingga yang memulakan instans secara berterusan. |
+| 400 | isvAppId.in.blackList | appId aplikasi ISV semasa telah ditambah ke senarai sekat. Instans kelulusan tidak dapat dimulakan. | Semak sama ada aplikasi ISV mengalami masalah seperti gelung tak terhingga yang memulakan instans secara berterusan. |
+| 500 | system.error | Ralat sistem | Ralat sistem |

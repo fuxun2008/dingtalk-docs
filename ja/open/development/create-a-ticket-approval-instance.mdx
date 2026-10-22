@@ -1,0 +1,924 @@
+---
+title: "インスタンスの作成"
+description: "DingTalk の承認 API で、作業フローを使用しない承認インスタンスを作成する方法を解説します。テンプレートコード、申請者の userId、フォームコントロールの指定方法から、リクエスト例、エラーコードまでを紹介します。"
+---
+
+この API を呼び出して、作業フローを使用しない承認インスタンスを作成します。返された承認インスタンス ID は、以降の API 呼び出しで使用するため保存してください。
+
+## API 呼び出し説明
+
+オープン API に無効なデータが渡されるのを防ぐため、この API では受信データに対してより厳格な検証を行います。
+
+- 単一選択コントロールと複数選択コントロールでは、渡すオプション値をすべてオプションリストに設定しておく必要があります。
+- 社内連絡先コントロールでは、渡す userID が現在の組織の在籍メンバーのものである必要があります。
+- 部門コントロールでは、部門 ID が現在の組織内の有効な部門 ID である必要があります。
+- 関連承認フォームコントロールでは、渡すインスタンス ID が現在の組織内に存在する承認インスタンス ID である必要があります。
+
+フォームのデータ検証の強化が適用されると、これらのルールに違反して申請された承認フォームは作成に失敗する場合があります。
+
+## リクエスト
+
+### ベーシック情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processCentres/instances |
+| HTTP メソッド | POST |
+| 対応する App の種類 | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-Workflow.Instance.Write-ワークフローインスタンスの書き込み権限 |
+
+### リクエストヘッダー
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。次の方法で取得します。   - 社内アプリ：[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリを承認した組織のアクセストークンを取得する API を呼び出します。 |
+
+### リクエストボディ
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| processCode | String | はい | 承認テンプレートのコードです。[テンプレートコードを取得する](/ja/open/development/obtain-the-template-code) API を呼び出して processCode の値を取得します。 |
+| originatorUserId | String | はい | 承認インスタンスの申請者の userId です。 |
+| formComponentValueList | Array | いいえ | フォームコントロールのリストです。詳細は [FormComponentValues パラメータの説明](/ja/open/development/oa-formcomponent-message) を参照してください。要素数の上限：100。      この API は**位置情報コントロール**と**電話番号コントロール**に対応していません。 |
+| name | String | いいえ | フォームのフィールド名です。各フォームフィールドの名前で、フォームコンポーネントの label フィールドに対応します。最大長：64 文字。 |
+| value | String | いいえ | フォームの値です。最大長：65,535 文字。 |
+| extValue | String | いいえ | フォームの拡張値です。最大長：8,192 文字。      現在、連絡先コントロールと関連承認フォームコントロールでは、インスタンスを正常に作成するためにこの値が必要です。リクエスト例に従って入力してください。 |
+| id | String | いいえ | コントロール ID です。最大長：64 文字。承認テンプレートを作成または更新する API を呼び出して、[FormComponent パラメータの説明](/ja/open/development/oa-formcomponent-message) に記載の componentId の値を取得します。 |
+| bizAlias | String | いいえ | コントロールの表示名です。最大長：64 文字。 |
+| componentType | String | いいえ | コントロールの種類です。最大長：64 文字。詳細は [FormComponent パラメータの説明](/ja/open/development/oa-formcomponent-message) を参照してください。   - **TextField**：単一行入力ボックス - **TextareaField**：複数行入力ボックス - **NumberField**：数値入力ボックス - **DDSelectField**：単一選択ボックス       オプション値はオプションリストに設定されている必要があります     - **DDMultiSelectField**：複数選択ボックス       すべてのオプション値がオプションリストに設定されている必要があります     - **DDDateField**：日付コントロール - **DDDateRangeField**：期間コントロール - **TextNote**：説明テキストコントロール（承認テンプレートで設定します。承認インスタンスの申請時には変更できません） - **DDPhotoField**：画像コントロール - **MoneyField**：金額コントロール - **TableField**：明細コントロール - **DDAttachment**：添付 - **InnerContactField**：連絡先コントロール       連絡先コントロールの userID は、現在の組織の在籍メンバーのものである必要があります     - **RelateField**：関連承認フォーム       関連承認フォームに渡す承認インスタンス ID は、現在の組織内に存在している必要があります     - **AddressField**：都道府県・市区町村コントロール - **StarRatingField**：評価点コントロール - **DepartmentField**：部門コントロール       現在の組織内に存在する部門 ID を渡してください |
+| title | String | いいえ | インスタンスのタイトルです。最大長：64 文字。 |
+| url | String | はい | サードパーティ承認システムにおける承認フォーム詳細ページの URL です。最大長：1,024 文字。 |
+| notifiers | Array | いいえ | CC 情報のリストです。要素数の上限：20。 |
+| userid | String | いいえ | CC受信者の userId です。 |
+| position | String | いいえ | CC のタイミングです。有効な値：   - **start**：承認の申請時に CC受信者へ通知します - **finish**：承認が承認された後に CC受信者へ通知します - **start_finish**：承認の申請時と承認後の両方で CC受信者へ通知します |
+| featureConfig | Object | いいえ | プロセスセンターとの連携設定です。インスタンス単位で承認のグループ分けとコールバック設定を指定します。 |
+| features | Array | いいえ | 設定リストです。 |
+| name | String | いいえ | サードパーティがカスタマイズできる機能モジュールの名前です。現在サポートされている値：   - **CUSTOM_SHORTCUT**：タスクおよびカード通知のショートカットアクションボタン - **AFFILIATION_DIR**：タスクの業務グループ分けを指定 |
+| pcUrl | String | いいえ | サードパーティが定義する PC 向けのカスタムリダイレクトリンクです。最大長：1,024 文字。 |
+| mobileUrl | String | いいえ | サードパーティが定義するモバイル向けのカスタムリダイレクトリンクです。最大長：1,024 文字。 |
+| runType | String | いいえ | 実行モードです。  features.name が `CUSTOM_SHORTCUT` の場合にサポートされる値：   - **ORIGIN**：ネイティブモード。タスクの詳細ページを開くと、公式の承認詳細ページにリダイレクトされます - **REDIRECT**：外部リダイレクトモード。タスクの詳細ページを開くと、pcUrl または mobileUrl に設定した URL にリダイレクトされます   features.name が `AFFILIATION_DIR` の場合にサポートされる値：   - **OUTBIZ_CUSTOM**：タスクのグループ分けを指定します。タスクが属するカテゴリは業務側で定義します |
+| callback | Object | いいえ | ゲートウェイのコールバック設定です。ショートカットアクションボタンに対応する必要がある場合は必須です。  ゲートウェイからコールバックされる外部データ API は、「データソース管理」でゲートウェイとして登録しておく必要があります。詳細は「データソースの作成」を参照してください。 |
+| appUuid | String | いいえ | ゲートウェイの appUuid です。ショートカットアクションボタンに対応する必要がある場合は必須です。  データソースを作成した組織の組織ID（corpId）を渡してください。 |
+| apiKey | String | いいえ | ゲートウェイの apiKey です。ショートカットアクションボタンに対応する必要がある場合は必須です。作成したデータソースから `apiKey` を取得します。       - ゲートウェイが外部 API をコールバックする際、DingTalk は業務シナリオに応じて、業務処理に必要なパラメータを ISV に返します。コールバックリクエストの受信後にこれらのパラメータを解析するには、ISV がデータソースの作成時に対応するパラメータキーを設定しておく必要があります。   たとえば、TASK_EXECUTE モジュール（詳細ページの承認ボタンと却下ボタン）にコールバックを設定した場合、DingTalk は次の固定パラメータを返します：`&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"承認","title":"xxxが提出した資産受領申請","taskId":111,"operator":"manager0001"&#125;`。 - ISV はデータソースの作成時に、業務要件に応じて解析するキーを設定してください：outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | いいえ | ゲートウェイ API のバージョンです。       - ショートカットアクションボタンに対応する必要がある場合は必須です。 - デフォルト値：1。 |
+| config | String | いいえ | サードパーティがカスタマイズした機能モジュールの設定情報です。最大長：1,024 文字。 |
+| bizData | String | いいえ | JSON 文字列形式のカスタム業務パラメータです。最大長：1,024 文字。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/instances HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:6dexxx
+Content-Type:application/json
+
+{
+    /*
+      この API は、承認 App のすべてのコントロールにはまだ対応していません。以下の例に含まれるコントロールのみ対応しています。
+      基本コントロールでは、name 属性と value 属性のみ必須です。どちらも文字列です。
+      データが JSON 形式の場合は、先に文字列にエスケープしてください。
+    */     
+  "processCode" : "proc",
+  "originatorUserId" : "manager1234",
+  "formComponentValueList" : [ 
+      {
+            "name": "単一行入力ボックス",
+            "value": "単一行入力ボックスの例"
+        },
+        {
+            "name": "複数行入力ボックス",
+            "value": "複数行のテキストを入力します。改行を挿入するには \r\n を入力します"
+        },
+        {
+            "name": "数値入力ボックス",
+            "value": "100"
+        },
+        {
+            /*
+                value には実際のオプション値を指定できます
+                「オプション1」などのオプション値は、設定済みのオプションリストに含まれている必要があります
+                無効なオプション値を指定すると、今後申請に失敗する場合があります
+            */
+            "name": "単一選択ボックス",
+            "value": "オプション1"
+        },
+        {
+            /*
+                value には、実際のオプション値の配列を文字列にエスケープして指定する必要があります。
+                オプションが 1 つだけの場合も配列を使用してください
+                「オプション1」「オプション2」などのオプション値は、設定済みのオプションリストに含まれている必要があります
+                無効なオプション値を指定すると、今後申請に失敗する場合があります
+            */
+            "name": "複数選択ボックス",
+            "value": "[\"オプション1\",\"オプション2\"]"
+        }, 
+        {
+            /*
+                value は yyyy-MM-dd 形式のみ対応しています
+            */
+            "name": "日付",
+            "value": "2021-08-17"
+        },
+        {
+            /*
+                value は文字列形式の日時配列です。yyyy-MM-dd 形式のみ対応しています
+            */
+            "name": "[\"開始時刻\",\"終了時刻\"]",
+            "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+            /*
+                value には、実際の URL の配列を文字列にエスケープして指定する必要があります。
+                項目が 1 つだけの場合も配列を使用してください
+            */
+            "name": "画像",
+            "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+            /*
+                表コントロールの value は、JSON オブジェクトの二次元配列です。配列の各行は表の 1 行分のデータを表し、
+                行内の各 JSON オブジェクトは表内の 1 つのコントロールを表します。
+            */
+            "name": "表",
+            "value": "[[{\"name\":\"単一行入力ボックス\",\"value\":\"明細の単一行入力ボックス\"},{\"name\":\"数値入力ボックス\",\"value\":\"100\"}]]"
+        },
+        {
+            "name": "金額（人民元）",
+            "value": "100"
+        },
+        {
+            /*
+                添付コントロールの value は、文字列にエスケープした JSON 配列です。配列内の各 JSON オブジェクトが 1 つの添付ファイルです。
+                各ファイルには spaceId、fileName、fileSize、fileType、fileId フィールドが必要です。これらのフィールドは
+                ドライブの添付ファイルアップロード API を呼び出して取得します。
+            */
+            "name": "添付",
+            "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+    "\"643xxxx140\"}]"
+        },
+        {
+            /*
+                連絡先に渡す値は userId です
+                userId が現在の組織の在籍ユーザーのものでない場合、今後申請に失敗する場合があります
+            */
+            "name": "連絡先",
+            "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+            /*
+                value には、実際の承認フォームの配列を文字列にエスケープして指定する必要があります。
+                項目が 1 つだけの場合も配列を使用してください
+                存在しない承認インスタンス ID を渡すと、今後申請に失敗する場合があります
+            */
+            "name": "関連承認フォーム",
+            "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        },
+        {
+            /*
+                都道府県・市区町村の値は、住所コントロールの形式に従い、半角カンマで区切って指定しないと認識されません
+            */
+              "name": "都道府県・市区町村",
+              "value": "北京市,北京市,河東区"
+        },
+        {
+              "name": "評価点",
+              "value": "5"
+        },
+        {
+            /*
+                value は DingTalk 連絡先の部門 ID です。複数の部門を選択する場合は、半角カンマで区切ってください
+                無効な部門 ID を渡すと、今後承認の申請に失敗する場合があります
+            */
+              "name": "部門",
+              "value": "DingTalk連絡先の部門1のID,DingTalk連絡先の部門2のID"
+        }
+  ],
+  "title" : "xxxの承認申請",
+  "url" : "https://www.dingtalk.io/",
+  "notifiers" : [ {
+    "userid" : "manager001",
+    "position" : "start"
+  } ]
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Token を使用してアカウントの Client を初期化します</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceHeaders();
+        saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback()
+                .setAppUuid("開発者組織のcorpId")
+                .setApiKey("データソース設定後に生成されたapiKey")
+                .setVersion("1");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeatures featureConfigFeatures0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeatures()
+                .setName("AFFILIATION_DIR")
+                .setPcUrl("www.dingtalk.io")
+                .setMobileUrl("www.dingtalk.io")
+                .setRunType("REDIRECT")
+                .setCallback(featureConfigFeatures0Callback)
+                .setConfig("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig featureConfig = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig()
+                .setFeatures(java.util.Arrays.asList(
+                    featureConfigFeatures0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers()
+                .setUserid("manager001")
+                .setPosition("start");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValueList0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                .setName("テキストボックス")
+                .setValue("abc")
+                .setExtValue("abc")
+                .setId("TextField-abc")
+                .setBizAlias("abc")
+                .setComponentType("TextField");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest()
+                .setProcessCode("proc")
+                .setOriginatorUserId("manager1234")
+                .setFormComponentValueList(java.util.Arrays.asList(
+                    formComponentValueList0
+                ))
+                .setTitle("xxxの承認申請")
+                .setUrl("https://www.dingtalk.io/")
+                .setNotifiers(java.util.Arrays.asList(
+                    notifiers0
+                ))
+                .setFeatureConfig(featureConfig)
+                .setBizData("\"{\"mykey\": \"myData\"}\"");
+        try {
+            client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Token を使用してアカウントの Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_integrated_instance_headers = dingtalkworkflow__1__0_models.SaveIntegratedInstanceHeaders()
+        save_integrated_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback(
+            app_uuid='開発者組織のcorpId',
+            api_key='データソース設定後に生成されたapiKey',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeatures(
+            name='AFFILIATION_DIR',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        notifiers_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestNotifiers(
+            userid='manager001',
+            position='start'
+        )
+        form_component_value_list_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFormComponentValueList(
+            name='テキストボックス',
+            value='abc',
+            ext_value='abc',
+            id='TextField-abc',
+            biz_alias='abc',
+            component_type='TextField'
+        )
+        save_integrated_instance_request = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequest(
+            process_code='proc',
+            originator_user_id='manager1234',
+            form_component_value_list=[
+                form_component_value_list_0
+            ],
+            title='xxxの承認申請',
+            url='https://www.dingtalk.io/',
+            notifiers=[
+                notifiers_0
+            ],
+            feature_config=feature_config,
+            biz_data='"{"mykey": "myData"}"'
+        )
+        try:
+            client.save_integrated_instance_with_options(save_integrated_instance_request, save_integrated_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_integrated_instance_headers = dingtalkworkflow__1__0_models.SaveIntegratedInstanceHeaders()
+        save_integrated_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback(
+            app_uuid='開発者組織のcorpId',
+            api_key='データソース設定後に生成されたapiKey',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeatures(
+            name='AFFILIATION_DIR',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        notifiers_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestNotifiers(
+            userid='manager001',
+            position='start'
+        )
+        form_component_value_list_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFormComponentValueList(
+            name='テキストボックス',
+            value='abc',
+            ext_value='abc',
+            id='TextField-abc',
+            biz_alias='abc',
+            component_type='TextField'
+        )
+        save_integrated_instance_request = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequest(
+            process_code='proc',
+            originator_user_id='manager1234',
+            form_component_value_list=[
+                form_component_value_list_0
+            ],
+            title='xxxの承認申請',
+            url='https://www.dingtalk.io/',
+            notifiers=[
+                notifiers_0
+            ],
+            feature_config=feature_config,
+            biz_data='"{"mykey": "myData"}"'
+        )
+        try:
+            await client.save_integrated_instance_with_options_async(save_integrated_instance_request, save_integrated_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig\features\callback;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig\features;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\notifiers;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\formComponentValueList;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウントの Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $saveIntegratedInstanceHeaders = new SaveIntegratedInstanceHeaders([]);
+        $saveIntegratedInstanceHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $featureConfigFeatures0Callback = new callback([
+            "appUuid" => "開発者組織のcorpId",
+            "apiKey" => "データソース設定後に生成されたapiKey",
+            "version" => "1"
+        ]);
+        $featureConfigFeatures0 = new features([
+            "name" => "AFFILIATION_DIR",
+            "pcUrl" => "www.dingtalk.io",
+            "mobileUrl" => "www.dingtalk.io",
+            "runType" => "REDIRECT",
+            "callback" => $featureConfigFeatures0Callback,
+            "config" => "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}"
+        ]);
+        $featureConfig = new featureConfig([
+            "features" => [
+                $featureConfigFeatures0
+            ]
+        ]);
+        $notifiers0 = new notifiers([
+            "userid" => "manager001",
+            "position" => "start"
+        ]);
+        $formComponentValueList0 = new formComponentValueList([
+            "name" => "テキストボックス",
+            "value" => "abc",
+            "extValue" => "abc",
+            "id" => "TextField-abc",
+            "bizAlias" => "abc",
+            "componentType" => "TextField"
+        ]);
+        $saveIntegratedInstanceRequest = new SaveIntegratedInstanceRequest([
+            "processCode" => "proc",
+            "originatorUserId" => "manager1234",
+            "formComponentValueList" => [
+                $formComponentValueList0
+            ],
+            "title" => "xxxの承認申請",
+            "url" => "https://www.dingtalk.io/",
+            "notifiers" => [
+                $notifiers0
+            ],
+            "featureConfig" => $featureConfig,
+            "bizData" => "\"{\"mykey\": \"myData\"}\""
+        ]);
+        try {
+            $client->saveIntegratedInstanceWithOptions($saveIntegratedInstanceRequest, $saveIntegratedInstanceHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されています。編集しないでください。
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// 説明:
+// 
+// Token を使用してアカウントの Client を初期化します
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  saveIntegratedInstanceHeaders := &dingtalkworkflow_1_0.SaveIntegratedInstanceHeaders{}
+  saveIntegratedInstanceHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  featureConfigFeatures0Callback := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback{
+    AppUuid: tea.String("開発者組織のcorpId"),
+    ApiKey: tea.String("データソース設定後に生成されたapiKey"),
+    Version: tea.String("1"),
+  }
+  featureConfigFeatures0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures{
+    Name: tea.String("AFFILIATION_DIR"),
+    PcUrl: tea.String("www.dingtalk.io"),
+    MobileUrl: tea.String("www.dingtalk.io"),
+    RunType: tea.String("REDIRECT"),
+    Callback: featureConfigFeatures0Callback,
+    Config: tea.String("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}"),
+  }
+  featureConfig := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfig{
+    Features: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures{featureConfigFeatures0},
+  }
+  notifiers0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers{
+    Userid: tea.String("manager001"),
+    Position: tea.String("start"),
+  }
+  formComponentValueList0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList{
+    Name: tea.String("テキストボックス"),
+    Value: tea.String("abc"),
+    ExtValue: tea.String("abc"),
+    Id: tea.String("TextField-abc"),
+    BizAlias: tea.String("abc"),
+    ComponentType: tea.String("TextField"),
+  }
+  saveIntegratedInstanceRequest := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequest{
+    ProcessCode: tea.String("proc"),
+    OriginatorUserId: tea.String("manager1234"),
+    FormComponentValueList: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList{formComponentValueList0},
+    Title: tea.String("xxxの承認申請"),
+    Url: tea.String("https://www.dingtalk.io/"),
+    Notifiers: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers{notifiers0},
+    FeatureConfig: featureConfig,
+    BizData: tea.String("\"{\"mykey\": \"myData\"}\""),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.SaveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```text
+'use strict';
+// このファイルは自動生成されています。編集しないでください
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Token を使用してアカウントの Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let saveIntegratedInstanceHeaders = new dingtalkworkflow_1_0.SaveIntegratedInstanceHeaders({ });
+    saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let featureConfigFeatures0Callback = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback({
+      appUuid: '開発者組織のcorpId',
+      apiKey: 'データソース設定後に生成されたapiKey',
+      version: '1',
+    });
+    let featureConfigFeatures0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures({
+      name: 'AFFILIATION_DIR',
+      pcUrl: 'www.dingtalk.io',
+      mobileUrl: 'www.dingtalk.io',
+      runType: 'REDIRECT',
+      callback: featureConfigFeatures0Callback,
+      config: '{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'测试\',\'zh_HK\':\'测试\',\'zh_TW\':\'测试\'}}","refuseBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'测试\',\'zh_HK\':\'测试\',\'zh_TW\':\'测试\'}}"}}',
+    });
+    let featureConfig = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfig({
+      features: [
+        featureConfigFeatures0
+      ],
+    });
+    let notifiers0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers({
+      userid: 'manager001',
+      position: 'start',
+    });
+    let formComponentValueList0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList({
+      name: 'テキストボックス',
+      value: 'abc',
+      extValue: 'abc',
+      id: 'TextField-abc',
+      bizAlias: 'abc',
+      componentType: 'TextField',
+    });
+    let saveIntegratedInstanceRequest = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequest({
+      processCode: 'proc',
+      originatorUserId: 'manager1234',
+      formComponentValueList: [
+        formComponentValueList0
+      ],
+      title: 'xxxの承認申請',
+      url: 'https://www.dingtalk.io/',
+      notifiers: [
+        notifiers0
+      ],
+      featureConfig: featureConfig,
+      bizData: '"{"mykey": "myData"}"',
+    });
+    try {
+      await client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>説明:</b></term>
+        /// <description>
+        /// <para>Token を使用してアカウントの Client を初期化します</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>例外:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceHeaders();
+            saveIntegratedInstanceHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback
+            {
+                AppUuid = "開発者組織のcorpId",
+                ApiKey = "データソース設定後に生成されたapiKey",
+                Version = "1",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures featureConfigFeatures0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures
+            {
+                Name = "AFFILIATION_DIR",
+                PcUrl = "www.dingtalk.io",
+                MobileUrl = "www.dingtalk.io",
+                RunType = "REDIRECT",
+                Callback = featureConfigFeatures0Callback,
+                Config = "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig featureConfig = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig
+            {
+                Features = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures>
+                {
+                    featureConfigFeatures0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers
+            {
+                Userid = "manager001",
+                Position = "start",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValueList0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList
+            {
+                Name = "テキストボックス",
+                Value = "abc",
+                ExtValue = "abc",
+                Id = "TextField-abc",
+                BizAlias = "abc",
+                ComponentType = "TextField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest
+            {
+                ProcessCode = "proc",
+                OriginatorUserId = "manager1234",
+                FormComponentValueList = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList>
+                {
+                    formComponentValueList0
+                },
+                Title = "xxxの承認申請",
+                Url = "https://www.dingtalk.io/",
+                Notifiers = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers>
+                {
+                    notifiers0
+                },
+                FeatureConfig = featureConfig,
+                BizData = "\"{\"mykey\": \"myData\"}\"",
+            };
+            try
+            {
+                client.SaveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、イシューの特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| result | Object | 結果です。 |
+| processInstanceId | String | インスタンス ID です。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "processInstanceId" : "1234"
+  }
+}
+```
+
+### エラーコード
+
+API の呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決策を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | aflowProcessFormContentInvalid | 承認作業フローのフォーム形式が無効です | 承認作業フローのフォーム形式が無効です |
+| 400 | process.error | 承認作業フローが存在しません | 承認作業フローが存在しません |
+| 400 | permission.error | アクセス権限がありません | アクセス権限がありません |
+| 400 | permission.error | 承認作業フローを操作する権限がありません | 承認作業フローを操作する権限がありません |
+| 400 | instance.error | 承認インスタンスの申請に失敗しました | 承認インスタンスの申請に失敗しました |
+| 400 | needAuth | 承認を申請する権限がありません | 承認を申請する権限がありません |
+| 400 | invalidAgentId | マイクロアプリ ID が無効です | マイクロアプリ ID が無効です |
+| 400 | invalidSuiteKey | suiteKey が無効です | suiteKey が無効です |
+| 400 | required.error | %s | 必須フィールドの検証エラー |
+| 400 | internalError | %s | 内部システムエラー |
+| 400 | userNotExist | ユーザーが存在しません | ユーザーが存在しません |
+| 400 | formConverterError | フォームデータの逆変換に失敗しました | フォームデータの逆変換に失敗しました |
+| 400 | parameter.invalid | パラメータエラー | パラメータエラー |
+| 400 | processCode.in.blackList | 現在のテンプレートコードはブロックリストに追加されているため、承認インスタンスを申請できません。 | テンプレートに、インスタンスを繰り返し申請し続ける無限ループなどのイシューがないか確認してください。 |
+| 400 | isvOrgId.in.blackList | 現在の ISV 組織 ID はブロックリストに追加されているため、承認インスタンスを申請できません。 | ISV 組織に、インスタンスを繰り返し申請し続ける無限ループなどのイシューがないか確認してください。 |
+| 400 | isvAppId.in.blackList | 現在の ISV App の appId はブロックリストに追加されているため、承認インスタンスを申請できません。 | ISV App に、インスタンスを繰り返し申請し続ける無限ループなどのイシューがないか確認してください。 |
+| 500 | system.error | システムエラー | システムエラー |
