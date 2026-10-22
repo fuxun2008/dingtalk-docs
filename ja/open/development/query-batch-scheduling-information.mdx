@@ -1,0 +1,162 @@
+---
+title: "ユーザーのシフト設定情報の一括照会"
+description: "DingTalk の勤怠 API で、ユーザー ID のリストをもとに複数の従業員のシフト設定情報を日付範囲を指定して一括照会する方法を解説します。リクエストパラメータ、レスポンス、各言語のコード例を紹介します。"
+---
+
+この API を呼び出して、特定の日における従業員のシフト設定情報を一括で照会します。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/schedule/listbyusers |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | 社内アプリ、サードパーティ社内アプリ |
+| 必須権限 | qyapi_attendance_group_read：勤怠グループの照会権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。<br/>- 社内アプリの場合は、[社内アプリの access_token を取得](/ja/open/development/obtain-orgapp-token)を呼び出して取得します。<br/>- サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_user_id | String | はい | user456 | 操作者のユーザー ID です。 |
+| userids | String | はい | user123 | 照会するユーザー ID のリストです。複数のユーザー ID はカンマで区切ります。一度に指定できるユーザー ID は最大 50 件です。 |
+| from_date_time | Number | はい | 1565591096000 | 開始日です。ミリ秒単位の Unix タイムスタンプで指定します。<br/>**注意** <br/>- 開始時刻と終了時刻の間隔は 7 日以内にしてください。<br/>- 照会対象の期間は過去 180 日以内である必要があります。 |
+| to_date_time | Number | はい | 1565591096000 | 終了日です。ミリ秒単位の Unix タイムスタンプで指定します。<br/>**注意** <br/>- 開始時刻と終了時刻の間隔は 7 日以内にしてください。<br/>- 照会対象の期間は過去 180 日以内である必要があります。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/schedule/listbyusers" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9ad3xxxx82a10' \
+-d 'from_date_time=1565591096000' \
+-d 'op_user_id=dd_dd' \
+-d 'to_date_time=1565591096000' \
+-d 'userids=dd_dd%2Cduogui'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/listbyusers");
+OapiAttendanceScheduleListbyusersRequest req = new OapiAttendanceScheduleListbyusersRequest();
+req.setOpUserId("user456");
+req.setUserids("user123,user456");
+req.setFromDateTime(1565591096000L);
+req.setToDateTime(1565591096000L);
+OapiAttendanceScheduleListbyusersResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceScheduleListbyusersRequest("https://api.dingtalk.io/topapi/attendance/schedule/listbyusers")
+
+req.op_user_id="dd_dd"
+req.userids="dd_dd,duogui"
+req.from_date_time=1565591096000
+req.to_date_time=1565591096000
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceScheduleListbyusersRequest;
+$req->setOpUserId("dd_dd");
+$req->setUserids("dd_dd,duogui");
+$req->setFromDateTime("1565591096000");
+$req->setToDateTime("1565591096000");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/schedule/listbyusers");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/listbyusers");
+OapiAttendanceScheduleListbyusersRequest req = new OapiAttendanceScheduleListbyusersRequest();
+req.OpUserId = "dd_dd";
+req.Userids = "dd_dd,duogui";
+req.FromDateTime = 1565591096000L;
+req.ToDateTime = 1565591096000L;
+OapiAttendanceScheduleListbyusersResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | TopScheduleVo[] | demo | 照会結果です。 |
+| check_type | String | OnDuty | 打刻タイプです。<br/>- **Onduty**：出勤時の打刻 <br/>- **OffDuty**：退勤時の打刻 |
+| plan_check_time | Date | 2021-01-14 09:00:00 | 予定されている打刻時刻です。 |
+| group_id | Number | 394775001 | 勤怠グループ ID です。 |
+| userid | String | user456 | ユーザー ID です。 |
+| approve_id | Number | 1234 | シフトに紐付けられた承認フォームの ID です。<br/>**注意** <br/>当日に承認フォームが存在しない場合、このフィールドは返されません。 |
+| work_date | Date | 2021-01-14 00:00:00 | 勤務日です。シフトが設定されている具体的な日を示します。 |
+| id | Number | 56676915454 | シフト設定 ID です。 |
+| shift_version | Number | 588655171 | シフトのバージョンです。 |
+| shift_id | Number | 677995086 | シフト ID です。値が 0 の場合は休日を示します。 |
+| is_rest | String | N | 当日が休日かどうかを示します。<br/>- **Y**：休日として設定されています <br/>- **N**：休日ではありません |
+| success | Boolean | true | リクエストが成功したかどうかを示します。<br/>- **true**：成功 <br/>- **false**：失敗 |
+| errcode | Number | 0 | リターンコードです。 |
+| errmsg | String | ok | リターンメッセージです。 |
+| request_id | String | qkqbwcw3bq2 | リクエスト ID です。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "check_type": "OnDuty",
+      "group_id": 394775001,
+      "id": 56676915454,
+      "is_rest": "N",
+      "plan_check_time": "2021-01-14 09:00:00",
+      "shift_id": 709595172,
+      "shift_version": 617320362,
+      "userid": "user456",
+      "work_date": "2021-01-14 00:00:00"
+    },
+    {
+      "check_type": "OffDuty",
+      "group_id": 394775001,
+      "id": 56676915454,
+      "is_rest": "N",
+      "plan_check_time": "2021-01-14 18:00:00",
+      "shift_id": 709595172,
+      "shift_version": 617320362,
+      "userid": "user456",
+      "work_date": "2021-01-14 00:00:00"
+    }
+  ],
+  "success": true,
+  "request_id": "4cmy9twx4atn"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を検索してください。

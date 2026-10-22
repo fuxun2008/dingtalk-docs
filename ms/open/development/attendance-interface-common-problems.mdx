@@ -1,0 +1,134 @@
+---
+title: "Soalan lazim"
+description: "Selesaikan ralat biasa API kehadiran Bahagian pelayan DingTalk, termasuk respons kosong daripada API keputusan daftar masuk, muat naik rekod dan laporan kehadiran."
+---
+
+Topik ini menerangkan ralat biasa yang berlaku apabila anda memanggil API kehadiran Bahagian pelayan DingTalk.
+
+## Daftar masuk kehadiran
+
+### Bilakah rekod daftar masuk terlepas, daftar masuk tidak sah (di luar syif) dan ponteng kerja dijana?
+
+J: Rekod dijana pada masa berikut:
+
+- Daftar masuk tidak sah: Dijana secara masa nyata.
+
+  - Rekod ponteng kerja: Ponteng kerja ialah status yang dikira. Pengguna yang terlepas semua daftar masuk sepanjang hari ditandakan sebagai tidak hadir.
+  - Contoh daftar masuk terlepas: Syif hari kerja biasa sesebuah organisasi bermula dari 09:00 hingga 18:00.
+- Jika tempoh masa daftar masuk tidak ditetapkan:
+
+  - Keputusan daftar masuk (mula kerja): Daftar masuk terlepas dijana pada titik tengah antara dua masa daftar masuk: (9 + 18) / 2 = 13.5, iaitu 13:30.
+  - Keputusan daftar keluar (tamat kerja):
+
+    - Jika hari berikutnya ialah hari kerja: Keputusan dikira pada titik tengah antara dua masa daftar masuk [mengikut peraturan "8 jam sebelum, 12 jam selepas"]: (18 + 9) / 2 = 13.5, iaitu 01:30 pagi keesokan harinya.
+    - Jika hari berikutnya ialah hari rehat: Sistem melanjutkan masa daftar masuk terakhir [mengikut peraturan "8 jam sebelum, 12 jam selepas"] dan menjana keputusan kehadiran 12 jam kemudian.
+- Jika tempoh masa daftar masuk ditetapkan: Keputusan kehadiran dijana berdasarkan masa daftar masuk terakhir yang dikonfigurasi.
+
+### API dapatkan keputusan daftar masuk mengembalikan respons kosong
+
+J: Apabila anda memanggil API [Dapatkan keputusan daftar masuk](/ms/open/development/open-attendance-clock-in-data) dan API mengembalikan respons kosong, kemungkinan puncanya termasuk tetapi tidak terhad kepada yang berikut:
+
+- Nilai parameter userId tidak betul. Sahkan bahawa ID pengguna wujud dalam organisasi semasa.
+- Parameter isI18n (yang menunjukkan organisasi luar negara) tidak betul. Bagi organisasi di tanah besar China, tetapkan isI18n kepada false.
+- Semak checkDateFrom. Contohnya, jika pengguna mendaftar masuk pada 09:00 dan anda menghantar 10:00 dalam permintaan, tiada data dikembalikan.
+- Format parameter userIdList tidak betul. Pisahkan berbilang ID pengguna dengan koma (,).
+
+### API muat naik rekod daftar masuk mengembalikan kejayaan, tetapi rekod tidak dipaparkan dalam OA Admin Console
+
+J: Jika API [Muat naik rekod daftar masuk](/ms/open/development/upload-punch-records) mengembalikan kejayaan tetapi rekod tidak dipaparkan dalam statistik kehadiran OA Admin Console organisasi, semak sama ada parameter user_check_time ialah cap masa 13 digit dalam milisaat.
+
+### API dapatkan keputusan daftar masuk mengembalikan respons kosong `{"errcode":0,"hasMore":false,"errmsg":"ok","recordresult":[]}`
+
+J: Jika API [Dapatkan keputusan daftar masuk](/ms/open/development/open-attendance-clock-in-data) mengembalikan respons kosong, semak perkara berikut mengikut urutan:
+
+- Semak sama ada nilai parameter userId betul. Gunakan access token yang sama dengan yang anda gunakan untuk API daftar masuk bagi memanggil API [Pertanyaan butiran pengguna](/ms/open/development/query-user-details). Jika API mengembalikan "userId does not exist", nilai userId tidak betul.
+- Semak parameter isI18n. Bagi organisasi di tanah besar China, tetapkan isI18n kepada false. Jika anda menghantar true, tiada data kehadiran dikembalikan.
+- Semak sama ada format parameter userIdList betul.
+
+### API dapatkan butiran daftar masuk mengembalikan respons kosong `{"errcode":0,"errmsg":"ok","recordresult":[]}`
+
+J: Jika API [Dapatkan butiran daftar masuk](/ms/open/development/attendance-clock-in-record-is-open) mengembalikan respons kosong, semak perkara berikut mengikut urutan:
+
+- Semak sama ada nilai parameter userId betul. Gunakan access token yang sama dengan yang anda gunakan untuk API daftar masuk bagi memanggil API [Pertanyaan butiran pengguna](/ms/open/development/query-user-details). Jika API mengembalikan "userId does not exist", nilai userId tidak betul.
+- Semak parameter checkDateFrom. Contohnya, jika pengguna mendaftar masuk pada 09:00 dan anda menghantar 10:00 dalam permintaan, tiada data dikembalikan.
+- Semak parameter isI18n. Bagi organisasi di tanah besar China, tetapkan isI18n kepada false. Jika anda menghantar true, tiada data kehadiran dikembalikan.
+- Semak sama ada format parameter userIdList betul.
+
+## Statistik kehadiran
+
+### API dapatkan nilai lajur laporan kehadiran mengembalikan 0 untuk hari kehadiran wajib
+
+J: Medan hari kehadiran wajib kini hanya menyokong nilai daripada 15 hari terakhir.
+
+### API dapatkan nilai lajur laporan kehadiran mengembalikan ralat `{errcode:850015,errmsg:System error, please try again later}`
+
+J: Jika API [Dapatkan nilai lajur laporan kehadiran](/ms/open/development/queries-the-column-value-of-the-attendance-report) mengembalikan ralat di atas, semak perkara berikut mengikut urutan:
+
+- Semak format parameter column_id_list. Parameter ini berjenis String. Pisahkan berbilang ID dengan koma (contoh: "id1,id2,id3").
+- Semak sama ada nilai dalam column_id_list ialah ID lajur laporan yang dikembalikan oleh API [Dapatkan definisi lajur laporan kehadiran](/ms/open/development/queries-the-enterprise-attendance-report-column), bukan medan expression_id.
+
+### API dapatkan nilai lajur laporan kehadiran mengembalikan ralat sistem `{errcode:850015,errmsg:System error, please try again later,request_id:woae9xpid4xi}`
+
+J: Jika API [Dapatkan nilai lajur laporan kehadiran](/ms/open/development/queries-the-column-value-of-the-attendance-report) mengembalikan ralat sistem, semak perkara berikut mengikut urutan:
+
+- Semak format parameter column_id_list. Parameter ini berjenis String. Pisahkan berbilang ID dengan koma. Contoh: "id1,ide2,id3"
+- Semak sama ada nilai dalam column_id_list ialah nilai id yang dikembalikan oleh API [Dapatkan definisi lajur laporan kehadiran](/ms/open/development/queries-the-enterprise-attendance-report-column), bukan medan expression_id.
+
+### API dapatkan nilai lajur laporan kehadiran mengembalikan 0 dalam nilai medan hari kehadiran wajib
+
+J: Apabila anda memanggil API [Dapatkan nilai lajur laporan kehadiran](/ms/open/development/queries-the-column-value-of-the-attendance-report), nilai **hari kehadiran wajib** dalam respons mungkin 0, seperti berikut:
+
+```json
+ {
+      "date":"2021-12-27 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-28 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-29 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-30 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-31 00:00:00",
+       
+"value":"0.0" 
+
+     }
+```
+
+Penyelesaian: Medan hari kehadiran wajib kini hanya menyokong nilai daripada 15 hari terakhir.
+
+## Statistik kehadiran
+
+### API dapatkan data kehadiran pengguna mengembalikan respons kosong
+
+J: Apabila anda memanggil API [Dapatkan data kehadiran pengguna](/ms/open/development/obtain-the-attendance-update-data), respons mungkin kosong, seperti berikut:
+
+```json
+{
+    "errcode":0,
+    "result":{
+        "approve_list":[],
+        "attendance_result_list":[],
+        "check_record_list":[],
+        "corpId":"ding027f45xxxxxxxxx",
+        "userid":"002",
+        "work_date":"2021-12-13 14:00:00"
+        },
+        "success":true,
+        "request_id":"h21upm1yem14"
+}
+```
+
+Penyelesaian: Semak sama ada nilai parameter userId betul. Gunakan access token yang sama dengan yang anda gunakan untuk API daftar masuk bagi memanggil API [Pertanyaan butiran pengguna](/ms/open/development/query-user-details). Jika API mengembalikan "userId does not exist", nilai userId tidak betul.

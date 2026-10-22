@@ -1,0 +1,134 @@
+---
+title: "FAQ"
+description: "Learn how to troubleshoot common errors with Server-side attendance APIs, including empty responses and errors from the clock-in result, clock-in record upload, and attendance report APIs."
+---
+
+This topic describes common errors that occur when you call DingTalk Server-side attendance APIs.
+
+## Attendance Clock-In
+
+### When Are Missed Clock-In, Invalid Clock-In (Outside the Shift), and Absenteeism Records Generated?
+
+A: Records are generated at the following times:
+
+- Invalid clock-in: Generated in real time.
+
+  - Absenteeism records: Absenteeism is a calculated status. A user who misses all clock-ins for an entire day is marked as absent.
+  - Missed clock-in example: An organization's regular workday shift runs from 09:00 to 18:00.
+- If no clock-in time window is set:
+
+  - Clock-in (start of work) result: A missed clock-in is generated at the midpoint between the two clock-in times: (9 + 18) / 2 = 13.5, which is 13:30.
+  - Clock-out (end of work) result:
+
+    - If the next day is a workday: The result is calculated at the midpoint between the two clock-in times [following the "8 hours before, 12 hours after" rule]: (18 + 9) / 2 = 13.5, which is 01:30 the next morning.
+    - If the next day is a rest day: The system extends the latest clock-in time [following the "8 hours before, 12 hours after" rule] and generates the attendance result 12 hours later.
+- If a clock-in time window is set: The attendance result is generated based on the configured latest clock-in time.
+
+### The Get Clock-In Results API Returns an Empty Response
+
+A: When you call the [Get clock-in results](/open/development/open-attendance-clock-in-data) API and it returns an empty response, possible causes include but are not limited to the following:
+
+- The userId parameter value is incorrect. Confirm that the user ID exists in the current organization.
+- The isI18n parameter (which indicates an overseas organization) is incorrect. For organizations in mainland China, set isI18n to false.
+- Check checkDateFrom. For example, if a user clocks in at 09:00 and you pass 10:00 in the request, no data is returned.
+- The userIdList parameter is in an incorrect format. Separate multiple user IDs with commas (,).
+
+### The Upload Clock-In Records API Returns Success, but the Records Do Not Appear in the OA Admin Console
+
+A: If the [Upload clock-in records](/open/development/upload-punch-records) API returns success but the records do not appear in the attendance statistics of the organization's OA admin console, check whether the user_check_time parameter is a 13-digit timestamp in milliseconds.
+
+### The Get Clock-In Results API Returns an Empty Response `{"errcode":0,"hasMore":false,"errmsg":"ok","recordresult":[]}`
+
+A: If the [Get clock-in results](/open/development/open-attendance-clock-in-data) API returns an empty response, check the following in order:
+
+- Check whether the userId parameter value is correct. Use the same access token you used for the clock-in API to call the [Query user details](/open/development/query-user-details) API. If the API returns "userId does not exist," the userId value is incorrect.
+- Check the isI18n parameter. For organizations in mainland China, set isI18n to false. If you pass true, no attendance data is returned.
+- Check whether the userIdList parameter is in the correct format.
+
+### The Get Clock-In Details API Returns an Empty Response `{"errcode":0,"errmsg":"ok","recordresult":[]}`
+
+A: If the [Get clock-in details](/open/development/attendance-clock-in-record-is-open) API returns an empty response, check the following in order:
+
+- Check whether the userId parameter value is correct. Use the same access token you used for the clock-in API to call the [Query user details](/open/development/query-user-details) API. If the API returns "userId does not exist," the userId value is incorrect.
+- Check the checkDateFrom parameter. For example, if a user clocks in at 09:00 and you pass 10:00 in the request, no data is returned.
+- Check the isI18n parameter. For organizations in mainland China, set isI18n to false. If you pass true, no attendance data is returned.
+- Check whether the userIdList parameter is in the correct format.
+
+## Attendance Statistics
+
+### The Get Attendance Report Column Values API Returns 0 for Required Attendance Days
+
+A: The required attendance days field currently supports only values from the last 15 days.
+
+### The Get Attendance Report Column Values API Returns the Error `{errcode:850015,errmsg:System error, please try again later}`
+
+A: If the [Get attendance report column values](/open/development/queries-the-column-value-of-the-attendance-report) API returns the error above, check the following in order:
+
+- Check the format of the column_id_list parameter. It is of type String. Separate multiple IDs with commas (example: "id1,id2,id3").
+- Check whether the values in column_id_list are the report column IDs returned by the [Get attendance report column definitions](/open/development/queries-the-enterprise-attendance-report-column) API, not the expression_id field.
+
+### The Get Attendance Report Column Values API Returns a System Error `{errcode:850015,errmsg:System error, please try again later,request_id:woae9xpid4xi}`
+
+A: If the [Get attendance report column values](/open/development/queries-the-column-value-of-the-attendance-report) API returns a system error, check the following in order:
+
+- Check the format of the column_id_list parameter. It is of type String. Separate multiple IDs with commas. Example: "id1,ide2,id3"
+- Check whether the values in column_id_list are the id values returned by the [Get attendance report column definitions](/open/development/queries-the-enterprise-attendance-report-column) API, not the expression_id field.
+
+### The Get Attendance Report Column Values API Returns 0 in the Value of the Required Attendance Days Field
+
+A: When you call the [Get attendance report column values](/open/development/queries-the-column-value-of-the-attendance-report) API, the **required attendance days** value in the response may be 0, as follows:
+
+```json
+ {
+      "date":"2021-12-27 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-28 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-29 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-30 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-31 00:00:00",
+       
+"value":"0.0" 
+
+     }
+```
+
+Solution: The required attendance days field currently supports only values from the last 15 days.
+
+## Attendance Statistics
+
+### The Get User Attendance Data API Returns an Empty Response
+
+A: When you call the [Get user attendance data](/open/development/obtain-the-attendance-update-data) API, the response may be empty, as follows:
+
+```json
+{
+    "errcode":0,
+    "result":{
+        "approve_list":[],
+        "attendance_result_list":[],
+        "check_record_list":[],
+        "corpId":"ding027f45xxxxxxxxx",
+        "userid":"002",
+        "work_date":"2021-12-13 14:00:00"
+        },
+        "success":true,
+        "request_id":"h21upm1yem14"
+}
+```
+
+Solution: Check whether the userId parameter value is correct. Use the same access token you used for the clock-in API to call the [Query user details](/open/development/query-user-details) API. If the API returns "userId does not exist," the userId value is incorrect.

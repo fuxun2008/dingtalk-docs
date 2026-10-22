@@ -1,0 +1,148 @@
+---
+title: "groupKey で勤怠グループ情報を取得する"
+description: "DingTalkの勤怠グループ情報取得 API の仕様を解説。groupKey を指定して打刻範囲や外勤打刻の可否、外勤打刻の承認要否などの設定を取得する方法を、リクエスト例とともに紹介します。"
+---
+
+この API は、勤怠グループの groupKey を指定して勤怠グループ情報を取得します。取得できる情報には、打刻範囲、外勤打刻の可否、外勤打刻に承認が必要かどうかが含まれます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/group/get |
+| HTTP メソッド | POST |
+| 対応するアプリタイプ | appType-社内アプリ |
+| 必要な権限 | permission-qyapi_attendance_group_read-勤怠グループの読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 4c9ebd2b1534xxxx | この API を呼び出すためのアプリ認証情報です。[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token)を呼び出して取得してください。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_userid | String | いいえ | user123 | 操作者のユーザー ID です。 |
+| group_key | String | はい | 02B1Exxxx | 勤怠グループの groupKey です。 **注意** 勤怠グループの識別子が group_id の場合は、[groupId を groupKey に変換する](/ja/open/development/groupid-to-groupkey)を呼び出して、group_id を group_key に変換してください。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/get" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9d319xxxx6e5f0' \
+-d 'group_key=0151E0xxxx2A1A917' \
+-d 'op_userid=123456'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/get");
+OapiAttendanceGroupGetRequest req = new OapiAttendanceGroupGetRequest();
+req.setOpUserid("123456");
+req.setGroupKey("0151E022xxxxx1A917");
+OapiAttendanceGroupGetResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupGetRequest("https://api.dingtalk.io/topapi/attendance/group/get")
+
+req.op_userid="123456"
+req.group_key="0151E02xxxxA1A917"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupGetRequest;
+$req->setOpUserid("123456");
+$req->setGroupKey("0151Exxxx1A917");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/get");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/get");
+OapiAttendanceGroupGetRequest req = new OapiAttendanceGroupGetRequest();
+req.OpUserid = "123456";
+req.GroupKey = "0151E0xxxxA1A917";
+OapiAttendanceGroupGetResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | Object |  | 勤怠グループ情報の取得結果です。 |
+| name | String | テスト勤怠グループ1 | 勤怠グループの名前です。 |
+| ext | String |  | JSON 形式の拡張フィールドです。 |
+| location_offset | Number | 100 | 打刻範囲です（単位：メートル）。 **注意** このフィールドは廃止されました。代わりに、[位置情報を一括取得する](/ja/open/development/batch-query-position-under-attendance-group)で返される offset を使用してください。 |
+| group_key | String | 0151E0223B1EDDDF00DD6B7F72A1A917 | 勤怠グループの groupKey です。 |
+| enable_face_check | Boolean | false | 笑顔打刻を有効にするかどうか。   - **true**：オン - **false**（デフォルト）：オフ |
+| enable_face_beauty | Boolean | false | 美肌フィルターを有効にするかどうか。   - **true**：オン - **false**（デフォルト）：オフ |
+| enable_camera_check | Boolean | false | 写真打刻を有効にするかどうか。   - **true**：オン - **false**（デフォルト）：オフ |
+| enable_outside_check | Boolean | false | 外勤打刻を許可するかどうか。   - **true**：許可する - **false**（デフォルト）：許可しない |
+| enable_outside_apply | Boolean | false | 外勤打刻に承認が必要かどうか。   - **true**：必要 - **false**（デフォルト）：不要 |
+| outside_check_approve_mode | Number | 0 | 外勤打刻の承認モードです。   - **-1**（デフォルト）：オフ - **0**：承認後に打刻 - **1**：打刻後に承認 |
+| enable_outside_remark | Boolean | false | 外勤打刻に備考の入力が必要かどうか。   - **true**：必要 - **false**（デフォルト）：不要 |
+| enable_outside_camera_check | Boolean | false | 外勤打刻に写真の添付が必要かどうか。   - **true**：必要 - **false**（デフォルト）：不要 |
+| forbid_hide_outside_address | Boolean | true | 従業員による詳細住所の非表示を禁止するかどうか。   - **true**（デフォルト）：禁止する - **false**：禁止しない |
+| enable_outside_update_normal_check | Boolean | false | 外勤打刻の記録で通常の打刻記録を更新できるかどうか。   - **true**：許可する - **false**（デフォルト）：許可しない |
+| enable_trim_distance | Boolean | false | 位置の距離の微調整を許可するかどうか。   - **true**：許可する - **false**（デフォルト）：許可しない |
+| trim_distance | Number | 50 | 位置の微調整範囲です（単位：メートル）。 |
+| errmsg | String | ok | 返されるエラーメッセージです。 |
+| success | Boolean | true | リクエストが成功したかどうか。   - **true**：成功 - **false**：失敗 |
+| errcode | Number | 0 | エラーコードです。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "result":{
+    "ext":"",
+    "enable_camera_check":false,
+    "enable_face_beauty":false,
+    "outside_check_approve_mode":0,
+    "forbid_hide_outside_address":true,
+    "enable_face_check":false,
+    "enable_outside_apply":false,
+    "enable_outside_camera_check":false,
+    "enable_outside_update_normal_check":false,
+    "trim_distance":50,
+    "enable_outside_check":false,
+    "location_offset":100,
+    "enable_outside_remark":false,
+    "name":"テスト勤怠グループ1",
+    "group_key":"0151E0223B1EDDDF00DD6B7F72A1A917",
+    "enable_trim_distance":false
+  },
+  "errcode":0,
+  "success":true,
+  "errmsg":"ok"
+}
+```
+
+### エラーコード
+
+この API がエラーを返した場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

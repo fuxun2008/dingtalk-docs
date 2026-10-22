@@ -1,0 +1,285 @@
+---
+title: "Dapatkan status bertugas pekerja dengan API dan peristiwa kehadiran"
+description: "Pantau status bertugas pekerja secara masa nyata dengan API dan peristiwa kehadiran DingTalk, kesan kelewatan dan ketidakhadiran secara automatik pada papan pemuka."
+---
+
+# Visualisasi data kehadiran: Pemantauan status bertugas masa nyata dan amaran ralat
+
+## Gambaran keseluruhan
+
+Penyelesaian ini memaparkan kehadiran pekerja pada papan pemuka perusahaan secara hujung ke hujung. Penyelesaian ini menggunakan mekanisme tolakan Stream dan API kehadiran DingTalk Open Platform untuk mengumpul data secara masa nyata, menentukan status secara automatik dan mengeluarkan data yang diseragamkan.
+
+### Latar belakang
+
+Organisasi memerlukan keterlihatan masa nyata terhadap kehadiran pekerja. Keperluan ini amat ketara di bengkel pembuatan, pusat khidmat pelanggan dan kedai runcit. Di tempat ini, pengurus bergantung pada papan pemuka untuk melihat metrik utama seperti bilangan pekerja yang sedang bertugas, kelewatan dan ketidakhadiran. Walau bagaimanapun, data kehadiran asli DingTalk tersimpan dalam Admin Console dan tidak boleh disambungkan terus kepada sistem papan pemuka organisasi sendiri. Hal ini menimbulkan masalah berikut:
+
+- **Akses data tertangguh**: HR perlu mengeksport laporan kehadiran secara manual, jadi data tidak dapat dikemas kini dalam beberapa saat.
+- **Integrasi sistem yang sukar**: Tanpa API yang diseragamkan, data kehadiran sukar dibenamkan ke dalam sistem BI atau papan pemuka dalaman.
+- **Penentuan status yang rumit**: Masa daftar masuk sahaja tidak dapat menentukan status "Normal/Lewat/Tidak hadir". Kakitangan perlu membandingkannya dengan peraturan penjadualan syif secara manual.
+- **Titik buta pemantauan**: Daftar masuk tidak normal, seperti daftar masuk dari lokasi yang tidak dijangka atau daftar masuk bagi pihak lain, tidak dapat mencetuskan amaran masa nyata.
+
+### Manfaat utama
+
+Penyelesaian ini mengumpul dan menganalisis data kehadiran secara masa nyata. Data luar talian yang dieksport secara manual digantikan dengan aliran masa nyata berasaskan API. Hasilnya, kecekapan membuat keputusan dan ketelusan data meningkat dengan ketara.
+
+- **Pengumpulan data masa nyata**: Mekanisme tolakan Stream menghantar callback ke pelayan anda dalam masa beberapa milisaat selepas setiap daftar masuk. Data kekal segerak tanpa kependaman yang ketara.
+- **Penentuan status automatik**: Masa daftar masuk dibandingkan secara automatik dengan peraturan penjadualan syif untuk mengenal pasti status seperti "Normal/Lewat/Pulang awal/Tidak hadir" dengan tepat.
+- **Output API yang diseragamkan**: API RESTful yang bersatu disepadukan dengan lancar bersama papan pemuka, sistem BI dan papan Kanban OA.
+- **Penjejakan sejarah penuh**: Pertanyaan pukal rekod kehadiran lepas menyokong statistik bulanan, analisis trend dan keperluan analisis mendalam yang lain.
+
+### Kes penggunaan
+
+Penyelesaian ini sesuai untuk senario perniagaan berikut:
+
+- **Papan pemuka bengkel pembuatan**: Paparkan bilangan pekerja bertugas, kadar ketidakhadiran dan amaran kelewatan bagi setiap barisan pengeluaran secara masa nyata untuk menyokong penjadualan pengeluaran.
+- **Pemantauan pusat khidmat pelanggan**: Pantau kehadiran ejen untuk memastikan bilangan kakitangan mencukupi dan mengagihkan semula sumber dengan segera.
+- **Pengurusan kedai runcit**: Pantau status daftar masuk pekerja di semua kedai untuk menjajarkan penjadualan syif dengan trafik pelanggan.
+- **Pusat arahan ibu pejabat**: Himpunkan data kehadiran seluruh kumpulan syarikat untuk menyokong perbandingan rentas wilayah dan amaran ralat.
+
+## Senario perniagaan biasa
+
+### Senario 1: Pemantauan status bertugas masa nyata di bengkel pembuatan
+
+#### Masalah utama
+
+Secara tradisional, penyelia bengkel mengira bilangan pekerja bertugas bagi setiap barisan pengeluaran secara manual setiap 2 jam. Setiap kiraan mengambil masa 30 minit, dan data sudah lapuk apabila siap. Apabila berlaku ketidakhadiran yang tidak dijangka, pelan pengeluaran tidak dapat diselaraskan tepat pada masanya. Akibatnya, kapasiti pengeluaran terjejas.
+
+#### Nilai
+
+- **Aliran automatik**
+
+  Aliran hujung ke hujung:
+
+  1. Pekerja melengkapkan daftar masuk mula syif atau tamat syif dalam Aplikasi DingTalk.
+  2. Data daftar masuk ditolak secara masa nyata melalui saluran **Stream** (callback).
+  3. Pelayan perusahaan menerima data dan menentukan status secara automatik berdasarkan peraturan **penjadualan syif**.
+  4. Hasilnya ditulis ke pangkalan data dan dicache dalam **Redis** untuk prestasi.
+  5. Data dikembalikan melalui **API**, dan papan pemuka memaparkan status bertugas terkini secara masa nyata.
+- **Kelebihan utama**
+
+  - **Kemas kini dalam beberapa saat**: Papan pemuka dimuat semula dalam masa 1 saat selepas daftar masuk, jadi pengurus dapat melihat taburan tenaga kerja secara masa nyata.
+  - **Amaran automatik**: Apabila kadar ketidakhadiran melebihi ambang (seperti 10%), SMS atau pemberitahuan DingTalk dihantar secara automatik untuk tindakan pantas.
+  - **Perbandingan sejarah**: Analisis tahun ke tahun dan tempoh ke tempoh mendedahkan corak ketidakhadiran bermusim dan membantu mengoptimumkan penjadualan syif.
+  - **Penapisan pelbagai dimensi**: Tapis mengikut barisan pengeluaran, pasukan atau jenis kerja untuk mengenal pasti kawasan bermasalah dengan tepat.
+
+### Senario 2: Pengoptimuman penjadualan tenaga kerja di pusat khidmat pelanggan
+
+#### Masalah utama
+
+Penyelia khidmat pelanggan tidak dapat melihat bilangan sebenar pekerja yang bertugas bagi setiap slot masa secara masa nyata. Akibatnya, pasukan sering kekurangan kakitangan pada waktu puncak dan berlebihan kakitangan pada waktu luar puncak. Keadaan ini menjejaskan kepuasan pelanggan dan meningkatkan kos operasi.
+
+#### Nilai
+
+- **Aliran automatik**
+
+  Aliran automatik ini mempunyai lima peringkat:
+
+  1. Ejen khidmat pelanggan mendaftar masuk di **DingTalk**, yang merekodkan masa dan lokasi daftar masuk.
+  2. **Stream** menolak peristiwa daftar masuk ke pelayan secara masa nyata (callback pada tahap milisaat).
+  3. AI menentukan status bertugas dan menyimpan data kehadiran untuk pertanyaan dan analisis sejarah.
+  4. Enjin peta haba mengira taburan tenaga kerja merentas slot masa serta mengenal pasti waktu puncak, waktu lengang dan risiko kekurangan kakitangan.
+  5. Papan pemuka skrin besar memaparkan lengkung ramalan dan cadangan penjadualan syif untuk menyokong keputusan pengurus dan amaran awal.
+- **Kelebihan utama**
+
+  - **Paparan peta haba**: Visualisasikan titik panas tenaga kerja mengikut garis masa dan bilangan ejen.
+  - **Penjadualan ramalan**: Ramalkan keperluan tenaga kerja bagi 2 jam berikutnya berdasarkan data sejarah dan laraskan jadual lebih awal.
+  - **Pengesanan anomali**: Kenal pasti corak secara automatik, seperti kelewatan berulang dan pulang awal yang kerap, lalu jana senarai pemerhatian.
+  - **Korelasi prestasi**: Kaitkan data kehadiran dengan KPI seperti kadar jawapan dan kepuasan pelanggan untuk mengukur pulangan pelaburan tenaga kerja.
+
+## Panduan pelaksanaan
+
+### Seni bina teknikal
+
+Penyelesaian ini menggunakan Server API dan mekanisme tolakan Stream DingTalk Open Platform. Komponen teknikal teras ialah:
+
+- **Lapisan pengesahan**: Gunakan `Client ID` dan `Client Secret` untuk mendapatkan `access_token` dan melindungi panggilan API.
+- **Lapisan pengambilan data masa nyata**: Konfigurasikan tolakan Stream untuk melanggan peristiwa daftar masuk kehadiran dan menerima callback pada pelayan anda dalam masa beberapa milisaat.
+- **Enjin penentuan status**: Algoritma tempatan membandingkan masa daftar masuk dengan peraturan penjadualan syif dan mengenal pasti status "Normal/Lewat/Sangat lewat/Tidak hadir" secara automatik.
+- **Storan data dan cache**: Peraturan penjadualan syif kumpulan kehadiran disegerakkan sepenuhnya setiap jam. Rekod daftar masuk ditulis ke pangkalan data dan dicache secara masa nyata.
+- **Lapisan output API yang diseragamkan**: API RESTful melayani papan pemuka dan sistem BI, dengan sokongan penapisan pelbagai dimensi dan pertanyaan agregat.
+
+Aliran data: Pekerja mendaftar masuk dalam Aplikasi DingTalk → Stream menolak callback masa nyata → Pelayan perusahaan menerima data dan menentukan status → Data ditulis ke pangkalan data dan dicache → API papan pemuka mengembalikan data.
+
+### Prasyarat
+
+Sebelum melaksanakan penyelesaian ini, pastikan anda memenuhi keperluan berikut:
+
+- **Penyediaan Aplikasi**: Cipta dan konfigurasikan Aplikasi dalaman. Untuk butiran, lihat [Cipta dan konfigurasikan Aplikasi](/ms/open/dingstart/create-application).
+- **Keperluan kebenaran**: Anda mempunyai kebenaran Admin Organisasi atau Sub Admin DingTalk.
+- **Persekitaran pembangunan**: Persekitaran pembangunan Java (JDK 1.6 atau lebih baharu) dan alat binaan Maven telah dipasang.
+- **Penyediaan SDK**: Muat turun SDK Bahagian pelayan DingTalk. Untuk butiran, lihat Muat Turun SDK Bahagian Pelayan. Java, Python, Go dan bahasa lain disokong.
+- **Keperluan pelayan**: Organisasi anda mempunyai pelayan yang boleh diakses secara awam untuk menerima callback tolakan Stream.
+- **Sistem papan pemuka**: Sistem papan pemuka anda menyokong pengambilan data melalui HTTP API (seperti ECharts, DataV atau Tableau).
+
+### Pelaksanaan kod
+
+Langkah 1: Dapatkan kelayakan Aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Tiada kebenaran API diperlukan untuk contoh ini.
+
+Langkah 3: Dapatkan kredensial akses Aplikasi. Untuk butiran, lihat [Dapatkan access_token Aplikasi dalaman](/ms/open/development/obtain-orgapp-token). Apabila anda memanggil API, access token mengesahkan pemanggil.
+
+Langkah 4: Ikuti aliran panggilan ini:
+
+1. Panggil Server API kehadiran [Dapatkan butiran kumpulan kehadiran secara pukal](/ms/open/development/batch-obtain-attendance-group-details) untuk mendapatkan masa mula dan tamat yang dijadualkan bagi kumpulan kehadiran dalam organisasi anda.
+2. Untuk mendapatkan data daftar masuk pekerja, daftarkan panggilan balik peristiwa kehadiran. Konfigurasikan tolakan Stream (disyorkan) seperti yang diterangkan dalam dokumentasi, dan langgan peristiwa kehadiran.
+3. Laksanakan logik penentuan status: Bandingkan maklumat daftar masuk yang ditolak secara masa nyata (userId, groupId, checkTime) dengan jadual kumpulan kehadiran yang dicache, dan tentukan status daftar masuk (Normal/Late/SeriousLate/Absent).
+4. Sediakan API yang diseragamkan untuk sistem papan pemuka bagi membuat pertanyaan data bertugas masa nyata mengikut jabatan, kumpulan kehadiran, julat masa dan dimensi lain.
+
+## Langkah pelaksanaan
+
+### **Langkah 1: Dapatkan kelayakan Aplikasi**
+
+1. Log masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih Aplikasi sasaran untuk membuka halaman butirannya.
+3. Klik **Maklumat Asas** > **Kelayakan dan Maklumat Asas**.
+4. Rekodkan `Client ID` dan `Client Secret` Aplikasi.
+
+### Nota
+
+   Simpan `Client Secret` anda dengan selamat dan jangan sekali-kali kongsikannya dengan pihak ketiga. Simpan dalam pemboleh ubah persekitaran atau sistem pengurusan kunci, bukan secara hard-coded dalam kod.
+
+### **Langkah 2**: Dapatkan kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret daripada Langkah 1 untuk mendapatkan kredensial akses Aplikasi. Untuk butiran, lihat [Dapatkan access_token Aplikasi dalaman](/ms/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Amalan terbaik**:
+
+- **Strategi cache**: `access_token` sah selama 2 jam. Cache token dalam memori atau Redis, dan muat semula token 5 minit sebelum tamat tempoh.
+- **Kawalan keserentakan**: Elakkan konflik akibat beberapa thread memuat semula token pada masa yang sama. Gunakan kunci teragih.
+- **Cuba semula apabila ralat**: Cuba semula secara automatik semasa rangkaian tidak stabil, sehingga 3 kali, dengan selang yang semakin meningkat (1s → 2s → 4s).
+
+### Langkah 3: Panggil API teras
+
+1. **Dapatkan butiran kumpulan kehadiran secara pukal**: Panggil Server API kehadiran [Dapatkan butiran kumpulan kehadiran secara pukal](/ms/open/development/batch-obtain-attendance-group-details) untuk mendapatkan masa mula dan tamat yang dijadualkan bagi kumpulan kehadiran dalam organisasi anda.
+
+   ```java
+   public void batchGetAttendanceGroups() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/detail/batchquery");
+       OapiAttendanceGroupDetailBatchqueryRequest req = new OapiAttendanceGroupDetailBatchqueryRequest();
+       // Tetapkan parameter permintaan
+       OapiAttendanceGroupDetailBatchqueryResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+2. **Konfigurasikan tolakan Stream dan langgan peristiwa kehadiran**: Ikuti dokumentasi Konfigurasikan Tolakan Stream (Disyorkan) untuk mendaftarkan panggilan balik peristiwa kehadiran, dan langgan peristiwa kehadiran.
+
+   **Struktur data callback**:
+
+   ```json
+   {
+     "DataList":[
+       {
+         // userId pekerja yang mendaftar masuk
+         "userId":"0126xxxx",
+         // Masa daftar masuk, dalam milisaat
+         "checkTime":1570791880000,
+         // Alamat semasa daftar masuk
+         "address":"Bangunan 7 Timur, Taman Inovasi Bakat Tinggi Luar Negara Zhejiang, Institut Termofizik Kejuruteraan, Akademi Sains China",
+         // ID organisasi (corpId)
+         "corpId":"dingxxxx",
+         // ID kumpulan kehadiran pekerja
+         "groupId":"4C63xxxx",
+         // Latitud alamat daftar masuk
+         "latitude":30.285230848524307,
+         // Longitud alamat daftar masuk
+         "longitude":120.01713514539931,
+         // ID perniagaan daftar masuk
+         "bizId":"FF62xxxx",
+         // Kaedah penentuan lokasi
+         "locationMethod":"MAP",
+       }
+     ],
+     "EventType":"attendance_check_record"
+   }
+   ```
+3. **Logik penentuan status**:
+
+   **Algoritma teras**: Bandingkan maklumat daftar masuk yang ditolak secara masa nyata (userId, groupId, checkTime) dengan jadual kumpulan kehadiran yang dicache untuk menentukan status daftar masuk.
+
+   ```text
+   public String determineAttendanceStatus(String userId, String groupId, String checkTime) {
+       // 1. Dapatkan peraturan penjadualan syif bagi kumpulan kehadiran ini daripada cache
+       ScheduleRule rule = cache.getScheduleRule(groupId);
+
+       // 2. Hurai masa daftar masuk
+       LocalDateTime punchTime = LocalDateTime.parse(checkTime, formatter);
+
+       // 3. Bandingkan dengan masa yang dijadualkan
+       if (punchTime.isBefore(rule.getStartTime().plusMinutes(rule.getLateThreshold()))) {
+           return "Normal";  // Daftar masuk tepat pada masa
+       } else if (punchTime.isBefore(rule.getStartTime().plusMinutes(rule.getSeriousLateThreshold()))) {
+           return "Late";    // Kelewatan
+       } else {
+           return "SeriousLate";  // Sangat lewat
+       }
+   }
+   ```
+
+   **Pemetaan status**:
+
+   | **Syarat** | **Status yang dikembalikan** | **Warna papan pemuka** |
+   | --- | --- | --- |
+   | Masa daftar masuk ≤ Masa mula dijadualkan + Ambang lewat | Normal | 🟢 Hijau |
+   | Masa mula dijadualkan + Ambang lewat &lt; Masa daftar masuk ≤ Ambang sangat lewat | Late | 🟡 Kuning |
+   | Masa daftar masuk > Ambang sangat lewat | SeriousLate (Sangat lewat) | 🔴 Merah |
+
+**Senarai semak pelaksanaan**:
+
+- ✅ Tolakan Stream telah dikonfigurasi dan menerima callback daftar masuk.
+- ✅ Peraturan penjadualan syif kumpulan kehadiran dicache dengan betul dan dimuat semula secara automatik setiap jam.
+- ✅ Logik penentuan status lulus ujian dengan ketepatan 100%.
+- ✅ Masa respons API papan pemuka ialah &lt;200ms.
+- ✅ Daftar masuk tidak normal (seperti daftar masuk dari lokasi yang tidak dijangka) ditanda dengan betul dan mencetuskan amaran.
+
+## Soalan lazim
+
+- **S1: Apakah perbezaan antara tolakan Stream dengan tinjauan berkala (polling)?**
+
+  J: Kedua-dua kaedah mendapatkan data dengan cara yang sama sekali berbeza:
+
+  - **Tinjauan berkala**: Pelayan anda memanggil API mengikut jadual untuk membuat pertanyaan rekod daftar masuk. Kaedah ini menimbulkan kependaman (biasanya 5–15 minit), dan panggilan yang kerap mudah mencetuskan had kadar.
+  - **Tolakan Stream**: DingTalk menolak data ke URL yang anda tetapkan sebaik sahaja pekerja mendaftar masuk. Kependaman ialah &lt;1 saat, dan tiada pertanyaan aktif diperlukan. Kaedah ini sesuai untuk papan pemuka masa nyata.
+
+  **Perbezaan utama**: Tolakan Stream dipacu peristiwa dan menolak data hanya apabila perlu. Tinjauan berkala dipacu jadual dan memanggil API sama ada data baharu wujud atau tidak. Gunakan tolakan Stream apabila boleh.
+- **S2: Bagaimanakah cara menentukan sama ada pekerja "lewat" atau "tidak hadir"?**
+
+  J: Gunakan logik berikut:
+
+  - **Kelewatan**: Pekerja mempunyai rekod daftar masuk, tetapi masa daftar masuk lewat daripada masa mula yang dijadualkan ditambah ambang lewat (biasanya 10–30 minit, boleh dikonfigurasikan dalam tetapan kumpulan kehadiran).
+  - **Tidak hadir**: Sehingga masa semasa (contohnya, 3:00 PTG), pekerja tiada rekod daftar masuk untuk hari tersebut, dan peraturan penjadualan syif menetapkan pekerja perlu bekerja pada hari ini.
+
+  **Nota**: Sentiasa semak peraturan penjadualan syif. Jika pekerja mempunyai hari cuti yang dijadualkan, ketiadaan daftar masuk tidak dikira sebagai ketidakhadiran.
+- **S3: Bagaimanakah cara mengendalikan daftar masuk dari lokasi yang tidak dijangka atau daftar masuk bagi pihak lain?**
+
+  J: Panggilan balik peristiwa kehadiran DingTalk merangkumi medan `LocationResult`, yang menunjukkan sama ada lokasi daftar masuk sah:
+
+  - `Normal`: Lokasi daftar masuk berada dalam julat yang dibenarkan oleh kumpulan kehadiran.
+  - `Outside`: Lokasi daftar masuk berada di luar julat yang dibenarkan, yang menunjukkan daftar masuk dari lokasi yang tidak dijangka.
+
+  **Strategi pengendalian**:
+
+  - Tanda rekod dengan `LocationResult=Abnormal` sebagai amaran jingga pada papan pemuka.
+  - Jana laporan harian daftar masuk tidak normal dan hantar kepada Admin HR untuk semakan.
+  - Gabungkan pengesahan pelbagai faktor, seperti Wi-Fi dan lokasi, untuk mengurangkan risiko daftar masuk bagi pihak lain.
+- **S4: Berapa kerapkah papan pemuka perlu dimuat semula?**
+
+  J: Bergantung pada senario perniagaan:
+
+  - **Bengkel pembuatan/pusat khidmat pelanggan**: Muat semula setiap 1–5 saat untuk memastikan keterlihatan masa nyata.
+  - **Kedai runcit**: Muat semula setiap 30 saat hingga 1 minit untuk mengimbangi prestasi dan ketepatan masa.
+  - **Pusat arahan ibu pejabat**: Muat semula setiap 5–10 minit, dengan tumpuan pada analisis trend dan bukannya pemantauan setiap saat.
+
+  **Pengoptimuman prestasi**: Gunakan kemas kini inkremental yang hanya menolak data yang berubah (seperti rekod daftar masuk baharu) dan bukannya muat semula penuh. Kaedah ini boleh mengurangkan beban rangkaian lebih daripada 90%.

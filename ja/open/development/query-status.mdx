@@ -1,0 +1,152 @@
+---
+title: "休暇状況の照会"
+description: "DingTalk の勤怠 API を使って、ユーザー ID リストから指定期間内の日ごとの休暇状況と休暇時間を照会する方法を解説します。最大 180 日間の範囲指定やページングを利用した効率的なデータ取得に対応しています。"
+---
+
+この API を呼び出すと、指定した組織のユーザーについて、指定期間内の日ごとの休暇状況と休暇時間を照会できます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/getleavestatus |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必須権限 | permission-qyapi_get_attendance_data-勤怠データの読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 6d1bxxxx | この API の呼び出しに使用するアプリ認証情報です。[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) を呼び出して取得してください。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| userid_list | String | はい | user456,user123 | 照会するユーザー ID のリストです。1 回のリクエストにつき最大 100 件まで指定できます。 |
+| start_time | Number | はい | 1538323200000 | 開始時刻（Unix タイムスタンプ）です。照会期間は最大 180 日間です。 |
+| end_time | Number | はい | 1546358399000 | 終了時刻（Unix タイムスタンプ）です。照会期間は最大 180 日間です。 |
+| offset | Number | はい | 0 | ページングのオフセットです。0 から始まります。size パラメータと併せて設定した場合にのみ有効です。 |
+| size | Number | はい | 10 | ページサイズです。最大値は 20 です。offset パラメータと併せて設定した場合にのみ有効です。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/getleavestatus" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=11b9xxxxc35a' \
+-d 'end_time=1546358399000' \
+-d 'offset=0' \
+-d 'size=10' \
+-d 'start_time=1538323200000' \
+-d 'userid_list=123%2C121'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getleavestatus");
+OapiAttendanceGetleavestatusRequest req = new OapiAttendanceGetleavestatusRequest();
+req.setUseridList("user123,user456");
+req.setStartTime(1538323200000L);
+req.setEndTime(1546358399000L);
+req.setOffset(0L);
+req.setSize(10L);
+OapiAttendanceGetleavestatusResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGetleavestatusRequest("https://api.dingtalk.io/topapi/attendance/getleavestatus")
+
+req.userid_list="123,121"
+req.start_time=1538323200000
+req.end_time=1546358399000
+req.offset=0
+req.size=10
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGetleavestatusRequest;
+$req->setUseridList("123,121");
+$req->setStartTime("1538323200000");
+$req->setEndTime("1546358399000");
+$req->setOffset("0");
+$req->setSize("10");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/getleavestatus");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getleavestatus");
+OapiAttendanceGetleavestatusRequest req = new OapiAttendanceGetleavestatusRequest();
+req.UseridList = "123,121";
+req.StartTime = 1538323200000L;
+req.EndTime = 1546358399000L;
+req.Offset = 0L;
+req.Size = 10L;
+OapiAttendanceGetleavestatusResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | リターンコードです。 |
+| result | LeaveStatusListVO |  | 照会結果です。 |
+| has_more | Boolean | true | さらにデータがあるかどうかを示します。   - **true**：あり - **false**：なし |
+| leave_status | LeaveStatusVO[] |  | 休暇状況のリストです。 |
+| duration_unit | String | percent_day | 休暇の単位です。   - **percent_day**：日 - **percent_hour**：時間 |
+| duration_percent | Number | 100 | 休暇時間に 100 を掛けた値です。たとえば、ユーザーの休暇時間が 1 日の場合、この値は 100 になります。 |
+| end_time | Number | 1599465600000 | 休暇の終了時刻（Unix タイムスタンプ）です。 |
+| start_time | Number | 1599372000000 | 休暇の開始時刻（Unix タイムスタンプ）です。 |
+| userid | String | user456 | ユーザー ID です。 |
+| success | Boolean | true | リクエストが成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| request_id | String | 5lbpbi9p1awk | リクエスト ID です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "has_more": false,
+    "leave_status": [
+      {
+        "duration_percent": 650,
+        "duration_unit": "percent_hour",
+        "end_time": 1599465600000,
+        "start_time": 1599372000000,
+        "leave_code":"16f856xxxx09aa16"
+        "userid": "user123"
+      }
+    ]
+  },
+  "success": true,
+  "request_id": "5lbpbi9p1awk"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、[グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントでエラーメッセージを基に解決方法を検索してください。

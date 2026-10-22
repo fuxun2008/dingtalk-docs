@@ -1,0 +1,152 @@
+---
+title: "勤怠対象者の更新"
+description: "DingTalkの勤怠グループに勤怠対象者・勤怠対象外メンバー・勤怠部門を追加または削除するサーバー API の使い方を解説します。リクエストパラメータやコード例を参考に、メンバー管理を自動化できます。"
+---
+
+この API を呼び出して、勤怠グループのメンバーを更新します。指定した勤怠グループに対して、**勤怠対象者**と**勤怠対象外メンバー**を追加または削除します。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/group/member/update |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | 社内アプリ、サードパーティ社内アプリ |
+| 必要な権限 | qyapi_attendance_group_manage（勤怠グループ管理権限） |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_user_id | String | はい | user123 | 操作者の userId です。 |
+| group_id | Number | はい | 98562 | 勤怠グループ ID です。  **注意**  旧形式の勤怠グループ識別子（group_key）を使用している場合は、[groupKey を groupId に変換](/ja/open/development/convert-groupkey-to-groupid) API を呼び出して、group_key を group_id に変換してください。 |
+| schedule_flag | Number | はい | 0 | シフト設定を開始する日です。   - **0**：本日からシフト設定を開始 - **1**：明日からシフト設定を開始 |
+| update_param | TopGroupMemberUpdateParam | はい |  | 勤怠グループの更新情報です。 |
+| remove_extra_users | String[] | いいえ | ["user123","user456"] | 削除する勤怠対象外メンバーです。該当しない場合は空のままにします。1 回の呼び出しで最大 20 件の userId を指定できます。 |
+| remove_depts | String[] | いいえ | ["123","456"] | 削除する勤怠部門です。該当しない場合は空のままにします。1 回の呼び出しで最大 20 件の部門 ID を指定できます。 |
+| remove_users | String[] | いいえ | ["user123","user456"] | 削除する勤怠対象者です。該当しない場合は空のままにします。1 回の呼び出しで最大 20 件の userId を指定できます。 |
+| add_depts | String[] | いいえ | ["123","456"] | 追加する勤怠部門です。該当しない場合は空のままにします。1 回の呼び出しで最大 20 件の部門 ID を指定できます。 |
+| add_users | String[] | いいえ | ["user123","user456"] | 追加する勤怠対象者です。該当しない場合は空のままにします。1 回の呼び出しで最大 20 件の userId を指定できます。 |
+| add_extra_users | String[] | いいえ | ["user123","user456"] | 追加する勤怠対象外メンバーです。該当しない場合は空のままにします。1 回の呼び出しで最大 20 件の userId を指定できます。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/member/update" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=0142dxxxxa6204' \
+-d 'group_id=122' \
+-d 'op_user_id=dd_dd' \
+-d 'schedule_flag=0' \
+-d 'update_param=null'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/update");
+OapiAttendanceGroupMemberUpdateRequest req = new OapiAttendanceGroupMemberUpdateRequest();
+req.setOpUserId("user123");
+req.setGroupId(98562L);
+req.setScheduleFlag(0L);
+TopGroupMemberUpdateParam updateParam = new TopGroupMemberUpdateParam();
+updateParam.setAddDepts(Arrays.asList("123"));
+updateParam.setRemoveDepts(Arrays.asList("456"));
+updateParam.setAddUsers(Arrays.asList("user123"));
+updateParam.setAddExtraUsers(Arrays.asList("user456"));
+updateParam.setRemoveExtraUsers(Arrays.asList("user789"));
+updateParam.setRemoveUsers(Arrays.asList("user121"));
+req.setUpdateParam(updateParam);
+OapiAttendanceGroupMemberUpdateResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupMemberUpdateRequest("https://api.dingtalk.io/topapi/attendance/group/member/update")
+
+req.op_user_id="dd_dd"
+req.group_id=122
+req.schedule_flag=0
+req.update_param=""
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupMemberUpdateRequest;
+$req->setOpUserId("dd_dd");
+$req->setGroupId("122");
+$req->setScheduleFlag("0");
+$update_param = new TopGroupMemberUpdateParam;
+$update_param->remove_extra_users="dd_test";
+$update_param->remove_depts="1234";
+$update_param->remove_users="dd_dd";
+$update_param->add_depts="123";
+$update_param->add_users="dd_mana";
+$update_param->add_extra_users="dd_d";
+$req->setUpdateParam($update_param);
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/member/update");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/update");
+OapiAttendanceGroupMemberUpdateRequest req = new OapiAttendanceGroupMemberUpdateRequest();
+req.OpUserId = "dd_dd";
+req.GroupId = 122L;
+req.ScheduleFlag = 0L;
+OapiAttendanceGroupMemberUpdateRequest.TopGroupMemberUpdateParamDomain obj1 = new OapiAttendanceGroupMemberUpdateRequest.TopGroupMemberUpdateParamDomain();
+obj1.RemoveExtraUsers = "dd_test";
+obj1.RemoveDepts = "1234";
+obj1.RemoveUsers = "dd_dd";
+obj1.AddDepts = "123";
+obj1.AddUsers = "dd_mana";
+obj1.AddExtraUsers = "dd_d";
+req.UpdateParam_ = obj1;
+OapiAttendanceGroupMemberUpdateResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 3pgsafymemlr | リクエスト ID です。 |
+| errcode | Number | 0 | リターンコードです。 |
+| success | Boolean | true | 呼び出しに成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "success": true,
+  "request_id": "5sj3lgigiqm9"
+}
+```
+
+### エラーコード
+
+呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

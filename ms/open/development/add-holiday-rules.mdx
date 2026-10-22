@@ -1,0 +1,837 @@
+---
+title: "Tambah peraturan cuti"
+description: "Panggil API DingTalk untuk mencipta peraturan cuti am atau cuti ganti kerja lebih masa, serta tetapkan unit cuti, tempoh cuti dan skop berkenaan."
+---
+
+Panggil API ini untuk mencipta peraturan cuti.
+
+## Penerangan panggilan API
+
+API ini mencipta dua jenis peraturan cuti:
+
+- Peraturan cuti am, seperti cuti peribadi dan cuti perkahwinan. Baki bagi peraturan ini boleh diubah. Selepas anda mencipta peraturan cuti am dengan API ini, baki cuti ditetapkan kepada 0 secara lalai. Panggil API [Mulakan baki cuti](/ms/open/development/initialize-holiday-balance) untuk memulakan baki cuti.
+- Peraturan cuti ganti. Bagi cuti ganti yang ditambah melalui API ini, peraturan baki lalai ialah **Tempoh kerja lebih masa dikira secara automatik ke dalam baki cuti ganti**. Anda tidak perlu memanggil API permulaan baki.
+
+Tetapan yang setara dalam DingTalk Admin Console terletak di **Pengurusan Cuti** > **Peraturan Cuti**. Klik **Tambah Cuti** untuk membuka dialog **Cuti Baharu** yang mengandungi medan berikut:
+
+| Medan | Penerangan / Pilihan |
+|---|---|
+| **Nama Cuti** | Masukkan nama cuti |
+| **Cuti Pekerja Baharu** | Contoh: **Boleh mengambil cuti sebaik sahaja menyertai syarikat** |
+| **Skop Berkenaan** | Contoh: **Seluruh Syarikat** (boleh disunting) |
+| **Berbayar** | **Berbayar** atau **Tidak Berbayar**; cuti berbayar dikira sebagai kehadiran dalam statistik |
+| **Unit Cuti Minimum** | Contoh: **Mengikut Hari** |
+| **Pengiraan Tempoh Cuti** | Contoh: **Kira Mengikut Hari Bekerja** (tidak termasuk hari rehat pekerja, seperti hujung minggu tanpa jadual syif dan cuti umum) |
+
+Bahagian **Peraturan Pengiraan Tempoh Cuti** menghimpunkan tetapan **Unit Cuti Minimum** dan **Pengiraan Tempoh Cuti**. Klik **Simpan** untuk mencipta peraturan.
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/attendance/leaves/types |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran yang diperlukan | permission-qyapi_holiday_manage-Kebenaran pengurusan cuti DingTalk |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkannya seperti berikut:   - Aplikasi dalaman: panggil API [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). - Aplikasi perusahaan pihak ketiga: panggil API untuk mendapatkan access token organisasi yang telah memberi kebenaran kepada aplikasi pihak ketiga. |
+
+### Parameter pertanyaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| opUserId | String | Ya | userId pentadbir. Pentadbir ini juga mesti mempunyai kebenaran pengurusan bagi aplikasi Kelulusan OA.  Jika syarat ini tidak dipenuhi, API akan mengembalikan ralat yang menunjukkan bahawa pentadbir jabatan tidak wujud. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| leaveName | String | Ya | Nama peraturan cuti. |
+| leaveViewUnit | String | Ya | Unit tempoh cuti.   - **day**: Hari - **halfDay**: Separuh hari - **hour**: Jam |
+| bizType | String | Ya | Jenis cuti.   - **general_leave**: Cuti am - **lieu_leave**: Kerja lebih masa kepada cuti ganti   Sesebuah organisasi hanya boleh mempunyai satu peraturan kerja lebih masa kepada cuti ganti. |
+| naturalDayLeave | Boolean | Ya | Menentukan sama ada tempoh cuti dikira mengikut hari kalendar.   - **true**: Ya - **false**: Tidak   Sebagai contoh, pekerja bernama Ahmad menghantar borang Kelulusan permohonan cuti dengan masa mula 11 Apr 2022, 09:30 dan masa tamat 18 Apr 2022, 18:30. 16 Apr dan 17 Apr ialah hujung minggu (hari rehat).   - Jika parameter ini true, permohonan cuti dikira sebagai 8 hari. Ini termasuk hari rehat pekerja tanpa jadual syif dan cuti umum. - Jika parameter ini false, permohonan cuti dikira sebagai 6 hari. Ini tidak termasuk hari rehat pekerja tanpa jadual syif dan cuti umum. |
+| hoursInPerDay | Long | Ya | Waktu kerja sehari yang digunakan untuk penukaran. Nilai sebenar ialah nilai parameter dibahagi dengan 100.  Sebagai contoh, jika syif seorang pekerja mempunyai 8 jam waktu kerja, tetapkan parameter ini kepada 8\*100=800. |
+| extras | String | Tidak | Peraturan tempoh sah cuti ganti.   - **validity_type**: Jenis tempoh sah    - **absolute_time**: Masa mutlak   - **relative_time**: Masa relatif - **validity_value**: Tarikh lanjutan    - Jika validity_type ialah **absolute_time**, nilai ini tidak boleh kosong dan mesti menggunakan format "yy-mm".   - Jika validity_type ialah **relative_time**, nilai ini mesti integer yang lebih besar daripada 1.   Parameter ini wajib apabila jenis cuti biz_type ialah **lieu_leave**. |
+| paidLeave | Boolean | Tidak | Menentukan sama ada cuti ini berbayar. |
+| paidLeave | Boolean | Tidak | Menentukan sama ada cuti ini berbayar. |
+| visibilityRules | Array | Tidak | Senarai peraturan skop berkenaan. Jika tidak dinyatakan, peraturan ini terpakai kepada seluruh syarikat. |
+| visible | Array of String | Tidak | Senarai data dalam skop berkenaan.   - Jika type=staff, hantar senarai userId pekerja. - Jika type=dept, hantar senarai ID jabatan. - Jika type=label, hantar senarai ID peranan. |
+| type | String | Tidak | Jenis peraturan skop berkenaan.   - **dept**: Jabatan - **staff**: Pekerja - **label**: Peranan |
+| whenCanLeave | String | Tidak | Bila cuti boleh diambil.  Medan ini khusus untuk aplikasi perusahaan pihak ketiga.   - **entry**: Boleh diambil sebaik sahaja menyertai syarikat. - **formal**: Boleh diambil selepas tamat tempoh percubaan. |
+| leaveTimeCeilMinUnit | String | Tidak | Unit minimum yang digunakan semasa membundarkan tempoh cuti ke atas.  Medan ini khusus untuk aplikasi perusahaan pihak ketiga.   - **hour**: Jam. Kurang daripada 1 jam dikira sebagai 1 jam. - **halfHour**: Setengah jam. Kurang daripada setengah jam dikira sebagai setengah jam. |
+| leaveTimeCeil | Boolean | Tidak | Menentukan sama ada tempoh cuti dibundarkan ke atas.  Medan ini khusus untuk aplikasi perusahaan pihak ketiga. |
+| minLeaveHour | double | Tidak | Tempoh cuti minimum (terpakai apabila unit cuti ialah jam). Jika tempoh cuti kurang daripada nilai ini, nilai ini akan digunakan.  Medan ini khusus untuk aplikasi perusahaan pihak ketiga. |
+| submitTimeRule | Object | Tidak | Peraturan had masa penghantaran. |
+| timeValue | Long | Tidak | Nilai had.   - Jika timeUnit ialah day, julat sah ialah 0 hingga 30 hari. - Jika timeUnit ialah hour, julat sah ialah 0 hingga 24 jam. |
+| timeUnit | String | Tidak | Unit masa.   - **day**: Hari - **hour**: Jam |
+| timeType | String | Tidak | Jenis had.   - **before**: Hantar lebih awal - **after**: Hantar secara retroaktif |
+| enableTimeLimit | Boolean | Tidak | Menentukan sama ada had masa penghantaran diaktifkan.   - **true**: Hidup - **false**: Mati |
+| leaveCertificate | Object | Tidak | Sijil cuti. |
+| unit | String | Tidak | Unit tempoh untuk mewajibkan sijil cuti.   - **hour**: Jam - **day**: Hari |
+| duration | double | Tidak | Tempoh cuti yang melebihinya memerlukan sijil cuti.   - Jika unit ialah day, sijil cuti diperlukan bagi cuti yang melebihi satu hari. - Jika unit ialah hour, sijil cuti diperlukan bagi cuti yang melebihi satu jam.   Apabila permohonan cuti yang dihantar melebihi tempoh yang ditetapkan, medan sijil cuti akan dipaparkan secara automatik dalam borang Kelulusan. |
+| enable | Boolean | Tidak | Menentukan sama ada sijil cuti diaktifkan.   - **true**: Hidup - **false**: Mati |
+| promptInformation | String | Tidak | Teks prompt cuti. |
+| maxLeaveTime | Long | Tidak | Tempoh cuti maksimum (terpakai apabila unit cuti ialah jam atau hari).  Medan ini khusus untuk aplikasi perusahaan pihak ketiga. |
+| leaveHourCeil | String | Tidak | Cara membundarkan tempoh cuti:  Medan ini khusus untuk aplikasi perusahaan pihak ketiga.   - **up**: Bundarkan ke atas - **down**: Bundarkan ke bawah - **none**: Tiada pembundaran |
+| freedomLeave | Boolean | Tidak | Jenis cuti yang tidak memerlukan kawalan baki (seperti cuti peribadi).  Medan ini khusus untuk aplikasi perusahaan pihak ketiga. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/attendance/leaves/types?opUserId=user01 HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:1d97cxxx
+Content-Type:application/json
+
+{
+  "leaveName" : "Cuti tahunan",
+  "leaveViewUnit" : "day",
+  "bizType" : "general_leave",
+  "naturalDayLeave" : true,
+  "hoursInPerDay" : 1000,
+  "extras" : "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+  "paidLeave" : true,
+  "visibilityRules" : [ {
+    "visible" : [ "user01" ],
+    "type" : "staff"
+  } ],
+  "whenCanLeave" : "entry",
+  "leaveTimeCeilMinUnit" : "hour",
+  "leaveTimeCeil" : false,
+  "minLeaveHour" : 1.0,
+  "submitTimeRule" : {
+    "timeValue" : 2,
+    "timeUnit" : "day",
+    "timeType" : "before",
+    "enableTimeLimit" : true
+  },
+  "leaveCertificate" : {
+    "unit" : "hour",
+    "duration" : 1.0,
+    "enable" : false,
+    "promptInformation" : "Teks prompt cuti"
+  },
+  "maxLeaveTime" : 3,
+  "leaveHourCeil" : "up",
+  "freedomLeave" : true
+}
+```
+
+Java
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkattendance_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkattendance_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkattendance_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeHeaders addLeaveTypeHeaders = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeHeaders();
+        addLeaveTypeHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate leaveCertificate = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate()
+                .setUnit("hour")
+                .setDuration(1D)
+                .setEnable(false)
+                .setPromptInformation("Teks prompt cuti");
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule submitTimeRule = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule()
+                .setTimeValue(2L)
+                .setTimeUnit("day")
+                .setTimeType("before")
+                .setEnableTimeLimit(true);
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules visibilityRules0 = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules()
+                .setVisible(java.util.Arrays.asList(
+                    "user01"
+                ))
+                .setType("staff");
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest addLeaveTypeRequest = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest()
+                .setOpUserId("user01")
+                .setLeaveName("Cuti tahunan")
+                .setLeaveViewUnit("day")
+                .setBizType("general_leave")
+                .setNaturalDayLeave(true)
+                .setHoursInPerDay(1000L)
+                .setExtras("{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}")
+                .setPaidLeave(true)
+                .setVisibilityRules(java.util.Arrays.asList(
+                    visibilityRules0
+                ))
+                .setWhenCanLeave("entry")
+                .setLeaveTimeCeilMinUnit("hour")
+                .setLeaveTimeCeil(false)
+                .setMinLeaveHour(1D)
+                .setSubmitTimeRule(submitTimeRule)
+                .setLeaveCertificate(leaveCertificate)
+                .setMaxLeaveTime(3L)
+                .setLeaveHourCeil("up")
+                .setFreedomLeave(true);
+        try {
+            client.addLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.attendance_1_0.client import Client as dingtalkattendance_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.attendance_1_0 import models as dingtalkattendance__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkattendance_1_0Client:
+        """
+        Mulakan Client akaun menggunakan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkattendance_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        add_leave_type_headers = dingtalkattendance__1__0_models.AddLeaveTypeHeaders()
+        add_leave_type_headers.x_acs_dingtalk_access_token = '<your access token>'
+        leave_certificate = dingtalkattendance__1__0_models.AddLeaveTypeRequestLeaveCertificate(
+            unit='hour',
+            duration=1,
+            enable=False,
+            prompt_information='Teks prompt cuti'
+        )
+        submit_time_rule = dingtalkattendance__1__0_models.AddLeaveTypeRequestSubmitTimeRule(
+            time_value=2,
+            time_unit='day',
+            time_type='before',
+            enable_time_limit=True
+        )
+        visibility_rules_0 = dingtalkattendance__1__0_models.AddLeaveTypeRequestVisibilityRules(
+            visible=[
+                'user01'
+            ],
+            type='staff'
+        )
+        add_leave_type_request = dingtalkattendance__1__0_models.AddLeaveTypeRequest(
+            op_user_id='user01',
+            leave_name='Cuti tahunan',
+            leave_view_unit='day',
+            biz_type='general_leave',
+            natural_day_leave=True,
+            hours_in_per_day=1000,
+            extras='{"validity_type":"absolute_time","validity_value":"12-31"}',
+            paid_leave=True,
+            visibility_rules=[
+                visibility_rules_0
+            ],
+            when_can_leave='entry',
+            leave_time_ceil_min_unit='hour',
+            leave_time_ceil=False,
+            min_leave_hour=1,
+            submit_time_rule=submit_time_rule,
+            leave_certificate=leave_certificate,
+            max_leave_time=3,
+            leave_hour_ceil='up',
+            freedom_leave=True
+        )
+        try:
+            client.add_leave_type_with_options(add_leave_type_request, add_leave_type_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        add_leave_type_headers = dingtalkattendance__1__0_models.AddLeaveTypeHeaders()
+        add_leave_type_headers.x_acs_dingtalk_access_token = '<your access token>'
+        leave_certificate = dingtalkattendance__1__0_models.AddLeaveTypeRequestLeaveCertificate(
+            unit='hour',
+            duration=1,
+            enable=False,
+            prompt_information='Teks prompt cuti'
+        )
+        submit_time_rule = dingtalkattendance__1__0_models.AddLeaveTypeRequestSubmitTimeRule(
+            time_value=2,
+            time_unit='day',
+            time_type='before',
+            enable_time_limit=True
+        )
+        visibility_rules_0 = dingtalkattendance__1__0_models.AddLeaveTypeRequestVisibilityRules(
+            visible=[
+                'user01'
+            ],
+            type='staff'
+        )
+        add_leave_type_request = dingtalkattendance__1__0_models.AddLeaveTypeRequest(
+            op_user_id='user01',
+            leave_name='Cuti tahunan',
+            leave_view_unit='day',
+            biz_type='general_leave',
+            natural_day_leave=True,
+            hours_in_per_day=1000,
+            extras='{"validity_type":"absolute_time","validity_value":"12-31"}',
+            paid_leave=True,
+            visibility_rules=[
+                visibility_rules_0
+            ],
+            when_can_leave='entry',
+            leave_time_ceil_min_unit='hour',
+            leave_time_ceil=False,
+            min_leave_hour=1,
+            submit_time_rule=submit_time_rule,
+            leave_certificate=leave_certificate,
+            max_leave_time=3,
+            leave_hour_ceil='up',
+            freedom_leave=True
+        )
+        try:
+            await client.add_leave_type_with_options_async(add_leave_type_request, add_leave_type_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\leaveCertificate;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\submitTimeRule;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\visibilityRules;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $addLeaveTypeHeaders = new AddLeaveTypeHeaders([]);
+        $addLeaveTypeHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $leaveCertificate = new leaveCertificate([
+            "unit" => "hour",
+            "duration" => 1,
+            "enable" => false,
+            "promptInformation" => "Teks prompt cuti"
+        ]);
+        $submitTimeRule = new submitTimeRule([
+            "timeValue" => 2,
+            "timeUnit" => "day",
+            "timeType" => "before",
+            "enableTimeLimit" => true
+        ]);
+        $visibilityRules0 = new visibilityRules([
+            "visible" => [
+                "user01"
+            ],
+            "type" => "staff"
+        ]);
+        $addLeaveTypeRequest = new AddLeaveTypeRequest([
+            "opUserId" => "user01",
+            "leaveName" => "Cuti tahunan",
+            "leaveViewUnit" => "day",
+            "bizType" => "general_leave",
+            "naturalDayLeave" => true,
+            "hoursInPerDay" => 1000,
+            "extras" => "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+            "paidLeave" => true,
+            "visibilityRules" => [
+                $visibilityRules0
+            ],
+            "whenCanLeave" => "entry",
+            "leaveTimeCeilMinUnit" => "hour",
+            "leaveTimeCeil" => false,
+            "minLeaveHour" => 1,
+            "submitTimeRule" => $submitTimeRule,
+            "leaveCertificate" => $leaveCertificate,
+            "maxLeaveTime" => 3,
+            "leaveHourCeil" => "up",
+            "freedomLeave" => true
+        ]);
+        try {
+            $client->addLeaveTypeWithOptions($addLeaveTypeRequest, $addLeaveTypeHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkattendance_1_0  "github.com/alibabacloud-go/dingtalk/attendance_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Mulakan Client akaun menggunakan Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkattendance_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkattendance_1_0.Client{}
+  _result, _err = dingtalkattendance_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  addLeaveTypeHeaders := &dingtalkattendance_1_0.AddLeaveTypeHeaders{}
+  addLeaveTypeHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  leaveCertificate := &dingtalkattendance_1_0.AddLeaveTypeRequestLeaveCertificate{
+    Unit: tea.String("hour"),
+    Duration: tea.Float64(1),
+    Enable: tea.Bool(false),
+    PromptInformation: tea.String("Teks prompt cuti"),
+  }
+  submitTimeRule := &dingtalkattendance_1_0.AddLeaveTypeRequestSubmitTimeRule{
+    TimeValue: tea.Int64(2),
+    TimeUnit: tea.String("day"),
+    TimeType: tea.String("before"),
+    EnableTimeLimit: tea.Bool(true),
+  }
+  visibilityRules0 := &dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules{
+    Visible: []*string{tea.String("user01")},
+    Type: tea.String("staff"),
+  }
+  addLeaveTypeRequest := &dingtalkattendance_1_0.AddLeaveTypeRequest{
+    OpUserId: tea.String("user01"),
+    LeaveName: tea.String("Cuti tahunan"),
+    LeaveViewUnit: tea.String("day"),
+    BizType: tea.String("general_leave"),
+    NaturalDayLeave: tea.Bool(true),
+    HoursInPerDay: tea.Int64(1000),
+    Extras: tea.String("{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}"),
+    PaidLeave: tea.Bool(true),
+    VisibilityRules: []*dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules{visibilityRules0},
+    WhenCanLeave: tea.String("entry"),
+    LeaveTimeCeilMinUnit: tea.String("hour"),
+    LeaveTimeCeil: tea.Bool(false),
+    MinLeaveHour: tea.Float64(1),
+    SubmitTimeRule: submitTimeRule,
+    LeaveCertificate: leaveCertificate,
+    MaxLeaveTime: tea.Int64(3),
+    LeaveHourCeil: tea.String("up"),
+    FreedomLeave: tea.Bool(true),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.AddLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// Fail ini dijana secara automatik, jangan suntingnya
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkattendance_1_0, * as $dingtalkattendance_1_0 from '@alicloud/dingtalk/attendance_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Mulakan Client akaun menggunakan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkattendance_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkattendance_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let addLeaveTypeHeaders = new $dingtalkattendance_1_0.AddLeaveTypeHeaders({ });
+    addLeaveTypeHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let leaveCertificate = new $dingtalkattendance_1_0.AddLeaveTypeRequestLeaveCertificate({
+      unit: "hour",
+      duration: 1,
+      enable: false,
+      promptInformation: "Teks prompt cuti",
+    });
+    let submitTimeRule = new $dingtalkattendance_1_0.AddLeaveTypeRequestSubmitTimeRule({
+      timeValue: 2,
+      timeUnit: "day",
+      timeType: "before",
+      enableTimeLimit: true,
+    });
+    let visibilityRules0 = new $dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules({
+      visible: [
+        "user01"
+      ],
+      type: "staff",
+    });
+    let addLeaveTypeRequest = new $dingtalkattendance_1_0.AddLeaveTypeRequest({
+      opUserId: "user01",
+      leaveName: "Cuti tahunan",
+      leaveViewUnit: "day",
+      bizType: "general_leave",
+      naturalDayLeave: true,
+      hoursInPerDay: 1000,
+      extras: "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+      paidLeave: true,
+      visibilityRules: [
+        visibilityRules0
+      ],
+      whenCanLeave: "entry",
+      leaveTimeCeilMinUnit: "hour",
+      leaveTimeCeil: false,
+      minLeaveHour: 1,
+      submitTimeRule: submitTimeRule,
+      leaveCertificate: leaveCertificate,
+      maxLeaveTime: 3,
+      leaveHourCeil: "up",
+      freedomLeave: true,
+    });
+    try {
+      await client.addLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Mulakan Client akaun menggunakan Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkattendance_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkattendance_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeHeaders addLeaveTypeHeaders = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeHeaders();
+            addLeaveTypeHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate leaveCertificate = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate
+            {
+                Unit = "hour",
+                Duration = 1,
+                Enable = false,
+                PromptInformation = "Teks prompt cuti",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule submitTimeRule = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule
+            {
+                TimeValue = 2,
+                TimeUnit = "day",
+                TimeType = "before",
+                EnableTimeLimit = true,
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules visibilityRules0 = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules
+            {
+                Visible = new List<string>
+                {
+                    "user01"
+                },
+                Type = "staff",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest addLeaveTypeRequest = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest
+            {
+                OpUserId = "user01",
+                LeaveName = "Cuti tahunan",
+                LeaveViewUnit = "day",
+                BizType = "general_leave",
+                NaturalDayLeave = true,
+                HoursInPerDay = 1000,
+                Extras = "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+                PaidLeave = true,
+                VisibilityRules = new List<AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules>
+                {
+                    visibilityRules0
+                },
+                WhenCanLeave = "entry",
+                LeaveTimeCeilMinUnit = "hour",
+                LeaveTimeCeil = false,
+                MinLeaveHour = 1,
+                SubmitTimeRule = submitTimeRule,
+                LeaveCertificate = leaveCertificate,
+                MaxLeaveTime = 3,
+                LeaveHourCeil = "up",
+                FreedomLeave = true,
+            };
+            try
+            {
+                client.AddLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu anda mengenal pasti masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| result | Object | Maklumat yang dikembalikan. |
+| leaveName | String | Nama cuti. |
+| leaveCode | String | Pengecam unik peraturan cuti. |
+| leaveViewUnit | String | Unit cuti.   - **day**: Hari - **halfDay**: Separuh hari - **hour**: Jam |
+| bizType | String | Jenis cuti.   - **general_leave**: Cuti am - **lieu_leave**: Kerja lebih masa kepada cuti ganti |
+| naturalDayLeave | Boolean | Menunjukkan sama ada tempoh cuti dikira mengikut hari kalendar.   - **true**: Ya - **false**: Tidak   Jika false, tempoh cuti dikira berdasarkan penjadualan syif pengguna dalam tempoh cuti apabila pengguna menghantar permohonan cuti. |
+| hoursInPerDay | Long | Waktu kerja sehari yang digunakan untuk penukaran. Nilai sebenar ialah nilai parameter dibahagi dengan 100.  Sebagai contoh, jika organisasi menetapkan 10 jam waktu kerja sehari, nilai parameter ini ialah 10\*100=1000. |
+| visibilityRules | Array | Senarai peraturan skop berkenaan. Jika tidak dinyatakan, peraturan ini terpakai kepada seluruh syarikat. |
+| visible | Array of String | Senarai data dalam skop berkenaan.   - Jika type=staff, senarai userId pekerja. - Jika type=dept, senarai ID jabatan. - Jika type=label, senarai ID peranan. |
+| type | String | Jenis peraturan skop berkenaan.   - **dept**: Jabatan - **staff**: Pekerja - **label**: Peranan |
+| submitTimeRule | Object | Peraturan had masa penghantaran. |
+| timeValue | Long | Nilai had.   - Jika timeUnit ialah day, julat sah ialah 0 hingga 30 hari. - Jika timeUnit ialah hour, julat sah ialah 0 hingga 24 jam. |
+| timeUnit | String | Unit masa.   - **day**: Hari - **hour**: Jam |
+| timeType | String | Jenis had.   - **before**: Hantar lebih awal - **after**: Hantar secara retroaktif |
+| enableTimeLimit | Boolean | Menunjukkan sama ada had masa penghantaran diaktifkan.   - **true**: Hidup - **false**: Mati |
+| leaveCertificate | Object | Sijil cuti. |
+| unit | String | Unit tempoh bagi sijil cuti.   - **hour**: Jam - **day**: Hari |
+| duration | double | Tempoh cuti yang melebihinya memerlukan sijil cuti. |
+| enable | Boolean | Menunjukkan sama ada sijil cuti diaktifkan.   - **true**: Hidup - **false**: Mati |
+| promptInformation | String | Teks prompt cuti. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "leaveName" : "Cuti tahunan",
+    "leaveCode" : "037477ae-1009-4632-b8e9-e919ae5e7973",
+    "leaveViewUnit" : "day",
+    "bizType" : "general_leave",
+    "naturalDayLeave" : true,
+    "hoursInPerDay" : 1000,
+    "visibilityRules" : [ {
+      "visible" : [ "user01" ],
+      "type" : "staff"
+    } ],
+    "submitTimeRule" : {
+      "timeValue" : 1,
+      "timeUnit" : "day",
+      "timeType" : "before",
+      "enableTimeLimit" : false
+    },
+    "leaveCertificate" : {
+      "unit" : "hour",
+      "duration" : 1,
+      "enable" : false,
+      "promptInformation" : "Teks prompt cuti"
+    }
+  }
+}
+```
+
+### Kod ralat
+
+Jika panggilan API ini gagal, cari penyelesaian dalam dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1) berdasarkan mesej ralat.
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | lieuLeaveValidityIncorrect | Tempoh sah cuti ganti tidak sah | Tempoh sah cuti ganti tidak sah |
+| 400 | lieuLeaveOnlyOne | Hanya satu peraturan kerja lebih masa kepada cuti ganti dibenarkan | Hanya satu peraturan kerja lebih masa kepada cuti ganti dibenarkan |
+| 400 | bizTypeIncorrect | Jenis perniagaan cuti tidak sah | Jenis perniagaan cuti tidak sah |
+| 400 | unitIncorrect | Unit cuti tidak sah | Unit cuti tidak sah |
+| 400 | nameTooLong | Nama cuti terlalu panjang | Nama cuti terlalu panjang |
+| 400 | nameAlreadyExists | Jenis cuti dengan nama yang sama sudah wujud | Jenis cuti dengan nama yang sama sudah wujud |
+| 400 | leaveOrgIsUsed | Hanya organisasi dibenarkan mengakses API ini | Hanya organisasi dibenarkan mengakses API ini |
+| 400 | notPermission | Tiada kebenaran akses | Tiada kebenaran akses |
+| 400 | notManage | Pentadbir jabatan tidak wujud | Pentadbir jabatan tidak wujud |
+| 400 | notFound | Jenis cuti tidak ditemui | Jenis cuti tidak ditemui |
+| 400 | tryAgainLater | Kemas kini gagal. Cuba lagi kemudian. | Kemas kini gagal. Cuba lagi kemudian. |
+| 400 | updateSpeedfast | Operasi ini terlalu kerap. Cuba lagi dalam 5 minit. | Operasi ini terlalu kerap. Cuba lagi dalam 5 minit. |
+| 400 | systemError | Ralat sistem | Ralat sistem |
+| 400 | invalidParam | Ralat parameter | Ralat parameter |

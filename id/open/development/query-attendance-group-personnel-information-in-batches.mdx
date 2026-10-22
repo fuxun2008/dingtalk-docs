@@ -1,0 +1,140 @@
+---
+title: "Mendapatkan ID pengguna anggota absensi"
+description: "Panggil API DingTalk dengan ID grup absensi untuk mengambil ID pengguna seluruh anggota absensi per halaman, termasuk karyawan di dalam departemen yang ditambahkan."
+---
+
+Panggil API ini untuk mendapatkan ID pengguna seluruh karyawan dalam grup absensi per halaman.
+
+## Deskripsi panggilan API
+
+Jika anggota absensi mencakup departemen, API mengembalikan ID pengguna karyawan di departemen tersebut. API tidak mengembalikan ID departemen.
+
+Contoh: anggota absensi mencakup **Departemen Uji** dan karyawan **Budi**. Departemen Uji memiliki satu karyawan, yaitu **Siti**. Memanggil API ini akan mengembalikan hasil berikut:
+
+- ID pengguna karyawan di Departemen Uji (termasuk sub-departemennya), yaitu ID pengguna Siti
+- ID pengguna Budi
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/group/memberusers/list |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | Aplikasi internal, Aplikasi perusahaan pihak ketiga |
+| Izin | qyapi_attendance_group_read (Izin kueri grup absensi) |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Aplikasi internal: Panggil API [Mendapatkan access_token aplikasi internal](/id/open/development/obtain-orgapp-token) untuk mendapatkannya. - Aplikasi perusahaan pihak ketiga: Panggil API untuk mendapatkan access_token perusahaan pihak ketiga untuk mendapatkannya. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| cursor | Number | Tidak | 0 | Nilai cursor yang menunjukkan posisi awal. Jika tidak ditentukan, kueri dimulai dari item pertama. |
+| op_user_id | String | Ya | user123 | ID pengguna operator. |
+| group_id | Number | Ya | 98562 | ID grup absensi.  **Catatan**  Jika Anda menggunakan pengidentifikasi grup absensi lama group_key, panggil API [Mengonversi groupKey menjadi groupId](/id/open/development/convert-groupkey-to-groupid) untuk mengonversi group_key menjadi group_id. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/memberusers/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=e6e94xxxxeb7b3' \
+-d 'cursor=9828' \
+-d 'group_id=98562' \
+-d 'op_user_id=dd_dd'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+OapiAttendanceGroupMemberusersListRequest req = new OapiAttendanceGroupMemberusersListRequest();
+req.setCursor(0L);
+req.setOpUserId("user123");
+req.setGroupId(98562L);
+OapiAttendanceGroupMemberusersListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupMemberusersListRequest("https://api.dingtalk.io/topapi/attendance/group/memberusers/list")
+
+req.cursor=9828
+req.op_user_id="dd_dd"
+req.group_id=98562
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupMemberusersListRequest;
+$req->setCursor("9828");
+$req->setOpUserId("dd_dd");
+$req->setGroupId("98562");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+OapiAttendanceGroupMemberusersListRequest req = new OapiAttendanceGroupMemberusersListRequest();
+req.Cursor = 9828L;
+req.OpUserId = "dd_dd";
+req.GroupId = 98562L;
+OapiAttendanceGroupMemberusersListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| request_id | String | 3pgsafymemlr | ID permintaan. |
+| errcode | Number | 0 | Kode pengembalian. |
+| success | Boolean | true | Menunjukkan apakah panggilan berhasil.   - **true**: Berhasil - **false**: Gagal |
+| result | PageResult |  | Daftar pengguna. |
+| has_more | Boolean | false | Menunjukkan apakah masih ada data lainnya.   - **true**: Ya - **false**: Tidak |
+| cursor | Number | 1387570559 | Posisi awal untuk permintaan halaman berikutnya. |
+| result | String[] | ["user123","user456"] | Daftar ID pengguna dalam grup absensi. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "cursor": 1387570559,
+    "has_more": false,
+    "result": [
+      "user123",
+      "user456"
+    ]
+  },
+  "success": true,
+  "request_id": "146drwo74wiss"
+}
+```
+
+### Kode error
+
+Jika panggilan API mengembalikan error, gunakan pesan error untuk mencari solusinya di dokumen [Kode error global](/id/open/development/server-api-error-codes-1).

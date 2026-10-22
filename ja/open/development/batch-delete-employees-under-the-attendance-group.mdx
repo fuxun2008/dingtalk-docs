@@ -1,0 +1,137 @@
+---
+title: "勤怠対象者の一括削除"
+description: "DingTalkのサーバー API を使い、勤怠グループ ID とユーザーリストを指定して勤怠グループから勤怠対象者を一括削除する方法を解説します。1 回の呼び出しで最大 100 件の userId を指定できます。"
+---
+
+この API を呼び出して、指定した勤怠グループからメンバーを一括削除します。
+
+## API 呼び出し説明
+
+この API は勤怠グループ内の勤怠対象者のみを削除します。勤怠に参加している部門は削除されません。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/group/users/remove |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ |
+| 権限 | permission-qyapi_attendance_group_manage-勤怠グループ管理権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 4c9ebd2b153xxxx | この API を呼び出すためのアプリ認証情報です。[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) API を呼び出して取得してください。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_userid | String | いいえ | user01 | 操作者の userId です。 |
+| group_key | String | はい | 0151E0223B1xxxx | 勤怠グループ ID です。 **注意** 勤怠グループの識別子が group_id の場合は、[groupId を groupKey に変換する](/ja/open/development/groupid-to-groupkey) API を呼び出して、group_id を group_key に変換してください。 |
+| user_id_list | String[] | はい | user01,user02 | ユーザーリストです。1 回の呼び出しで最大 100 件の userId を指定できます。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/users/remove" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=49ceexxxx4c192' \
+-d 'group_key=0151E022xxxx917E876' \
+-d 'op_userid=123456' \
+-d 'user_id_list=123456%2C123457'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/users/remove");
+OapiAttendanceGroupUsersRemoveRequest req = new OapiAttendanceGroupUsersRemoveRequest();
+req.setOpUserid("user01");
+req.setGroupKey("0151E0223B1xxxx");
+req.setUserIdList("user01,user02");
+OapiAttendanceGroupUsersRemoveResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupUsersRemoveRequest("https://api.dingtalk.io/topapi/attendance/group/users/remove")
+
+req.op_userid="123456"
+req.group_key="0151E022xxxx17E876"
+req.user_id_list="123456,123457"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupUsersRemoveRequest;
+$req->setOpUserid("123456");
+$req->setGroupKey("0151E0xxxx7E876");
+$req->setUserIdList("123456,123457");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/users/remove");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/users/remove");
+OapiAttendanceGroupUsersRemoveRequest req = new OapiAttendanceGroupUsersRemoveRequest();
+req.OpUserid = "123456";
+req.GroupKey = "0151E0xxxx17E876";
+req.UserIdList = "123456,123457";
+OapiAttendanceGroupUsersRemoveResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | Result |  | 返却結果です。 |
+| error_info_list | ErrorInfo[] |  | エラーリストです。 |
+| failure_list | String[] |  | 失敗した項目のリストです。 |
+| msg | String | 業務エラー | エラーの説明です。 |
+| code | String | 1000 | エラーコードです。 |
+| success_list | String[] |  | 成功した項目のリストです。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| success | Boolean | true | 呼び出しに成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| request_id | String | 47qflcctatn2 | リクエスト ID です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": {
+    "success_list": [
+      "user01",
+      "user02"
+    ]
+  },
+  "success": true,
+  "request_id": "47qflcctatn2"
+}
+```
+
+### エラーコード
+
+API 呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

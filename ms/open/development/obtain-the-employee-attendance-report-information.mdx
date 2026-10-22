@@ -1,0 +1,282 @@
+---
+title: "Dapatkan data laporan kehadiran harian pekerja"
+description: "Gunakan API laporan kehadiran DingTalk untuk mendapatkan metrik harian seperti kelewatan dan ketidakhadiran, kemudian agregatkan secara automatik untuk analisis HR."
+---
+
+# Jana laporan kehadiran harian: Statistik harian dan analisis data pelbagai dimensi
+
+## Gambaran keseluruhan
+
+Penyelesaian ini mendapatkan dan mengagregatkan data laporan kehadiran pekerja dari awal hingga akhir. Penyelesaian ini menggunakan API laporan kehadiran pada DingTalk Open Platform untuk mengumpul metrik pada peringkat harian dan mengagregatkannya secara setempat.
+
+### Latar belakang
+
+Organisasi perlu menjejak dan menganalisis data kehadiran pekerja secara berkala. Metrik utama termasuk hari kehadiran wajib, hari kehadiran sebenar, kelewatan, keluar awal dan ketidakhadiran. Admin Console DingTalk menyediakan laporan kehadiran secara visual. Walau bagaimanapun, sistem dalaman seperti sistem HR, platform BI dan papan pemuka OA perlu mendapatkan data ini secara automatik melalui API untuk tujuan berikut:
+
+- **Penjanaan laporan automatik**: Eksport laporan ringkasan kehadiran bulanan, suku tahunan atau tahunan mengikut jadual, tanpa perlu melakukannya secara manual.
+- **Integrasi rentas sistem**: Segerakkan data kehadiran ke sistem ERP dan sistem gaji organisasi untuk melengkapkan kitaran data.
+- **Analisis data mendalam**: Kaitkan data kehadiran dengan data perniagaan, seperti hasil jualan dan kepuasan pelanggan, merentasi pelbagai dimensi.
+- **Pemantauan ralat dan amaran**: Pantau trend ralat kehadiran mengikut jabatan atau individu secara masa nyata dan kenal pasti risiko lebih awal.
+
+API laporan kehadiran pada DingTalk Open Platform tidak memulangkan jadual ringkasan bulanan. Sebaliknya, API ini memulangkan nilai metrik asas pada peringkat harian, dan pembangun perlu mengagregatkan data sendiri. Ini menimbulkan beberapa cabaran:
+
+- **Keluk pembelajaran yang curam**: Pembangun yang baharu menggunakan API ini sering salah faham tentang keupayaannya dan menjangkakan hasil ringkasan bulanan.
+- **Kos pembangunan yang tinggi**: Pembangun perlu menulis logik agregasi tambahan untuk melelar julat tarikh, mengisi nilai kosong dan menapis ralat.
+- **Cabaran prestasi**: Organisasi besar dengan lebih daripada 1,000 pekerja mungkin memerlukan beribu-ribu panggilan API untuk satu pertanyaan bulanan. Ini boleh mencetuskan had kadar atau tamat masa.
+
+### Manfaat utama
+
+Penyelesaian ini merangkumi keseluruhan proses mendapatkan dan mengagregatkan data laporan kehadiran pekerja. Penyelesaian ini menggunakan aliran panggilan API yang standard dan amalan terbaik untuk membantu organisasi mengautomasikan pengumpulan dan analisis data kehadiran.
+
+- **Aliran integrasi yang standard**: Menetapkan urutan jelas 4 panggilan API teras (sahkan statistik pintar → dapatkan definisi lajur → tanya nilai lajur → agregatkan data) untuk mengurangkan keluk pembelajaran.
+- **Granulariti data yang fleksibel**: Menyokong pertanyaan mengikut hari, pengguna, jabatan dan kumpulan kehadiran untuk memenuhi keperluan perniagaan yang berbeza.
+- **Pemprosesan kelompok berprestasi tinggi**: Menggunakan penomboran halaman, kawalan konkurensi dan cache untuk memastikan data bervolum besar diperoleh dengan stabil.
+- **Pengesahan data yang lengkap**: Merangkumi semakan konsistensi terbina dalam yang mengesan tarikh yang hilang, rekod pendua dan nilai luar biasa secara automatik.
+
+### Kes penggunaan
+
+Penyelesaian ini sesuai untuk senario perniagaan biasa berikut:
+
+- **Laporan bulanan HR automatik**: Pada 1 haribulan setiap bulan, jana ringkasan kehadiran seluruh syarikat bagi bulan sebelumnya secara automatik dan hantar kepada pihak pengurusan melalui Mel.
+- **Integrasi sistem gaji**: Segerakkan data kehadiran, seperti potongan kelewatan dan tempoh kerja lebih masa, ke sistem gaji untuk mengira gaji secara automatik.
+- **Papan pemuka prestasi jabatan**: Paparkan kedudukan jabatan bagi kadar kehadiran dan kadar kelewatan secara masa nyata untuk menyokong keputusan pengurusan.
+- **Aplikasi semakan kehadiran peribadi**: Benarkan pekerja menyemak sejarah kehadiran mereka sendiri untuk mengurangkan pertanyaan kepada HR.
+
+## Senario perniagaan biasa
+
+### Senario 1: Automasikan laporan kehadiran bulanan HR
+
+#### Masalah utama
+
+Secara tradisinya, kakitangan HR log masuk ke Admin Console DingTalk pada awal setiap bulan dan mengeksport laporan kehadiran seluruh syarikat bagi bulan sebelumnya secara manual. Mereka kemudian membersihkan, mengagregatkan dan memformat data dalam Excel. Proses ini mengambil masa 2–3 jam dan mudah berlaku kesilapan. Apabila organisasi berkembang melebihi 1,000 pekerja, pemprosesan manual menjadi hampir mustahil.
+
+#### Nilai
+
+- **Aliran kerja automatik**
+
+  Saluran laporan bulanan automatik dijalankan dalam lima langkah:
+
+  1. Tugasan berjadual dicetuskan pada awal pagi 1 haribulan setiap bulan.
+  2. Panggil API DingTalk Open Platform untuk mendapatkan definisi lajur dan nilai lajur data kehadiran secara pukal.
+  3. Bersihkan dan agregatkan data secara setempat untuk mengira metrik bulanan.
+  4. Jana laporan dalam pelbagai format: Excel (dengan formula), PDF (versi bercop) dan HTML (pratonton dalam talian).
+  5. Hantar laporan secara automatik melalui Mel kepada pihak pengurusan, dengan sokongan CC dan kawalan kebenaran.
+- **Kelebihan utama**
+
+  - **Penjanaan automatik sepenuhnya**: Skrip dijalankan secara automatik pada awal pagi 1 haribulan setiap bulan, menjana laporan Excel dan PDF, dan menghantarnya melalui Mel kepada penerima yang ditetapkan tanpa usaha manual.
+  - **Pelbagai format output**: Menyokong Excel (dengan formula), PDF (versi bercop) dan HTML (pratonton dalam talian) untuk memenuhi keperluan pengedaran yang berbeza.
+  - **Metrik tersuai**: Pilih metrik yang sesuai dengan organisasi anda. Contohnya, jejak hanya "kelewatan + hari tidak hadir" dan abaikan medan lain.
+  - **Perbandingan sejarah**: Kira data tahun ke tahun dan bulan ke bulan secara automatik serta tandakan perubahan luar biasa, seperti kadar kelewatan sesebuah jabatan meningkat 20% berbanding bulan sebelumnya.
+
+### Senario 2: Segerakkan data kehadiran ke sistem gaji
+
+#### Masalah utama
+
+Pengiraan gaji bergantung pada data kehadiran yang tepat, seperti potongan kelewatan dan asas bayaran kerja lebih masa. Walau bagaimanapun, DingTalk dan sistem gaji tidak mempunyai antara muka data yang standard. Setiap bulan, HR perlu mengeksport butiran kehadiran secara manual, memadankan ID Pekerja menggunakan VLOOKUP Excel, kemudian mengimport data ke dalam sistem gaji. Proses ini memakan masa, dan ID Pekerja yang tidak konsisten boleh menyebabkan data tidak sepadan.
+
+#### Nilai
+
+- **Aliran kerja automatik**
+
+  Penyegerakan automatik dijalankan dalam lima langkah:
+
+  1. Selepas pekerja membuat daftar masuk, tugasan penyegerakan dicetuskan pada hari T+1.
+  2. Panggil DingTalk Open API untuk menanya nilai lajur kehadiran mengikut hari kalendar dan mendapatkan rekod daftar masuk mentah.
+  3. Petakan **userId** DingTalk kepada **ID Pekerja** organisasi untuk mewujudkan perkaitan identiti yang seragam.
+  4. Jalankan pengesanan ralat dan jana tiket semakan untuk dikendalikan oleh HR.
+  5. Selepas semakan diluluskan, data ditulis secara automatik ke pangkalan data sistem gaji untuk melengkapkan penyegerakan.
+- **Kelebihan utama**
+
+  - **Penyegerakan tepat pada masanya**: Data daftar masuk disegerakkan ke sistem gaji pada hari T+1, jadi gaji bulanan sentiasa berdasarkan data terkini.
+  - **Pemadanan tepat**: Jadual pemetaan antara userId DingTalk dan ID Pekerja memastikan perkaitan data 100% tepat dan menghapuskan kesilapan pemadanan manual.
+  - **Pemintasan ralat**: Kesan data luar biasa secara automatik, seperti daftar masuk yang menjangkau lebih daripada 24 jam dalam satu hari atau tiada rekod daftar masuk selama 7 hari berturut-turut. Sistem menjana tiket semakan, dan data hanya disegerakkan selepas HR mengesahkannya.
+  - **Jejak audit**: Setiap penyegerakan merekodkan log lengkap, termasuk cap masa, volum data dan rekod yang gagal, untuk memenuhi keperluan audit kewangan.
+
+## Panduan pelaksanaan
+
+### Seni bina teknikal
+
+Penyelesaian ini dibina berdasarkan Server API DingTalk Open Platform. Komponen teknikal terasnya ialah:
+
+- **Lapisan pengesahan**: Dapatkan `access_token` menggunakan `Client ID` dan `Client Secret` untuk melindungi panggilan API.
+- **Lapisan pengesahan statistik pintar**: Panggil API untuk mengesahkan sama ada statistik pintar diaktifkan bagi organisasi, supaya panggilan API seterusnya tidak gagal.
+- **Lapisan pengurusan definisi lajur**: Dapatkan ID dan nama semua lajur laporan kehadiran yang tersedia sebagai metadata asas untuk pertanyaan seterusnya.
+- **Enjin pertanyaan nilai lajur**: Tanya nilai metrik hari demi hari berdasarkan ID lajur, ID pengguna dan julat tarikh. Menyokong penomboran halaman dan pemprosesan kelompok.
+- **Lapisan agregasi dan pengesahan data**: Agregatkan data harian mentah (jumlah, purata, kiraan) dan jalankan semakan konsistensi data.
+
+**Aliran data**: Dapatkan access_token → Sahkan statistik pintar diaktifkan → Dapatkan definisi lajur (senarai ID lajur) → Lelar julat tarikh dan tanya nilai lajur hari demi hari → Agregatkan secara setempat (bulanan, suku tahunan atau tahunan) → Keluarkan laporan akhir.
+
+### Prasyarat
+
+Pastikan anda memenuhi keperluan berikut sebelum melaksanakan penyelesaian:
+
+- **Penyediaan aplikasi**: Cipta dan konfigurasikan Aplikasi dalaman. Untuk butiran, rujuk Penciptaan dan konfigurasi aplikasi.
+- **Kebenaran**: Anda mesti mempunyai kebenaran Admin Organisasi atau Sub Admin DingTalk.
+- **Persekitaran pembangunan**: Pasang persekitaran pembangunan Java (JDK 1.6 atau lebih baharu) dan alat binaan Maven.
+- **Penyediaan SDK**: Muat turun SDK Bahagian pelayan DingTalk. Untuk butiran, rujuk Muat turun SDK Bahagian pelayan. SDK ini menyokong Java, Python, Go dan bahasa lain.
+- **Statistik pintar diaktifkan**: Sahkan bahawa statistik pintar diaktifkan bagi aplikasi kehadiran organisasi. Versi UI yang lebih lama mungkin belum mengaktifkannya, jadi panggil API untuk mengesahkannya.
+
+### Pelaksanaan kod
+
+1. Langkah 1: Dapatkan maklumat kelayakan aplikasi, termasuk client ID dan Client Secret.
+
+   Langkah 2: Dapatkan kredensial akses aplikasi. Untuk butiran, rujuk [Dapatkan access_token bagi Aplikasi dalaman](/ms/open/development/obtain-orgapp-token). Apabila anda memanggil API, access token mengesahkan identiti pemanggil.
+
+   Langkah 3: Panggil API kehadiran:
+
+   1. Panggil Server API [Semak sama ada laporan statistik pintar diaktifkan](/ms/open/development/determine-whether-to-enable-attendance-intelligent-report) untuk mengesahkan bahawa statistik pintar diaktifkan.
+   2. Panggil Server API [Dapatkan definisi lajur laporan kehadiran](/ms/open/development/queries-the-enterprise-attendance-report-column) untuk mendapatkan `ID` lajur laporan kehadiran.
+   3. Menggunakan `ID` lajur laporan kehadiran, panggil Server API [Dapatkan nilai lajur laporan kehadiran](/ms/open/development/queries-the-column-value-of-the-attendance-report) untuk mendapatkan nilai bagi setiap definisi lajur.
+   4. Agregatkan data harian mentah secara setempat untuk menjana laporan bulanan, suku tahunan atau tahunan.
+
+## Langkah pelaksanaan
+
+### **Langkah 1: Dapatkan kelayakan aplikasi**
+
+1. Log masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih aplikasi sasaran untuk membuka halaman butirannya.
+3. Klik **Basic Information** > **Credentials and Basic Information**.
+4. Rekodkan `Client ID` dan `Client Secret` aplikasi.
+
+### Nota
+
+   Simpan `Client Secret` dengan selamat dan jangan kongsikannya dengan pihak ketiga. Simpan dalam pemboleh ubah persekitaran atau sistem pengurusan kunci, bukannya mengekodkannya secara terus dalam kod.
+
+### **Langkah 2**: Dapatkan kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret daripada Langkah 1 untuk mendapatkan kredensial akses aplikasi. Untuk butiran, rujuk [Dapatkan access_token bagi Aplikasi dalaman](/ms/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Amalan terbaik**:
+
+- **Cache**: `access_token` sah selama 2 jam. Simpan dalam cache memori atau Redis dan muat semula secara proaktif 5 minit sebelum tamat tempoh.
+- **Kawalan konkurensi**: Elakkan konflik akibat beberapa thread memuat semula token pada masa yang sama. Gunakan kunci teragih.
+- **Cuba semula apabila ralat**: Cuba semula secara automatik apabila berlaku gangguan rangkaian, sehingga 3 kali, dengan selang yang semakin meningkat (1s → 2s → 4s).
+
+### Langkah 3: Panggil API teras
+
+1. **Semak sama ada laporan statistik pintar diaktifkan**: Panggil Server API [Semak sama ada laporan statistik pintar diaktifkan](/ms/open/development/determine-whether-to-enable-attendance-intelligent-report) untuk mengesahkan bahawa statistik pintar diaktifkan bagi organisasi.
+
+### Nota
+
+   Statistik pintar kini diaktifkan bagi aplikasi kehadiran. Walau bagaimanapun, versi UI yang lebih lama mungkin belum mengaktifkannya. Panggil API ini untuk mengelakkan panggilan API seterusnya gagal kerana ciri ini dinyahaktifkan.
+
+   ```java
+   public void checkIsopensmartreportEnabled() throws ApiException {
+     DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/isopensmartreport");
+     OapiAttendanceIsopensmartreportRequest req = new OapiAttendanceIsopensmartreportRequest();
+     OapiAttendanceIsopensmartreportResponse rsp = client.execute(req, access_token);
+     System.out.println(rsp.getBody());
+      // Huraikan respons dan semak sama ada medan enabled bernilai true
+   }
+   ```
+2. **Dapatkan definisi lajur laporan kehadiran**: Panggil Server API [Dapatkan definisi lajur laporan kehadiran](/ms/open/development/queries-the-enterprise-attendance-report-column) untuk mendapatkan ID dan nama semua lajur laporan kehadiran yang tersedia.
+
+### Nota
+
+   Definisi lajur tidak termasuk maklumat permohonan cuti. Untuk mendapatkan statistik cuti dalam laporan, panggil API [Dapatkan data cuti daripada laporan](/ms/open/development/obtains-the-holiday-data-from-the-smart-attendance-report).
+
+   ```java
+    public void attendanceColumns() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getattcolumns");
+       OapiAttendanceGetattcolumnsRequest req = new OapiAttendanceGetattcolumnsRequest();
+       OapiAttendanceGetattcolumnsResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+3. **Dapatkan nilai lajur laporan kehadiran (harian)**: Menggunakan ID lajur laporan kehadiran, ID pengguna dan tarikh, panggil Server API [Dapatkan nilai lajur laporan kehadiran](/ms/open/development/queries-the-column-value-of-the-attendance-report) untuk mendapatkan nilai bagi setiap definisi lajur.
+
+   ```java
+    public void attendanceColumnsValue() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+        OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+        req.setUserid("01472825524039877041");
+        req.setColumnIdList("184678999,184727001");
+        req.setFromDate(StringUtils.parseDateTime("2022-10-24 00:00:00"));
+        req.setToDate(StringUtils.parseDateTime("2022-10-25 00:00:00"));
+        OapiAttendanceGetcolumnvalResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+   }
+   ```
+4. **Agregatkan dan sahkan data**: Agregatkan data harian mentah secara setempat untuk menjana laporan bulanan, suku tahunan atau tahunan.
+
+   ```text
+   public Map aggregateMonthlyData(String userId, List columnIds, String startDate, String endDate) {
+     Map result = new HashMap<>();
+
+     // Mulakan penumpuk bagi setiap lajur
+     for (String columnId : columnIds) {
+       result.put(columnId, 0.0);
+     }
+
+     // Lelar julat tarikh
+     LocalDate start = LocalDate.parse(startDate);
+     LocalDate end = LocalDate.parse(endDate);
+     for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+       String workDate = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+       for (String columnId : columnIds) {
+         try {
+           double value = getColumnValue(userId, columnId, workDate);
+           result.merge(columnId, value, Double::sum);
+         } catch (Exception e) {
+           log.warn("Pertanyaan gagal: userId={}, columnId={}, date={}", userId, columnId, workDate, e);
+         }
+       }
+     }
+
+     return result;
+   }
+   ```
+
+**Senarai semak pelaksanaan**:
+
+- ✅ Statistik pintar telah disahkan diaktifkan.
+- ✅ Senarai semua ID lajur yang tersedia berjaya diperoleh.
+- ✅ API nilai lajur harian berfungsi dan memulangkan data yang sah.
+- ✅ Logik agregasi setempat lulus ujian, dan hasilnya sepadan dengan Admin Console DingTalk.
+- ✅ Pengendalian data ralat selesai (tarikh yang hilang diisi dengan 0, rekod pendua dialih keluar).
+
+## Soalan lazim
+
+- **S1: Mengapakah saya tidak boleh mendapatkan jadual ringkasan bulanan secara terus?**
+
+  J: DingTalk Open Platform direka untuk menyediakan **keupayaan data atomik**, bukannya laporan ringkasan yang telah ditetapkan. Sebabnya termasuk:
+
+  - Fleksibiliti: Setiap organisasi mentakrifkan "ringkasan bulanan" secara berbeza. Sesetengahnya menggunakan bulan kalendar, manakala yang lain menggunakan kitaran kehadiran. Open API membolehkan pembangun mentakrifkan logik agregasi mereka sendiri.
+  - Prestasi: Memulangkan ringkasan bulanan bagi organisasi dengan lebih 1,000 pekerja dalam satu respons boleh menyebabkan tamat masa. Pertanyaan harian memudahkan penomboran halaman dan cache.
+  - Kesegaran data: Pertanyaan harian memulangkan data terkini secara masa nyata, manakala jadual ringkasan bulanan biasanya dikemas kini pada hari T+1.
+
+    **Cadangan**: Bina gudang data setempat, segerakkan data harian mengikut jadual, dan prakira metrik ringkasan yang biasa digunakan untuk mengimbangi kesegaran dan prestasi.
+- **S2: Bagaimanakah cara menanya data bulanan dengan cekap bagi organisasi dengan lebih 1,000 pekerja?**
+
+  J: Gunakan strategi pengoptimuman berikut:
+
+  1. **Kelompok selari**: Bahagikan senarai pekerja kepada 10–20 kelompok yang setiap satunya mengandungi 50–100 pekerja, dan tanya secara selari menggunakan kumpulan thread.
+  2. **Julat tarikh yang lebih sempit**: Jika anda hanya memerlukan data hari bekerja, tapis hujung minggu dan cuti umum terlebih dahulu. Ini mengurangkan pertanyaan yang tidak perlu sebanyak 30%–40%.
+  3. **Kena cache**: Simpan hasil pertanyaan dalam cache bagi ID lajur yang sama dalam julat tarikh yang sama untuk mengelakkan panggilan berulang.
+  4. **Penyegerakan inkremental**: Selepas penyegerakan penuh kali pertama, segerakkan hanya data baharu atau yang berubah setiap hari untuk mengurangkan kos penyelenggaraan rutin dengan ketara.
+- **S3: Bagaimanakah cara mengendalikan tarikh yang tidak lengkap apabila pekerja menyertai atau meninggalkan organisasi di pertengahan tempoh?**
+
+  J: API laporan kehadiran memulangkan data secara automatik berdasarkan tarikh perkhidmatan sebenar setiap pekerja:
+
+  - **Tarikh sebelum mula bertugas**: Memulangkan nilai kosong atau 0. Langkau tarikh ini dalam logik setempat anda.
+  - **Tarikh selepas berhenti kerja**: Juga memulangkan nilai kosong atau 0.
+- **S4: Adakah ID lajur berubah? Perlukah saya mendapatkannya semula secara berkala?**
+
+  J: ID lajur biasanya stabil selepas organisasi mengaktifkan statistik pintar, tetapi ia mungkin berubah dalam kes berikut:
+
+  - **Naik taraf versi DingTalk**: ID lajur baharu ditambah apabila metrik statistik baharu diperkenalkan.
+  - **Medan tersuai organisasi**: Jika organisasi mengkonfigurasikan peraturan kehadiran tersuai, ID lajur khusus mungkin dijana.
+  - **Cadangan**: Panggil API "Dapatkan definisi lajur laporan kehadiran" setiap minggu atau setiap bulan dan kemas kini jadual pemetaan ID lajur setempat anda untuk memastikan keserasian.

@@ -1,0 +1,140 @@
+---
+title: "勤怠対象者のユーザー ID を取得する"
+description: "DingTalkの勤怠グループ ID を指定して API を呼び出し、勤怠対象者全員のユーザー ID をページ単位で取得する方法を解説します。リクエストパラメーター、各言語のコード例、レスポンスの内容を紹介します。"
+---
+
+この API を呼び出して、勤怠グループ内の全社員のユーザー ID をページ単位で取得します。
+
+## API 呼び出し説明
+
+勤怠対象者に部門が含まれている場合、API はその部門に所属する社員のユーザー ID を返します。部門 ID は返しません。
+
+たとえば、勤怠対象者に **テスト部門** と社員 **山田太郎** が含まれており、テスト部門には社員 **佐藤花子** が 1 名所属しているとします。この API を呼び出すと、次の内容が返されます。
+
+- テスト部門（サブ部門を含む）に所属する社員のユーザー ID（佐藤花子のユーザー ID）
+- 山田太郎のユーザー ID
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/group/memberusers/list |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | 社内アプリ、サードパーティ社内アプリ |
+| 権限 | qyapi_attendance_group_read（勤怠グループの照会権限） |
+
+### クエリパラメーター
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API を呼び出すためのアプリ認証情報です。   - 社内アプリ：[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリ：サードパーティ企業の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| cursor | Number | いいえ | 0 | 開始位置を示すカーソル値です。指定しない場合は、最初の項目から照会します。 |
+| op_user_id | String | はい | user123 | 操作者のユーザー ID です。 |
+| group_id | Number | はい | 98562 | 勤怠グループ ID です。  **注意**  従来の勤怠グループ識別子 group_key を使用している場合は、[groupKey を groupId に変換する](/ja/open/development/convert-groupkey-to-groupid) API を呼び出して、group_key を group_id に変換してください。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/memberusers/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=e6e94xxxxeb7b3' \
+-d 'cursor=9828' \
+-d 'group_id=98562' \
+-d 'op_user_id=dd_dd'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+OapiAttendanceGroupMemberusersListRequest req = new OapiAttendanceGroupMemberusersListRequest();
+req.setCursor(0L);
+req.setOpUserId("user123");
+req.setGroupId(98562L);
+OapiAttendanceGroupMemberusersListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupMemberusersListRequest("https://api.dingtalk.io/topapi/attendance/group/memberusers/list")
+
+req.cursor=9828
+req.op_user_id="dd_dd"
+req.group_id=98562
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupMemberusersListRequest;
+$req->setCursor("9828");
+$req->setOpUserId("dd_dd");
+$req->setGroupId("98562");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+OapiAttendanceGroupMemberusersListRequest req = new OapiAttendanceGroupMemberusersListRequest();
+req.Cursor = 9828L;
+req.OpUserId = "dd_dd";
+req.GroupId = 98562L;
+OapiAttendanceGroupMemberusersListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 3pgsafymemlr | リクエスト ID です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| success | Boolean | true | 呼び出しに成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| result | PageResult |  | ユーザーリストです。 |
+| has_more | Boolean | false | 取得可能なデータが残っているかどうかを示します。   - **true**：はい - **false**：いいえ |
+| cursor | Number | 1387570559 | 次のページングリクエストの開始位置です。 |
+| result | String[] | ["user123","user456"] | 勤怠グループ内のユーザー ID のリストです。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "cursor": 1387570559,
+    "has_more": false,
+    "result": [
+      "user123",
+      "user456"
+    ]
+  },
+  "success": true,
+  "request_id": "146drwo74wiss"
+}
+```
+
+### エラーコード
+
+API 呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。

@@ -1,0 +1,135 @@
+---
+title: "シフト概要の取得"
+description: "DingTalk勤怠の サーバー API で、組織内のすべてのシフト概要（シフト ID・シフト名）を取得する方法を解説します。操作者の userId とカーソル方式のページングを使って、シフト一覧を効率的に照会できます。"
+---
+
+この API を呼び出して、すべてのシフトを照会します。DingTalk勤怠アプリにおけるシフトとは、打刻時刻や休憩時間などのルールをまとめたものです。組織は業務のニーズに応じて、複数のシフトを設定できます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/shift/list |
+| HTTP メソッド | POST |
+| 対応するアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 権限 | permission-qyapi_attendance_group_read-勤怠グループの読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | 文字列 | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_user_id | 文字列 | はい | manager4220 | 操作者の userId です。 |
+| cursor | 数値 | いいえ | 0 | カーソル ID です。初期値は 0 です。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/shift/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=e47ef3ff-ff01-4da7-8aa8-53bc0ad47be3' \
+-d 'cursor=1234' \
+-d 'op_user_id=dd_test'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/list");
+OapiAttendanceShiftListRequest req = new OapiAttendanceShiftListRequest();
+req.setOpUserId("dd_test");
+req.setCursor(0L);
+OapiAttendanceShiftListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceShiftListRequest("https://api.dingtalk.io/topapi/attendance/shift/list")
+
+req.op_user_id="dd_test"
+req.cursor=1234
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceShiftListRequest;
+$req->setOpUserId("dd_test");
+$req->setCursor("1234");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/shift/list");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/list");
+OapiAttendanceShiftListRequest req = new OapiAttendanceShiftListRequest();
+req.OpUserId = "dd_test";
+req.Cursor = 1234L;
+OapiAttendanceShiftListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | PageResult |  | 照会結果です。 |
+| has_more | 真偽値 | false | 取得可能なデータがさらにあるかどうかを示します。   - **true**：あり - **false**：なし |
+| cursor | 数値 | 678215070 | 次のページのカーソル位置です。 |
+| result | TopMinimalismShiftVo[] |  | シフト情報です。 1 ページあたり 200 件を返します。200 件を超える結果はページ分割されます。 |
+| name | 文字列 | 日勤 | シフト名です。 |
+| id | 数値 | 677995086 | シフト ID です。 |
+| success | 真偽値 | true | リクエストが成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| errcode | 数値 | 0 | リターンコードです。 |
+| errmsg | 文字列 | ok | リターンコードの説明です。 |
+| request_id | 文字列 | 1079sd06ne6zy | リクエスト ID です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": {
+    "cursor": 678215070,
+    "has_more": false,
+    "result": [
+      {
+        "id": 677995086,
+        "name": "日勤"
+      },
+      {
+        "id": 678215070,
+        "name": "夜勤"
+      }
+    ]
+  },
+  "success": true,
+  "request_id": "1079sd06ne6zy"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) で解決方法を確認してください。

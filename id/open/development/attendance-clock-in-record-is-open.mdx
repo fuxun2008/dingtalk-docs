@@ -1,0 +1,225 @@
+---
+title: "Dapatkan detail absen"
+description: "Gunakan API DingTalk untuk mengambil detail absen karyawan, termasuk waktu, lokasi, dan validitas, berdasarkan daftar userId dan rentang hari kerja hingga 7 hari."
+---
+
+Panggil API ini untuk mendapatkan detail absen aktual karyawan di organisasi Anda.
+
+## Deskripsi panggilan API
+
+- API ini tidak mendukung kueri data yang lebih lama dari 180 hari.
+- Jika Anda hanya memerlukan hasil absen tanpa data detail, panggil API [Dapatkan hasil absen](/id/open/development/open-attendance-clock-in-data).
+- Sinkronisasi data absensi dapat mengalami keterlambatan. Jika data belum lengkap, coba lagi nanti.
+- **Jika pengguna memiliki jadwal shift pada hari tertentu tetapi tidak melakukan absen, API ini mengembalikan data kosong**.
+- API ini mengembalikan semua detail absen, termasuk data absen untuk skenario yang memerlukan konfirmasi sekunder, seperti keterlambatan. Catatan tersebut merupakan absen yang tidak valid. Filter catatan tersebut sesuai skenario bisnis Anda setelah data diambil. Perhatikan parameter output `invalidRecordType`, `isLegal`, dan `invalidRecordMsg`.
+
+Sebagai contoh, sebuah organisasi menjadwalkan karyawan untuk absen pada pukul 09.00 dan 18.00. Jika karyawan melakukan absen beberapa kali dalam periode tersebut, API ini mengembalikan semua catatan absen.
+
+Untuk melihat data absen mentah yang sama di konsol Absensi, buka **Statistik kehadiran** > **Manajemen laporan** > **Catatan mentah**. Setiap catatan memuat kolom berikut: **Nama**, **Grup absensi**, **Departemen**, **Nomor karyawan**, **Jabatan**, **Tanggal absensi**, **Waktu absensi** (waktu shift terjadwal), **Waktu absen**, dan **Hasil absen**. Hasil seperti *absen susulan disetujui* menunjukkan bahwa catatan berasal dari koreksi yang telah disetujui, bukan dari absen langsung.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/attendance/listRecord |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-qyapi_get_attendance_data-Izin baca data absensi |
+
+### Parameter query
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Untuk Aplikasi internal, panggil API [Dapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token) untuk memperolehnya. - Untuk Aplikasi perusahaan pihak ketiga, panggil API Dapatkan access_token Aplikasi perusahaan pihak ketiga untuk memperolehnya. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| userIds | List | Ya | ["user456","user123"] | Daftar ID karyawan di organisasi Anda. Maksimum: 50.  **Penting**  Pastikan nilai userId sudah benar. Jika tidak, API ini mengembalikan data kosong. |
+| checkDateFrom | String | Ya | 2020-09-07 00:00:00 | Hari kerja awal untuk kueri catatan absen. Format: yyyy-MM-dd hh:mm:ss.  Contohnya, jika Anda meneruskan "2021-12-01 10:00:00", absen karyawan pada pukul 09.00 tidak dikembalikan.  **Penting**  Selisih parameter workDateFrom dan workDateTo  maksimal 7 hari (inklusif). |
+| checkDateTo | String | Ya | 2020-09-08 00:00:00 | Hari kerja akhir untuk kueri catatan absen. Format: yyyy-MM-dd hh:mm:ss.  Contohnya, jika Anda meneruskan "2021-12-01 18:00:00", absen karyawan pada pukul 19.00 tidak dikembalikan.  **Penting**  Selisih parameter workDateFrom dan workDateTo  maksimal 7 hari (inklusif). |
+| isI18n | Boolean | Tidak | true | Menentukan apakah organisasi merupakan organisasi luar negeri:   - **true**: Digunakan di platform luar negeri - **false** (default): Digunakan di platform Tiongkok |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/attendance/listRecord" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=7258e1c9-af43-411c-b3f4-bcb069bfbb93' \
+-d 'checkDateFrom=2018-01-01' \
+-d 'checkDateTo=2018-01-01' \
+-d 'isI18n=true' \
+-d 'userIds=%221%22%2C%222%22'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/attendance/listRecord");
+OapiAttendanceListRecordRequest req = new OapiAttendanceListRecordRequest();
+req.setUserIds(Arrays.asList("user123","user456"));
+req.setCheckDateFrom("2020-11-07 08:00:00");
+req.setCheckDateTo("2020-11-12 08:00:00");
+req.setIsI18n(false);
+OapiAttendanceListRecordResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceListRecordRequest("https://api.dingtalk.io/attendance/listRecord")
+
+req.userIds="[\"1\",\"2\"]"
+req.checkDateFrom="2018-01-01"
+req.checkDateTo="2018-01-01"
+req.isI18n=true
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceListRecordRequest;
+$req->setUserIds("[\"1\",\"2\"]");
+$req->setCheckDateFrom("2018-01-01");
+$req->setCheckDateTo("2018-01-01");
+$req->setIsI18n("true");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/attendance/listRecord");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/attendance/listRecord");
+OapiAttendanceListRecordRequest req = new OapiAttendanceListRecordRequest();
+req.UserIds = "[\"1\",\"2\"]";
+req.CheckDateFrom = "2018-01-01";
+req.CheckDateTo = "2018-01-01";
+req.IsI18n = true;
+OapiAttendanceListRecordResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| errmsg | String | ok | Deskripsi kode respons. |
+| errcode | String | 0 | Kode respons. |
+| recordresult | Array of Object |  | Detail absen. |
+| userAccuracy | String | 65 | Akurasi lokasi absen pengguna. |
+| classId | Long | 677995086 | ID shift. |
+| userLatitude | String | 30.285622 | Lintang lokasi absen pengguna. |
+| userLongitude | String | 120.017019 | Bujur lokasi absen pengguna. |
+| userAddress | String | Hangzhou, Zhejiang | Alamat absen pengguna. |
+| deviceId | String | 67da0fxxxx | ID perangkat absen.  **Catatan**  Bidang ini dikembalikan jika pengguna melakukan absen melalui aplikasi seluler DingTalk. |
+| locationMethod | String | MAP | Metode penentuan lokasi. |
+| isLegal | String | N | Menunjukkan apakah catatan valid:   - **Y**: Valid  **Catatan**  Nilai ini dikembalikan jika timeResult dan locationResult sama-sama bernilai Normal. - **N**: Tidak valid |
+| userCheckTime | String | 1599450909000 | Waktu absen aktual. |
+| procInstId | String | 59f77e82-xxxx | ID instans persetujuan terkait. Jika bidang ini tidak kosong, catatan absen terkait dengan persetujuan seperti pengajuan cuti atau lembur. |
+| baseCheckTime | String | 1599442200000 | Waktu acuan untuk menghitung keterlambatan dan pulang lebih awal. Waktu ini juga dapat digunakan sebagai waktu absen terjadwal. |
+| approveId | String | 2376620852 | ID persetujuan terkait. Jika bidang ini tidak kosong, catatan absen terkait dengan persetujuan seperti pengajuan cuti atau lembur. |
+| timeResult | String | Normal | Hasil absen:   - **Normal**: Normal - **Early**: Pulang lebih awal - **Late**: Keterlambatan - **SeriousLate**: Keterlambatan berat - **Absenteeism**: Keterlambatan yang dihitung sebagai mangkir - **NotSigned**: Tidak absen |
+| locationResult | String | Normal | Hasil lokasi:   - **Normal**: Dalam jangkauan - **Outside**: Di luar jangkauan - **NotSigned**: Tidak absen |
+| checkType | String | OnDuty | Tipe absensi:   - **OnDuty**: Absen masuk kerja - **OffDuty**: Absen pulang kerja |
+| sourceType | String | USER | Sumber data:   - **USER**: Absen oleh pengguna - **BOSS**: Diubah oleh manajer - **APPROVE**: Sistem persetujuan - **SYSTEM**: Sistem absensi - **AUTO_CHECK**: Absen otomatis |
+| userId | String | manager4220 | userId karyawan yang melakukan absen. |
+| workDate | String | 1599321600000 | Hari kerja. |
+| corpId | String | dinge8axxxx5384 | ID organisasi. |
+| planId | String | 145342017988 | ID penjadwalan shift. |
+| groupId | String | 685935028 | ID grup absensi. |
+| id | String | 101135139831 | ID absensi. |
+| invalidRecordType | String | Other | Tipe pesan error:   - **Security**: Alasan terkait keamanan - **Other**: Alasan lainnya |
+| userSsid | String | xxxx | SSID Wi-Fi saat pengguna melakukan absen. |
+| userMacAddr | String | 192.168.xx.xx | Alamat MAC Wi-Fi saat pengguna melakukan absen. |
+| planCheckTime | String | 1492568497000 | Waktu absen terjadwal. |
+| baseAddress | String | Hangzhou | Alamat acuan. |
+| baseLongitude | String | 12.109 | Bujur acuan. |
+| baseLatitude | String | 0.123 | Lintang acuan. |
+| baseAccuracy | String | hazdgwrxxxx | Akurasi lokasi acuan. |
+| baseSsid | String | 423dsddfxxxx | SSID Wi-Fi acuan. |
+| baseMacAddr | String | 00:27:19:48:58:4c | Alamat MAC acuan. |
+| gmtCreate | String | 1599441505000 | Waktu pembuatan catatan absen. |
+| invalidRecordMsg | String | Perlu konfirmasi sekunder | Deskripsi detail error yang ditunjukkan oleh **invalidRecordType**. |
+| gmtModified | String | 1599441505001 | Waktu modifikasi catatan absen. |
+| outsideRemark | String | Mengunjungi klien | Keterangan absen. |
+| deviceSN | String | gd53354xxxx | Nomor seri perangkat absen. |
+| bizId | String | E171DCCExxxx | ID bisnis terkait. |
+| photoUrl | String | https://static.dingtalk.io/media/lQDPM369C6xxxxK6PiY | URL foto absen.  **Catatan**   - Untuk menggunakan parameter ini, panggil API ini melalui HTTP. SDK tidak mengembalikan parameter ini. - Jika detail absen berisi foto, photoUrl akan dikembalikan. Jika tidak, bidang ini tidak dikembalikan. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "errmsg": "ok",
+  "recordresult": [
+    {
+      "gmtModified": 1599454972000,
+      "baseCheckTime": 1599442200000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "deviceId": "67da0fxxxx",
+      "approveId": 2376620852,
+      "userAccuracy": 65,
+      "classId": 677995086,
+      "workDate": 1599408000000,
+      "bizId": "E171DCCExxxx",
+      "planId": 144872188720,
+      "id": 43047156750,
+      "checkType": "OnDuty",
+      "planCheckTime": 1599442200000,
+      "corpId": "dinge8axxxx5384",
+      "locationResult": "Outside",
+      "userLongitude": 120.017139,
+      "isLegal": "N",
+      "procInstId": "59f77e82-xxxx",
+      "gmtCreate": 1599441505000,
+      "userId": "manager4220",
+      "outsideRemark": "Mengunjungi klien",
+      "userAddress": "Hangzhou, Zhejiang",
+      "userLatitude": 30.285413,
+      "sourceType": "USER",
+      "userCheckTime": 1599441505000,
+      "locationMethod": "MAP"
+    },
+    {
+      "gmtModified": 1599450909000,
+      "deviceId": "67da0fxxxx",
+      "userAccuracy": 65,
+      "workDate": 1599408000000,
+      "bizId": "E171DCCExxxx",
+      "id": 43055377426,
+      "invalidRecordType": "Other",
+      "corpId": "dinge8axxxx5384",
+      "userLongitude": 120.017019,
+      "gmtCreate": 1599450909000,
+      "invalidRecordMsg": "Perlu konfirmasi sekunder",
+      "userId": "manager4220",
+      "userAddress": "Hangzhou, Zhejiang",
+      "userLatitude": 30.285622,
+      "sourceType": "USER",
+      "userCheckTime": 1599450909000,
+      "locationMethod": "MAP"
+    }
+  ]
+}
+```
+
+### Kode error
+
+Jika panggilan API ini gagal, cari solusinya berdasarkan pesan error di dokumen [Kode error global](/id/open/development/server-api-error-codes-1).

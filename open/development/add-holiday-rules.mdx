@@ -1,0 +1,837 @@
+---
+title: "Add a Leave Rule"
+description: "Call this API to create a general leave rule or an overtime-to-compensatory-leave rule, and set the leave unit, duration, and applicable scope."
+---
+
+Call this API to create a leave rule.
+
+## API Call Description
+
+This API creates two types of leave rules:
+
+- General leave rules, such as personal leave and marriage leave. The balance of these rules can be modified. After you create a general leave rule with this API, the balance defaults to 0. Call the [Initialize Leave Balance](/open/development/initialize-holiday-balance) API to initialize the leave balance.
+- Compensatory leave rules. For compensatory leave added with this API, the default balance rule is **Overtime duration automatically counts toward the compensatory leave balance**. You do not need to call the balance initialization API.
+
+The equivalent settings in the DingTalk Admin Console are under **Leave Management** > **Leave Rules**. Click **Add Leave** to open the **New Leave** dialog, which contains these fields:
+
+| Field | Description / Options |
+|---|---|
+| **Leave Name** | Enter the leave name |
+| **New Employee Leave** | e.g. **Can take leave upon onboarding** |
+| **Applicable Scope** | e.g. **Entire Company** (editable) |
+| **Paid** | **Paid** or **Unpaid**; paid leave is counted as attendance in statistics |
+| **Minimum Leave Unit** | e.g. **By Day** |
+| **Leave Duration Calculation** | e.g. **Calculate by Working Days** (excludes the employee's rest days, such as unscheduled weekends and statutory holidays) |
+
+The **Leave Duration Calculation Rules** section groups the **Minimum Leave Unit** and **Leave Duration Calculation** settings. Click **Save** to create the rule.
+
+## Request
+
+### Basic Information
+
+| Field | Value |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/attendance/leaves/types |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app　appType-Third-party enterprise app |
+| Required permissions | permission-qyapi_holiday_manage-DingTalk leave management permission |
+
+### Request Header
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Yes | The access credential for calling this API. Obtain it as follows:   - Internal app: call the [Get the Access Token of an Internal App](/open/development/obtain-the-access-token-of-an-internal-app) API. - Third-party enterprise app: call the API that gets the access token of an organization that authorized the third-party app. |
+
+### Query Parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| opUserId | String | Yes | The userId of the admin. This admin must also have management permissions for the OA Approval app.  If this condition is not met, the API returns an error indicating that the department admin does not exist. |
+
+### Request Body
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| leaveName | String | Yes | The name of the leave rule. |
+| leaveViewUnit | String | Yes | The unit of leave duration.   - **day**: Day - **halfDay**: Half day - **hour**: Hour |
+| bizType | String | Yes | The leave type.   - **general_leave**: General leave - **lieu_leave**: Overtime to compensatory leave   An organization can have only one overtime-to-compensatory-leave rule. |
+| naturalDayLeave | Boolean | Yes | Specifies whether to calculate leave duration by calendar days.   - **true**: Yes - **false**: No   For example, employee Alex submits a leave request Approval form with a start time of April 11, 2022, 09:30 and an end time of April 18, 2022, 18:30. April 16 and April 17 are a weekend (rest days).   - If this parameter is true, the leave request counts as 8 days. This includes the employee's unscheduled rest days and statutory holidays. - If this parameter is false, the leave request counts as 6 days. This excludes the employee's unscheduled rest days and statutory holidays. |
+| hoursInPerDay | Long | Yes | The working hours per day used for conversion. The actual value is the parameter value divided by 100.  For example, if the shift of an employee has 8 working hours, set this parameter to 8\*100=800. |
+| extras | String | No | The validity rules for compensatory leave.   - **validity_type**: Validity type    - **absolute_time**: Absolute time   - **relative_time**: Relative time - **validity_value**: Extension date    - If validity_type is **absolute_time**, this value cannot be empty and must use the "yy-mm" format.   - If validity_type is **relative_time**, this value must be an integer greater than 1.   This parameter is required when the leave type biz_type is **lieu_leave**. |
+| paidLeave | Boolean | No | Specifies whether the leave is paid. |
+| paidLeave | Boolean | No | Specifies whether the leave is paid. |
+| visibilityRules | Array | No | The list of applicable scope rules. If not specified, the rule applies to the entire company. |
+| visible | Array of String | No | The list of data within the applicable scope.   - If type=staff, pass a list of employee userIds. - If type=dept, pass a list of department IDs. - If type=label, pass a list of role IDs. |
+| type | String | No | The type of applicable scope rule.   - **dept**: Department - **staff**: Employee - **label**: Role |
+| whenCanLeave | String | No | When leave can be taken.  This field is exclusive to third-party enterprise apps.   - **entry**: Available upon onboarding. - **formal**: Available after probation ends. |
+| leaveTimeCeilMinUnit | String | No | The minimum unit used when rounding up leave duration.  This field is exclusive to third-party enterprise apps.   - **hour**: Hour. Less than 1 hour is counted as 1 hour. - **halfHour**: Half hour. Less than half an hour is counted as half an hour. |
+| leaveTimeCeil | Boolean | No | Specifies whether to round up leave duration.  This field is exclusive to third-party enterprise apps. |
+| minLeaveHour | double | No | The minimum leave duration (applies when the leave unit is hour). If the leave duration is less than this value, this value is used.  This field is exclusive to third-party enterprise apps. |
+| submitTimeRule | Object | No | The time limit rule for submission. |
+| timeValue | Long | No | The limit value.   - If timeUnit is day, the valid range is 0 to 30 days. - If timeUnit is hour, the valid range is 0 to 24 hours. |
+| timeUnit | String | No | The time unit.   - **day**: Day - **hour**: Hour |
+| timeType | String | No | The limit type.   - **before**: Submit in advance - **after**: Submit retroactively |
+| enableTimeLimit | Boolean | No | Specifies whether to enable the submission time limit.   - **true**: On - **false**: Off |
+| leaveCertificate | Object | No | The leave certificate. |
+| unit | String | No | The duration unit for requiring a leave certificate.   - **hour**: Hour - **day**: Day |
+| duration | double | No | The leave duration beyond which a leave certificate is required.   - If unit is day, a leave certificate is required for leave longer than one day. - If unit is hour, a leave certificate is required for leave longer than one hour.   When a submitted leave request exceeds the set duration, a leave certificate field automatically appears in the Approval form. |
+| enable | Boolean | No | Specifies whether to enable the leave certificate.   - **true**: On - **false**: Off |
+| promptInformation | String | No | The leave prompt text. |
+| maxLeaveTime | Long | No | The maximum leave duration (applies when the leave unit is hour or day).  This field is exclusive to third-party enterprise apps. |
+| leaveHourCeil | String | No | How to round the leave duration:  This field is exclusive to third-party enterprise apps.   - **up**: Round up - **down**: Round down - **none**: No rounding |
+| freedomLeave | Boolean | No | A leave type that does not require balance control (such as personal leave).  This field is exclusive to third-party enterprise apps. |
+
+### Request Example
+
+HTTP
+
+```http
+POST /v1.0/attendance/leaves/types?opUserId=user01 HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:1d97cxxx
+Content-Type:application/json
+
+{
+  "leaveName" : "Annual leave",
+  "leaveViewUnit" : "day",
+  "bizType" : "general_leave",
+  "naturalDayLeave" : true,
+  "hoursInPerDay" : 1000,
+  "extras" : "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+  "paidLeave" : true,
+  "visibilityRules" : [ {
+    "visible" : [ "user01" ],
+    "type" : "staff"
+  } ],
+  "whenCanLeave" : "entry",
+  "leaveTimeCeilMinUnit" : "hour",
+  "leaveTimeCeil" : false,
+  "minLeaveHour" : 1.0,
+  "submitTimeRule" : {
+    "timeValue" : 2,
+    "timeUnit" : "day",
+    "timeType" : "before",
+    "enableTimeLimit" : true
+  },
+  "leaveCertificate" : {
+    "unit" : "hour",
+    "duration" : 1.0,
+    "enable" : false,
+    "promptInformation" : "Leave prompt text"
+  },
+  "maxLeaveTime" : 3,
+  "leaveHourCeil" : "up",
+  "freedomLeave" : true
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Initialize the account Client using a Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkattendance_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkattendance_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkattendance_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeHeaders addLeaveTypeHeaders = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeHeaders();
+        addLeaveTypeHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate leaveCertificate = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate()
+                .setUnit("hour")
+                .setDuration(1D)
+                .setEnable(false)
+                .setPromptInformation("Leave prompt text");
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule submitTimeRule = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule()
+                .setTimeValue(2L)
+                .setTimeUnit("day")
+                .setTimeType("before")
+                .setEnableTimeLimit(true);
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules visibilityRules0 = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules()
+                .setVisible(java.util.Arrays.asList(
+                    "user01"
+                ))
+                .setType("staff");
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest addLeaveTypeRequest = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest()
+                .setOpUserId("user01")
+                .setLeaveName("Annual leave")
+                .setLeaveViewUnit("day")
+                .setBizType("general_leave")
+                .setNaturalDayLeave(true)
+                .setHoursInPerDay(1000L)
+                .setExtras("{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}")
+                .setPaidLeave(true)
+                .setVisibilityRules(java.util.Arrays.asList(
+                    visibilityRules0
+                ))
+                .setWhenCanLeave("entry")
+                .setLeaveTimeCeilMinUnit("hour")
+                .setLeaveTimeCeil(false)
+                .setMinLeaveHour(1D)
+                .setSubmitTimeRule(submitTimeRule)
+                .setLeaveCertificate(leaveCertificate)
+                .setMaxLeaveTime(3L)
+                .setLeaveHourCeil("up")
+                .setFreedomLeave(true);
+        try {
+            client.addLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains the code and message attributes, which help you locate the issue
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains the code and message attributes, which help you locate the issue
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.attendance_1_0.client import Client as dingtalkattendance_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.attendance_1_0 import models as dingtalkattendance__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkattendance_1_0Client:
+        """
+        Initialize the account Client using a Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkattendance_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        add_leave_type_headers = dingtalkattendance__1__0_models.AddLeaveTypeHeaders()
+        add_leave_type_headers.x_acs_dingtalk_access_token = '<your access token>'
+        leave_certificate = dingtalkattendance__1__0_models.AddLeaveTypeRequestLeaveCertificate(
+            unit='hour',
+            duration=1,
+            enable=False,
+            prompt_information='Leave prompt text'
+        )
+        submit_time_rule = dingtalkattendance__1__0_models.AddLeaveTypeRequestSubmitTimeRule(
+            time_value=2,
+            time_unit='day',
+            time_type='before',
+            enable_time_limit=True
+        )
+        visibility_rules_0 = dingtalkattendance__1__0_models.AddLeaveTypeRequestVisibilityRules(
+            visible=[
+                'user01'
+            ],
+            type='staff'
+        )
+        add_leave_type_request = dingtalkattendance__1__0_models.AddLeaveTypeRequest(
+            op_user_id='user01',
+            leave_name='Annual leave',
+            leave_view_unit='day',
+            biz_type='general_leave',
+            natural_day_leave=True,
+            hours_in_per_day=1000,
+            extras='{"validity_type":"absolute_time","validity_value":"12-31"}',
+            paid_leave=True,
+            visibility_rules=[
+                visibility_rules_0
+            ],
+            when_can_leave='entry',
+            leave_time_ceil_min_unit='hour',
+            leave_time_ceil=False,
+            min_leave_hour=1,
+            submit_time_rule=submit_time_rule,
+            leave_certificate=leave_certificate,
+            max_leave_time=3,
+            leave_hour_ceil='up',
+            freedom_leave=True
+        )
+        try:
+            client.add_leave_type_with_options(add_leave_type_request, add_leave_type_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains the code and message attributes, which help you locate the issue
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        add_leave_type_headers = dingtalkattendance__1__0_models.AddLeaveTypeHeaders()
+        add_leave_type_headers.x_acs_dingtalk_access_token = '<your access token>'
+        leave_certificate = dingtalkattendance__1__0_models.AddLeaveTypeRequestLeaveCertificate(
+            unit='hour',
+            duration=1,
+            enable=False,
+            prompt_information='Leave prompt text'
+        )
+        submit_time_rule = dingtalkattendance__1__0_models.AddLeaveTypeRequestSubmitTimeRule(
+            time_value=2,
+            time_unit='day',
+            time_type='before',
+            enable_time_limit=True
+        )
+        visibility_rules_0 = dingtalkattendance__1__0_models.AddLeaveTypeRequestVisibilityRules(
+            visible=[
+                'user01'
+            ],
+            type='staff'
+        )
+        add_leave_type_request = dingtalkattendance__1__0_models.AddLeaveTypeRequest(
+            op_user_id='user01',
+            leave_name='Annual leave',
+            leave_view_unit='day',
+            biz_type='general_leave',
+            natural_day_leave=True,
+            hours_in_per_day=1000,
+            extras='{"validity_type":"absolute_time","validity_value":"12-31"}',
+            paid_leave=True,
+            visibility_rules=[
+                visibility_rules_0
+            ],
+            when_can_leave='entry',
+            leave_time_ceil_min_unit='hour',
+            leave_time_ceil=False,
+            min_leave_hour=1,
+            submit_time_rule=submit_time_rule,
+            leave_certificate=leave_certificate,
+            max_leave_time=3,
+            leave_hour_ceil='up',
+            freedom_leave=True
+        )
+        try:
+            await client.add_leave_type_with_options_async(add_leave_type_request, add_leave_type_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains the code and message attributes, which help you locate the issue
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```java
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\leaveCertificate;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\submitTimeRule;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\visibilityRules;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Initialize the account Client using a Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $addLeaveTypeHeaders = new AddLeaveTypeHeaders([]);
+        $addLeaveTypeHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $leaveCertificate = new leaveCertificate([
+            "unit" => "hour",
+            "duration" => 1,
+            "enable" => false,
+            "promptInformation" => "Leave prompt text"
+        ]);
+        $submitTimeRule = new submitTimeRule([
+            "timeValue" => 2,
+            "timeUnit" => "day",
+            "timeType" => "before",
+            "enableTimeLimit" => true
+        ]);
+        $visibilityRules0 = new visibilityRules([
+            "visible" => [
+                "user01"
+            ],
+            "type" => "staff"
+        ]);
+        $addLeaveTypeRequest = new AddLeaveTypeRequest([
+            "opUserId" => "user01",
+            "leaveName" => "Annual leave",
+            "leaveViewUnit" => "day",
+            "bizType" => "general_leave",
+            "naturalDayLeave" => true,
+            "hoursInPerDay" => 1000,
+            "extras" => "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+            "paidLeave" => true,
+            "visibilityRules" => [
+                $visibilityRules0
+            ],
+            "whenCanLeave" => "entry",
+            "leaveTimeCeilMinUnit" => "hour",
+            "leaveTimeCeil" => false,
+            "minLeaveHour" => 1,
+            "submitTimeRule" => $submitTimeRule,
+            "leaveCertificate" => $leaveCertificate,
+            "maxLeaveTime" => 3,
+            "leaveHourCeil" => "up",
+            "freedomLeave" => true
+        ]);
+        try {
+            $client->addLeaveTypeWithOptions($addLeaveTypeRequest, $addLeaveTypeHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err contains the code and message attributes, which help you locate the issue
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkattendance_1_0  "github.com/alibabacloud-go/dingtalk/attendance_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Initialize the account Client using a Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkattendance_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkattendance_1_0.Client{}
+  _result, _err = dingtalkattendance_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  addLeaveTypeHeaders := &dingtalkattendance_1_0.AddLeaveTypeHeaders{}
+  addLeaveTypeHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  leaveCertificate := &dingtalkattendance_1_0.AddLeaveTypeRequestLeaveCertificate{
+    Unit: tea.String("hour"),
+    Duration: tea.Float64(1),
+    Enable: tea.Bool(false),
+    PromptInformation: tea.String("Leave prompt text"),
+  }
+  submitTimeRule := &dingtalkattendance_1_0.AddLeaveTypeRequestSubmitTimeRule{
+    TimeValue: tea.Int64(2),
+    TimeUnit: tea.String("day"),
+    TimeType: tea.String("before"),
+    EnableTimeLimit: tea.Bool(true),
+  }
+  visibilityRules0 := &dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules{
+    Visible: []*string{tea.String("user01")},
+    Type: tea.String("staff"),
+  }
+  addLeaveTypeRequest := &dingtalkattendance_1_0.AddLeaveTypeRequest{
+    OpUserId: tea.String("user01"),
+    LeaveName: tea.String("Annual leave"),
+    LeaveViewUnit: tea.String("day"),
+    BizType: tea.String("general_leave"),
+    NaturalDayLeave: tea.Bool(true),
+    HoursInPerDay: tea.Int64(1000),
+    Extras: tea.String("{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}"),
+    PaidLeave: tea.Bool(true),
+    VisibilityRules: []*dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules{visibilityRules0},
+    WhenCanLeave: tea.String("entry"),
+    LeaveTimeCeilMinUnit: tea.String("hour"),
+    LeaveTimeCeil: tea.Bool(false),
+    MinLeaveHour: tea.Float64(1),
+    SubmitTimeRule: submitTimeRule,
+    LeaveCertificate: leaveCertificate,
+    MaxLeaveTime: tea.Int64(3),
+    LeaveHourCeil: tea.String("up"),
+    FreedomLeave: tea.Bool(true),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.AddLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err contains the code and message attributes, which help you locate the issue
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```python
+// This file is auto-generated, don't edit it
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkattendance_1_0, * as $dingtalkattendance_1_0 from '@alicloud/dingtalk/attendance_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Initialize the account Client using a Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkattendance_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkattendance_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let addLeaveTypeHeaders = new $dingtalkattendance_1_0.AddLeaveTypeHeaders({ });
+    addLeaveTypeHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let leaveCertificate = new $dingtalkattendance_1_0.AddLeaveTypeRequestLeaveCertificate({
+      unit: "hour",
+      duration: 1,
+      enable: false,
+      promptInformation: "Leave prompt text",
+    });
+    let submitTimeRule = new $dingtalkattendance_1_0.AddLeaveTypeRequestSubmitTimeRule({
+      timeValue: 2,
+      timeUnit: "day",
+      timeType: "before",
+      enableTimeLimit: true,
+    });
+    let visibilityRules0 = new $dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules({
+      visible: [
+        "user01"
+      ],
+      type: "staff",
+    });
+    let addLeaveTypeRequest = new $dingtalkattendance_1_0.AddLeaveTypeRequest({
+      opUserId: "user01",
+      leaveName: "Annual leave",
+      leaveViewUnit: "day",
+      bizType: "general_leave",
+      naturalDayLeave: true,
+      hoursInPerDay: 1000,
+      extras: "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+      paidLeave: true,
+      visibilityRules: [
+        visibilityRules0
+      ],
+      whenCanLeave: "entry",
+      leaveTimeCeilMinUnit: "hour",
+      leaveTimeCeil: false,
+      minLeaveHour: 1,
+      submitTimeRule: submitTimeRule,
+      leaveCertificate: leaveCertificate,
+      maxLeaveTime: 3,
+      leaveHourCeil: "up",
+      freedomLeave: true,
+    });
+    try {
+      await client.addLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err contains the code and message attributes, which help you locate the issue
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Initialize the account Client using a Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkattendance_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkattendance_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeHeaders addLeaveTypeHeaders = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeHeaders();
+            addLeaveTypeHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate leaveCertificate = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate
+            {
+                Unit = "hour",
+                Duration = 1,
+                Enable = false,
+                PromptInformation = "Leave prompt text",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule submitTimeRule = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule
+            {
+                TimeValue = 2,
+                TimeUnit = "day",
+                TimeType = "before",
+                EnableTimeLimit = true,
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules visibilityRules0 = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules
+            {
+                Visible = new List<string>
+                {
+                    "user01"
+                },
+                Type = "staff",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest addLeaveTypeRequest = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest
+            {
+                OpUserId = "user01",
+                LeaveName = "Annual leave",
+                LeaveViewUnit = "day",
+                BizType = "general_leave",
+                NaturalDayLeave = true,
+                HoursInPerDay = 1000,
+                Extras = "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+                PaidLeave = true,
+                VisibilityRules = new List<AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules>
+                {
+                    visibilityRules0
+                },
+                WhenCanLeave = "entry",
+                LeaveTimeCeilMinUnit = "hour",
+                LeaveTimeCeil = false,
+                MinLeaveHour = 1,
+                SubmitTimeRule = submitTimeRule,
+                LeaveCertificate = leaveCertificate,
+                MaxLeaveTime = 3,
+                LeaveHourCeil = "up",
+                FreedomLeave = true,
+            };
+            try
+            {
+                client.AddLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains the code and message attributes, which help you locate the issue
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains the code and message attributes, which help you locate the issue
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Response
+
+### Response Body
+
+| Name | Type | Description |
+| --- | --- | --- |
+| result | Object | The returned information. |
+| leaveName | String | The leave name. |
+| leaveCode | String | The unique identifier of the leave rule. |
+| leaveViewUnit | String | The leave unit.   - **day**: Day - **halfDay**: Half day - **hour**: Hour |
+| bizType | String | The leave type.   - **general_leave**: General leave - **lieu_leave**: Overtime to compensatory leave |
+| naturalDayLeave | Boolean | Indicates whether leave duration is calculated by calendar days.   - **true**: Yes - **false**: No   If false, the leave duration is calculated based on the user's scheduling within the leave period when the user submits a leave request. |
+| hoursInPerDay | Long | The working hours per day used for conversion. The actual value is the parameter value divided by 100.  For example, if an organization sets 10 working hours per day, this parameter value is 10\*100=1000. |
+| visibilityRules | Array | The list of applicable scope rules. If not specified, the rule applies to the entire company. |
+| visible | Array of String | The list of data within the applicable scope.   - If type=staff, a list of employee userIds. - If type=dept, a list of department IDs. - If type=label, a list of role IDs. |
+| type | String | The type of applicable scope rule.   - **dept**: Department - **staff**: Employee - **label**: Role |
+| submitTimeRule | Object | The time limit rule for submission. |
+| timeValue | Long | The limit value.   - If timeUnit is day, the valid range is 0 to 30 days. - If timeUnit is hour, the valid range is 0 to 24 hours. |
+| timeUnit | String | The time unit.   - **day**: Day - **hour**: Hour |
+| timeType | String | The limit type.   - **before**: Submit in advance - **after**: Submit retroactively |
+| enableTimeLimit | Boolean | Indicates whether the submission time limit is enabled.   - **true**: On - **false**: Off |
+| leaveCertificate | Object | The leave certificate. |
+| unit | String | The duration unit for the leave certificate.   - **hour**: Hour - **day**: Day |
+| duration | double | The leave duration beyond which a leave certificate is required. |
+| enable | Boolean | Indicates whether the leave certificate is enabled.   - **true**: On - **false**: Off |
+| promptInformation | String | The leave prompt text. |
+
+### Response Body Example
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "leaveName" : "Annual leave",
+    "leaveCode" : "037477ae-1009-4632-b8e9-e919ae5e7973",
+    "leaveViewUnit" : "day",
+    "bizType" : "general_leave",
+    "naturalDayLeave" : true,
+    "hoursInPerDay" : 1000,
+    "visibilityRules" : [ {
+      "visible" : [ "user01" ],
+      "type" : "staff"
+    } ],
+    "submitTimeRule" : {
+      "timeValue" : 1,
+      "timeUnit" : "day",
+      "timeType" : "before",
+      "enableTimeLimit" : false
+    },
+    "leaveCertificate" : {
+      "unit" : "hour",
+      "duration" : 1,
+      "enable" : false,
+      "promptInformation" : "Leave prompt text"
+    }
+  }
+}
+```
+
+### Error Codes
+
+If a call to this API fails, find a solution in the [Global Error Codes](/open/development/server-api-error-codes-1) document based on the error message.
+
+| HttpCode | Error code | Error message | Description |
+| --- | --- | --- | --- |
+| 400 | lieuLeaveValidityIncorrect | Invalid validity period for compensatory leave | Invalid validity period for compensatory leave |
+| 400 | lieuLeaveOnlyOne | Only one overtime-to-compensatory-leave rule is allowed | Only one overtime-to-compensatory-leave rule is allowed |
+| 400 | bizTypeIncorrect | Invalid leave business type | Invalid leave business type |
+| 400 | unitIncorrect | Invalid leave unit | Invalid leave unit |
+| 400 | nameTooLong | The leave name is too long | The leave name is too long |
+| 400 | nameAlreadyExists | A leave type with the same name already exists | A leave type with the same name already exists |
+| 400 | leaveOrgIsUsed | Only organizations are allowed to access this API | Only organizations are allowed to access this API |
+| 400 | notPermission | No access permission | No access permission |
+| 400 | notManage | The department admin does not exist | The department admin does not exist |
+| 400 | notFound | The leave type was not found | The leave type was not found |
+| 400 | tryAgainLater | Update failed. Try again later. | Update failed. Try again later. |
+| 400 | updateSpeedfast | This operation is too frequent. Try again in 5 minutes. | This operation is too frequent. Try again in 5 minutes. |
+| 400 | systemError | System error | System error |
+| 400 | invalidParam | Parameter error | Parameter error |

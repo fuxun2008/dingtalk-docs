@@ -1,0 +1,160 @@
+---
+title: "休暇ルール一覧の取得"
+description: "DingTalk の API で社内の休暇ルール一覧を取得する方法を解説します。休暇名、休暇単位、休暇ソースに加え、休暇証明書や申請期限のルールも、リクエスト例とレスポンス例で確認できます。"
+---
+
+この API を呼び出して、社内の休暇ルール一覧を取得します。休暇名や休暇単位などの情報が含まれます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/vacation/type/list |
+| HTTP メソッド | POST |
+| サポートされるアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_holiday_readonly-DingTalk 休暇の読み取り権限 |
+
+### クエリパラメーター
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_userid | String | はい | user01 | **OA承認** アプリのアプリ権限を持つ、社内の管理者のユーザー ID です。 |
+| vacation_source | String | いいえ | all | 休暇ソースです。有効な値は次のとおりです。   - **"all"**：すべての休暇タイプを返します。 - **""**：休暇ルール追加 API で作成された休暇タイプのみを返します。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/vacation/type/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=43aexxxxd897cd9' \
+-d 'op_userid=03085665764167' \
+-d 'vacation_source=all'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/type/list");
+OapiAttendanceVacationTypeListRequest req = new OapiAttendanceVacationTypeListRequest();
+req.setOpUserid("user01");
+req.setVacationSource("all");
+OapiAttendanceVacationTypeListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceVacationTypeListRequest("https://api.dingtalk.io/topapi/attendance/vacation/type/list")
+
+req.op_userid="03085665764167"
+req.vacation_source="all"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceVacationTypeListRequest;
+$req->setOpUserid("03085665764167");
+$req->setVacationSource("all");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/vacation/type/list");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/type/list");
+OapiAttendanceVacationTypeListRequest req = new OapiAttendanceVacationTypeListRequest();
+req.OpUserid = "03085665764167";
+req.VacationSource = "all";
+OapiAttendanceVacationTypeListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 3k4z2hq8pv2x | リクエスト ID です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| success | Boolean | true | リクエストが成功したかどうかを示します。   - **true**：はい - **false**：いいえ |
+| result | Result[] |  | 返された結果です。 |
+| leave_code | String | 037477sdfsxxxx | 休暇ルールの一意の識別子です。 |
+| leave_name | String | 年次有給休暇 | 休暇名です。 |
+| leave_view_unit | String | day | 休暇単位です。   - **day**：日 - **halfDay**：半日 - **hour**：時間 |
+| leave_certificate | LeaveCertificateVo |  | 休暇証明書です。 |
+| leave_certificate.unit | String | hour | 休暇証明書の単位です。   - **hour**：時間 - **day**：日 |
+| leave_certificate.duration | Number | 1 | 休暇証明書の提出が必要となる休暇時間のしきい値です。この値を超えると休暇証明書が必要になります。 |
+| leave_certificate.enable | Boolean | false | 休暇証明書が有効かどうかを示します。   - **true**：オン - **false**：オフ |
+| leave_certificate.prompt_information | String | 休暇情報 | 休暇申請時に表示されるプロンプトテキストです。 |
+| submit_time_rule | SubmitTimeRuleVo |  | 申請期限のルールです。 |
+| submit_time_rule.time_value | Number | 18 | 期限の値です。   - timeUnit が **day** の場合、有効範囲は 0〜30 日です。 - timeUnit が **hour** の場合、有効範囲は 0〜24 時間です。 |
+| submit_time_rule.time_unit | String | hour | 時間の単位です。   - **day**：日 - **hour**：時間 |
+| submit_time_rule.time_type | String | before | 期限のタイプです。   - **before**：事前申請 - **after**：事後申請 |
+| submit_time_rule.enable_time_limit | Boolean | false | 申請期限が有効かどうかを示します。   - **true**：オン - **false**：オフ |
+| biz_type | String | general_leave | 休暇タイプです。   - **general_leave**：通常の休暇 - **lieu_leave**：残業から振り替えた代休 |
+| natural_day_leave | String | true | 休暇時間を暦日で計算するかどうかを示します。   - **true**：休暇時間を暦日で計算します。 - **false**：休暇時間を暦日で計算しません。  **注意**  値が **false** の場合、ユーザーが休暇申請を送信した際に、休暇期間中のユーザーのシフト設定に基づいて休暇時間が計算されます。 |
+| validity_type | String | absolute_time | 有効期間のタイプです。   - **absolute_time**：絶対時間 - **relative_time**：相対時間 |
+| validity_value | String | 12-31 | 延長日付です。   - validity_type が **absolute_time** の場合、この値は空ではなく、"yy-mm" 形式です。 - validity_type が **relative_time** の場合、この値は 1 より大きい整数です。 |
+| hours_in_per_day | Number | 1000 | 1 日あたりの労働時間です。単位は 1/100 時間です。 例：1 日 = 10 時間 = 1000。 |
+| source | String | inner | 休暇ソースです。   - **external**：Open API で作成されたカスタム休暇 - **inner**：OA 管理コンソールで作成された休暇 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "biz_type": "general_leave",
+      "hours_in_per_day": 1000,
+      "leave_code": "037477sdfsxxxx",
+      "leave_name": "年次有給休暇",
+      "leave_view_unit": "day",
+      "leave_certificate": {
+        "unit": "hour",
+        "duration": "1",
+        "enable": false,
+        "prompt_information": "休暇情報"
+      },
+      "submit_time_rule": {
+        "time_value": 18,
+        "time_unit": "day",
+        "time_type": "before",
+        "enable_time_limit": false
+      },
+      "validity_type": "absolute_time",
+      "natural_day_leave": "true",
+      "validity_value": "12-31",
+      "source": "external"
+    }
+  ],
+  "success": true,
+  "request_id": "3k4z2hq8pv2x"
+}
+```
+
+### エラーコード
+
+API の呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。

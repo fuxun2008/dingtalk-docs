@@ -1,0 +1,191 @@
+---
+title: "Get Clock-In Results"
+description: "Call this API to get the actual clock-in results of employees in your organization based on a list of employee userIds and a range of workdays."
+---
+
+Call this API to get the actual clock-in results of employees in your organization.
+
+## API Call Description
+
+- This API does not support querying data older than six months.
+- To get detailed clock-in data, such as the clock-in location, call the [Get Clock-In Details](/open/development/attendance-clock-in-record-is-open) API.
+- Attendance data synchronization may be delayed. If data is missing, try again later.
+- **If a user has a schedule for the day but does not clock in, this API returns the scheduled check points for that day instead of an empty result**.
+
+For example, suppose your organization schedules an employee to clock in once at 9:00 and once at 18:00. Even if the employee clocks in multiple times during this period, this API returns only two records: the morning clock-in result and the afternoon clock-in result.
+
+## Request
+
+| **Basic Information** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/attendance/list |
+| HTTP Method | POST |
+| Supported app types | Internal app; Third-party enterprise app |
+| Required permissions | qyapi_attendance_isv_query_result (Read permission for organization attendance data); qyapi_get_attendance_data (Read permission for attendance data) |
+
+### Query Parameters
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| access_token | String | Yes | 6d1bxxxx | The app credential used to call this API.   - Internal app: Call the [Get the access_token of an Internal App](/open/development/obtain-orgapp-token) API. - Third-party enterprise app: Call the Get the access_token of a Third-Party Enterprise API. |
+
+### Request Body
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| workDateFrom | String | Yes | 2020-11-07 08:00:00 | The start workday for querying attendance clock-in records. Format: yyyy-MM-dd HH:mm:ss. You can set HH:mm:ss to 00:00:00. The API returns results for this date from 00:00 to 24:00.  For example, if you pass "2021-12-01 10:00", the API returns attendance results for the entire day of December 1.  **Important**  The interval between workDateFrom and workDateTo  cannot exceed 7 days (inclusive). |
+| workDateTo | String | Yes | 2020-11-11 08:00:00 | The end workday for querying attendance clock-in records. Format: "yyyy-MM-dd HH:mm:ss". You can set HH:mm:ss to 00:00:00. The API returns results for this date from 00:00 to 24:00.  For example, if you pass "2021-12-01 19:00", the API returns attendance results for the entire day of December 1.  **Important**  The interval between workDateFrom and workDateTo  cannot exceed 7 days (inclusive). |
+| userIdList | String[] | Yes | ["manager4220"] | The list of employee userIds in your organization. Maximum: 50.  **Important**  Make sure the userId values are correct. Otherwise, this API returns empty results. |
+| offset | Number | Yes | 0 | The starting point for fetching attendance data. Pass 0 for the first request. If more data is available, set offset in the next request to the previous offset + limit. Values increase sequentially: 0, 1, 2, and so on. |
+| limit | Number | Yes | 50 | The number of attendance records to fetch. Maximum: 50. |
+| isI18n | Boolean | No | true | Specifies whether the API is used by an overseas organization:   - **true**: Used on the international platform - **false** (default): Used on the China platform |
+
+### Request Example
+
+```curl
+curl -X POST "https://api.dingtalk.io/attendance/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=713b06xxxxd4cbdf4' \
+-d 'isI18n=true' \
+-d 'limit=100' \
+-d 'offset=0' \
+-d 'userIdList=1' \
+-d 'workDateFrom=yyyy-MM-dd+hh%3Amm%3Ass' \
+-d 'workDateTo=yyyy-MM-dd+hh%3Amm%3Ass'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/attendance/list");
+OapiAttendanceListRequest req = new OapiAttendanceListRequest();
+req.setWorkDateFrom("2020-11-07 08:00:00");
+req.setWorkDateTo("2020-11-11 08:00:00");
+req.setUserIdList(Arrays.asList("manager"));
+req.setOffset(0L);
+req.setLimit(10L);
+req.setIsI18n(true);
+OapiAttendanceListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceListRequest("https://api.dingtalk.io/attendance/list")
+
+req.workDateFrom="yyyy-MM-dd hh:mm:ss"
+req.workDateTo="yyyy-MM-dd hh:mm:ss"
+req.userIdList="1"
+req.offset=0
+req.limit=100
+req.isI18n=true
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceListRequest;
+$req->setWorkDateFrom("yyyy-MM-dd hh:mm:ss");
+$req->setWorkDateTo("yyyy-MM-dd hh:mm:ss");
+$req->setUserIdList("1");
+$req->setOffset("0");
+$req->setLimit("100");
+$req->setIsI18n("true");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/attendance/list");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/attendance/list");
+OapiAttendanceListRequest req = new OapiAttendanceListRequest();
+req.WorkDateFrom = "yyyy-MM-dd hh:mm:ss";
+req.WorkDateTo = "yyyy-MM-dd hh:mm:ss";
+req.UserIdList = "1";
+req.Offset = 0L;
+req.Limit = 100L;
+req.IsI18n = true;
+OapiAttendanceListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response Body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| recordresult | Recordresult[] |  | The clock-in records. |
+| sourceType | String | USER | The data source:   - **USER**: Clock-in by the user - **BOSS**: Corrected by the manager - **APPROVE**: Approval system - **SYSTEM**: Attendance system - **AUTO_CHECK**: Automatic clock-in |
+| baseCheckTime | Date | 1599378660000 | The baseline time used to calculate late arrival and early leave. |
+| userCheckTime | Date | 1599378681000 | The actual clock-in time, in milliseconds. |
+| procInstId | String | 59f77e82-6625-4a31-b434 | The ID of the associated approval instance. If this field is not empty, the clock-in record is related to an approval such as a leave request or overtime request. |
+| approveId | Number | 2376620852 | The ID of the associated approval. If this field is not empty, the clock-in record is related to an approval such as a leave request or overtime request. |
+| locationResult | String | Normal | The location result:   - **Normal**: Within range - **Outside**: Out of range - **NotSigned**: Not clocked in |
+| timeResult | String | Normal | The clock-in result:   - **Normal**: Normal - **Early**: Early leave - **Late**: Late arrival - **SeriousLate**: Serious late arrival - **Absenteeism**: Late arrival counted as absenteeism - **NotSigned**: Not clocked in |
+| checkType | String | OnDuty | The attendance type:   - **OnDuty**: Clock in - **OffDuty**: Clock out |
+| userId | String | manager4220 | The userId of the employee who clocked in. |
+| workDate | Date | 1599321600000 | The workday. |
+| recordId | Number | 43002777448 | The clock-in record ID. |
+| planId | Number | 145342017988 | The schedule ID. |
+| groupId | Number | 685935028 | The attendance group ID. |
+| id | Number | 101135139831 | The unique ID. |
+| hasMore | Boolean | false | The pagination parameter that indicates whether more data is available.   - **true**: Yes - **false**: No |
+| errmsg | String | ok | The description of the return code. |
+| errcode | Number | 0 | The return code. |
+
+### Response Body Example
+
+```json
+{
+  "errcode": 0,
+  "recordresult": [
+    {
+      "checkType": "OnDuty",
+      "locationResult": "Normal",
+      "baseCheckTime": 1599372300000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "userId": "manager4220",
+      "recordId": 42833709096,
+      "workDate": 1599321600000,
+      "sourceType": "APPROVE",
+      "userCheckTime": 1599372300000,
+      "planId": 145583519353,
+      "id": 100068640553
+    },
+    {
+      "checkType": "OffDuty",   
+      "locationResult": "Normal",
+      "baseCheckTime": 1599373560000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "userId": "manager4220",
+      "recordId": 43003136655,
+      "workDate": 1599321600000,
+      "sourceType": "USER",
+      "userCheckTime": 1599373608000,
+      "planId": 144623724178,
+      "id": 100375228689
+    }
+  ],
+  "hasMore": false,
+  "errmsg": "ok"
+}
+```
+
+### Error Codes
+
+If a call to this API fails, use the error message to find a solution in the [Global Error Codes](/open/development/server-api-error-codes-1) document.

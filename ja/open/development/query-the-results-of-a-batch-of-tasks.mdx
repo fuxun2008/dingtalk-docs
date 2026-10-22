@@ -1,0 +1,152 @@
+---
+title: "シフト設定の打刻結果を照会する"
+description: "DingTalk勤怠のシフト設定の打刻結果を、シフト ID 指定で一括照会する API を解説。勤怠タイプ、予定打刻時刻、最後更新時間などを取得し、勤怠データの集計や連携に活用できます。"
+---
+
+この API を呼び出すと、シフト ID を指定してシフト設定の打刻結果を照会し、勤怠タイプ、予定打刻時刻、最後更新時間などの情報を取得できます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/schedule/result/listbyids |
+| HTTP メソッド | POST |
+| 対応するアプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_attendance_group_read-勤怠グループの照会権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、「サードパーティ社内アプリの access_token を取得する」API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_user_id | String | はい | manager123 | 操作者の userId です。 |
+| schedule_ids | String | はい | 144872188723,144872188722 | シフト ID です。[組織の勤怠シフト設定の詳細を照会する](/ja/open/development/interface-for-daily-full-query-of-attendance-scheduling-information) API を呼び出し、plan_id パラメータの値を取得します。複数のシフト ID はカンマで区切ります。1 回の呼び出しで最大 100 件のシフト ID を指定できます。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/schedule/result/listbyids" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=711cexxxx8ce772' \
+-d 'op_user_id=dd_dd' \
+-d 'schedule_ids=1234%2C3214'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/result/listbyids");
+OapiAttendanceScheduleResultListbyidsRequest req = new OapiAttendanceScheduleResultListbyidsRequest();
+req.setOpUserId("user456");
+req.setScheduleIds("16xxxx530,160xxxx12");
+OapiAttendanceScheduleResultListbyidsResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceScheduleResultListbyidsRequest("https://api.dingtalk.io/topapi/attendance/schedule/result/listbyids")
+
+req.op_user_id="dd_dd"
+req.schedule_ids="[1234,3214]"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceScheduleResultListbyidsRequest;
+$req->setOpUserId("dd_dd");
+$req->setScheduleIds("[1234,3214]");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/schedule/result/listbyids");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/result/listbyids");
+OapiAttendanceScheduleResultListbyidsRequest req = new OapiAttendanceScheduleResultListbyidsRequest();
+req.OpUserId = "dd_dd";
+req.ScheduleIds = "1234,3214";
+OapiAttendanceScheduleResultListbyidsResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | TopScheduleResultVo[] | demo | 照会結果です。 |
+| check_type | String | OnDuty | 勤怠タイプです。   - **Onduty**：出勤打刻 - **OffDuty**：退勤打刻 |
+| gmt_modified | Date | 2020-11-11 19:03:21 | 最後更新時間です。 |
+| plan_check_time | Date | 2020-11-11 19:03:20 | 予定打刻時刻です。 |
+| corp_id | String | dingxxxxx1c1 | 組織 ID です。 |
+| base_check_time | Date | 2020-11-11 19:03:00 | 遅刻・早退の許容などのルールによって調整された後の予定打刻時刻です。 |
+| group_id | Number | 67xxxx4 | 勤怠グループ ID です。 |
+| gmt_create | Date | 2020-11-11 19:03:21 | 作成時間です。 |
+| user_id | String | user123 | ユーザーの userId です。 |
+| work_date | Date | 2020-11-11 00:00:00 | 勤務日です。シフトが設定された具体的な日付を示します。 |
+| id | Number | 11xxxx19 | 打刻結果 ID です。 |
+| location_result | String | Normal | 打刻場所の結果です。   - **Normal**：正常打刻 - **NotSigned**：未打刻 - **Outside**：外勤 |
+| is_legal | String | Y | 打刻にエラーがあるかどうかを示します。   - **N**：いいえ - **Y**：はい |
+| time_result | String | Normal | 打刻時刻の結果です。   - **Normal**：正常打刻 - **NotSigned**：未打刻 - **Late**：遅刻 - **SeriousLate**：重大な遅刻 - **Absenteeism**：遅刻による欠勤 - **Early**：早退 |
+| record_id | Number | 48xxxx644 | 打刻記録です。 |
+| user_check_time | Date | 2020-11-11 19:03:20 | 打刻時刻です。 |
+| schedule_id | Number | 5672xxxx63 | シフト ID です。 |
+| success | Boolean | true | リクエストが成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| errcode | Number | 0 | 戻りコードです。 |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| request_id | String | 6k9c3cvix353 | リクエスト ID です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "base_check_time": "2020-11-11 19:03:00",
+      "check_type": "OnDuty",
+      "corp_id": "dingxxxxx1c1",
+      "gmt_create": "2020-11-11 19:03:21",
+      "gmt_modified": "2020-11-11 19:03:21",
+      "group_id": 67xxxx4,
+      "id": 11xxxx19,
+      "is_legal": "Y",
+      "location_result": "Normal",
+      "plan_check_time": "2020-11-11 19:03:20",
+      "record_id": 48xxxx644,
+      "schedule_id": 16xxxx812,
+      "time_result": "Normal",
+      "user_check_time": "2020-11-11 19:03:20",
+      "user_id": "user456",
+      "work_date": "2020-11-11 00:00:00"
+    }
+  ],
+  "success": true,
+  "request_id": "6k9c3cvix353"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

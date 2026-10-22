@@ -1,0 +1,574 @@
+---
+title: "Buat, ambil, perbarui, dan hapus grup absensi"
+description: "Kelola grup absensi DingTalk melalui API: buat, ambil, perbarui, dan hapus secara massal, serta sinkronkan sistem HR dan OA dengan Absensi DingTalk otomatis."
+---
+
+# Konfigurasikan aturan absensi: buat grup absensi secara massal dan sesuaikan secara dinamis
+
+## Ringkasan
+
+Solusi ini mengotomatiskan pengelolaan grup absensi secara menyeluruh. Solusi ini menggunakan API pengelolaan grup absensi di DingTalk Open Platform untuk mengintegrasikan platform bisnis seperti sistem HR dan OA dengan Absensi DingTalk.
+
+### Latar belakang
+
+Organisasi menghadapi tantangan berikut dalam pengelolaan absensi:
+
+- **Aturan absensi yang kompleks**: Absensi shift tetap, absensi berbasis shift, jam kerja fleksibel, dan mode lainnya berjalan bersamaan. Konfigurasi manual lambat dan rawan kesalahan.
+- **Perubahan personel yang sering**: Karyawan baru, karyawan keluar, dan mutasi mengharuskan pembaruan anggota grup absensi secara manual. Organisasi dengan lebih dari 1.000 karyawan menghabiskan beberapa jam setiap minggu untuk pekerjaan ini.
+- **Tidak ada sinkronisasi lintas sistem**: Perubahan Struktur Organisasi di sistem HR tidak segera diteruskan ke grup absensi DingTalk sehingga menyebabkan kesalahan data absen.
+- **Tidak ada operasi massal**: Admin tidak dapat membuat atau memperbarui banyak grup absensi sekaligus. Memperbaruinya satu per satu sangat tidak efisien.
+
+### Manfaat utama
+
+Solusi ini membantu organisasi mencapai hal berikut:
+
+- **Pengelolaan grup absensi otomatis**: Buat, kueri, perbarui, dan hapus grup absensi melalui API tanpa intervensi manual.
+- **Asosiasi shift cerdas**: Buat shift baru atau kaitkan shift yang sudah ada secara otomatis agar aturan absensi tetap akurat.
+- **Eksekusi massal yang efisien**: Ambil, cari, dan perbarui grup absensi secara massal untuk meningkatkan efisiensi operasional secara signifikan.
+- **Data lintas sistem yang terpadu**: Sinkronkan data HR, OA, dan Absensi DingTalk secara real time untuk menghilangkan silo data.
+
+### Kasus penggunaan
+
+Solusi ini sesuai untuk skenario bisnis umum berikut:
+
+- **Integrasi sistem HR**: Sinkronkan aturan absensi dari sistem manajemen HR ke grup absensi DingTalk secara otomatis.
+- **Merger dan akuisisi**: Buat grup absensi dan konfigurasi shift secara massal dengan cepat untuk perusahaan yang baru diakuisisi.
+- **Integrasi alur kerja OA**: Buat atau sesuaikan grup absensi terkait secara otomatis saat proses persetujuan selesai.
+- **Penyesuaian izin dinamis**: Perbarui anggota grup absensi dan izin Admin secara otomatis berdasarkan perubahan departemen.
+
+## Skenario bisnis umum
+
+### Skenario 1: Sinkronkan grup absensi dari sistem HR (pembuatan dan pengelolaan massal)
+
+#### Kendala
+
+Pada model tradisional, setelah tim HR merencanakan aturan absensi baru di sistem HR, mereka harus masuk ke Admin Console DingTalk lalu membuat setiap grup absensi, mengonfigurasi shift, dan menambahkan anggota secara manual. Organisasi dengan lebih dari 1.000 karyawan umumnya memiliki 20 hingga 50 grup absensi. Pengaturan manual memakan waktu berjam-jam dan sering menyebabkan shift yang salah atau anggota yang terlewat.
+
+#### Validasi nilai
+
+- **Alur kerja otomatis**
+
+  Alur otomatisasi berbasis API berjalan dengan langkah berikut:
+  1. Sistem HR mencatat karyawan baru.
+  2. Sistem menemukan grup absensi yang sesuai secara otomatis berdasarkan departemen karyawan.
+  3. Sistem menambahkan anggota baru secara massal melalui API.
+  4. Sistem memverifikasi dan mengonfirmasi hasilnya secara real time.
+  5. Izin absen langsung berlaku.
+- **Keunggulan utama**
+
+  - **Pemicu sepenuhnya otomatis**: Panggilan API berjalan otomatis setelah tim HR memasukkan karyawan baru di sistem HR. Tidak ada yang perlu masuk ke Admin Console DingTalk atau memulai tindakan secara manual. Input data dan sinkronisasi terjadi bersamaan.
+  - **Pencocokan yang presisi**: Sistem mengueri dan mencocokkan `groupKey` grup absensi secara otomatis berdasarkan ID departemen karyawan. Hal ini mencegah kesalahan absen akibat salah memilih grup absensi secara manual.
+  - **Langsung berlaku**: Setelah API penambahan karyawan massal menambahkan anggota, API kueri anggota berdasarkan ID langsung memverifikasi hasilnya. Karyawan dapat absen segera setelah bergabung dengan grup absensi.
+  - **Jejak audit**: Setiap panggilan API mencatat operator, stempel waktu, ID grup absensi, `userId` karyawan, dan detail lainnya untuk memenuhi persyaratan audit kepatuhan dan keterlacakan.
+
+### Skenario 2: Sinkronkan grup absensi secara otomatis setelah perubahan Struktur Organisasi
+
+#### Kendala
+
+Saat departemen digabung atau dipecah, atau saat karyawan dimutasi, tim HR harus memperbarui daftar anggota dan aturan penjadwalan shift setiap grup absensi yang terdampak secara manual. Restrukturisasi berskala besar dapat melibatkan puluhan grup absensi. Pembaruan manual memakan waktu dan sering melewatkan beberapa grup sehingga menyebabkan kesalahan absen bagi karyawan.
+
+#### Validasi nilai
+
+- **Alur kerja otomatis**
+
+  Alur otomatisasi berjalan dalam lima langkah:
+
+  1. **Pemicu Persetujuan OA**: Saat persetujuan untuk penggabungan atau pemecahan departemen maupun mutasi personel disetujui, sistem secara otomatis menangkap **peristiwa** perubahan tersebut.
+  2. **Identifikasi grup absensi yang terdampak**: Sistem mengueri semua grup absensi terkait secara otomatis berdasarkan ID departemen yang berubah.
+  3. **Pembaruan massal melalui API**: Sistem memanggil API pembaruan grup absensi DingTalk untuk mengubah daftar anggota dan konfigurasi shift secara massal.
+  4. **Validasi data real time**: Segera setelah pembaruan, sistem memanggil API kueri untuk memverifikasi konsistensi data di semua grup absensi.
+  5. **Sinkronisasi selesai**: Sinkronisasi grup absensi selesai dan aturan absensi yang diperbarui berlaku tanpa intervensi manual.
+- **Keunggulan utama**
+
+  - **Pemicu otomatis**: Sistem menangkap peristiwa perubahan dan menjalankan sinkronisasi secara otomatis saat proses Persetujuan OA selesai. Tidak ada yang perlu memulai atau memantaunya. Persetujuan dan sinkronisasi terjadi bersamaan.
+  - **Pemrosesan massal yang presisi**: Sistem mengidentifikasi dan memperbarui semua grup absensi yang terdampak sekaligus. Hal ini mencegah kelalaian akibat pencarian manual dan memastikan cakupan 100% atas perubahan organisasi.
+  - **Validasi dan masukan real time**: Sistem memanggil API kueri tepat setelah pembaruan untuk memverifikasi konsistensi data dan mengirim peringatan secara otomatis jika terjadi kesalahan. Hal ini memastikan aturan absensi berlaku dengan benar.
+  - **Log audit lengkap**: Setiap panggilan API mencatat operator, stempel waktu, dan konten perubahan untuk memenuhi persyaratan audit kepatuhan dan keterlacakan.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Solusi ini dibangun di atas Server API DingTalk Open Platform. Komponen teknis intinya adalah:
+
+- **Lapisan autentikasi**: Menggunakan `Client ID` dan `Client Secret` untuk mendapatkan `access_token` dan mengamankan panggilan API.
+- **Lapisan pengelolaan grup absensi**: Menyediakan kemampuan API lengkap untuk membuat, mengueri, memperbarui, dan menghapus grup absensi. Mendukung grup absensi shift tetap dan grup absensi berbasis shift.
+- **Lapisan pengelolaan shift**: Menyediakan kemampuan API untuk membuat dan mengueri shift, yang merupakan sumber daya prasyarat bagi grup absensi.
+- **Lapisan penanganan error**: Menyediakan sistem kode error yang komprehensif untuk membantu Anda menemukan dan menyelesaikan masalah dengan cepat.
+
+**Versi API**: Server API memiliki versi baru dan versi lama. Utamakan versi baru untuk performa dan dukungan fitur yang lebih baik.
+
+### Prasyarat
+
+Penuhi ketentuan berikut sebelum mengimplementasikan solusi:
+
+- **Persiapan aplikasi**: Buat dan konfigurasikan Aplikasi internal. Untuk detailnya, lihat [Buat dan konfigurasikan aplikasi](/id/open/dingstart/create-application).
+- **Persyaratan izin**: Miliki izin Admin Organisasi atau Sub Admin DingTalk, dan ajukan izin API berikut:
+
+  - `qyapi_attendance_group_manage` (izin pengelolaan grup absensi)
+  - `qyapi_attendance_group_read` (izin kueri grup absensi)
+- **Lingkungan pengembangan**: Instal lingkungan pengembangan Java (JDK 1.6 atau yang lebih baru) dan build tool Maven.
+- **Persiapan SDK**: Unduh SDK sisi server DingTalk. Untuk detailnya, lihat Unduh SDK sisi server. SDK mendukung Java, Python, Go, dan bahasa lainnya.
+
+### Implementasi kode
+
+Langkah 1: Dapatkan informasi kredensial aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Ajukan izin API yang terkait dengan absensi.
+
+Langkah 3: Dapatkan kredensial akses aplikasi. Lihat [Dapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). Saat Anda memanggil API, access token mengautentikasi identitas pemanggil.
+
+Langkah 4: Panggil API absensi:
+
+1. Panggil Server API [Buat grup absensi](/id/open/development/attendance-group-write) untuk mendapatkan `id` grup absensi.
+
+### Catatan
+
+   Contoh dalam dokumen ini menggunakan grup absensi shift tetap.
+
+   Untuk membuat **grup absensi shift tetap**, pastikan shift sudah tersedia sebelum Anda memanggil API Buat grup absensi:
+
+   - Jika belum ada shift, panggil Server API [Buat shift](/id/open/development/create-modify-shifts) untuk mendapatkan ID shift.
+   - Jika shift sudah ada, panggil Server API [Dapatkan ringkasan shift](/id/open/development/enterprise-shift-query-in-batches) untuk mendapatkan ID shift yang ada.
+2. Dapatkan informasi grup absensi.
+
+   - Dapatkan informasi semua grup absensi di organisasi
+
+     - Panggil Server API [Dapatkan ringkasan grup absensi secara massal](/id/open/development/batch-query-of-simple-information-of-the-attendance-group) untuk mendapatkan ringkasan semua grup absensi di organisasi.
+     - Panggil Server API [Dapatkan detail grup absensi secara massal](/id/open/development/batch-obtain-attendance-group-details) untuk mendapatkan detail semua grup absensi di organisasi.
+   - Panggil Server API [Cari ringkasan grup absensi](/id/open/development/attendance-group-search) untuk menjalankan kueri fuzzy grup absensi berdasarkan nama.
+   - Dapatkan informasi satu grup absensi
+
+     - Panggil Server API [Dapatkan detail grup absensi](/id/open/development/query-a-single-attendance-group) dengan `id` grup absensi untuk mendapatkan detail satu grup absensi.
+     - Dapatkan detail grup absensi berdasarkan `groupKey`
+
+       1. Panggil Server API [Konversi groupId ke groupKey](/id/open/development/groupid-to-groupkey) dengan `id` grup absensi untuk mendapatkan `groupKey` grup absensi.
+       2. Panggil Server API [Kueri informasi grup absensi berdasarkan groupKey](/id/open/development/queries-attendance-group-information-by-id) dengan `groupKey` grup absensi untuk mendapatkan informasi grup absensi.
+3. Panggil Server API [Perbarui grup absensi](/id/open/development/attendance-group-update-interface) dengan `id` grup absensi untuk mengubah nama grup absensi, shift, dan informasi lainnya.
+4. Panggil Server API [Hapus grup absensi](/id/open/development/delete-attendance-group) dengan `groupKey` grup absensi untuk menghapus grup absensi.
+
+## Langkah implementasi
+
+### **Langkah 1: Dapatkan kredensial aplikasi**
+
+1. Masuk ke [Konsol Developer DingTalk](https://open-dev.dingtalk.io/).
+2. Pilih aplikasi target untuk membuka halaman detail aplikasi.
+3. Klik **Informasi Dasar** > **Kredensial dan Informasi Dasar**.
+4. Catat `Client ID` dan `Client Secret` aplikasi.
+
+### Catatan
+
+   Simpan `Client Secret` dengan aman dan jangan pernah membagikannya kepada pihak ketiga. Simpan di variabel lingkungan atau sistem manajemen kunci, bukan di-hardcode.
+
+### Langkah 2: Tambahkan izin API
+
+1. Di halaman detail aplikasi, klik **Kelola izin**.
+2. Masukkan identifier izin berikut di kotak pencarian izin, lalu ajukan:
+
+   - `qyapi_attendance_group_manage` (izin pengelolaan grup absensi): Digunakan untuk membuat, memperbarui, dan menghapus grup absensi.
+   - `qyapi_attendance_group_read` (izin kueri grup absensi): Digunakan untuk mengueri ringkasan dan detail grup absensi.
+
+<Note>
+Skenario bisnis yang berbeda mungkin memerlukan kombinasi izin yang berbeda. Ajukan sesuai kebutuhan Anda. Misalnya, skenario impor massal juga memerlukan izin untuk operasi pengguna secara massal.
+</Note>
+
+### Langkah 3: Dapatkan kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk mendapatkan kredensial akses aplikasi. Lihat [Dapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Praktik terbaik**:
+
+- **Strategi caching**: `access_token` berlaku selama 2 jam. Simpan dalam cache di memori atau Redis, lalu muat ulang secara proaktif sebelum kedaluwarsa, yaitu 5 menit sebelumnya.
+- **Kontrol konkurensi**: Cegah beberapa thread memuat ulang token secara bersamaan karena dapat menimbulkan konflik. Gunakan distributed lock.
+- **Coba ulang saat terjadi error**: Coba ulang secara otomatis saat jaringan tidak stabil, maksimal 3 kali, dengan interval yang meningkat (1 dtk → 2 dtk → 4 dtk).
+
+### **Langkah 4:**Panggil API inti
+
+#### Buat grup absensi
+
+<Note>
+Contoh dalam dokumen ini menggunakan grup absensi shift tetap.
+</Note>
+
+Untuk membuat grup absensi shift tetap, pastikan shift sudah tersedia sebelum Anda memanggil API Buat grup absensi:
+
+- Jika belum ada shift, panggil Server API [Buat shift](/id/open/development/create-modify-shifts) untuk mendapatkan ID shift.
+
+  ```java
+  public void createShift() throws ApiException {
+      DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/add");
+      OapiAttendanceShiftAddRequest request = new OapiAttendanceShiftAddRequest();
+      request.setOpUserId("ma*****75");
+
+      // Informasi dasar shift
+      OapiAttendanceShiftAddRequest.TopAtClassVo topAtClassVo = new OapiAttendanceShiftAddRequest.TopAtClassVo();
+      topAtClassVo.setOwner("ma******75");
+      topAtClassVo.setClassGroupName("Shift 1009");
+      topAtClassVo.setCorpId("ding******288");
+      topAtClassVo.setName("Shift Baru");
+
+      // Konfigurasi segmen waktu shift (absen masuk & absen pulang)
+      List<OapiAttendanceShiftAddRequest.TopAtSectionVo> sectionVos = new ArrayList<>();
+      OapiAttendanceShiftAddRequest.TopAtSectionVo sectionVo = new OapiAttendanceShiftAddRequest.TopAtSectionVo();
+
+      List<OapiAttendanceShiftAddRequest.TopAtTimeVo> timeVos = new ArrayList<>();
+
+      // Waktu mulai kerja
+      OapiAttendanceShiftAddRequest.TopAtTimeVo timeVo = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      timeVo.setAcross(0L);
+      timeVo.setBeginMin(60L);
+      timeVo.setCheckTime(StringUtils.parseDateTime("2022-10-09 09:00:00"));
+      timeVo.setCheckType("OnDuty");
+      timeVo.setEndMin(30L);
+      timeVo.setFreeCheck(false);
+      timeVos.add(timeVo);
+
+      // Waktu selesai kerja
+      OapiAttendanceShiftAddRequest.TopAtTimeVo timeVo1 = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      timeVo1.setAcross(0L);
+      timeVo1.setBeginMin(0L);
+      timeVo1.setCheckTime(StringUtils.parseDateTime("2022-10-09 18:00:00"));
+      timeVo1.setCheckType("OffDuty");
+      timeVo1.setEndMin(-1L);
+      timeVo1.setFreeCheck(false);
+      timeVos.add(timeVo1);
+
+      sectionVo.setTimes(timeVos);
+      sectionVos.add(sectionVo);
+      topAtClassVo.setSections(sectionVos);
+
+      // Pengaturan shift
+      OapiAttendanceShiftAddRequest.TopAtClassSettingVo settingVo = new OapiAttendanceShiftAddRequest.TopAtClassSettingVo();
+      settingVo.setCorpId("ding16*******c288");
+      settingVo.setIsDeleted("N");
+      settingVo.setAbsenteeismLateMinutes(60L);
+      settingVo.setIsFlexible(false);
+      settingVo.setSeriousLateMinutes(30L);
+
+      // Waktu mulai istirahat
+      OapiAttendanceShiftAddRequest.TopAtTimeVo restBeginTime = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      restBeginTime.setFreeCheck(false);
+      restBeginTime.setAcross(0L);
+      restBeginTime.setCheckType("OnDuty");
+      restBeginTime.setCheckTime(StringUtils.parseDateTime("2022-10-09 12:00:00"));
+      settingVo.setRestBeginTime(restBeginTime);
+
+      // Waktu selesai istirahat
+      OapiAttendanceShiftAddRequest.TopAtTimeVo restEndTime = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      restEndTime.setAcross(0L);
+      restEndTime.setCheckType("OffDuty");
+      restEndTime.setFreeCheck(false);
+      restEndTime.setCheckTime(StringUtils.parseDateTime("2022-10-09 13:00:00"));
+      settingVo.setRestEndTime(restEndTime);
+
+      topAtClassVo.setSetting(settingVo);
+
+      request.setShift(topAtClassVo);
+
+      OapiAttendanceShiftAddResponse response = client.execute(request, "access_token");
+      System.out.println(response.getBody());
+  }
+  ```
+- Jika shift sudah ada, panggil Server API [Dapatkan ringkasan shift](/id/open/development/enterprise-shift-query-in-batches) untuk mendapatkan ID shift yang ada.
+
+  ```java
+  public void shiftList() throws ApiException {
+      DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/list");
+
+      OapiAttendanceShiftListRequest req = new OapiAttendanceShiftListRequest();
+      req.setOpUserId("ma******75");
+      req.setCursor(0L);
+
+      OapiAttendanceShiftListResponse rsp = client.execute(req, "access_token");
+      System.out.println(rsp.getBody());
+  }
+  ```
+
+Deskripsi API: Panggil Server API [Buat grup absensi](/id/open/development/attendance-group-write) untuk mendapatkan `id` grup absensi.
+
+```java
+public void createGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/add");
+    OapiAttendanceGroupAddRequest req = new OapiAttendanceGroupAddRequest();
+    req.setOpUserId("ma*****75");
+
+    // Informasi grup absensi
+    OapiAttendanceGroupAddRequest.TopGroupVo topGroupVo = new OapiAttendanceGroupAddRequest.TopGroupVo();
+    topGroupVo.setOwner("ma*****75");
+    topGroupVo.setEnableEmpSelectClass(true);
+    topGroupVo.setCorpId("ding***********288");
+    topGroupVo.setSkipHolidays(true);
+    topGroupVo.setEnableOutsideCameraCheck(true);
+
+    // Konfigurasi lokasi absen
+    List<OapiAttendanceGroupAddRequest.TopPositionVo> positionVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopPositionVo topPositionVo = new OapiAttendanceGroupAddRequest.TopPositionVo();
+    topPositionVo.setAddress("Jl. Jing'er No. 21, Kawasan Industri Bioteknologi");
+    topPositionVo.setCorpId("ding*******288");
+    topPositionVo.setLatitude("36.687495");
+    topPositionVo.setAccuracy("0");
+    topPositionVo.setTitle("Museum Sejarah Alam Dataran Tinggi Qinghai-Tibet");
+    topPositionVo.setLongitude("101.750329");
+    positionVos.add(topPositionVo);
+    topGroupVo.setPositions(positionVos);
+
+    topGroupVo.setModifyMember(true);
+    topGroupVo.setType("FIXED");
+    topGroupVo.setEnableFaceCheck(false);
+    topGroupVo.setCheckNeedHealthyCode(true);
+    topGroupVo.setEnableCameraCheck(false);
+
+    // Konfigurasi shift
+    List<OapiAttendanceGroupAddRequest.TopShiftVo> topShiftVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopShiftVo topShiftVo = new OapiAttendanceGroupAddRequest.TopShiftVo();
+    topShiftVo.setId(1006170802L);
+    topShiftVos.add(topShiftVo);
+    topGroupVo.setShiftVoList(topShiftVos);
+
+    topGroupVo.setEnableOutsideCheck(false);
+
+    // Konfigurasi anggota
+    List<OapiAttendanceGroupAddRequest.TopMemberVo> memberVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopMemberVo topMemberVo = new OapiAttendanceGroupAddRequest.TopMemberVo();
+    topMemberVo.setRole("Attendance");
+    topMemberVo.setCorpId("ding********288");
+    topMemberVo.setType("StaffMember");
+    topMemberVo.setUserId("014***********041");
+    memberVos.add(topMemberVo);
+    topGroupVo.setMembers(memberVos);
+
+    topGroupVo.setName("Grup Absensi Baru");
+    topGroupVo.setEnableNextDay(false);
+    topGroupVo.setManagerList(Arrays.asList("08*******272", "ma*******75"));
+    topGroupVo.setWorkdayClassList(Arrays.asList(0L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 0L));
+    topGroupVo.setDefaultClassId(1006170802L);
+    topGroupVo.setOffset(300L);
+
+    // Konfigurasi izin peran pengelola
+    OapiAttendanceGroupAddRequest.TopGroupManageRolePermissionVo groupManageRolePermissionVo = new OapiAttendanceGroupAddRequest.TopGroupManageRolePermissionVo();
+    groupManageRolePermissionVo.setSchedule("w");
+    groupManageRolePermissionVo.setGroupMember("w");
+    groupManageRolePermissionVo.setGroupType("r");
+    groupManageRolePermissionVo.setCheckTime("w");
+    groupManageRolePermissionVo.setCheckPositionType("r");
+    groupManageRolePermissionVo.setOverTimeRule("r");
+    groupManageRolePermissionVo.setCameraCheck("w");
+    groupManageRolePermissionVo.setOutSideCheck("w");
+    topGroupVo.setResourcePermissionMap(groupManageRolePermissionVo);
+
+    // Konfigurasi absen via Wi-Fi (dinonaktifkan sebagai komentar)
+    // List<OapiAttendanceGroupAddRequest.TopWifiVo> topWifiVos = new ArrayList<>();
+    // OapiAttendanceGroupAddRequest.TopWifiVo topWifiVo = new OapiAttendanceGroupAddRequest.TopWifiVo();
+    // topWifiVos.add(topWifiVo);
+    // topWifiVo.setMacAddr("C0:E0:D0:E0:C0:0F");
+    // topWifiVo.setSsid("OFFICE-WiFi");
+    // topWifiVo.setCorpId("dinge8xxxx");
+    // topGroupVo.setWifis(topWifiVos);
+
+    topGroupVo.setDisableCheckWithoutSchedule(true);
+    topGroupVo.setFreecheckDayStartMinOffset(240L);
+    topGroupVo.setDisableCheckWhenRest(true);
+
+    req.setTopGroup(topGroupVo);
+
+    OapiAttendanceGroupAddResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+#### Dapatkan informasi grup absensi
+
+- **Dapatkan informasi semua grup absensi di organisasi**
+
+  1. **Dapatkan ringkasan grup absensi secara massal**: Panggil Server API [Dapatkan ringkasan grup absensi secara massal](/id/open/development/batch-query-of-simple-information-of-the-attendance-group) untuk mendapatkan ringkasan semua grup absensi di organisasi.
+
+     ```java
+     public void groupMinimalismList() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/minimalism/list");
+
+         OapiAttendanceGroupMinimalismListRequest req = new OapiAttendanceGroupMinimalismListRequest();
+         req.setOpUserId("ma******75");
+         req.setCursor(0L);
+
+         OapiAttendanceGroupMinimalismListResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  2. **Dapatkan detail grup absensi secara massal**: Panggil Server API [Dapatkan detail grup absensi secara massal](/id/open/development/batch-obtain-attendance-group-details) untuk mendapatkan detail semua grup absensi di organisasi.
+
+     ```java
+     public void simpleGroups() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+
+         OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+         req.setOffset(0L);
+         req.setSize(10L);
+
+         OapiAttendanceGetsimplegroupsResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  3. **Cari ringkasan grup absensi**: Panggil Server API [Cari ringkasan grup absensi](/id/open/development/attendance-group-search) untuk menjalankan kueri fuzzy grup absensi berdasarkan nama.
+
+     ```java
+     public void groupSearch() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/search");
+
+         OapiAttendanceGroupSearchRequest req = new OapiAttendanceGroupSearchRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupName("Grup Absensi Baru");
+
+         OapiAttendanceGroupSearchResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+- **Dapatkan informasi satu grup absensi**
+
+  1. **Dapatkan detail satu grup absensi**: Panggil Server API [Dapatkan detail grup absensi](/id/open/development/query-a-single-attendance-group) dengan `id` grup absensi untuk mendapatkan detail satu grup absensi.
+
+     ```java
+     public void groupQuery() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/query");
+
+         OapiAttendanceGroupQueryRequest req = new OapiAttendanceGroupQueryRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupId(1010195506L);
+
+         OapiAttendanceGroupQueryResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  2. **Konversi groupId ke groupKey**: Panggil Server API [Konversi groupId ke groupKey](/id/open/development/groupid-to-groupkey) dengan `id` grup absensi untuk mendapatkan `groupKey` grup absensi.
+
+     ```java
+     public void groupsIdToKey() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/groups/idtokey");
+
+         OapiAttendanceGroupsIdtokeyRequest req = new OapiAttendanceGroupsIdtokeyRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupId(1010195506L);
+
+         OapiAttendanceGroupsIdtokeyResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  3. **Kueri informasi grup absensi berdasarkan groupKey**: Panggil Server API [Kueri informasi grup absensi berdasarkan groupKey](/id/open/development/queries-attendance-group-information-by-id) dengan `groupKey` grup absensi untuk mendapatkan informasi grup absensi.
+
+     ```java
+     public void groupInfo() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/get");
+
+         OapiAttendanceGroupGetRequest req = new OapiAttendanceGroupGetRequest();
+         req.setOpUserid("ma******75");
+         req.setGroupKey("19F************2B2");
+
+         OapiAttendanceGroupGetResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+
+#### Perbarui grup absensi
+
+Panggil Server API [Perbarui grup absensi](/id/open/development/attendance-group-update-interface) dengan `id` grup absensi untuk mengubah nama grup absensi, shift, dan informasi lainnya.
+
+```java
+public void updateGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/modify");
+
+    OapiAttendanceGroupModifyRequest req = new OapiAttendanceGroupModifyRequest();
+    req.setOpUserId("ma*****75");
+
+    // Informasi dasar grup absensi
+    OapiAttendanceGroupModifyRequest.TopGroupVo topGroupVo = new OapiAttendanceGroupModifyRequest.TopGroupVo();
+    topGroupVo.setId(1010195506L); // ID grup absensi
+    topGroupVo.setName("Grup Absensi Baru 1");
+    topGroupVo.setOwner("ma*****75");
+    topGroupVo.setEnableEmpSelectClass(false);
+    topGroupVo.setSkipHolidays(true);
+    topGroupVo.setEnableFaceCheck(true);
+    topGroupVo.setOpenCameraCheck(false);
+    topGroupVo.setOpenFaceCheck(false);
+    topGroupVo.setEnableOutsideCheck(false);
+    topGroupVo.setDisableCheckWithoutSchedule(false);
+    topGroupVo.setOffset(500L);
+    topGroupVo.setManagerList(Arrays.asList("0147******041", "0852*******72"));
+
+    // Konfigurasi lokasi absen
+    List<OapiAttendanceGroupModifyRequest.TopPositionVo> positionVos = new ArrayList<>();
+    OapiAttendanceGroupModifyRequest.TopPositionVo topPositionVo = new OapiAttendanceGroupModifyRequest.TopPositionVo();
+    topPositionVo.setAddress("Jl. Jing'er No. 21, Kawasan Industri Bioteknologi");
+    topPositionVo.setCorpId("din***********88");
+    topPositionVo.setLatitude("30.123");
+    topPositionVo.setLongitude("120.123");
+    topPositionVo.setAccuracy("0");
+    topPositionVo.setTitle("Museum Sejarah Alam Dataran Tinggi Qinghai-Tibet");
+    positionVos.add(topPositionVo);
+    topGroupVo.setPositions(positionVos);
+
+    // Konfigurasi shift
+    List<OapiAttendanceGroupModifyRequest.TopShiftVo> topShiftVos = new ArrayList<>();
+    OapiAttendanceGroupModifyRequest.TopShiftVo topShiftVo = new OapiAttendanceGroupModifyRequest.TopShiftVo();
+    topShiftVo.setId(1006170802L); // ID shift
+    topShiftVos.add(topShiftVo);
+    topGroupVo.setShiftVoList(topShiftVos);
+
+    // Daftar shift hari kerja (1006170802L: ID shift)
+    topGroupVo.setWorkdayClassList(Arrays.asList(0L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 0L));
+
+    req.setTopGroup(topGroupVo);
+
+    OapiAttendanceGroupModifyResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+#### Hapus grup absensi
+
+Panggil Server API [Hapus grup absensi](/id/open/development/delete-attendance-group) dengan `groupKey` grup absensi untuk menghapus grup absensi.
+
+### Catatan
+
+- Pastikan grup absensi tidak memiliki karyawan aktif. Panggil API Dapatkan detail grup absensi terlebih dahulu untuk memeriksanya.
+- Alihkan item To-Do, formulir persetujuan, dan item lain yang terkait dengan grup absensi ke grup absensi lain.
+- Cadangkan data riwayat grup absensi jika diperlukan.
+- Beri tahu departemen terkait (IT, HR, Administrasi, dan lainnya) untuk menyelesaikan pembersihan lanjutan.
+
+```java
+public void deleteGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/delete");
+
+    OapiAttendanceGroupDeleteRequest req = new OapiAttendanceGroupDeleteRequest();
+    req.setOpUserid("ma********75");
+    req.setGroupKey("19FB************22B2");
+
+    OapiAttendanceGroupDeleteResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+## FAQ
+
+- **Q1: Apa yang harus saya lakukan jika muncul error "Shift does not exist" saat membuat grup absensi?**
+
+  J: Grup absensi shift tetap memerlukan shift yang sudah ada. Panggil API [Buat shift](/id/open/development/create-modify-shifts) terlebih dahulu, atau panggil API [Dapatkan ringkasan shift](/id/open/development/enterprise-shift-query-in-batches) untuk mendapatkan ID shift yang ada. Setelah itu, buat grup absensi.
+- **Q2: Bagaimana cara mendapatkan informasi semua grup absensi secara massal?**
+
+  J: Ikuti dua langkah. Pertama, panggil [Dapatkan ringkasan grup absensi secara massal](/id/open/development/batch-query-of-simple-information-of-the-attendance-group) untuk mendapatkan informasi singkat (termasuk `id`) semua grup absensi. Kemudian, panggil [Dapatkan detail grup absensi secara massal](/id/open/development/batch-obtain-attendance-group-details) sesuai kebutuhan untuk mendapatkan detail lengkapnya.
+- **Q3: Apa perbedaan antara id dan groupKey grup absensi?**
+
+  J: `id` adalah identifier numerik grup absensi, sedangkan `groupKey` adalah identifier berupa string. Beberapa API, seperti Hapus grup absensi, memerlukan `groupKey`. Gunakan API [Konversi groupId ke groupKey](/id/open/development/groupid-to-groupkey) untuk mengonversi keduanya.
+- **Q4: Apakah saya perlu mengirim semua field saat memperbarui grup absensi?**
+
+  J: Tidak. Kirim hanya field yang ingin diubah beserta `id` grup absensi. Field yang tidak dikirim tetap mempertahankan nilai aslinya.

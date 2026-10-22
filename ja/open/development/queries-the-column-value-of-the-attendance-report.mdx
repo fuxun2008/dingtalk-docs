@@ -1,0 +1,159 @@
+---
+title: "勤怠レポートの列値を取得"
+description: "DingTalkスマート勤怠の API で勤怠レポートの列値を取得する方法を解説します。ユーザー ID・レポート列 ID・期間を指定して、日別の列データと列情報を取得する手順とコード例を紹介します。"
+---
+
+この API を呼び出して、DingTalkスマート勤怠のレポートから列値データを取得します。取得できるデータは、指定した期間内のレポート列のすべての値と、関連する列情報です。指定された ISV が利用できます。
+
+## API 呼び出し説明
+
+- 退職したユーザーの勤怠情報は、この API では取得できません。退職したユーザーの勤怠データは [OA 管理コンソール](https://attend.dingtalk.io/portal/index.html)で照会してください。
+- 「出勤予定日数」フィールドの値を取得する場合、この API は直近 15 日以内の値のみを返します。15 日より前の日付では、出勤予定日数の値は 0 になります。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/getcolumnval |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ appType-サードパーティ社内アプリ |
+| 権限 | permission-qyapi_base-組織 API の呼び出しに必要なベーシック権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 6d1bxxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| userid | String | はい | manager4220 | ユーザーのユーザー ID です。 |
+| column_id_list | String | はい | 129339038 | レポート列 ID です。[勤怠レポートの列定義を取得](/ja/open/development/queries-the-enterprise-attendance-report-column) API を呼び出して、id パラメータの値を取得します。複数の値はカンマで区切ります。最大長：20。 |
+| from_date | Date | はい | 2018-07-11 12:12:12 | 開始日時です。 |
+| to_date | Date | はい | 2018-07-11 12:12:12 | 終了日時です。開始日時と終了日時の間隔は 31 日以内にする必要があります。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/getcolumnval" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=4bfc0fxxxx3916c7' \
+-d 'column_id_list=1%2C2%2C3' \
+-d 'from_date=2018-07-11+12%3A12%3A12' \
+-d 'to_date=2018-07-11+12%3A12%3A12' \
+-d 'userid=zhangsan'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+req.setUserid("manager4220");
+req.setColumnIdList("129339038");
+req.setFromDate(StringUtils.parseDateTime("2020-09-07 12:12:12"));
+req.setToDate(StringUtils.parseDateTime("2020-09-09 12:12:12"));
+OapiAttendanceGetcolumnvalResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGetcolumnvalRequest("https://api.dingtalk.io/topapi/attendance/getcolumnval")
+
+req.userid="zhangsan"
+req.column_id_list="1,2,3"
+req.from_date="2018-07-11 12:12:12"
+req.to_date="2018-07-11 12:12:12"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGetcolumnvalRequest;
+$req->setUserid("zhangsan");
+$req->setColumnIdList("1,2,3");
+$req->setFromDate("2018-07-11 12:12:12");
+$req->setToDate("2018-07-11 12:12:12");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/getcolumnval");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+req.Userid = "zhangsan";
+req.ColumnIdList = "1,2,3";
+req.FromDate = DateTime.Parse("2018-07-11 12:12:12");
+req.ToDate = DateTime.Parse("2018-07-11 12:12:12");
+OapiAttendanceGetcolumnvalResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 45n2azecqj21 | リクエスト ID です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| result | ColumnValListForTopVo |  | 返される結果です。 |
+| column_vals | ColumnValForTopVo[] |  | 列情報と列値データです。 |
+| column_vals | ColumnDayAndVal[] |  | 列値データです。 |
+| date | Date | 2020-09-09 00:00:00 | 日付です。 |
+| value | String | 1.0 | 列値です。 |
+| column_vo | ColumnForTopVo |  | 列情報です。 |
+| id | Number | 129339038 | レポート列 ID です。 |
+| fixed_value | String | 0 | 固定値です。  **注意**  一部のレポート列には固定値があります。その値はこのフィールドでのみ返され、column_vals には含まれません。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "column_vals": [
+      {
+        "column_vals": [
+          {
+            "date": "2020-09-07 00:00:00",
+            "value": "1.0"
+          },
+          {
+            "date": "2020-09-08 00:00:00",
+            "value": "1.0"
+          },
+          {
+            "date": "2020-09-09 00:00:00",
+            "value": "1.0"
+          }
+        ],
+        "column_vo": {
+          "id": 129339038
+        }
+      }
+    ]
+  },
+  "request_id": "45n2azecqj21"
+}
+```
+
+### エラーコード
+
+この API の呼び出し時にエラーが発生した場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を検索してください。

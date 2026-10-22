@@ -1,0 +1,190 @@
+---
+title: "Batch Update Leave Balances"
+description: "Call this API to add to or subtract from employees' existing leave balances and batch update the total balance of a specified leave type without affecting the used quota."
+---
+
+Call this API to batch update total leave balance information.
+
+## API Call Description
+
+This API updates a leave balance by adding to or subtracting from the existing balance. It does not affect the leave quota that the employee has already used.
+
+The following example illustrates the process:
+
+1. Call the [Add leave rules](/open/development/add-holiday-rules) API to create a standard leave type. Then call the [Initialize leave balance](/open/development/initialize-holiday-balance) API to set the initial balance to 8 days.
+2. Call this API to update John's leave balance with **quota_num_per_day** set to 900. The resulting record adds 1 day to the existing balance.
+3. John submits a leave request Approval form of this leave type in DingTalk for 2 days. A record that deducts 2 days is generated.
+4. Call this API to update John's leave balance with **quota_num_per_day** set to 1000. The resulting record adds 1 day, and the final balance is 8 days.
+
+   In the **Admin Console**, leave management in the Attendance app includes **Leave rules**, **Employee leave balance**, **Leave approval settings**, and **Leave record export**. On the **Employee leave balance** page, **Export** or **Batch update** balances, and open an employee's record to view their leave usage history by leave type. Each usage entry shows the time, the change (for example, +5.0 days added automatically by the system according to the leave rule), the valid period, and the reason.
+
+Leave rules can be created in 2 ways: by calling the API, or through the official DingTalk Attendance app:
+
+| Leave Rule Creation Method | Leave Type Update Supported by This API |
+| --- | --- |
+| Leave types created by calling the [Add leave rules](/open/development/add-holiday-rules) API. | Supported |
+| Leave types created in the Attendance app in the organization's Admin Console.   - Created by default by the Attendance app. - Created in the Attendance app's admin settings. | Not supported |
+
+## Request
+
+| **Basic Information** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/vacation/quota/update |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app appType-Third-party enterprise app |
+| Required permissions | permission-qyapi_holiday_manage-DingTalk leave management permission |
+
+### Query Parameters
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| access_token | String | Yes | bE74xxxx | The App credential used to call this API.   - For an Internal app, obtain it by calling the [Get the access_token of an internal app](/open/development/obtain-orgapp-token) API. - For a Third-party enterprise app, obtain it by calling the API for getting the access_token of a third-party organization. |
+
+### Request Body
+
+| Name | Type | Required | Example | Description |
+| --- | --- | --- | --- | --- |
+| op_userid | String | Yes | user01 | The userId of an Admin in your organization who has App permissions for **OA Approval**. |
+| leave_quotas | LeaveQuotas[] | Yes |  | The leave balance records to update. |
+| userid | String | Yes | user1 | The employee's userId. |
+| end_time | Number | No | 1753851001000 | The end time of the quota validity period, as a timestamp in milliseconds. |
+| start_time | Number | No | 1653851001000 | The start time of the quota validity period, as a timestamp in milliseconds. |
+| leave_code | String | Yes | f84a2dxxxx | The custom leave type.  **Note**  This leave type must be created by calling the [Add leave rules](/open/development/add-holiday-rules) API. |
+| reason | String | No | Imported by admin | The reason for the action. |
+| quota_num_per_day | Number | No | 100 | The total quota, calculated in days.  **Note**  If the leave type is calculated in days, this value must not be empty. The unit is 1/100 of a day.  For example, 1000 = 10 days. |
+| quota_num_per_hour | Number | No | 100 | The total quota, calculated in hours.  **Note**  If the leave type is calculated in hours, this value must not be empty. The unit is 1/100 of an hour.  For example, 1000 = 10 hours. |
+| quota_cycle | String | No | 2019 | The cycle of the quota. The format must be "yyyy", for example, "2021". |
+
+### Request Example
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/vacation/quota/update" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9e10xxxx4ba535' \
+-d 'leave_quotas=null' \
+-d 'op_userid=zhangsan'
+```
+
+Java
+
+```text
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+OapiAttendanceVacationQuotaUpdateRequest req = new OapiAttendanceVacationQuotaUpdateRequest();
+List<LeaveQuotas> list = new ArrayList<LeaveQuotas>();
+LeaveQuotas leaveQuotas = new LeaveQuotas();
+list.add(leaveQuotas);
+leaveQuotas.setUserid("user1");
+leaveQuotas.setEndTime(1753851001000L);
+leaveQuotas.setStartTime(1653851001000L);
+leaveQuotas.setLeaveCode("f84a2dxxxx");
+leaveQuotas.setReason("Imported by admin");
+leaveQuotas.setQuotaNumPerDay(100L);
+leaveQuotas.setQuotaNumPerHour(100L);
+leaveQuotas.setQuotaCycle("2019");
+req.setLeaveQuotas(list.toString());
+req.setOpUserid("manager1");
+OapiAttendanceVacationQuotaUpdateResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceVacationQuotaUpdateRequest("https://api.dingtalk.io/topapi/attendance/vacation/quota/update")
+
+req.leave_quotas=""
+req.op_userid="zhangsan"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceVacationQuotaUpdateRequest;
+$leave_quotas = new LeaveQuotas;
+$leave_quotas->userid="zhangsan";
+$leave_quotas->end_time="1753851001000";
+$leave_quotas->start_time="1653851001000";
+$leave_quotas->leave_code="f84a2829-d245-4312-9ff2-0653e5b3abb2";
+$leave_quotas->reason="Imported by admin";
+$leave_quotas->quota_num_per_day="100";
+$leave_quotas->quota_num_per_hour="100";
+$leave_quotas->quota_cycle="2019";
+$req->setLeaveQuotas(array($leave_quotas));
+$req->setOpUserid("zhangsan");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+```
+
+C#
+
+```text
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+OapiAttendanceVacationQuotaUpdateRequest req = new OapiAttendanceVacationQuotaUpdateRequest();
+List<OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain> list2 = new List<OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain>();
+OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain obj3 = new OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain();
+list2.Add(obj3);
+obj3.Userid = "zhangsan";
+obj3.EndTime = 1753851001000L;
+obj3.StartTime = 1653851001000L;
+obj3.LeaveCode = "f84a2829-d245-4312-9ff2-0653e5b3abb2";
+obj3.Reason = "Imported by admin";
+obj3.QuotaNumPerDay = 100L;
+obj3.QuotaNumPerHour = 100L;
+obj3.QuotaCycle = "2019";
+req.LeaveQuotas_ = list2;
+req.OpUserid = "zhangsan";
+OapiAttendanceVacationQuotaUpdateResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Response
+
+### Response Body
+
+| Name | Type | Example | Description |
+| --- | --- | --- | --- |
+| result | Result[] |  | The returned result. |
+| reason | String | Leave type does not exist | The reason for the failure. |
+| quota | Quota |  | The failed record. |
+| leave_code | String | f84a2dxxxx | The unique identifier of the leave type. |
+| userid | String | user1 | The employee's userId. |
+| quota_cycle | String | 2019 | The cycle of the quota. |
+| errcode | Number | 0 | The return code. |
+| errmsg | String | ok | The description of the return code. |
+| success | Boolean | true | Indicates whether the request succeeded.   - **true**: Yes - **false**: No |
+| request_id | String | 6fnd2l2tnodd | The request ID. |
+
+### Response Body Example
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "quota": {
+        "leave_code": "f84a2dxxxx",
+        "quota_cycle": "2019",
+        "userid": "user1"
+      },
+      "reason": "Leave type does not exist"
+    }
+  ],
+  "success": true,
+  "request_id": "6fnd2l2tnodd"
+}
+```
+
+### Error Codes
+
+If a call to this API returns an error, find a solution based on the error message in the [Global error codes](/open/development/server-api-error-codes-1) Document.
