@@ -35,7 +35,6 @@ LABELS = {
     "考勤统计": ("Attendance statistics", "考勤统计", "勤怠統計", "Statistik kehadiran", "Statistik kehadiran"),
     "假勤审批": ("Leave and attendance approvals", "假勤审批", "休暇・勤怠承認", "Persetujuan cuti dan absensi", "Kelulusan cuti dan kehadiran"),
     "假期管理": ("Leave management", "假期管理", "休暇管理", "Manajemen cuti", "Pengurusan cuti"),
-    "审批页面托管集成模式": ("Hosted approval page integration", "审批页面托管集成模式", "承認ページホスト型連携", "Integrasi halaman persetujuan terkelola", "Integrasi halaman kelulusan terurus"),
     "官方 OA 审批": ("Official OA Approval", "官方 OA 审批", "公式 OA 承認", "Persetujuan OA resmi", "Kelulusan OA rasmi"),
     "自有 OA 审批": ("Self-built OA Approval", "自有 OA 审批", "自社 OA 承認", "Persetujuan OA mandiri", "Kelulusan OA sendiri"),
     "审批表单": ("Approval forms", "审批表单", "承認フォーム", "Formulir persetujuan", "Borang kelulusan"),
@@ -148,14 +147,6 @@ OA_APPROVAL = ("OA 审批", "stamp", [
     ("使用教程", [
         "use-three-party-process-and-page-docking",
         "use-the-dingtalk-oa-approval-process-and-page-interface",
-        "use-the-exclusive-openapi-capability-to-dingtalk-oa-approval-through",
-        "user-defined-approval-business-group-supports-custom-business-classification-in-the",
-        "custom-quick-approval-supports-quick-approval-of-pending-tasks-from",
-        "approval-process-hosting-integration-mode-use-the-dingtalk-official-oa",
-        ("审批页面托管集成模式", [
-            "use-the-three-party-process-to-interface-with-the-dingtalk-oa",
-            "detailed-explanation-of-hosting-interface-agreement-in-approval-operation-area",
-        ]),
         "new-version-of-initiate-and-cancel-approval-flow",
         "comment-and-revoke-approval-flow",
         "approve-or-reject-the-new-version",
