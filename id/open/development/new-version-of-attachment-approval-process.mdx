@@ -1,0 +1,588 @@
+---
+title: "Alur kerja lampiran persetujuan"
+description: "Panggil API Persetujuan OA DingTalk untuk mempratinjau dan mengunduh lampiran persetujuan dengan aman, dilindungi isolasi izin ruang Drive persetujuan."
+---
+
+# Integrasi Persetujuan OA: Unduh dan pratinjau lampiran persetujuan
+
+## Ringkasan
+
+### Latar belakang
+
+Proses persetujuan OA di organisasi sering kali melibatkan lampiran seperti kontrak, faktur, dan sertifikat kualifikasi. Penyetuju perlu mempratinjau atau mengunduh lampiran tersebut langsung di DingTalk untuk meninjaunya. API lampiran Persetujuan OA mendukung pratinjau online, unduhan aman, dan manajemen versi lampiran persetujuan di DingTalk. Penyetuju tidak perlu lagi beralih ke sistem sumber untuk melihat lampiran. Hasilnya, efisiensi persetujuan meningkat dan pengalaman pengguna tetap konsisten.
+
+Organisasi umumnya menghadapi kendala berikut:
+
+- **Alur panjang untuk melihat lampiran:** Halaman detail persetujuan hanya menampilkan nama dan ukuran lampiran. Penyetuju harus beralih ke sistem bisnis untuk mempratinjau isinya. Setiap persetujuan memakan sekitar 2 menit tambahan, sehingga totalnya lebih dari 30 menit per hari.
+- **Tidak ada pratinjau di perangkat seluler:** Sebagian besar sistem bisnis tidak mendukung pratinjau lampiran di perangkat seluler. Penyetuju yang sedang bepergian atau dalam perjalanan tidak dapat melihat lampiran penting, seperti klausul kontrak atau detail faktur, di ponsel mereka. Akibatnya, keputusan persetujuan tertunda.
+- **Unduhan lampiran tidak terkendali:** Siapa pun dapat mengunduh dan meneruskan lampiran sensitif seperti slip gaji dan kontrak bisnis. Tanpa watermark, pembatasan penyalinan, atau batas masa berlaku, risiko kebocoran data sangat nyata.
+- **Versi lampiran sulit dibedakan:** Jika formulir persetujuan berisi beberapa versi lampiran, DingTalk tidak dapat mengenali nomor versi atau stempel waktunya. Penyetuju bisa saja meninjau file yang sudah usang dan mengambil keputusan yang keliru.
+
+### Manfaat utama
+
+- **Otomatisasi lampiran secara menyeluruh:** API menjalankan seluruh proses, mulai dari mendapatkan ruang Drive dan mengunggah file hingga membuat instans persetujuan serta mengotorisasi unduhan dan pratinjau lampiran. Tidak ada langkah manual.
+- **Pengalaman persetujuan yang terpadu:** Penyetuju melihat detail lampiran dan mengambil tindakan langsung di DingTalk, tanpa beralih ke sistem eksternal atau mengunduh file ke perangkat lokal.
+- **Data aman dan terkendali:** Ruang Drive persetujuan menerapkan isolasi izin, sehingga lampiran hanya dapat diakses dalam cakupan yang diotorisasi. Otorisasi unduhan sementara dan tautan pratinjau melindungi file sensitif.
+
+### Kasus penggunaan
+
+Solusi ini berlaku jika Anda mengajukan persetujuan beserta lampiran dari sistem bisnis Anda sendiri dan perlu mengunduh atau mempratinjau lampiran tersebut selama proses persetujuan. Kasus penggunaan umum meliputi:
+
+- **Persetujuan kontrak:** Lampirkan pindaian kontrak, jaminan pelaksanaan, dan dokumen hukum lainnya.
+- **Persetujuan pengadaan:** Lampirkan penawaran harga, sertifikat kualifikasi pemasok, riwayat pemeliharaan, dan file lainnya.
+- **Persetujuan penggantian biaya:** Lampirkan gambar faktur, tabel rincian biaya, dan bukti keuangan lainnya.
+- **Serah terima proyek:** Lampirkan laporan serah terima, foto lokasi, laporan inspeksi, dan materi lainnya.
+
+## Skenario bisnis umum
+
+### Skenario 1: Persetujuan kontrak konstruksi (industri konstruksi)
+
+#### Kendala
+
+Sebuah grup konstruksi besar menggunakan sistem manajemen proyek internal untuk mengelola persetujuan kontrak konstruksi. Saat mengajukan kontrak untuk disetujui, manajer proyek harus melampirkan beberapa file, seperti pindaian kontrak, izin usaha pihak lawan, dan jaminan pelaksanaan. Proses awal memiliki masalah berikut:
+
+- **Pengiriman lampiran tidak efisien:** Kontrak kertas harus dipindai lalu dikirim lewat email ke penyetuju di setiap tingkat. Proses ini rata-rata memakan 2–3 hari kerja, sehingga kontrak mendesak tidak dapat diproses tepat waktu.
+- **Manajemen versi tidak teratur:** Versi kontrak dari beberapa putaran revisi tersebar di kotak surat pengguna yang berbeda. Penyetuju kesulitan memastikan versi terbaru dan berisiko menandatangani versi yang salah.
+- **Tinjauan kepatuhan sulit:** Penyetuju dari bagian hukum dan keuangan tidak dapat melihat lampiran langsung di antarmuka persetujuan. Mereka harus mencetak materi dan memeriksanya satu per satu. Cara ini lambat dan rawan melewatkan klausul penting.
+- **Tidak ada jejak audit:** Lampiran yang dikirim secara manual tidak memiliki log tindakan. Auditor tidak dapat merekonstruksi pergerakan file selama proses persetujuan atau menentukan pihak yang bertanggung jawab.
+
+#### Nilai yang dihasilkan
+
+- **Proses otomatis**
+
+  Alur persetujuan kontrak yang sepenuhnya otomatis:
+
+  1. Sistem manajemen proyek mengajukan persetujuan kontrak (mengunggah file seperti gambar bangunan dan file kontrak).
+  2. Lapisan integrasi API menangani pemanggilan antarmuka, mencakup **Autentikasi**, **Otorisasi**, **Perutean**, dan **Pencatatan log**.
+  3. Formulir persetujuan ditampilkan di dalam DingTalk, berisi lampiran kontrak, detail kualifikasi pihak lawan, dan riwayat penandatanganan.
+  4. Penyetuju meninjau dan menindaklanjuti permintaan (**Tolak** / **Setujui**) dari klien seluler DingTalk, dengan komentar persetujuan opsional.
+  5. Hasilnya ditulis kembali ke sistem manajemen proyek, dengan sinkronisasi data dua arah.
+
+  Alur integrasi otomatis: **Unggah dari sistem manajemen proyek** > **Pusat Persetujuan DingTalk** > **Penyetuju meninjau di dalam aplikasi** > **Hasil ditulis kembali secara real time**.
+- **Keunggulan utama**
+
+  - **Persetujuan sekali klik dengan detail lampiran:** Penyetuju melihat detail kontrak dan mengambil tindakan langsung di DingTalk, tanpa berpindah sistem.
+  - **Visibilitas proses persetujuan secara real time:** DingTalk menampilkan data kontrak lengkap, termasuk daftar lampiran, kualifikasi pihak lawan, dan riwayat penandatanganan. Progres persetujuan terlihat jelas dalam sekejap, serta mendukung komentar dan pengingat.
+  - **Sinkronisasi data menyeluruh:** Hasil persetujuan ditulis kembali ke sistem manajemen proyek secara real time. Jika permintaan ditolak, pemohon otomatis diberi tahu untuk melengkapi materi. Data tetap konsisten dan dapat dilacak di kedua sisi, dan siklus persetujuan kontrak menjadi lebih singkat lebih dari 60%.
+
+### Skenario 2: Persetujuan penggantian dana penelitian universitas (industri pendidikan)
+
+#### Kendala
+
+Sebuah universitas terkemuka menggunakan sistem manajemen penelitian untuk memproses penggantian dana penelitian dosen. Saat mengajukan permintaan penggantian, peneliti utama harus melampirkan materi pendukung seperti pindaian faktur, formulir persetujuan perjalanan dinas, dan surat undangan rapat. Proses awal memiliki masalah berikut:
+
+- **Verifikasi kuitansi yang melelahkan:** Staf keuangan harus berulang kali berpindah antara sistem penelitian dan email untuk memverifikasi keaslian dan nominal faktur. Peninjauan satu penggantian biaya memakan lebih dari 40 menit.
+- **Kelengkapan materi sulit dipastikan:** Persyaratan lampiran sangat beragam antarproyek penelitian. Penyetuju tidak dapat dengan cepat memeriksa secara online apakah semua materi sudah lengkap, dan tingkat pengembalian akibat dokumen yang kurang mencapai 35%.
+- **Kolaborasi antarkampus tertunda:** Bagian keuangan kampus utama dan sekretaris penelitian kampus cabang bergantung pada pengiriman dokumen kertas secara offline. Penggantian biaya di kampus yang jauh selesai 5–7 hari lebih lambat dibandingkan kampus utama.
+- **Pemantauan anggaran lemah:** Persetujuan penggantian biaya tidak terhubung dengan batas anggaran proyek. Kelebihan pengeluaran baru diketahui setelah terjadi, tanpa mekanisme untuk mencegahnya sejak awal.
+
+#### Nilai yang dihasilkan
+
+- **Proses otomatis**
+
+  Alur penggantian biaya otomatis berjalan dalam lima tahap:
+  1. **Bagian keuangan mengajukan penggantian biaya** — pengambilan kuitansi dan input biaya.
+  2. **Validasi sistem otomatis** (melalui **API**) — verifikasi anggaran dan tinjauan materi.
+  3. **Persetujuan di DingTalk** — persetujuan bertingkat dengan tampilan formulir.
+  4. **Tindakan penyetuju** — persetujuan lewat perangkat seluler dan pemrosesan cepat.
+  5. **Hasil disinkronkan ke bagian keuangan** — penulisan kembali status dan sinkronisasi data.
+
+  Dibandingkan alur manual tradisional (**formulir manual** > **email** > **rekonsiliasi manual** > **pengarsipan kertas**), alur otomatis menyediakan titik masuk terpadu, sinkronisasi real time, dan pengiriman pesan di dalam aplikasi.
+- **Keunggulan utama**
+
+  - **Kuitansi terhubung dengan anggaran secara online:** Penyetuju melihat gambar faktur, sisa anggaran proyek, dan riwayat penggantian biaya langsung di DingTalk, serta menyelesaikan pemeriksaan kepatuhan di satu tempat.
+  - **Petunjuk cerdas untuk kelengkapan materi:** Sistem otomatis mencantumkan lampiran yang wajib berdasarkan jenis proyek dan menyoroti item yang belum ada, sehingga mengurangi pengembalian yang tidak perlu.
+  - **Persetujuan antarkampus tanpa jeda:** Semua lampiran disimpan secara terpusat di ruang Drive persetujuan. Staf kampus cabang menyetujui secara online tanpa menunggu dokumen kertas, dan waktu penyelesaian penggantian biaya meningkat lebih dari 70%.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Arsitektur teknis solusi ini mencakup komponen inti berikut:
+
+- **Lapisan autentikasi:** Mengelola Kredensial aplikasi dan mendapatkan access token untuk memverifikasi identitas setiap pemanggilan API.
+- **Lapisan manajemen Drive:** Mendapatkan ruang Drive persetujuan dan mengunggah file, sekaligus menyediakan penyimpanan aman dan isolasi izin untuk lampiran.
+- **Lapisan eksekusi instans:** Mengajukan, mengueri, dan melacak instans persetujuan untuk menjalankan proses persetujuan.
+- **Lapisan otorisasi lampiran:** Mengotorisasi unduhan dan pratinjau lampiran persetujuan agar file sensitif hanya digunakan dalam cakupan yang diotorisasi.
+
+### Prasyarat
+
+- **Persiapan Aplikasi:** Selesaikan proses [Pembuatan dan konfigurasi Aplikasi](/id/open/dingstart/create-application), lalu dapatkan client ID dan Client Secret.
+- **Persyaratan izin:** Miliki izin Admin Organisasi atau Sub Admin DingTalk, lalu ajukan izin API berikut:
+
+  - `Workflow.Form.Write` (izin tulis templat alur kerja)
+  - `Workflow.Instance.Write` (izin tulis instans persetujuan)
+  - `Workflow.Instance.Read` (izin baca instans persetujuan)
+- **Lingkungan pengembangan:** Instal lingkungan pengembangan Java (JDK 1.6 atau yang lebih baru) dan alat build Maven.
+- **Persiapan SDK:** Unduh SDK Sisi server DingTalk yang mendukung Java, Python, Go, dan bahasa lainnya.
+
+### Implementasi kode
+
+Langkah 1: Buka halaman detail Aplikasi, lalu dapatkan client ID dan Client Secret.
+
+Langkah 2: Ajukan izin API. Ajukan izin "Persetujuan OA" yang diperlukan.
+
+Langkah 3: Dapatkan Kredensial akses Aplikasi. Lihat [Mendapatkan Access Token Aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app). Access token mengautentikasi identitas pemanggil saat memanggil API.
+
+Langkah 4: Panggil API Persetujuan OA dan JSAPI Sisi klien:
+
+1. Panggil Server API [Mendapatkan informasi ruang Drive persetujuan](/id/open/development/obtains-the-information-about-approval-nail-disk) untuk mendapatkan `spaceId` ruang Drive persetujuan.
+2. Panggil JSAPI Sisi klien untuk mengunggah lampiran ke Drive atau memilih file dari Drive guna mendapatkan informasi dasar file.
+3. Dapatkan kode templat unik `processCode`.
+
+   - Buka templat persetujuan di [Admin Console DingTalk](https://oa.dingtalk.io/index.htm#/microApp/microAppListNew) pada bagian Persetujuan OA untuk mendapatkannya.
+   - Panggil Server API [Membuat atau memperbarui templat formulir persetujuan](/id/open/development/create-an-approval-form-template) untuk membuat templat persetujuan dan mendapatkan `processCode`.
+4. Panggil Server API [Membuat instans persetujuan](/id/open/development/create-an-approval-instance) untuk mengajukan persetujuan dan mendapatkan `instanceId` instans persetujuan.
+5. Dengan `instanceId` instans persetujuan, panggil Server API [Mendapatkan detail satu instans persetujuan](/id/open/development/obtains-the-details-of-a-single-approval-instance-pop) untuk mendapatkan `fileId` dari detail instans persetujuan.
+6. Lakukan tindakan pada lampiran persetujuan:
+
+   1. Unduh lampiran persetujuan
+
+      1. Panggil Server API [Mengotorisasi unduhan file Drive persetujuan](/id/open/development/download-the-approval-nail-file) untuk mengotorisasi akses ke file Drive persetujuan.
+      2. Panggil Server API [Mengunduh lampiran persetujuan](/id/open/development/download-an-approval-attachment) untuk mendapatkan tautan file `downloadUri` dan mengunduh file. Saat ini, Aplikasi pihak ketiga untuk perusahaan belum dapat memanggil API ini.
+   2. Pratinjau lampiran persetujuan:
+
+      1. Panggil Server API [Mengotorisasi pratinjau lampiran persetujuan](/id/open/development/official-authorized-preview-approval-attachment) untuk mengaktifkan pratinjau file Drive.
+      2. Panggil JSAPI Sisi klien untuk pratinjau file Drive guna mempratinjau file.
+
+## Langkah implementasi
+
+### **Langkah 1: Dapatkan Kredensial aplikasi**
+
+1. Masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih Aplikasi target untuk membuka halaman detail Aplikasi.
+3. Klik **Informasi Dasar** > **Kredensial dan Informasi Dasar**.
+4. Catat `Client ID` dan `Client Secret` Aplikasi.
+
+### Catatan
+
+   Jaga kerahasiaan `Client Secret` Anda dan jangan pernah membagikannya kepada pihak ketiga. Simpan di variabel lingkungan atau sistem manajemen rahasia, bukan di-hardcode.
+
+### Langkah 2: Tambahkan izin API
+
+1. Di halaman detail Aplikasi, klik **Kelola izin**.
+2. Masukkan identitas izin berikut di kotak pencarian izin, lalu ajukan:
+
+   - `Workflow.Form.Write` (izin tulis templat alur kerja): Digunakan untuk membuat dan memperbarui templat formulir persetujuan
+   - `Workflow.Instance.Write` (izin tulis instans persetujuan): Digunakan untuk mengajukan dan menjalankan instans persetujuan
+   - `Workflow.Instance.Read` (izin baca instans persetujuan): Digunakan untuk mengueri detail instans persetujuan
+
+<Note>
+Skenario bisnis yang berbeda dapat memerlukan kombinasi izin yang berbeda. Ajukan izin sesuai kebutuhan Anda.
+</Note>
+
+### Langkah 3: Dapatkan Kredensial akses (Access Token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk mendapatkan Kredensial akses Aplikasi. Lihat [Mendapatkan Access Token Aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**Praktik terbaik**:
+
+- **Strategi caching:** `accessToken` berlaku selama 2 jam. Simpan di cache memori atau Redis, lalu perbarui secara proaktif 5 menit sebelumnya masa berlakunya habis.
+- **Kontrol konkurensi:** Cegah beberapa thread memperbarui token secara bersamaan yang dapat memicu konflik. Gunakan distributed lock.
+- **Coba ulang saat error:** Coba ulang secara otomatis saat jaringan tidak stabil, maksimal 3 kali, dengan interval yang semakin panjang (1s → 2s → 4s).
+
+### Langkah 4: Panggil API inti
+
+1. **Dapatkan informasi ruang Drive persetujuan:** Panggil Server API [Mendapatkan informasi ruang Drive persetujuan](/id/open/development/obtains-the-information-about-approval-nail-disk) untuk mendapatkan `spaceId` ruang Drive persetujuan.
+
+   ```java
+   public void ProcessSpaceInfo() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders getAttachmentSpaceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders();
+           getAttachmentSpaceHeaders.xAcsDingtalkAccessToken ="accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest getAttachmentSpaceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest()
+                   .setUserId("manager7675")
+                   .setAgentId(11******75L);
+           try {
+               GetAttachmentSpaceResponse attachmentSpaceWithOptions = client.getAttachmentSpaceWithOptions(getAttachmentSpaceRequest, getAttachmentSpaceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(attachmentSpaceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `userId`: ID pengguna pengaju.
+   - `agentId`: Agent ID Aplikasi.
+
+### Kolom respons
+
+   - `spaceId`: ID ruang Drive persetujuan.
+2. **Unggah lampiran ke Drive:** Panggil JSAPI Sisi klien untuk mengunggah lampiran ke Drive atau memilih file dari Drive guna mendapatkan informasi dasar file. Contoh ini menggunakan JSAPI Explorer.
+
+### Penting
+
+   Sebelum memanggil metode ini, panggil [Mendapatkan informasi ruang Drive persetujuan](/id/open/development/obtains-the-information-about-approval-nail-disk) untuk menyelesaikan otorisasi.
+3. **Dapatkan kode templat persetujuan** `processCode`: Gunakan salah satu metode berikut untuk mendapatkan kode templat unik `processCode`:
+
+   - **Metode 1:** Buka templat persetujuan di [Admin Console DingTalk](https://aflow.dingtalk.io/dingtalk/web/query/dashboard?dinghash=aflowSetting#/aflowSetting) pada bagian Persetujuan OA untuk mendapatkannya. Untuk detailnya, lihat penjelasan [processCode](/id/open/development/workflow-overview).
+   - **Metode 2:** Panggil Server API [Membuat atau memperbarui templat formulir persetujuan](/id/open/development/create-an-approval-form-template) untuk membuat templat persetujuan dan mendapatkan `processCode`.
+
+     ```java
+      public void createProcessTemplate() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+             FormCreateHeaders formCreateHeaders = new FormCreateHeaders();
+             formCreateHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+             // 1. Komponen input satu baris
+             FormComponentProps formComponentProps = new FormComponentProps()
+                     .setComponentId("DDAttachment-sys1001")
+                     .setLabel("Lampiran");
+             FormComponent formComponent = new FormComponent()
+                     .setComponentType("DDAttachment")
+                     .setProps(formComponentProps);
+
+             FormCreateRequest formCreateRequest = new FormCreateRequest()
+                     .setName("Formulir Lampiran Persetujuan")
+                     .setDescription("Uji komponen lampiran persetujuan")
+                     // Jika processCode diisi, templat akan diperbarui; jika tidak, templat baru dibuat. Contoh ini membuat templat baru
+                     //.setProcessCode("PROC-42928B7C-****-****-****-B52B4E1702FC")
+                     .setFormComponents(java.util.Arrays.asList(
+                             formComponent
+                     ));
+             try {
+                 FormCreateResponse formCreateResponse = client.formCreateWithOptions(formCreateRequest, formCreateHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(formCreateResponse.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err berisi atribut code dan message untuk membantu menemukan masalah
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err berisi atribut code dan message untuk membantu menemukan masalah
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+### Parameter permintaan
+
+     - `name`: Nama formulir persetujuan.
+     - `formComponents`: Daftar komponen formulir, termasuk jenis dan atribut komponen lampiran.
+
+### Kolom respons
+
+     - `processCode`: Kode unik templat persetujuan.
+4. **Buat instans persetujuan:** Panggil Server API [Membuat instans persetujuan](/id/open/development/create-an-approval-instance) untuk mengajukan persetujuan dan mendapatkan `instanceId` instans persetujuan.
+
+   ```java
+   public void ProcessInstances() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           StartProcessInstanceHeaders startProcessInstanceHeaders = new StartProcessInstanceHeaders();
+           startProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. Lampiran
+           JSONObject json  = new JSONObject();
+           json.put("spaceId","479****886");
+           json.put("fileName","IMG_2895(1).PNG");
+           json.put("fileSize","2****4");
+           json.put("fileType","png");
+           json.put("fileId","68********11");
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Lampiran")
+                   .setValue(JSON.toJSONString(Arrays.asList(json)));
+
+           // Tetapkan penyetuju
+           // Persetujuan bersama (semua penyetuju harus menyetujui)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("AND")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******877041", "085******4272"
+                   ));
+           // Persetujuan salah satu (cukup satu penyetuju)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers1 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("OR")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******877041", "085******4272"
+                   ));
+           StartProcessInstanceRequest startProcessInstanceRequest = new StartProcessInstanceRequest()
+                   .setOriginatorUserId("userId pengaju persetujuan")
+                   .setProcessCode("PROC-42928B7C-****-****-****-B52B4E1702FC")
+                   .setDeptId(1L)
+                   .setMicroappAgentId(11******5L)
+                   .setApprovers(java.util.Arrays.asList(
+                           approvers0, approvers1
+                   ))
+                   .setCcList(java.util.Arrays.asList(
+                           "userId penerima CC"
+                   ))
+                   .setCcPosition("FINISH")
+                   .setFormComponentValues(java.util.Arrays.asList(
+                           formComponentValues
+                   ));
+           try {
+               StartProcessInstanceResponse startProcessInstanceResponse = client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `originatorUserId`: ID pengguna pengaju persetujuan.
+   - `processCode`: Kode templat persetujuan.
+   - `formComponentValues`: Nilai komponen formulir, termasuk informasi lampiran (spaceId, fileName, fileSize, fileType, fileId).
+   - `approvers`: Daftar penyetuju. Mendukung persetujuan bersama (AND) dan persetujuan salah satu (OR).
+
+### Kolom respons
+
+   - `instanceId`: ID instans persetujuan.
+5. **Dapatkan detail instans persetujuan:** Dengan `instanceId` instans persetujuan, panggil Server API [Mendapatkan detail satu instans persetujuan](/id/open/development/obtains-the-details-of-a-single-approval-instance-pop) untuk mendapatkan `fileId` dari detail instans persetujuan.
+
+   ```java
+    public void processInstancesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders getProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders();
+           getProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest getProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest()
+                   .setProcessInstanceId("Ay9***************199");
+           try {
+               GetProcessInstanceResponse processInstanceWithOptions = client.getProcessInstanceWithOptions(getProcessInstanceRequest, getProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processInstanceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - **processInstanceId**: ID instans persetujuan.
+
+### Kolom respons
+
+   - **fileId**: ID file lampiran, digunakan untuk tindakan unduh atau pratinjau berikutnya.
+6. **Otorisasi unduhan lampiran persetujuan:** Panggil Server API [Mengotorisasi unduhan file Drive persetujuan](/id/open/development/download-the-approval-nail-file) untuk mengotorisasi akses ke file Drive persetujuan.
+
+   ```java
+    public void spaceAuthDownload() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthHeaders addApproveDentryAuthHeaders = new com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthHeaders();
+           addApproveDentryAuthHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest.AddApproveDentryAuthRequestFileInfos fileInfos0 = new com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest.AddApproveDentryAuthRequestFileInfos()
+                   .setFileId("49*****61")
+                   .setSpaceId(47*****86L);
+           com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest addApproveDentryAuthRequest = new com.aliyun.dingtalkworkflow_1_0.models.AddApproveDentryAuthRequest()
+                   .setUserId("manager7675")
+                   .setFileInfos(java.util.Arrays.asList(
+                           fileInfos0
+                   ));
+           try {
+               AddApproveDentryAuthResponse addApproveDentryAuthResponse = client.addApproveDentryAuthWithOptions(addApproveDentryAuthRequest, addApproveDentryAuthHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(addApproveDentryAuthResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `userId`: ID pengguna yang melakukan tindakan.
+   - `fileInfos`: Daftar informasi file, termasuk fileId dan spaceId.
+
+### Kolom respons
+
+   - `result`: Penanda hasil otorisasi.
+7. **Unduh lampiran persetujuan:** Panggil Server API [Mengunduh lampiran persetujuan](/id/open/development/download-an-approval-attachment) untuk mendapatkan tautan file `downloadUri` dan mengunduh file. Saat ini, Aplikasi pihak ketiga untuk perusahaan belum dapat memanggil API ini.
+
+   ```java
+   public void processFileDownload() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileHeaders grantProcessInstanceForDownloadFileHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileHeaders();
+           grantProcessInstanceForDownloadFileHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileRequest grantProcessInstanceForDownloadFileRequest = new com.aliyun.dingtalkworkflow_1_0.models.GrantProcessInstanceForDownloadFileRequest()
+                   .setProcessInstanceId("Ay9***************199")
+                   .setFileId("68********11");
+           try {
+               GrantProcessInstanceForDownloadFileResponse grantProcessInstanceForDownloadFileResponse = client.grantProcessInstanceForDownloadFileWithOptions(grantProcessInstanceForDownloadFileRequest, grantProcessInstanceForDownloadFileHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(grantProcessInstanceForDownloadFileResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processInstanceId`: ID instans persetujuan.
+   - `fileId`: ID file lampiran.
+
+### Kolom respons
+
+   - `downloadUri`: Tautan unduhan file.
+8. **Otorisasi pratinjau lampiran persetujuan:** Panggil Server API [Mengotorisasi pratinjau lampiran persetujuan](/id/open/development/official-authorized-preview-approval-attachment) untuk mengaktifkan pratinjau file Drive.
+
+   ```java
+    public void authPreview() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthHeaders getSpaceWithDownloadAuthHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthHeaders();
+           getSpaceWithDownloadAuthHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthRequest getSpaceWithDownloadAuthRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetSpaceWithDownloadAuthRequest()
+                   .setUserId("ma*****75")
+                   .setAgentId(118****5L)
+                   .setProcessInstanceId("yIYiVlR3R***********4433")
+                   .setFileId("495******61");
+           try {
+               GetSpaceWithDownloadAuthResponse spaceWithDownloadAuthWithOptions = client.getSpaceWithDownloadAuthWithOptions(getSpaceWithDownloadAuthRequest, getSpaceWithDownloadAuthHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(spaceWithDownloadAuthWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `userId`: ID pengguna yang melakukan tindakan.
+   - `agentId`: Agent ID Aplikasi.
+   - `processInstanceId`: ID instans persetujuan.
+   - `fileId`: ID file lampiran.
+
+### Kolom respons
+
+   - `spaceId`: ID ruang Drive.
+9. Panggil JSAPI Sisi klien untuk pratinjau file Drive guna mempratinjau file. Lakukan debug API ini secara online di JSAPI Explorer.
+
+### Catatan
+
+   Sebelum setiap pratinjau lampiran persetujuan, panggil [Mengotorisasi pratinjau lampiran persetujuan](/id/open/development/official-authorized-preview-approval-attachment) untuk menyelesaikan otorisasi.
+
+### Daftar periksa implementasi
+
+- ✅ Kredensial aplikasi sudah didapatkan dan dikonfigurasi.
+- ✅ Izin API Workflow.Form.Write, Workflow.Instance.Write, dan Workflow.Instance.Read sudah diajukan.
+- ✅ Pemanggilan API access token berhasil.
+- ✅ spaceId ruang Drive persetujuan sudah didapatkan.
+- ✅ Pemanggilan JSAPI unggah lampiran berhasil dan mengembalikan fileId.
+- ✅ processCode templat persetujuan sudah didapatkan.
+- ✅ Pemanggilan API pembuatan instans persetujuan berhasil dan mengembalikan instanceId.
+- ✅ API detail instans persetujuan mengembalikan fileId.
+- ✅ Pemanggilan API otorisasi unduhan/pratinjau berhasil.
+- ✅ Unduhan/pratinjau lampiran persetujuan sudah diverifikasi.
+
+## FAQ
+
+- **T: Mengapa saya harus mendapatkan informasi ruang Drive persetujuan sebelum memanggil JSAPI unggah lampiran?**
+
+  API Mendapatkan informasi ruang Drive persetujuan memberikan akses ruang Drive kepada pengguna. Tanpa otorisasi ini, unggahan akan gagal dalam pemeriksaan izin.
+- **T: Apakah Aplikasi pihak ketiga untuk perusahaan dapat memanggil API Mengunduh lampiran persetujuan?**
+
+  Tidak. Saat ini, Aplikasi pihak ketiga untuk perusahaan belum dapat memanggil API Mengunduh lampiran persetujuan. Hanya Aplikasi internal yang dapat menggunakannya. Aplikasi pihak ketiga dapat melihat lampiran melalui API otorisasi pratinjau.
+- **T: Berapa lama otorisasi lampiran persetujuan berlaku?**
+
+  Tautan unduhan dan pratinjau menggunakan otorisasi sementara. Masa berlakunya ditentukan oleh token yang dikembalikan API. Selesaikan tindakan dalam masa berlaku tersebut. Jika otorisasi kedaluwarsa, lakukan otorisasi ulang.
+- **T: Bagaimana cara mengunggah beberapa lampiran ke instans persetujuan yang sama?**
+
+  Pada formComponentValues di API Membuat instans persetujuan, masukkan objek JSON untuk semua lampiran ke dalam satu array. Setiap objek berisi kolom spaceId, fileName, fileSize, fileType, dan fileId.

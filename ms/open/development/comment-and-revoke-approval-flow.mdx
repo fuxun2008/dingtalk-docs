@@ -1,0 +1,740 @@
+---
+title: "Tambah komen dan batalkan aliran kerja kelulusan"
+description: "Panggil API Kelulusan OA DingTalk untuk menambah komen kelulusan berlampiran dan membatalkan instans kelulusan, dengan status yang disegerakkan terus ke sistem perniagaan anda."
+---
+
+# Integrasikan aliran kerja Kelulusan OA: Tambah komen kelulusan dan tamatkan kelulusan
+
+## Gambaran keseluruhan
+
+### Latar belakang
+
+Sistem perniagaan yang dibina atau dibeli oleh organisasi sering perlu melampirkan bahan sokongan pada instans kelulusan semasa aliran kerja kelulusan, seperti kontrak yang diimbas atau laporan penerimaan. Sistem ini biasanya tiada pintu masuk muat naik lampiran yang seragam. Sistem ini juga tiada cara standard untuk membatalkan kelulusan yang dihantar secara tersilap atau apabila keperluan berubah. Sambungkan komen kelulusan dan pembatalan ke Pusat Kelulusan OA DingTalk supaya pengguna boleh menambah lampiran dan menamatkan kelulusan terus dalam DingTalk.
+
+- **Tiada pintu masuk untuk lampiran:** Pemohon kelulusan tidak boleh menambah bahan sokongan di luar sistem perniagaan. Maklumat kelulusan kekal tidak lengkap dan keputusan tidak mempunyai asas yang kukuh.
+- **Pembatalan tidak standard:** Borang kelulusan yang dihantar secara tersilap ditarik balik melalui komunikasi luar talian. Tiada rekod pembatalan peringkat sistem atau penyegerakan status.
+- **Ruang Drive terputus:** Lampiran kelulusan berselerak dalam folder Drive peribadi atau storan setempat. Lampiran tidak dapat dipautkan kepada instans kelulusan, menyukarkan proses audit.
+- **Tiada pengesahan skema:** Struktur borang tidak disahkan sebelum kelulusan dimulakan. Ini menyebabkan ralat masa jalan seperti ID kawalan yang tidak sepadan dan penghantaran data yang gagal.
+
+### Nilai teras
+
+Penyelesaian ini menggunakan semula pengurusan ruang Drive dan enjin komen Kelulusan OA rasmi. Penyelesaian ini mengintegrasikan muat naik lampiran, penciptaan komen dan pembatalan ke dalam sistem perniagaan anda untuk mengurus keseluruhan kitaran hayat kelulusan.
+
+- **Pengurusan lampiran berpusat:** Semua lampiran kelulusan dimuat naik ke ruang Drive kelulusan khusus dan diikat pada instans. Muat turun dengan satu klik dan jejak semasa audit.
+- **Komen boleh dijejak:** Komen kelulusan berlampiran disimpan secara kekal. Komen ini membentuk jejak komunikasi yang lengkap dan mengelakkan kehilangan maklumat.
+- **Pembatalan standard:** Cetuskan pembatalan melalui API. Status kelulusan dikemas kini secara automatik kepada "Ditamatkan" dan Callback segerak memaklumkan sistem perniagaan.
+- **Pra-pengesahan skema:** Dapatkan skema borang sebelum memulakan kelulusan. Sahkan bahawa tetapan kawalan sepadan dengan templat dan kurangkan kos integrasi serta penyahpepijatan.
+
+### Kes penggunaan
+
+Penyelesaian ini sesuai untuk senario biasa berikut bagi mengintegrasikan komen kelulusan dan pembatalan:
+
+- Firma guaman perlu melampirkan bukti dan menambah komen semakan peguam semasa proses kelulusan kes.
+- Organisasi pendidikan dan latihan perlu membatalkan kelulusan perubahan kursus yang telah dihantar selepas mendapati konflik penjadualan syif, kemudian memulakannya semula.
+- Organisasi perubatan perlu menambah dokumen kelayakan pembekal sebagai lampiran komen semasa kelulusan perolehan ubat.
+- Projek pembinaan perlu menamatkan kelulusan penerimaan semasa selepas mendapati data pemeriksaan yang salah, kemudian membetulkan dan menghantarnya semula.
+
+## Senario perniagaan biasa
+
+### Senario 1: Tambah bukti pada kelulusan kes firma guaman
+
+#### Titik kesakitan
+
+Sebuah firma guaman menggunakan sistem pengurusan kes dalaman untuk mengendalikan kelulusan kes. Selepas peguam menghantar kelulusan pemfailan kes, mereka sering perlu menambah bukti baharu atau pendapat undang-undang. Proses asal mempunyai isu berikut:
+
+- **Tiada saluran untuk menambah bukti:** Selepas kelulusan pemfailan kes bermula, peguam tidak dapat melampirkan bukti yang baru dikumpul melalui sistem. Mereka menghantar e-mel kepada rakan kongsi secara luar talian, jadi bahan kelulusan kekal tidak lengkap.
+- **Rekod komunikasi berselerak:** Nota tambahan peguam tersebar di WeChat, e-mel dan saluran lain. Penyokong tidak dapat melihat semua komunikasi dalam borang kelulusan, sekali gus melambatkan keputusan.
+- **Lampiran tidak tersusun:** Fail bukti disimpan pada komputer peribadi atau pemacu rangkaian kongsi dan tidak dipautkan kepada instans kelulusan. Audit memerlukan padanan secara manual.
+- **Sukar membetulkan kelulusan yang tersilap:** Apabila maklumat pemfailan salah, tiada pembatalan sistematik. Peguam meminta penyokong menolak secara lisan, tanpa rekod penamatan rasmi atau penyegerakan status.
+
+#### Pengesahan nilai
+
+- **Aliran kerja automatik**
+
+  Aliran kelulusan automatik berjalan dalam lima langkah:
+
+  1. Peguam memulakan pemfailan kes, memasukkan maklumat kes dan memuat naik bahan bukti.
+  2. **Instans kelulusan** dicipta dan dimulakan melalui API **DingTalk OA**.
+  3. Rakan kongsi menyemak kes dalam DingTalk, tempat Kelulusan dihalakan dan borang dipaparkan.
+  4. **Penyokong** bertindak melalui peranti mudah alih dan memilih **Tolak** atau **Luluskan**.
+  5. Keputusan disegerakkan kembali ke sistem, yang menulis status dan menyegerakkan data.
+
+  Berbanding proses manual (bertukar antara saluran, status tidak segerak dan notifikasi berselerak), integrasi automatik menyediakan pintu masuk seragam, penyegerakan masa nyata dan penghantaran mesej.
+- **Kelebihan utama**
+
+  - **Tambah bukti dalam talian:** Peguam boleh melampirkan fail bukti pada borang kelulusan pada bila-bila masa melalui API komen kelulusan. Penyokong melihat bahan lengkap dalam DingTalk dan membuat keputusan.
+  - **Jejak komunikasi lengkap:** Semua nota dan lampiran dipautkan secara kekal kepada instans kelulusan melalui komen. Ini mewujudkan rekod kelulusan kes yang lengkap untuk audit kemudian.
+  - **Pembatalan standard:** Apabila maklumat pemfailan salah, API pembatalan menamatkan Proses kelulusan secara rasmi. Sistem merekodkan sebab pembatalan dan menyegerakkan status, mengelakkan tanggungjawab yang tidak jelas akibat komunikasi lisan.
+
+### Senario 2: Batalkan dan hantar semula kelulusan perubahan kursus di organisasi latihan
+
+#### Titik kesakitan
+
+Sebuah organisasi pendidikan dan latihan menggunakan sistem hal ehwal akademik dalaman untuk mengurus kelulusan perubahan kursus. Selepas menghantar permintaan perubahan jadual, kakitangan kadangkala mendapati konflik masa atau kekurangan sumber bilik darjah. Proses asal mempunyai isu berikut:
+
+- **Konflik dikesan lewat:** Pertindihan masa dengan kursus lain hanya ditemui selepas kelulusan dihantar. Pada ketika itu, kelulusan sudah dalam proses dan tidak dapat ditarik balik melalui sistem.
+- **Maklumat perubahan tidak lengkap:** Penyokong hanya melihat borang permintaan perubahan. Mereka tidak dapat melihat pelajar yang terjejas, jadual guru atau penggunaan bilik darjah dalam borang kelulusan, menyukarkan penilaian impak.
+- **Pembatalan tidak standard:** Permintaan yang tersilap hanya boleh ditolak dengan memaklumkan penyokong secara luar talian. Tiada rekod pembatalan peringkat sistem, jadi log akademik tidak sepadan dengan status sebenar.
+- **Penghantaran semula tidak cekap:** Selepas pembatalan, kakitangan perlu mengisi semula keseluruhan borang untuk memulakan kelulusan baharu. Data daripada borang asal tidak boleh digunakan semula, menambah beban kerja.
+
+#### Pengesahan nilai
+
+- **Aliran kerja automatik**
+
+  Aliran bersepadu hujung ke hujung berjalan dalam lima langkah:
+
+  1. **Hal ehwal akademik memulakan perubahan jadual:** Isi permintaan perubahan dan tandakan pelajar yang terjejas.
+  2. **Cipta instans kelulusan:** Panggil API Kelulusan OA DingTalk untuk memulakan instans.
+  3. **Semak dalam konsol pentadbir akademik:** Halakan Borang kelulusan dan jalankan pengesanan konflik. Borang termasuk medan seperti **Nama kursus**, **Masa asal**, **Masa baharu**, **Bilik darjah**, **Guru pemohon** dan **Bilangan terjejas**.
+  4. **Penyokong bertindak:** Penyokong menyemak melalui peranti mudah alih dan mengetik **Luluskan** atau **Tolak**.
+  5. **Segerakkan keputusan kembali ke sistem akademik:** Kemas kini jadual waktu dan segerakkan data.
+- **Kelebihan utama**
+
+  - **Batalkan jadual yang berkonflik serta-merta:** Apabila permintaan perubahan salah, API pembatalan menamatkan Proses kelulusan dengan serta-merta. Sistem merekodkan sebab pembatalan dan menghalang kelulusan yang tersilap daripada menjejaskan aturan pengajaran.
+  - **Nilai impak perubahan dalam talian:** Kakitangan boleh menggunakan komen untuk menambah senarai pelajar yang terjejas dan pelan pelarasan bilik darjah pada borang kelulusan. Penyokong melihat semua maklumat perubahan di satu tempat dalam DingTalk.
+  - **Penyegerakan status masa nyata:** Keputusan pembatalan ditulis kembali ke sistem akademik secara masa nyata, memastikan jadual waktu konsisten dengan status kelulusan. Kakitangan boleh membetulkan data dengan pantas semasa memulakan kelulusan baharu dan mengurangkan kemasukan data berulang.
+
+## Panduan pelaksanaan
+
+### Seni bina teknikal
+
+Seni bina teknikal penyelesaian ini merangkumi Komponen teras berikut:
+
+- **Lapisan Pengesahan**: Mengurus kelayakan Aplikasi dan mendapatkan access token untuk mengesahkan identiti setiap panggilan API.
+- **Lapisan pengurusan templat**: Mencipta dan mengemas kini templat borang kelulusan serta mentakrifkan struktur dan medan Proses kelulusan.
+- **Lapisan pelaksanaan instans**: Memulakan, menanya dan membatalkan instans kelulusan untuk memacu Proses kelulusan.
+- **Lapisan komen dan lampiran**: Mengurus ruang Drive kelulusan dan menambah komen untuk melengkapkan kitaran komunikasi kelulusan.
+
+### Prasyarat
+
+- **Persediaan Aplikasi**: Lengkapkan [penciptaan dan konfigurasi Aplikasi](/ms/open/dingstart/create-application).
+- **Kebenaran**: Miliki kebenaran Admin Organisasi atau Sub Admin DingTalk, dan mohon kebenaran API berikut:
+
+  - `Workflow.Form.Write` (kebenaran tulis templat aliran kerja)
+  - `Workflow.Form.Read` (kebenaran baca templat aliran kerja)
+  - `Workflow.Instance.Write` (kebenaran tulis Instans aliran kerja)
+  - `Workflow.Instance.Read` (kebenaran baca Instans aliran kerja)
+- **Persekitaran pembangunan**: Pasang persekitaran pembangunan Java (JDK 1.6 atau lebih baharu) dan alat binaan Maven.
+- **Persediaan SDK**: Muat turun SDK Bahagian pelayan DingTalk, yang menyokong Java, Python, Go dan bahasa lain.
+
+### Pelaksanaan kod
+
+Langkah 1: Pergi ke halaman butiran Aplikasi dan dapatkan client ID serta Client Secret.
+
+Langkah 2: Mohon kebenaran API. Mohon kebenaran "Kelulusan OA" yang berkaitan.
+
+Langkah 3: Dapatkan Kredensial akses Aplikasi. Lihat [Dapatkan Access Token Aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). Semasa memanggil API, gunakan access token untuk mengesahkan pemanggil.
+
+Langkah 4: Panggil API Kelulusan OA:
+
+Langkah 1: Pergi ke halaman butiran Aplikasi dan dapatkan client ID serta Client Secret.
+
+Langkah 2: Mohon kebenaran API. Mohon kebenaran "Kelulusan OA" yang berkaitan.
+
+Langkah 3: Dapatkan Kredensial akses Aplikasi. Lihat [Dapatkan Access Token Aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). Semasa memanggil API, gunakan access token untuk mengesahkan pemanggil.
+
+Langkah 4: Panggil API Kelulusan OA:
+
+1. Panggil Server API baharu [Cipta atau kemas kini templat borang kelulusan](/ms/open/development/create-an-approval-form-template) untuk mendapatkan kod templat unik `processCode`.
+2. Gunakan `processCode` untuk memanggil Server API baharu [Dapatkan skema borang](/ms/open/development/obtain-the-form-schema) dan dapatkan skema templat borang. Semak dan sahkan butiran skema templat borang.
+3. Gunakan `processCode` untuk memanggil Server API baharu [Cipta instans kelulusan](/ms/open/development/create-an-approval-instance) untuk memulakan instans kelulusan dan mendapatkan `instanceId` instans kelulusan.
+4. Gunakan `instanceId` untuk memanggil Server API baharu [Dapatkan butiran satu instans kelulusan](/ms/open/development/obtains-the-details-of-a-single-approval-instance-pop) untuk mendapatkan butiran instans kelulusan.
+5. Untuk menambah lampiran pada komen kelulusan, muat naik fail ke ruang Drive kelulusan. Ini menyediakan parameter API spaceId, fileType, fileName, fileId dan fileSize. Dapatkan parameter tersebut seperti berikut:
+
+   1. Panggil Server API baharu [Dapatkan maklumat ruang Drive kelulusan](/ms/open/development/obtains-the-information-about-approval-nail-disk) untuk mendapatkan kebenaran muat naik bagi ruang Drive dan spaceId ruang Drive kelulusan.
+   2. Panggil JSAPI Bahagian klien untuk mendapatkan maklumat ruang Drive kelulusan bagi mendapatkan maklumat asas fail.
+6. Selepas mendapatkan spaceId ruang Drive kelulusan, gunakan `instanceId` untuk memanggil Server API baharu [Tambah komen kelulusan](/ms/open/development/official-approval-adds-approval-comments) untuk menambah komen pada Borang kelulusan.
+7. Selepas menyemak kelulusan, gunakan `instanceId` untuk memanggil Server API baharu [Batalkan instans kelulusan](/ms/open/development/revoke-an-approval-instance) untuk membatalkan Borang kelulusan.
+
+## Langkah pelaksanaan
+
+### **Langkah 1:** **Dapatkan kelayakan Aplikasi**
+
+1. Log masuk ke [Konsol Pembangun DingTalk](https://open-dev.dingtalk.io/).
+2. Pilih Aplikasi sasaran untuk membuka halaman butirannya.
+3. Klik **Maklumat Asas** > **Kelayakan dan Maklumat Asas**.
+4. Rekodkan `Client ID` dan `Client Secret` Aplikasi.
+
+### Nota
+
+   Simpan `Client Secret` dengan selamat dan jangan kongsikannya dengan pihak ketiga. Simpan dalam pemboleh ubah persekitaran atau sistem pengurusan kunci, bukannya mengekodkannya secara terus dalam kod.
+
+### Langkah 2: Tambah kebenaran API
+
+1. Pada halaman butiran Aplikasi, klik **Urus kebenaran**.
+2. Masukkan pengecam kebenaran berikut dalam kotak carian kebenaran dan mohon kebenaran tersebut:
+
+   - `Workflow.Form.Write` (kebenaran tulis templat aliran kerja): Mencipta dan mengemas kini templat borang kelulusan.
+   - `Workflow.Form.Read` (kebenaran baca templat aliran kerja): Mendapatkan skema borang.
+   - `Workflow.Instance.Write` (kebenaran tulis Instans aliran kerja): Memulakan dan membatalkan instans kelulusan.
+   - `Workflow.Instance.Read` (kebenaran baca Instans aliran kerja): Menanya butiran instans kelulusan.
+
+<Note>
+Senario perniagaan yang berbeza mungkin memerlukan gabungan kebenaran yang berbeza. Mohon berdasarkan keperluan sebenar anda. Contohnya, senario import pukal juga memerlukan kebenaran untuk operasi pengguna secara pukal.
+</Note>
+
+### Langkah 3: Dapatkan Kredensial akses (Access Token)
+
+Gunakan Client ID dan Client Secret daripada Langkah 1 untuk mendapatkan Kredensial akses Aplikasi. Lihat [Dapatkan Access Token Aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**Amalan terbaik**:
+
+- **Caching**: `accessToken` sah selama 2 jam. Simpan dalam cache memori atau Redis dan Muat Semula 5 minit sebelumnya ia tamat tempoh.
+- **Kawalan keserentakan**: Halang berbilang thread daripada memuat semula token pada masa yang sama. Gunakan kunci teragih.
+- **Cuba semula ralat**: Cuba semula secara automatik apabila berlaku gangguan rangkaian, sehingga 3 kali dengan selang yang semakin meningkat (1s → 2s → 4s).
+
+### Langkah 4: Panggil API teras
+
+1. **Cipta atau kemas kini templat borang kelulusan**: Panggil Server API baharu [Cipta atau kemas kini templat borang kelulusan](/ms/open/development/create-an-approval-form-template) untuk mendapatkan kod templat unik `processCode`.
+
+### Nota
+
+   Jika anda tidak menyimpan `processCode` yang dikembalikan oleh API, lihat [processCode](/ms/open/development/workflow-overview).
+
+   ```java
+     public void createProcessTemplate() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           FormCreateHeaders formCreateHeaders = new FormCreateHeaders();
+           formCreateHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. Kawalan Teks satu baris
+           FormComponentProps formComponentProps1 = new FormComponentProps()
+                   .setComponentId("TextField-sys1001")
+                   .setPlaceholder("Masukkan nilai")
+                   .setLabel("Nama Pelanggan")
+                   .setRequired(false);
+           FormComponent formComponent1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(formComponentProps1);
+           // 2. Kawalan Teks pelbagai baris
+           FormComponentProps formComponentProps2 = new FormComponentProps()
+                   .setComponentId("TextareaField-sys1002")
+                   .setPlaceholder("Masukkan nilai")
+                   .setLabel("Penerangan Pelanggan")
+                   .setRequired(false);
+           FormComponent formComponent2 = new FormComponent()
+                   .setComponentType("TextareaField")
+                   .setProps(formComponentProps2);
+
+           // 3. Kawalan Pilih Banyak
+           SelectOption option3 = new SelectOption();
+           option3.setKey("option1");
+           option3.setValue("Penting");
+           SelectOption option4 = new SelectOption();
+           option4.setKey("option2");
+           option4.setValue("Biasa");
+           FormComponentProps formComponentProps3 = new FormComponentProps()
+                   .setComponentId("DDMultiSelectField-sys1003")
+                   .setLabel("Tag Pelanggan")
+                   .setOptions(java.util.Arrays.asList(option3, option4));
+           FormComponent formComponent3 = new FormComponent()
+                   .setComponentType("DDMultiSelectField")
+                   .setProps(formComponentProps3);
+
+           // 4. Kawalan julat tarikh
+           FormComponentProps formComponentProps4 = new FormComponentProps()
+                   .setComponentId("DDDateRangeField-sys1004")
+                   .setLabel("[\"Masa Mula Minat Pelanggan\",\"Masa Tamat Minat Pelanggan\"]")
+                   .setUnit("Jam")
+                   .setPlaceholder("Pilih masa")
+                   .setFormat("yyyy-MM-dd HH:mm");
+           FormComponent formComponent4 = new FormComponent()
+                   .setComponentType("DDDateRangeField")
+                   .setProps(formComponentProps4);
+
+           // 5. Kawalan butiran
+           // Statistik kawalan anak butiran
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField2 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("Input Nombor");
+
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField1 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("Jumlah (CNY)");
+
+           // Kawalan anak butiran
+           // 5.1 Medan Teks satu baris butiran
+           FormComponentProps childProp1 = new FormComponentProps()
+                   .setComponentId("TextField-sysC1005")
+                   .setLabel("Nama");
+           FormComponent child1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(childProp1);
+
+           // 5.2 Medan amaun butiran
+           FormComponentProps childProp2 = new FormComponentProps()
+                   .setComponentId("MoneyField-sysC1005")
+                   .setLabel("Harga Seunit (CNY)");
+           FormComponent child2 = new FormComponent()
+                   .setComponentType("MoneyField")
+                   .setProps(childProp2);
+
+           // 5.3 Medan nombor butiran
+           FormComponentProps childProp3 = new FormComponentProps()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("Kuantiti");
+           FormComponent child3 = new FormComponent()
+                   .setComponentType("NumberField")
+                   .setProps(childProp3);
+           // 5.4 Komponen Formula
+           JSONObject jsonObject1 = new JSONObject();
+           jsonObject1.put("id", "NumberField-sysC1005");
+           String s = "*";
+           JSONObject jsonObject2 = new JSONObject();
+           jsonObject2.put("id", "MoneyField-sysC1005");
+           Object objects[] = new Object[]{jsonObject1, s, jsonObject2};
+           FormComponentProps childProp4 = new FormComponentProps()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("Jumlah Keseluruhan")
+                   .setPlaceholder("Dikira secara automatik")
+                   .setRequired(false)
+                   .setFormula(JSON.toJSONString(objects));
+           FormComponent child4 = new FormComponent()
+                   .setComponentType("CalculateField")
+                   .setProps(childProp4);
+
+           FormComponentProps formComponentProps5 = new FormComponentProps()
+                   .setComponentId("TableField-sys1005")
+                   .setTableViewMode("table")
+                   .setLabel("Butiran")
+                   .setVerticalPrint(true)
+                   .setStatField(Arrays.asList(formComponentPropsStatField1, formComponentPropsStatField2));
+           FormComponent formComponent5 = new FormComponent()
+                   .setComponentType("TableField")
+                   .setChildren(Arrays.asList(child1, child2, child3, child4))
+                   .setProps(formComponentProps5);
+
+           // 6. Kawalan Kenalan
+           FormComponentProps formComponentProps6 = new FormComponentProps()
+                   .setComponentId("InnerContactField-sys1006")
+                   .setLabel("Kenalan")
+                   .setPlaceholder("Pilih kenalan")
+                   .setChoice("1");
+           FormComponent formComponent6 = new FormComponent()
+                   .setComponentType("InnerContactField")
+                   .setProps(formComponentProps6);
+
+           // 7. Kawalan Jabatan
+           FormComponentProps formComponentProps7 = new FormComponentProps()
+                   .setComponentId("DepartmentField-sys1007")
+                   .setLabel("Jabatan Kenalan")
+                   .setPlaceholder("Pilih jabatan")
+                   .setMultiple(false);
+           FormComponent formComponent7 = new FormComponent()
+                   .setComponentType("DepartmentField")
+                   .setProps(formComponentProps7);
+
+           // 8. Kawalan wilayah/bandar/daerah
+           FormComponentProps formComponentProps8 = new FormComponentProps()
+                   .setComponentId("AddressField-sys1008")
+                   .setLabel("Alamat Pelanggan")
+                   .setPlaceholder("Pilih")
+                   .setAddressModel("city");
+           FormComponent formComponent8 = new FormComponent()
+                   .setComponentType("AddressField")
+                   .setProps(formComponentProps8);
+
+           // 9. Kawalan pilihan tunggal
+           SelectOption selectOption1 = new SelectOption();
+           selectOption1.setKey("option1");
+           selectOption1.setValue("Segera");
+           SelectOption selectOption2 = new SelectOption();
+           selectOption2.setKey("option2");
+           selectOption2.setValue("Biasa");
+           FormComponentProps formComponentProps9 = new FormComponentProps()
+                   .setComponentId("DDSelectField-sys1009")
+                   .setLabel("Status Permohonan Kelulusan")
+                   .setOptions(Arrays.asList(selectOption1, selectOption2));
+           FormComponent formComponent9 = new FormComponent()
+                   .setComponentType("DDSelectField")
+                   .setProps(formComponentProps9);
+
+           FormCreateRequest formCreateRequest = new FormCreateRequest()
+                   .setName("Borang Pelanggan")
+                   .setDescription("Borang Pelanggan")
+                   // Dengan processCode, templat dikemas kini; tanpa processCode, templat baharu dicipta. Contoh ini mencipta templat.
+                   //.setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setFormComponents(java.util.Arrays.asList(
+                           formComponent1, formComponent2, formComponent3, formComponent4,
+                           formComponent5, formComponent6, formComponent7, formComponent8,
+                           formComponent9
+                   ));
+           try {
+               FormCreateResponse formCreateResponse = client.formCreateWithOptions(formCreateRequest, formCreateHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(formCreateResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `name`: Nama templat borang kelulusan.
+   - `description`: Penerangan templat borang kelulusan.
+   - `formComponents`: Senarai kawalan borang yang mentakrifkan struktur dan medan borang kelulusan.
+
+### Medan respons
+
+   - `processCode`: Kod unik templat kelulusan.
+2. **Dapatkan skema borang**: Gunakan `processCode` untuk memanggil Server API baharu [Dapatkan skema borang](/ms/open/development/obtain-the-form-schema) dan dapatkan skema templat borang. Semak dan sahkan butiran skema templat borang.
+
+   ```java
+   public void processSchemasInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeHeaders querySchemaByProcessCodeHeaders = new com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeHeaders();
+           querySchemaByProcessCodeHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeRequest querySchemaByProcessCodeRequest = new com.aliyun.dingtalkworkflow_1_0.models.QuerySchemaByProcessCodeRequest()
+                   .setProcessCode("PROC-17428B8C-6C60-xxxx-924C-64F1037AE067");
+           try {
+               QuerySchemaByProcessCodeResponse processSchemaWithOptions = client.querySchemaByProcessCodeWithOptions(querySchemaByProcessCodeRequest, querySchemaByProcessCodeHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processSchemaWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processCode`: Kod unik templat kelulusan.
+
+### Medan respons
+
+   - `schemaContent`: Skema lengkap templat borang, termasuk jenis borang, jenis enjin dan status.
+3. **Mulakan instans kelulusan**: Gunakan `processCode` untuk memanggil Server API baharu [Cipta instans kelulusan](/ms/open/development/create-an-approval-instance) untuk memulakan instans kelulusan dan mendapatkan `instanceId` instans kelulusan.
+
+   ```java
+   public void ProcessInstances() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           StartProcessInstanceHeaders startProcessInstanceHeaders = new StartProcessInstanceHeaders();
+           startProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. Komponen Teks satu baris
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Nama Pelanggan")
+                   .setValue("Acme Corp");
+
+           // 2. Komponen Teks pelbagai baris
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Penerangan Pelanggan")
+                   .setValue("Pelanggan berpotensi bernilai tinggi");
+
+           // 3. Komponen Pilih Banyak
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues3;
+           formComponentValues3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Tag Pelanggan")
+                   .setValue("[\"Penting\",\"Biasa\"]")
+                   .setComponentType("DDMultiSelectField");
+
+           // 4. Komponen julat tarikh
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("[\"Masa Mula Minat Pelanggan\",\"Masa Tamat Minat Pelanggan\"]")
+                   .setValue("[\"2022-08-14 15:00\",\"2022-08-15 15:00\"]");
+
+           // 5. Komponen Jadual perincian
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Nama")
+                   .setValue("Peranti Persidangan Video Pintar All-in-One DingTalk F2");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Harga Seunit (CNY)")
+                   .setValue("29999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Kuantiti")
+                   .setValue("1");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Nama")
+                   .setValue("Peranti Persidangan Video Pintar All-in-One DingTalk F1");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Harga Seunit (CNY)")
+                   .setValue("4999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Kuantiti")
+                   .setValue("5");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Butiran")
+                   .setValue(JSON.toJSONString(Arrays.asList(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3), Arrays.asList(formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6))))
+                   .setDetails(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3, formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6));
+
+           // 6. Komponen Kenalan
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Kenalan")
+                   .setValue(JSON.toJSONString(Arrays.asList("userId Kenalan")));
+
+           // 7. Komponen Jabatan
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues7 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Jabatan Kenalan")
+                   .setValue("ID jabatan");
+
+           // 8. Komponen wilayah/bandar/daerah
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues8 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Alamat Pelanggan")
+                   .setValue(JSON.toJSONString(Arrays.asList("Beijing,Beijing,Daerah Chaoyang,Subdaerah Donghu,Bangunan A xxxxxxx")));
+
+           // 9. Komponen pilihan tunggal
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues9 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Status Permohonan Kelulusan")
+                   .setValue("Segera");
+
+           // Tetapkan penyokong
+           // Kelulusan bersama (semua penyokong mesti meluluskan)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("AND")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           // Kelulusan atau (mana-mana seorang penyokong boleh meluluskan)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers1 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("OR")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           StartProcessInstanceRequest startProcessInstanceRequest = new StartProcessInstanceRequest()
+                   .setOriginatorUserId("userId pemohon")
+                   .setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setDeptId(1L)
+                   .setMicroappAgentId(118*****5L)
+                   .setApprovers(java.util.Arrays.asList(
+                           approvers0, approvers1
+                   ))
+             			// Penerima CC
+                   .setCcList(java.util.Arrays.asList(
+                           "userId penerima CC"
+                   ))
+                   .setCcPosition("FINISH")
+                   .setFormComponentValues(java.util.Arrays.asList(
+                           formComponentValues1, formComponentValues2, formComponentValues3, formComponentValues4,
+                           formComponentValues5, formComponentValues6, formComponentValues7, formComponentValues8,
+                           formComponentValues9
+                   ));
+           try {
+               StartProcessInstanceResponse startProcessInstanceResponse = client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processCode`: Kod unik templat kelulusan.
+   - `originatorUserId`: ID pengguna pemohon.
+   - `formComponentValues`: Senarai nilai kawalan borang, sepadan dengan medan yang ditakrifkan dalam templat.
+   - `approvers`: Senarai penyokong, yang menentukan penyokong dan jenis tindakan bagi setiap nod.
+
+### Medan respons
+
+   - `instanceId`: ID unik instans kelulusan.
+4. **Dapatkan butiran satu instans kelulusan**: Gunakan `instanceId` untuk memanggil Server API baharu [Dapatkan butiran satu instans kelulusan](/ms/open/development/obtains-the-details-of-a-single-approval-instance-pop) untuk mendapatkan butiran instans kelulusan.
+
+   ```java
+   public void processInstancesInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders getProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceHeaders();
+           getProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest getProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessInstanceRequest()
+                   .setProcessInstanceId("zRfPT*********************159");
+           try {
+               GetProcessInstanceResponse processInstanceWithOptions = client.getProcessInstanceWithOptions(getProcessInstanceRequest, getProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(processInstanceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processInstanceId`: ID unik instans kelulusan.
+
+### Medan respons
+
+   - `taskId`: ID nod tugasan kelulusan.
+   - `status`: Status semasa instans kelulusan.
+5. Untuk menambah lampiran pada komen kelulusan, muat naik fail ke ruang Drive kelulusan.
+
+   1. Panggil Server API baharu [Dapatkan maklumat ruang Drive kelulusan](/ms/open/development/obtains-the-information-about-approval-nail-disk) untuk mendapatkan kebenaran muat naik bagi ruang Drive dan spaceId ruang Drive kelulusan.
+
+### Penting
+
+      Sebelum memanggil kaedah ini, panggil API untuk mendapatkan maklumat ruang Drive kelulusan bagi melengkapkan kebenaran.
+6. **Tambah komen kelulusan**: Selepas mendapatkan `spaceId` ruang Drive kelulusan, gunakan `instanceId` untuk memanggil Server API baharu [Tambah komen kelulusan](/ms/open/development/official-approval-adds-approval-comments) untuk menambah komen pada Borang kelulusan.
+
+   ```java
+   public void attachmentSpaceInfo() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders getAttachmentSpaceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceHeaders();
+           getAttachmentSpaceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest getAttachmentSpaceRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetAttachmentSpaceRequest()
+                   .setUserId("user123")
+                   .setAgentId(8345000L);
+           try {
+               GetAttachmentSpaceResponse attachmentSpaceWithOptions = client.getAttachmentSpaceWithOptions(getAttachmentSpaceRequest, getAttachmentSpaceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+               System.out.println(JSON.toJSONString(attachmentSpaceWithOptions.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+7. **Batalkan instans kelulusan**: Selepas menyemak kelulusan, gunakan `instanceId` untuk memanggil Server API baharu [Batalkan instans kelulusan](/ms/open/development/revoke-an-approval-instance) untuk membatalkan Borang kelulusan.
+
+   ```java
+   public void processInstancesTerminate() throws Exception {
+           com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceHeaders terminateProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceHeaders();
+           terminateProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceRequest terminateProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.TerminateProcessInstanceRequest()
+                   .setProcessInstanceId("zRfPT*********************159")
+                   .setIsSystem(false)
+                   .setRemark("Borang kelulusan dihantar secara tersilap. Pembatalan diperlukan.")
+                   .setOperatingUserId("userId pemohon");
+           try {
+               TerminateProcessInstanceResponse terminateProcessInstanceResponse = client.terminateProcessInstanceWithOptions(terminateProcessInstanceRequest, terminateProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(terminateProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err mengandungi atribut code dan message yang membantu mengesan isu
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processInstanceId`: ID unik instans kelulusan.
+   - `operatingUserId`: ID pengguna bagi pengguna yang melaksanakan pembatalan.
+   - `remark`: Sebab pembatalan.
+
+### Medan respons
+
+   - `result`: Keputusan tindakan.
+
+### Senarai semak pelaksanaan
+
+- ✅ Client ID dan Client Secret Aplikasi telah diperoleh dan disimpan dengan selamat.
+- ✅ Kebenaran Kelulusan OA (baca/tulis templat, baca/tulis instans dan baca instans) telah dimohon dan diluluskan.
+- ✅ Panggilan API access token berjaya dan kelayakan berfungsi dalam tempoh sahnya.
+- ✅ Templat kelulusan telah dicipta dan processCode disimpan dalam konfigurasi sistem perniagaan.
+- ✅ Skema borang telah diperoleh dan struktur kawalan sepadan dengan definisi templat.
+- ✅ Instans kelulusan telah dimulakan dan instanceId tersedia untuk tindakan tugasan seterusnya.
+- ✅ Ruang Drive kelulusan telah diperoleh, dan spaceId serta kelayakan muat naik adalah sah.
+- ✅ Komen kelulusan telah ditambah dan lampiran dipautkan dengan betul kepada instans kelulusan.
+- ✅ Pembatalan instans kelulusan telah disahkan dan penyegerakan status berfungsi seperti yang dijangkakan.
+
+## Soalan lazim
+
+- **S1: Apakah yang perlu saya lakukan jika ralat 403 dikembalikan semasa mendapatkan skema borang?**
+
+  Semak bahawa kebenaran `Workflow.Form.Read` telah diberikan dan access token belum tamat tempoh. Kebenaran mengambil masa 1 hingga 2 minit untuk berkuat kuasa selepas diluluskan.
+- **S2: Mengapakah lampiran tidak dipaparkan selepas saya menambah komen kelulusan?**
+
+  Pastikan semua parameter wajib diperoleh dengan betul daripada API ruang Drive kelulusan dan JSAPI Bahagian klien, serta fail berjaya dimuat naik ke ruang Drive yang berkaitan.
+- **S3: Mengapakah status tidak dikemas kini selepas saya membatalkan instans kelulusan?**
+
+  Pembatalan berjalan secara tak segerak. Langgan acara Callback perubahan instans kelulusan untuk memantau perubahan status, atau tinjau API untuk mendapatkan butiran satu instans kelulusan bagi pengesahan.
+- **S4: Bolehkah saya menambah komen pada instans kelulusan yang telah dibatalkan?**
+
+  Tidak. Instans kelulusan yang dibatalkan berada dalam keadaan muktamad dan tidak menerima sebarang komen atau lampiran. Untuk menambah maklumat lanjut, mulakan instans kelulusan baharu.

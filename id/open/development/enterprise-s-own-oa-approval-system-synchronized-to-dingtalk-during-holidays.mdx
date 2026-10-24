@@ -1,0 +1,296 @@
+---
+title: "Menyinkronkan persetujuan cuti dan absensi mandiri ke DingTalk"
+description: "Sinkronkan persetujuan cuti dan absensi dari sistem Persetujuan OA mandiri ke Absensi DingTalk melalui API, hitung durasi otomatis, dan jaga data tetap konsisten."
+---
+
+# Sinkronisasi data absen: unggah catatan absen perangkat keras ke DingTalk secara otomatis
+
+## Ringkasan
+
+Solusi ini menyinkronkan data persetujuan cuti dan absensi secara menyeluruh. Solusi ini menggunakan API persetujuan cuti dan absensi di DingTalk Open Platform untuk menyinkronkan data persetujuan dari sistem milik organisasi Anda ke DingTalk secara otomatis.
+
+### Latar belakang
+
+Banyak organisasi menjalankan sistem manajemen cuti dan absensi internal untuk memproses pengajuan lembur, perjalanan dinas, dan cuti karyawan. Namun, sistem ini tidak memiliki antarmuka data standar dengan modul Absensi DingTalk. Akibatnya, muncul masalah berikut:
+
+- **Silo data yang parah**: Setelah pengajuan cuti dikirim dan disetujui di sistem mandiri, karyawan tetap harus absen atau mengajukan absen susulan secara manual di DingTalk. Hal ini menyebabkan pekerjaan berulang dan data yang tidak konsisten.
+- **Perhitungan durasi yang rumit**: Jam kerja terjadwal berbeda menurut tanggal (misalnya, 8 jam pada hari kerja dan 4 jam pada akhir pekan). Perhitungan manual durasi cuti yang tersedia rentan kesalahan dan tidak dapat menyesuaikan perubahan jadwal.
+- **Status tidak sinkron**: Absensi DingTalk tidak dapat mendeteksi persetujuan yang telah selesai di sistem mandiri. HR harus mencocokkan data di kedua sistem secara manual, yang memakan waktu dan rentan terlewat.
+
+### Manfaat utama
+
+Solusi ini mengintegrasikan sistem persetujuan cuti dan absensi mandiri Anda dengan Absensi DingTalk. Solusi ini menyediakan alur pemanggilan API standar dan praktik terbaik untuk membantu organisasi Anda mengotomatiskan sinkronisasi data persetujuan serta mengelolanya secara terpusat.
+
+- **Integrasi ringan**: Tidak perlu mengubah front-end sistem bisnis Anda. Cukup panggil 3 API inti untuk menyelesaikan integrasi dengan biaya pengembangan rendah.
+- **Perhitungan cerdas berbasis jadwal**: Hitung durasi lembur, perjalanan dinas, dan cuti terlebih dahulu berdasarkan jadwal di sistem absensi untuk menghilangkan kesalahan perhitungan manual.
+- **Sinkronisasi status real-time**: Beri tahu DingTalk untuk sinkronisasi absensi secara otomatis saat pengajuan disetujui, dan sinkronkan pembatalan saat persetujuan dicabut, agar data tetap konsisten.
+- **Dukungan skenario yang fleksibel**: Mendukung skenario kompleks seperti cuti lintas hari dan penjadwalan multi-tanggal. Jam kerja terjadwal setiap hari dijumlahkan secara otomatis untuk pengalaman pengguna yang lebih baik.
+
+### Kasus penggunaan
+
+Solusi ini berlaku untuk skenario bisnis umum berikut:
+
+- **Integrasi sistem cuti dan absensi mandiri**: Hubungkan sistem persetujuan lembur, perjalanan dinas, dan cuti internal Anda dengan modul Absensi DingTalk untuk menyinkronkan hasil persetujuan secara otomatis.
+- **Perhitungan awal durasi berbasis jadwal**: Hitung durasi cuti maksimum yang dapat diajukan berdasarkan jadwal karyawan untuk mencegah pengajuan melebihi batas dan pemborosan sumber daya.
+- **Sinkronisasi hasil persetujuan**: Sinkronkan persetujuan dari sistem mandiri ke Absensi DingTalk secara otomatis, sehingga HR tidak perlu lagi mencocokkan data di kedua sistem.
+- **Manajemen cuti lintas hari**: Saat cuti mencakup beberapa hari kerja dengan jam terjadwal yang berbeda, jam terjadwal setiap hari dijumlahkan secara otomatis untuk menyederhanakan proses.
+
+## Skenario bisnis umum
+
+### Skenario 1: Sinkronkan persetujuan cuti dan absensi mandiri dengan Absensi DingTalk
+
+#### Kendala
+
+Organisasi Anda menjalankan sistem manajemen cuti dan absensi internal, tetapi datanya terpisah dari Absensi DingTalk. Setelah mengirim pengajuan cuti di sistem mandiri, karyawan tetap harus absen atau mengajukan absen susulan secara manual di DingTalk. Saat jumlah karyawan organisasi melebihi 1.000 orang, operasi manual menjadi hampir mustahil dan kesalahan manusia mudah menyebabkan data tidak konsisten.
+
+Selain itu, jam kerja terjadwal berbeda menurut tanggal (misalnya, 8 jam pada hari kerja dan 4 jam pada akhir pekan). HR harus menghitung durasi cuti yang tersedia untuk setiap karyawan secara manual, yang memakan waktu dan rentan kesalahan. Absensi DingTalk tidak dapat mendeteksi persetujuan yang telah selesai, sehingga diperlukan intervensi manual untuk menyinkronkannya, dan biaya manajemen pun makin meningkat.
+
+#### Nilai yang diberikan
+
+- **Alur kerja otomatis**
+
+  Integrasi terdiri dari lima langkah:
+
+  1. Buat aplikasi di DingTalk Open Platform untuk memperoleh Kredensial aplikasi (**Client ID** / **Client Secret**).
+  2. Ajukan izin absensi di DingTalk Open Platform: **qyapi_attendance_group_manage** dan **qyapi_attendance_group_read**.
+  3. Peroleh **access_token** melalui API untuk pemanggilan API berikutnya.
+  4. Hitung terlebih dahulu durasi cuti maksimum yang diizinkan berdasarkan penjadwalan shift karyawan dan waktu cuti yang diajukan.
+  5. Setelah pengajuan disetujui, sinkronkan ke DingTalk secara otomatis dan simpan **approve_id** yang dikembalikan.
+- **Keunggulan utama**
+
+  - **Perhitungan awal durasi yang cerdas**: Hitung durasi cuti maksimum secara otomatis berdasarkan jadwal untuk mencegah pengajuan melebihi batas dan mengurangi beban peninjauan HR.
+  - **Sinkronisasi persetujuan otomatis**: Beri tahu Absensi DingTalk secara otomatis setelah persetujuan tanpa langkah tambahan, menghemat 80% waktu pencocokan data HR.
+  - **Pembatalan real-time**: Sinkronkan persetujuan yang dicabut ke DingTalk secara otomatis agar data tetap konsisten dan mencegah kesalahan pada statistik kehadiran.
+  - **Integrasi berbiaya rendah**: Cukup panggil 3 API inti untuk mempersingkat siklus pengembangan hingga 70% dan segera go-live.
+
+### Skenario 2: Perhitungan cerdas durasi cuti lintas hari
+
+#### Kendala
+
+Cuti karyawan mencakup beberapa hari kerja dengan jam terjadwal yang berbeda setiap harinya (misalnya, Xiao Ming dijadwalkan 8 jam pada 15 Oktober dan 4 jam pada 16 Oktober). Cara konvensional mengharuskan penjumlahan jam terjadwal setiap hari secara manual, yang rentan kesalahan dan tidak efisien. Saat periode cuti panjang (misalnya, satu minggu penuh), HR harus memeriksa aturan penjadwalan shift untuk setiap hari satu per satu, yang memakan waktu dan rentan terlewat.
+
+Selain itu, jika terjadi cuti pengganti atau perubahan jadwal sementara selama periode cuti, durasi yang dihitung secara manual bisa tidak akurat. Hal ini dapat menyebabkan pengajuan cuti ditolak atau menimbulkan kesalahan data absensi.
+
+#### Nilai yang diberikan
+
+- **Alur kerja otomatis**
+
+  Alur otomatis terdiri dari 5 langkah:
+
+  1. **Karyawan** memilih rentang tanggal untuk pengajuan cuti lintas hari (contoh: 15 Oktober – 16 Oktober).
+  2. Sistem memanggil API perhitungan awal penjadwalan shift untuk mengambil data: `GET /api/leave/precalc`.
+  3. Sistem secara otomatis menjumlahkan jam terjadwal setiap hari dalam rentang yang dipilih (contoh: 8 jam terjadwal pada 15 Oktober + 4 jam terjadwal pada 16 Oktober = pengajuan cuti maksimum 12 jam).
+  4. API mengembalikan hasil perhitungan sebagai batas atas durasi cuti yang dapat diajukan (contoh: durasi cuti maksimum **12,0 jam**).
+  5. **Karyawan** mengonfirmasi dan mengirim pengajuan cuti, yang kemudian masuk ke alur persetujuan.
+- **Keunggulan utama**
+
+  - **Penjumlahan jadwal otomatis**: Panggil API perhitungan awal untuk mengembalikan durasi maksimum yang dapat diajukan untuk cuti lintas hari secara otomatis, sehingga kesalahan perhitungan manual hilang.
+  - **Kontrol presisi**: Sesuaikan durasi cuti maksimum secara dinamis berdasarkan jadwal aktual untuk mencegah pemborosan sumber daya atau pengajuan melebihi batas.
+  - **Pengalaman pengguna yang lebih baik**: Karyawan tidak perlu lagi menghitung durasi secara manual. Sistem menampilkan durasi cuti yang tersedia secara otomatis, sehingga lebih mudah digunakan.
+  - **Adaptasi dinamis**: Jika jadwal berubah, panggil kembali API perhitungan awal untuk mendapatkan durasi terbaru dan memastikan akurasi data.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Solusi ini dibangun di atas OpenAPI terkait absensi di DingTalk Open Platform. Komponen teknis intinya meliputi:
+
+- **Lapisan autentikasi**: Gunakan `Client ID` / `Client Secret` untuk memperoleh `access_token` dan mengamankan pemanggilan API.
+- **Lapisan manajemen izin**: Ajukan izin API terkait absensi (`qyapi_attendance_group_manage` dan `qyapi_attendance_group_read`).
+- **Mesin perhitungan awal durasi**: Panggil Server API untuk perhitungan awal durasi, yang menghitung durasi lembur, perjalanan dinas, dan cuti berdasarkan jadwal di sistem absensi.
+- **Lapisan sinkronisasi persetujuan**: Setelah persetujuan, panggil API notifikasi penyelesaian persetujuan untuk menyinkronkan Absensi DingTalk. Saat persetujuan dicabut, panggil API notifikasi pembatalan persetujuan untuk menyinkronkan pembatalan tersebut.
+
+### Prasyarat
+
+Sebelum mengimplementasikan solusi, pastikan kondisi berikut terpenuhi:
+
+- **Persiapan aplikasi**: Buat dan konfigurasikan Aplikasi internal. Untuk detailnya, lihat [Membuat dan mengonfigurasi aplikasi](/id/open/dingstart/create-application).
+- **Persyaratan izin**: Miliki izin Admin Organisasi atau Sub Admin DingTalk, lalu ajukan izin API terkait absensi.
+
+  - `qyapi_attendance_group_manage` (izin manajemen grup absensi)
+  - `qyapi_attendance_group_read` (izin kueri grup absensi)
+- **Lingkungan pengembangan**: Instal lingkungan pengembangan Java (JDK 1.6 atau yang lebih baru) dan alat build Maven.
+- **Persiapan SDK**: Unduh SDK Sisi server DingTalk. Untuk detailnya, lihat Unduhan SDK Sisi server. SDK mendukung berbagai bahasa, termasuk Java, Python, dan Go.
+
+### Implementasi kode
+
+Langkah 1: Peroleh informasi Kredensial aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Ajukan izin API, termasuk izin API terkait absensi.
+
+Langkah 3: Peroleh Kredensial akses aplikasi. Lihat [Memperoleh access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). Saat Anda memanggil API, access token mengautentikasi identitas pemanggil.
+
+Langkah 4: Panggil API terkait absensi:
+
+<Note>
+Fitur ini menyinkronkan informasi lembur, perjalanan dinas, dan cuti dari sistem internal ke DingTalk.
+</Note>
+
+1. Panggil Server API [Perhitungan awal durasi](/id/open/development/api-calculateduration) untuk menghitung terlebih dahulu durasi lembur, perjalanan dinas, dan cuti berdasarkan jadwal di sistem absensi.
+2. Setelah pengajuan cuti atau absensi dikirim dan disetujui di sistem persetujuan mandiri Anda, beri tahu Absensi DingTalk dengan memanggil Server API [Notifikasi penyelesaian persetujuan](/id/open/development/api-processapprovefinish) untuk menyinkronkan persetujuan ke Absensi DingTalk. Simpan ID Formulir persetujuan kustom `approve_id`.
+3. Saat pembatalan pengajuan cuti atau absensi dikirim di sistem persetujuan mandiri Anda, panggil Server API [Notifikasi pembatalan persetujuan](/id/open/development/notify-the-attendance-to-modify-the-punch-result-when-the) dengan ID Formulir persetujuan kustom `approve_id` untuk menyinkronkan pembatalan ke Absensi DingTalk.
+
+## Langkah implementasi
+
+### **Langkah 1: Peroleh Kredensial aplikasi**
+
+1. Masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih aplikasi target untuk membuka halaman detailnya.
+3. Klik **Informasi Dasar** > **Kredensial dan Informasi Dasar**.
+4. Catat `Client ID` dan `Client Secret` aplikasi.
+
+### Catatan
+
+   Jaga kerahasiaan `Client Secret` dan jangan pernah membagikannya kepada pihak ketiga. Simpan di environment variable atau sistem manajemen kunci, jangan di-hardcode.
+
+### Langkah 2: Tambahkan izin API
+
+1. Di halaman detail aplikasi, klik **Kelola izin**.
+2. Masukkan identifier izin berikut di kotak pencarian izin, lalu ajukan:
+
+   - `qyapi_attendance_group_manage` (izin manajemen grup absensi)
+   - `qyapi_attendance_group_read` (izin kueri grup absensi)
+
+<Note>
+Skenario bisnis yang berbeda mungkin memerlukan kombinasi izin yang berbeda. Ajukan izin sesuai kebutuhan aktual Anda. Misalnya, skenario impor massal juga memerlukan izin untuk operasi pengguna massal.
+</Note>
+
+### Langkah 3: Peroleh Kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk memperoleh Kredensial akses aplikasi. Lihat [Memperoleh access_token Aplikasi internal](/id/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Praktik terbaik**:
+
+- **Strategi caching**: `access_token` berlaku selama 2 jam. Simpan dalam cache di memori atau Redis, dan perbarui secara proaktif 5 menit sebelumnya masa berlakunya habis.
+- **Kontrol konkurensi**: Cegah konflik akibat beberapa thread memperbarui token secara bersamaan. Gunakan distributed lock jika diperlukan.
+- **Percobaan ulang saat error**: Lakukan percobaan ulang otomatis saat jaringan tidak stabil, maksimal 3 kali, dengan interval yang meningkat (1 dtk → 2 dtk → 4 dtk).
+
+### **Langkah 4:** Panggil API inti
+
+1. **Perhitungan awal durasi**: Panggil Server API [Perhitungan awal durasi](/id/open/development/api-calculateduration) untuk menghitung terlebih dahulu durasi lembur, perjalanan dinas, dan cuti berdasarkan jadwal di sistem absensi.
+
+### Catatan
+
+   Jangan lewati langkah ini. Langkah ini memastikan informasi Formulir persetujuan di sistem mandiri Anda tersinkron ke DingTalk dengan benar. Misalnya, Xiao Ming dijadwalkan 8 jam pada 15 Oktober dan 4 jam pada 16 Oktober. Pada jadwal normal, ia bekerja 12 jam selama 2 hari tersebut. Saat Xiao Ming mengirim Formulir persetujuan cuti di sistem mandiri, durasi cuti yang dapat diajukan berbeda untuk setiap kasus berikut:
+
+   - Kasus 1: Cuti dimulai pada 15 Oktober dan berakhir pada 15 Oktober. Panggil API perhitungan awal durasi. Durasi cuti maksimum yang dapat diajukan adalah 8 jam.
+   - Kasus 2: Cuti dimulai pada 15 Oktober dan berakhir pada 16 Oktober. Panggil API perhitungan awal durasi. Durasi cuti maksimum yang dapat diajukan adalah 12 jam.
+
+   ```text
+   public CalculateDurationResponseBody durationCalculate(){
+     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     try {
+       com.aliyun.dingtalkattendance_1_0.Client client = new  com.aliyun.dingtalkattendance_1_0.Client(config);
+       CalculateDurationHeaders calculateDurationHeaders = new CalculateDurationHeaders();
+       calculateDurationHeaders.xAcsDingtalkAccessToken = "<your access token>";
+       CalculateDurationRequest calculateDurationRequest = new CalculateDurationRequest()
+         .setUserId("01472825524039877041")
+         .setBizType(3L)
+         .setFromTime("2022-10-13 09:00")
+         .setToTime("2022-10-13 18:00")
+         .setDurationUnit("day")
+         .setCalculateModel(1L)
+         .setLeaveCode("e2dsad-34dfa-2vas23da");
+       CalculateDurationResponse calculateDurationResponse = client.calculateDurationWithOptions(calculateDurationRequest, calculateDurationHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+       System.out.println(calculateDurationResponse.getBody());
+       return calculateDurationResponse.getBody();
+     } catch (Exception e) {
+       throw new RuntimeException(e);
+     }
+   }
+   ```
+2. **Notifikasi penyelesaian persetujuan**: Setelah pengajuan cuti atau absensi dikirim dan disetujui di sistem persetujuan mandiri Anda, beri tahu Absensi DingTalk dengan memanggil Server API [Notifikasi penyelesaian persetujuan](/id/open/development/api-processapprovefinish) untuk menyinkronkan persetujuan ke Absensi DingTalk.
+
+   **Catatan** 
+   - Langkah ini tidak membuat Formulir persetujuan OA di DingTalk.
+   - Simpan ID Formulir persetujuan kustom `approve_id`. Anda memerlukan ID ini untuk membatalkan persetujuan nanti.
+
+   ```text
+   public ProcessApproveFinishResponseBody approveFinish(){
+     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     try {
+       com.aliyun.dingtalkattendance_1_0.Client client = new  com.aliyun.dingtalkattendance_1_0.Client(config);
+       ProcessApproveFinishHeaders processApproveFinishHeaders = new ProcessApproveFinishHeaders();
+       processApproveFinishHeaders.xAcsDingtalkAccessToken = "<your access token>";
+       ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam()
+         .setBizType(2L)
+         .setFromTime("2022-10-13 09:00")
+         .setToTime("2022-10-13 19:00")
+         .setDurationUnit("hour")
+         .setCalculateModel(1L);
+       com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest processApproveFinishRequest = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest()
+         .setUserId("manager123")
+         .setTopCalculateApproveDurationParam(topCalculateApproveDurationParam)
+         .setTagName("外出")  // Di luar kantor
+         .setApproveId("dingTalk")
+         .setJumpUrl("https://open.dingtalk.io/");
+       ProcessApproveFinishResponse processApproveFinishResponse = client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+       System.out.println(processApproveFinishResponse.getBody());
+       return processApproveFinishResponse.getBody();
+     } catch (Exception e) {
+       throw new RuntimeException(e);
+     }
+   }
+   ```
+3. **Notifikasi pembatalan persetujuan**: Saat pembatalan pengajuan cuti atau absensi dikirim di sistem persetujuan mandiri Anda, panggil Server API [Notifikasi pembatalan persetujuan](/id/open/development/notify-the-attendance-to-modify-the-punch-result-when-the) dengan ID Formulir persetujuan kustom `approve_id` untuk menyinkronkan pembatalan ke Absensi DingTalk.
+
+   ```java
+   public void approveCancel() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/cancel");
+
+       OapiAttendanceApproveCancelRequest req = new OapiAttendanceApproveCancelRequest();
+       req.setUserid("01472825524039877041");
+       req.setApproveId("dingTalk");
+
+       OapiAttendanceApproveCancelResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+
+**Daftar periksa implementasi**:
+
+- Kredensial aplikasi telah diperoleh (Client ID / Client Secret).
+- Izin absensi telah diberikan (qyapi_attendance_group_manage / qyapi_attendance_group_read).
+- access_token telah diperoleh.
+- API perhitungan awal durasi berhasil dipanggil dan mengembalikan durasi cuti tersedia yang benar.
+- API notifikasi penyelesaian persetujuan dipanggil setelah persetujuan, dan Absensi DingTalk berhasil disinkronkan.
+- API notifikasi pembatalan persetujuan dipanggil saat pembatalan, dan pembatalan berhasil disinkronkan ke Absensi DingTalk.
+
+## FAQ
+
+- **T1: Mengapa saya harus memanggil API perhitungan awal durasi terlebih dahulu?**
+
+  J: API perhitungan awal durasi menghitung durasi cuti maksimum yang dapat diajukan berdasarkan jadwal karyawan. Misalnya, jika seorang karyawan dijadwalkan 4 jam pada hari tertentu, karyawan tersebut hanya dapat mengajukan cuti maksimal 4 jam untuk hari itu. Melewati langkah ini dapat menyebabkan durasi cuti tidak sesuai dengan jadwal aktual dan menurunkan akurasi statistik kehadiran.
+- **T2: Untuk apa approve_id digunakan?**
+
+  J: `approve_id` adalah identifier unik Formulir persetujuan kustom. Sistem bisnis Anda yang membuat dan menyimpannya. Untuk membatalkan persetujuan, panggil API notifikasi pembatalan persetujuan dengan ID ini agar DingTalk dapat menemukan dan membatalkan catatan absensi yang sesuai.
+- **T3: Apakah solusi ini membuat Formulir persetujuan OA di DingTalk?**
+
+  J: Tidak. Solusi ini hanya menyinkronkan hasil persetujuan dari sistem mandiri Anda ke Absensi DingTalk. Solusi ini tidak membuat instans persetujuan di Pusat Persetujuan OA DingTalk. Proses persetujuan tetap diselesaikan di sistem mandiri Anda, dan DingTalk hanya menerima data absensi.
+- **T4: Bagaimana API perhitungan awal durasi menangani cuti lintas hari?**
+
+  J: API secara otomatis menjumlahkan jam terjadwal dari semua hari kerja dalam periode cuti. Misalnya, Xiao Ming dijadwalkan 8 jam pada 15 Oktober dan 4 jam pada 16 Oktober. Jika ia mengajukan cuti dari 15 Oktober hingga 16 Oktober, API mengembalikan durasi cuti maksimum 12 jam (8 + 4).
+- **T5: Apa yang harus saya lakukan jika pengajuan izin gagal?**
+
+  J: Periksa hal berikut:
+
+  - Jenis aplikasi adalah "Aplikasi internal".
+  - Akun memiliki izin Admin Organisasi atau Sub Admin.
+  - Identifier izin dimasukkan dengan benar (`qyapi_attendance_group_manage` dan `qyapi_attendance_group_read`).
+  - Jika pengajuan masih gagal, hubungi dukungan teknis DingTalk dan sertakan ID aplikasi serta log error Anda.

@@ -1,0 +1,574 @@
+---
+title: "Create, Get, Update, and Delete Attendance Groups"
+description: "Call this API to create, get, update, and delete attendance groups in DingTalk Attendance, enabling batch management from HR and OA systems."
+---
+
+# Configure Attendance Rules: Create Attendance Groups in Batch and Adjust Them Dynamically
+
+## Overview
+
+This solution automates attendance group management end to end. It uses the attendance group management APIs on the DingTalk Open Platform to integrate business platforms such as HR and OA systems with DingTalk Attendance.
+
+### Background
+
+Organizations face the following challenges in attendance management:
+
+- **Complex attendance rules**: Fixed shift attendance, shift-based attendance, flexible working hours, and other modes coexist. Manual configuration is slow and error-prone.
+- **Frequent personnel changes**: Onboarding, offboarding, and transfers require manual updates to attendance group members. Organizations with 1,000+ employees spend several hours on this every week.
+- **No cross-system sync**: Organization Structure changes in the HR system do not reach DingTalk attendance groups in time, which causes clock-in data errors.
+- **No batch operations**: Admins cannot create or update multiple attendance groups at once. Updating them one by one is highly inefficient.
+
+### Key Benefits
+
+This solution helps organizations achieve the following:
+
+- **Automated attendance group management**: Create, query, update, and delete attendance groups through the API with zero manual intervention.
+- **Smart shift association**: Create new shifts or associate existing ones automatically to keep attendance rules accurate.
+- **Efficient batch execution**: Get, search, and update attendance groups in batch to significantly improve operational efficiency.
+- **Unified cross-system data**: Sync HR, OA, and DingTalk Attendance data in real time to eliminate data silos.
+
+### Use Cases
+
+This solution fits the following typical business scenarios:
+
+- **HR system integration**: Sync attendance rules from the HR management system to DingTalk attendance groups automatically.
+- **Mergers and acquisitions**: Quickly create attendance groups and shift configurations in batch for newly acquired companies.
+- **OA workflow integration**: Create or adjust the corresponding attendance group automatically when an Approval process ends.
+- **Dynamic permission adjustment**: Update attendance group members and Admin permissions automatically based on Department changes.
+
+## Typical Business Scenarios
+
+### Scenario 1: Sync Attendance Groups from the HR System (Batch Creation and Management)
+
+#### Pain Points
+
+In the traditional model, after HR plans new attendance rules in the HR system, they must sign in to the DingTalk admin console and manually create each attendance group, configure shifts, and add members. Organizations with 1,000+ employees typically have 20 to 50 attendance groups. Manual setup takes hours and often leads to incorrect shifts or missing members.
+
+#### Value Validation
+
+- **Automated workflow**
+
+  The API-based Automation flow runs in these steps:
+  1. The HR system records a new Employee.
+  2. The system finds the matching attendance group automatically based on the Employee's Department.
+  3. The system adds new members in batch through the API.
+  4. The system verifies and confirms the result in real time.
+  5. Clock-in permission takes effect immediately.
+- **Key advantages**
+
+  - **Fully automatic trigger**: The API call runs automatically after HR enters a new Employee in the HR system. No one needs to sign in to the DingTalk admin console or start the action manually. Entry and sync happen together.
+  - **Precise matching**: The system queries and matches the `groupKey` of the attendance group automatically based on the Employee's Department ID. This prevents clock-in errors caused by selecting the wrong attendance group manually.
+  - **Immediate effect**: After the batch-add-employees API adds members in batch, the query-members-by-id API verifies the result immediately. Employees can clock in as soon as they join the attendance group.
+  - **Audit trail**: Each API call records the operator, timestamp, attendance group ID, Employee `userId`, and other details to meet compliance auditing and traceability requirements.
+
+### Scenario 2: Sync Attendance Groups Automatically after Organization Structure Changes
+
+#### Pain Points
+
+When departments merge or split, or when employees transfer, HR must manually update the member lists and scheduling rules of each affected attendance group. Large-scale restructuring can involve dozens of attendance groups. Manual updates are time-consuming and often miss some groups, which causes clock-in errors for employees.
+
+#### Value Validation
+
+- **Automated workflow**
+
+  The Automation flow runs in five steps:
+
+  1. **OA Approval trigger**: When an approval for a department merge or split or a personnel transfer is passed, the system automatically captures the change **event**.
+  2. **Identify affected attendance groups**: The system queries all associated attendance groups automatically based on the changed Department ID.
+  3. **API batch update**: The system calls the DingTalk attendance group update API to modify member lists and shift configurations in batch.
+  4. **Real-time data validation**: Immediately after the update, the system calls the query API to verify data consistency across all attendance groups.
+  5. **Sync complete**: Attendance group synchronization finishes and the updated attendance rules take effect with no manual intervention.
+- **Key advantages**
+
+  - **Automatic trigger**: The system captures the change event and runs the sync automatically when the OA Approval process ends. No one needs to start or monitor it. Approval and sync happen together.
+  - **Precise batch processing**: The system identifies and updates all affected attendance groups at once. This prevents omissions from manual lookups and ensures 100% coverage of organizational changes.
+  - **Real-time validation and Feedback**: The system calls the query API right after the update to verify data consistency and sends alerts automatically on errors. This ensures attendance rules take effect correctly.
+  - **Complete audit logs**: Each API call records the operator, timestamp, and change Content to meet compliance auditing and traceability requirements.
+
+## Implementation Guide
+
+### Technical Architecture
+
+This solution is built on the Server API of the DingTalk Open Platform. The core technical components are:
+
+- **Authentication layer**: Uses the `Client ID` and `Client Secret` to get the `access_token` and secure API calls.
+- **Attendance group management layer**: Provides complete API capabilities to create, query, update, and delete attendance groups. Supports fixed shift attendance groups and shift-based attendance groups.
+- **Shift management layer**: Provides API capabilities to create and query shifts, which are prerequisite resources for attendance groups.
+- **Error handling layer**: Provides a comprehensive error code system to help you locate and resolve issues quickly.
+
+**API versions**: The Server API has new and legacy versions. Use the new version first for better performance and feature support.
+
+### Prerequisites
+
+Meet the following conditions before you implement the solution:
+
+- **App preparation**: Create and configure an Internal app. For details, see [Create and Configure an App](/open/dingstart/create-application).
+- **Permission requirements**: Have DingTalk Organization Admin or Sub Admin permissions, and apply for the following API permissions:
+
+  - `qyapi_attendance_group_manage` (attendance group management permission)
+  - `qyapi_attendance_group_read` (attendance group query permission)
+- **Development environment**: Install a Java development environment (JDK 1.6 or later) and the Maven build tool.
+- **SDK preparation**: Download the DingTalk Server-side SDK. For details, see Server-side SDK Download. The SDK supports Java, Python, Go, and other languages.
+
+### Code Implementation
+
+Step 1: Get the App credential information, including the client ID and Client Secret.
+
+Step 2: Apply for API permissions related to attendance.
+
+Step 3: Get the Access credential of the App. See [Get the access_token of an Internal App](/open/development/obtain-orgapp-token). When you call the API, the access token authenticates the caller's identity.
+
+Step 4: Call the attendance APIs:
+
+1. Call the Server API [Create an Attendance Group](/open/development/attendance-group-write) to get the attendance group `id`.
+
+### Note
+
+   The examples in this document use a fixed shift attendance group.
+
+   To create a **fixed shift attendance group**, make sure a shift exists before you call the Create an Attendance Group API:
+
+   - If no shift exists, call the Server API [Create a Shift](/open/development/create-modify-shifts) to get the shift ID.
+   - If a shift already exists, call the Server API [Get Shift Summaries](/open/development/enterprise-shift-query-in-batches) to get the existing shift ID.
+2. Get attendance group information.
+
+   - Get information about all attendance groups in the Organization
+
+     - Call the Server API [Get Attendance Group Summaries in Batch](/open/development/batch-query-of-simple-information-of-the-attendance-group) to get summaries of all attendance groups in the Organization.
+     - Call the Server API [Get Attendance Group Details in Batch](/open/development/batch-obtain-attendance-group-details) to get details of all attendance groups in the Organization.
+   - Call the Server API [Search Attendance Group Summaries](/open/development/attendance-group-search) to run a fuzzy query for attendance groups by name.
+   - Get information about a single attendance group
+
+     - Call the Server API [Get Attendance Group Details](/open/development/query-a-single-attendance-group) with the attendance group `id` to get the details of a single attendance group.
+     - Get attendance group details by `groupKey`
+
+       1. Call the Server API [Convert groupId to groupKey](/open/development/groupid-to-groupkey) with the attendance group `id` to get the attendance group `groupKey`.
+       2. Call the Server API [Query Attendance Group Information by groupKey](/open/development/queries-attendance-group-information-by-id) with the attendance group `groupKey` to get the attendance group information.
+3. Call the Server API [Update an Attendance Group](/open/development/attendance-group-update-interface) with the attendance group `id` to modify the attendance group name, shifts, and other information.
+4. Call the Server API [Delete an Attendance Group](/open/development/delete-attendance-group) with the attendance group `groupKey` to delete the attendance group.
+
+## Implementation Steps
+
+### **Step 1: Get the App Credentials**
+
+1. Sign in to the [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Select the target App to open the App details page.
+3. Click **Basic Information** > **Credentials and Basic Information**.
+4. Record the App's `Client ID` and `Client Secret`.
+
+### Note
+
+   Keep the `Client Secret` secure and never share it with third parties. Store it in environment variables or a key management system instead of hardcoding it.
+
+### Step 2: Add API Permissions
+
+1. On the App details page, click **Manage permissions**.
+2. Enter the following permission identifiers in the permission search box and apply for them:
+
+   - `qyapi_attendance_group_manage` (attendance group management permission): Used to create, update, and delete attendance groups.
+   - `qyapi_attendance_group_read` (attendance group query permission): Used to query attendance group summaries and details.
+
+<Note>
+Different business scenarios may require different permission combinations. Apply based on your actual needs. For example, batch Import scenarios also require permissions for batch User operations.
+</Note>
+
+### Step 3: Get the Access Credential (access_token)
+
+Use the Client ID and Client Secret from Step 1 to get the App's Access credential. See [Get the access_token of an Internal App](/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Best practices**:
+
+- **Caching strategy**: The `access_token` is valid for 2 hours. Cache it in memory or Redis and Refresh it proactively 5 minutes before it expires.
+- **Concurrency control**: Prevent multiple threads from refreshing the token at the same time, which causes Conflicts. Use a distributed lock.
+- **Retry on errors**: Retry automatically on network fluctuations, up to 3 times, with increasing intervals (1s → 2s → 4s).
+
+### **Step 4:** Call the Core APIs
+
+#### Create an Attendance Group
+
+<Note>
+The examples in this document use a fixed shift attendance group.
+</Note>
+
+To create a fixed shift attendance group, make sure a shift exists before you call the Create an Attendance Group API:
+
+- If no shift exists, call the Server API [Create a Shift](/open/development/create-modify-shifts) to get the shift ID.
+
+  ```java
+  public void createShift() throws ApiException {
+      DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/add");
+      OapiAttendanceShiftAddRequest request = new OapiAttendanceShiftAddRequest();
+      request.setOpUserId("ma*****75");
+
+      // Basic shift information
+      OapiAttendanceShiftAddRequest.TopAtClassVo topAtClassVo = new OapiAttendanceShiftAddRequest.TopAtClassVo();
+      topAtClassVo.setOwner("ma******75");
+      topAtClassVo.setClassGroupName("Shift 1009");
+      topAtClassVo.setCorpId("ding******288");
+      topAtClassVo.setName("New Shift");
+
+      // Shift time section configuration (clock-in & clock-out)
+      List<OapiAttendanceShiftAddRequest.TopAtSectionVo> sectionVos = new ArrayList<>();
+      OapiAttendanceShiftAddRequest.TopAtSectionVo sectionVo = new OapiAttendanceShiftAddRequest.TopAtSectionVo();
+
+      List<OapiAttendanceShiftAddRequest.TopAtTimeVo> timeVos = new ArrayList<>();
+
+      // Work start time
+      OapiAttendanceShiftAddRequest.TopAtTimeVo timeVo = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      timeVo.setAcross(0L);
+      timeVo.setBeginMin(60L);
+      timeVo.setCheckTime(StringUtils.parseDateTime("2022-10-09 09:00:00"));
+      timeVo.setCheckType("OnDuty");
+      timeVo.setEndMin(30L);
+      timeVo.setFreeCheck(false);
+      timeVos.add(timeVo);
+
+      // Work end time
+      OapiAttendanceShiftAddRequest.TopAtTimeVo timeVo1 = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      timeVo1.setAcross(0L);
+      timeVo1.setBeginMin(0L);
+      timeVo1.setCheckTime(StringUtils.parseDateTime("2022-10-09 18:00:00"));
+      timeVo1.setCheckType("OffDuty");
+      timeVo1.setEndMin(-1L);
+      timeVo1.setFreeCheck(false);
+      timeVos.add(timeVo1);
+
+      sectionVo.setTimes(timeVos);
+      sectionVos.add(sectionVo);
+      topAtClassVo.setSections(sectionVos);
+
+      // Shift settings
+      OapiAttendanceShiftAddRequest.TopAtClassSettingVo settingVo = new OapiAttendanceShiftAddRequest.TopAtClassSettingVo();
+      settingVo.setCorpId("ding16*******c288");
+      settingVo.setIsDeleted("N");
+      settingVo.setAbsenteeismLateMinutes(60L);
+      settingVo.setIsFlexible(false);
+      settingVo.setSeriousLateMinutes(30L);
+
+      // Break start time
+      OapiAttendanceShiftAddRequest.TopAtTimeVo restBeginTime = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      restBeginTime.setFreeCheck(false);
+      restBeginTime.setAcross(0L);
+      restBeginTime.setCheckType("OnDuty");
+      restBeginTime.setCheckTime(StringUtils.parseDateTime("2022-10-09 12:00:00"));
+      settingVo.setRestBeginTime(restBeginTime);
+
+      // Break end time
+      OapiAttendanceShiftAddRequest.TopAtTimeVo restEndTime = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      restEndTime.setAcross(0L);
+      restEndTime.setCheckType("OffDuty");
+      restEndTime.setFreeCheck(false);
+      restEndTime.setCheckTime(StringUtils.parseDateTime("2022-10-09 13:00:00"));
+      settingVo.setRestEndTime(restEndTime);
+
+      topAtClassVo.setSetting(settingVo);
+
+      request.setShift(topAtClassVo);
+
+      OapiAttendanceShiftAddResponse response = client.execute(request, "access_token");
+      System.out.println(response.getBody());
+  }
+  ```
+- If a shift already exists, call the Server API [Get Shift Summaries](/open/development/enterprise-shift-query-in-batches) to get the existing shift ID.
+
+  ```java
+  public void shiftList() throws ApiException {
+      DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/list");
+
+      OapiAttendanceShiftListRequest req = new OapiAttendanceShiftListRequest();
+      req.setOpUserId("ma******75");
+      req.setCursor(0L);
+
+      OapiAttendanceShiftListResponse rsp = client.execute(req, "access_token");
+      System.out.println(rsp.getBody());
+  }
+  ```
+
+API description: Call the Server API [Create an Attendance Group](/open/development/attendance-group-write) to get the attendance group `id`.
+
+```java
+public void createGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/add");
+    OapiAttendanceGroupAddRequest req = new OapiAttendanceGroupAddRequest();
+    req.setOpUserId("ma*****75");
+
+    // Attendance group information
+    OapiAttendanceGroupAddRequest.TopGroupVo topGroupVo = new OapiAttendanceGroupAddRequest.TopGroupVo();
+    topGroupVo.setOwner("ma*****75");
+    topGroupVo.setEnableEmpSelectClass(true);
+    topGroupVo.setCorpId("ding***********288");
+    topGroupVo.setSkipHolidays(true);
+    topGroupVo.setEnableOutsideCameraCheck(true);
+
+    // Clock-in location configuration
+    List<OapiAttendanceGroupAddRequest.TopPositionVo> positionVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopPositionVo topPositionVo = new OapiAttendanceGroupAddRequest.TopPositionVo();
+    topPositionVo.setAddress("No. 21 Jing'er Road, Biotech Industrial Park");
+    topPositionVo.setCorpId("ding*******288");
+    topPositionVo.setLatitude("36.687495");
+    topPositionVo.setAccuracy("0");
+    topPositionVo.setTitle("Qinghai-Tibet Plateau Natural History Museum");
+    topPositionVo.setLongitude("101.750329");
+    positionVos.add(topPositionVo);
+    topGroupVo.setPositions(positionVos);
+
+    topGroupVo.setModifyMember(true);
+    topGroupVo.setType("FIXED");
+    topGroupVo.setEnableFaceCheck(false);
+    topGroupVo.setCheckNeedHealthyCode(true);
+    topGroupVo.setEnableCameraCheck(false);
+
+    // Shift configuration
+    List<OapiAttendanceGroupAddRequest.TopShiftVo> topShiftVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopShiftVo topShiftVo = new OapiAttendanceGroupAddRequest.TopShiftVo();
+    topShiftVo.setId(1006170802L);
+    topShiftVos.add(topShiftVo);
+    topGroupVo.setShiftVoList(topShiftVos);
+
+    topGroupVo.setEnableOutsideCheck(false);
+
+    // Member configuration
+    List<OapiAttendanceGroupAddRequest.TopMemberVo> memberVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopMemberVo topMemberVo = new OapiAttendanceGroupAddRequest.TopMemberVo();
+    topMemberVo.setRole("Attendance");
+    topMemberVo.setCorpId("ding********288");
+    topMemberVo.setType("StaffMember");
+    topMemberVo.setUserId("014***********041");
+    memberVos.add(topMemberVo);
+    topGroupVo.setMembers(memberVos);
+
+    topGroupVo.setName("New Attendance Group");
+    topGroupVo.setEnableNextDay(false);
+    topGroupVo.setManagerList(Arrays.asList("08*******272", "ma*******75"));
+    topGroupVo.setWorkdayClassList(Arrays.asList(0L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 0L));
+    topGroupVo.setDefaultClassId(1006170802L);
+    topGroupVo.setOffset(300L);
+
+    // Management role permission configuration
+    OapiAttendanceGroupAddRequest.TopGroupManageRolePermissionVo groupManageRolePermissionVo = new OapiAttendanceGroupAddRequest.TopGroupManageRolePermissionVo();
+    groupManageRolePermissionVo.setSchedule("w");
+    groupManageRolePermissionVo.setGroupMember("w");
+    groupManageRolePermissionVo.setGroupType("r");
+    groupManageRolePermissionVo.setCheckTime("w");
+    groupManageRolePermissionVo.setCheckPositionType("r");
+    groupManageRolePermissionVo.setOverTimeRule("r");
+    groupManageRolePermissionVo.setCameraCheck("w");
+    groupManageRolePermissionVo.setOutSideCheck("w");
+    topGroupVo.setResourcePermissionMap(groupManageRolePermissionVo);
+
+    // Attendance Wi-Fi clock-in configuration (commented out)
+    // List<OapiAttendanceGroupAddRequest.TopWifiVo> topWifiVos = new ArrayList<>();
+    // OapiAttendanceGroupAddRequest.TopWifiVo topWifiVo = new OapiAttendanceGroupAddRequest.TopWifiVo();
+    // topWifiVos.add(topWifiVo);
+    // topWifiVo.setMacAddr("C0:E0:D0:E0:C0:0F");
+    // topWifiVo.setSsid("OFFICE-WiFi");
+    // topWifiVo.setCorpId("dinge8xxxx");
+    // topGroupVo.setWifis(topWifiVos);
+
+    topGroupVo.setDisableCheckWithoutSchedule(true);
+    topGroupVo.setFreecheckDayStartMinOffset(240L);
+    topGroupVo.setDisableCheckWhenRest(true);
+
+    req.setTopGroup(topGroupVo);
+
+    OapiAttendanceGroupAddResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+#### Get Attendance Group Information
+
+- **Get information about all attendance groups in the Organization**
+
+  1. **Get attendance group summaries in batch**: Call the Server API [Get Attendance Group Summaries in Batch](/open/development/batch-query-of-simple-information-of-the-attendance-group) to get summaries of all attendance groups in the Organization.
+
+     ```java
+     public void groupMinimalismList() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/minimalism/list");
+
+         OapiAttendanceGroupMinimalismListRequest req = new OapiAttendanceGroupMinimalismListRequest();
+         req.setOpUserId("ma******75");
+         req.setCursor(0L);
+
+         OapiAttendanceGroupMinimalismListResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  2. **Get attendance group details in batch**: Call the Server API [Get Attendance Group Details in Batch](/open/development/batch-obtain-attendance-group-details) to get details of all attendance groups in the Organization.
+
+     ```java
+     public void simpleGroups() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+
+         OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+         req.setOffset(0L);
+         req.setSize(10L);
+
+         OapiAttendanceGetsimplegroupsResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  3. **Search attendance group summaries**: Call the Server API [Search Attendance Group Summaries](/open/development/attendance-group-search) to run a fuzzy query for attendance groups by name.
+
+     ```java
+     public void groupSearch() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/search");
+
+         OapiAttendanceGroupSearchRequest req = new OapiAttendanceGroupSearchRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupName("New Attendance Group");
+
+         OapiAttendanceGroupSearchResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+- **Get information about a single attendance group**
+
+  1. **Get details of a single attendance group**: Call the Server API [Get Attendance Group Details](/open/development/query-a-single-attendance-group) with the attendance group `id` to get the details of a single attendance group.
+
+     ```java
+     public void groupQuery() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/query");
+
+         OapiAttendanceGroupQueryRequest req = new OapiAttendanceGroupQueryRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupId(1010195506L);
+
+         OapiAttendanceGroupQueryResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  2. **Convert groupId to groupKey**: Call the Server API [Convert groupId to groupKey](/open/development/groupid-to-groupkey) with the attendance group `id` to get the attendance group `groupKey`.
+
+     ```java
+     public void groupsIdToKey() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/groups/idtokey");
+
+         OapiAttendanceGroupsIdtokeyRequest req = new OapiAttendanceGroupsIdtokeyRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupId(1010195506L);
+
+         OapiAttendanceGroupsIdtokeyResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  3. **Query attendance group information by groupKey**: Call the Server API [Query Attendance Group Information by groupKey](/open/development/queries-attendance-group-information-by-id) with the attendance group `groupKey` to get the attendance group information.
+
+     ```java
+     public void groupInfo() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/get");
+
+         OapiAttendanceGroupGetRequest req = new OapiAttendanceGroupGetRequest();
+         req.setOpUserid("ma******75");
+         req.setGroupKey("19F************2B2");
+
+         OapiAttendanceGroupGetResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+
+#### Update an Attendance Group
+
+Call the Server API [Update an Attendance Group](/open/development/attendance-group-update-interface) with the attendance group `id` to modify the attendance group name, shifts, and other information.
+
+```java
+public void updateGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/modify");
+
+    OapiAttendanceGroupModifyRequest req = new OapiAttendanceGroupModifyRequest();
+    req.setOpUserId("ma*****75");
+
+    // Basic attendance group information
+    OapiAttendanceGroupModifyRequest.TopGroupVo topGroupVo = new OapiAttendanceGroupModifyRequest.TopGroupVo();
+    topGroupVo.setId(1010195506L); // Attendance group ID
+    topGroupVo.setName("New Attendance Group 1");
+    topGroupVo.setOwner("ma*****75");
+    topGroupVo.setEnableEmpSelectClass(false);
+    topGroupVo.setSkipHolidays(true);
+    topGroupVo.setEnableFaceCheck(true);
+    topGroupVo.setOpenCameraCheck(false);
+    topGroupVo.setOpenFaceCheck(false);
+    topGroupVo.setEnableOutsideCheck(false);
+    topGroupVo.setDisableCheckWithoutSchedule(false);
+    topGroupVo.setOffset(500L);
+    topGroupVo.setManagerList(Arrays.asList("0147******041", "0852*******72"));
+
+    // Clock-in location configuration
+    List<OapiAttendanceGroupModifyRequest.TopPositionVo> positionVos = new ArrayList<>();
+    OapiAttendanceGroupModifyRequest.TopPositionVo topPositionVo = new OapiAttendanceGroupModifyRequest.TopPositionVo();
+    topPositionVo.setAddress("No. 21 Jing'er Road, Biotech Industrial Park");
+    topPositionVo.setCorpId("din***********88");
+    topPositionVo.setLatitude("30.123");
+    topPositionVo.setLongitude("120.123");
+    topPositionVo.setAccuracy("0");
+    topPositionVo.setTitle("Qinghai-Tibet Plateau Natural History Museum");
+    positionVos.add(topPositionVo);
+    topGroupVo.setPositions(positionVos);
+
+    // Shift configuration
+    List<OapiAttendanceGroupModifyRequest.TopShiftVo> topShiftVos = new ArrayList<>();
+    OapiAttendanceGroupModifyRequest.TopShiftVo topShiftVo = new OapiAttendanceGroupModifyRequest.TopShiftVo();
+    topShiftVo.setId(1006170802L); // Shift ID
+    topShiftVos.add(topShiftVo);
+    topGroupVo.setShiftVoList(topShiftVos);
+
+    // Workday shift list (1006170802L: shift ID)
+    topGroupVo.setWorkdayClassList(Arrays.asList(0L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 0L));
+
+    req.setTopGroup(topGroupVo);
+
+    OapiAttendanceGroupModifyResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+#### Delete an Attendance Group
+
+Call the Server API [Delete an Attendance Group](/open/development/delete-attendance-group) with the attendance group `groupKey` to delete the attendance group.
+
+### Note
+
+- Confirm that the attendance group has no active employees. Call the Get Attendance Group Details API first to check.
+- Transfer the To-Do items, Approval forms, and other items associated with the attendance group to other attendance groups.
+- Back up the historical data of the attendance group, if necessary.
+- Notify the relevant departments (IT, HR, Administration, etc.) to complete follow-up cleanup.
+
+```java
+public void deleteGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/delete");
+
+    OapiAttendanceGroupDeleteRequest req = new OapiAttendanceGroupDeleteRequest();
+    req.setOpUserid("ma********75");
+    req.setGroupKey("19FB************22B2");
+
+    OapiAttendanceGroupDeleteResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+## FAQ
+
+- **Q1: What should I do if I get a "Shift does not exist" error when creating an attendance group?**
+
+  A: A fixed shift attendance group requires an existing shift. Call the [Create a Shift](/open/development/create-modify-shifts) API first, or call the [Get Shift Summaries](/open/development/enterprise-shift-query-in-batches) API to get an existing shift ID. Then create the attendance group.
+- **Q2: How do I get information about all attendance groups in batch?**
+
+  A: Follow two steps. First, call [Get Attendance Group Summaries in Batch](/open/development/batch-query-of-simple-information-of-the-attendance-group) to get brief information (including the `id`) for all attendance groups. Then call [Get Attendance Group Details in Batch](/open/development/batch-obtain-attendance-group-details) as needed to get the full details.
+- **Q3: What is the difference between the attendance group id and groupKey?**
+
+  A: `id` is the numeric identifier of the attendance group, and `groupKey` is its string identifier. Some APIs, such as Delete an Attendance Group, require the `groupKey`. Use the [Convert groupId to groupKey](/open/development/groupid-to-groupkey) API to convert between them.
+- **Q4: Do I need to pass all fields when updating an attendance group?**
+
+  A: No. Pass only the fields to modify and the attendance group `id`. Fields you omit keep their original values.

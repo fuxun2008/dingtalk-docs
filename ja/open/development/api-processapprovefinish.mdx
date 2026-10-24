@@ -1,0 +1,623 @@
+---
+title: "承認完了の通知"
+description: "残業・休暇・外出・出張の承認結果を勤怠に連携し、社員の勤怠ステータスを自動更新するサーバー API です。"
+---
+
+この API を呼び出して、承認が完了したことを DingTalk に通知します。対象となるタイプは残業、休暇、外出、出張です。
+
+## API 呼び出し説明
+
+たとえば、ある社員の本日の勤務予定が 8:00〜18:00 で、組織独自の承認システムで休暇申請を提出したとします。申請が承認された後にこの API を呼び出して DingTalk 勤怠に通知すると、その社員は本日打刻する必要がなく、欠勤としても記録されません。社員のステータスは休暇と表示されます。別の例として、社員の Xiaoding が 11月15日に打刻しておらず、勤怠統計にこの打刻漏れが記録されているとします。
+
+この API を呼び出して承認完了を DingTalk に通知すると、Xiaoding の 11月15日の勤怠が休暇、出張、または残業に変更されます。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/attendance/approvals/finish |
+| HTTP メソッド | POST |
+| 対応するアプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_attendance_group_read-勤怠グループの照会権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。次の方法で取得します。   - 社内アプリ：[社内アプリのアクセストークンを取得](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリに権限を付与した組織のアクセストークンを取得する API を呼び出します。 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| userId | String | いいえ | 社員の userId です。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| topCalculateApproveDurationParam | Object | いいえ | 時間の計算に関する入力パラメータです。 |
+| bizType | Long | いいえ | 承認フォームのタイプです。有効な値：   - **1**：残業 - **2**：出張または外出 - **3**：休暇 |
+| fromTime | String | いいえ | 開始時刻です。現在時刻から 31 日より前の時刻は指定できません。  対応する形式：   - 2019-08-15 - 2019-08-15 AM - 2019-08-15 12:43 |
+| toTime | String | いいえ | 終了時刻です。  対応する形式：   - 2019-08-15 - 2019-08-15 AM - 2019-08-15 12:43   **注意**  - 終了時刻を開始時刻より前に設定することはできません。 - 期間は 360 日を超えることはできません。 - 開始時刻から終了時刻までの日数は 31 日を超えることはできません。 - `biz_type` が 1 の場合、開始時刻から終了時刻までの日数は 1 日を超えることはできません。 |
+| durationUnit | String | いいえ | 時間の単位です。対応する値：   - **day** - **halfDay** - **hour**：`biz_type` が 1 の場合は hour のみ対応しています。   時刻の形式は時間の単位と一致させる必要があります。   - 2019-08-15 は day に対応 - 2019-08-15 AM は halfDay に対応 - 2019-08-15 12:43 は hour に対応 |
+| calculateModel | Long | いいえ | 計算方法：   - **0**：暦日で計算 - **1**：勤務日で計算 |
+| leaveCode | String | いいえ | 休暇ルールの一意の識別子です。任意です。  **注意**  `bizType=3`（休暇）の場合のみ、空でない値を渡してください。その場合、休暇タイプに設定された端数処理ルールに従って時間が丸められます。 |
+| timeZoneId | String | いいえ | タイムゾーン ID です。形式は `Asia/Shanghai` です。 |
+| tagName | String | いいえ | 承認フォームのタイプ名です（最大 20 文字）。対応する値：请假（休暇）、出差（出張）、外出（外出）、加班（残業）。 |
+| subType | String | いいえ | サブタイプ名です（最大 64 文字）。  **注意**  承認フォームのタイプ biz_type が 3 の場合、このパラメータは必須です。 |
+| approveId | String | いいえ | 承認フォーム ID です（最大 100 文字）。任意の値を指定できます。  **注意**  サードパーティ社内アプリはこの値を保存する必要があります。承認の取り消しを通知する際に必要となります。同じ approveId でこの API を再度呼び出すと、更新として処理されます。 |
+| jumpUrl | String | いいえ | 承認フォームのリダイレクト先 URL です（最大 200 文字）。  **注意**  勤怠統計ページでユーザーがサードパーティ社内アプリのエントリをクリックすると、DingTalk はこの URL にリダイレクトします。承認フォームの詳細ページの URL を指定してください。 |
+| overtimeDuration | String | いいえ | biz_type が 1 の場合は必須です。残業時間です（単位：時間）。 |
+| overTimeToMore | Long | いいえ | biz_type が 1 の場合は必須です。   - **1**：残業を代休に振り替え - **2**：残業を残業代に振り替え |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/attendance/approvals/finish?userId=manager123 HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:234adfw423xxx
+Content-Type:application/json
+
+{
+  "topCalculateApproveDurationParam" : {
+    "bizType" : 3,
+    "fromTime" : "2019-08-15",
+    "toTime" : "2019-08-15",
+    "durationUnit" : "day",
+    "calculateModel" : 1,
+    "leaveCode" : "3afdsf-143dsadw3-ad23"
+    "timeZoneId":"Asia/Shanghai"
+  },
+  "tagName" : "请假",  // 休暇
+  "subType" : "年次有給休暇",
+  "approveId" : "1234abcd",
+  "dingtalkApproveId" : "https://open.dingtalk.io/",
+  "jumpUrl" : "https://open.dingtalk.io/",
+  "overtimeDuration" : "1.07",
+  "overTimeToMore" : 1
+}
+```
+
+Java
+
+```java
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>トークンを使用してアカウント Client を初期化します</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkattendance_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkattendance_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkattendance_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishHeaders processApproveFinishHeaders = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishHeaders();
+        processApproveFinishHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam()
+                .setBizType(3L)
+                .setFromTime("2019-08-15")
+                .setToTime("2019-08-15")
+                .setDurationUnit("day")
+                .setCalculateModel(1L)
+                .setLeaveCode("3afdsf-143dsadw3-ad23");
+                .setTimeZoneId("Asia/Shanghai");
+        com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest processApproveFinishRequest = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest()
+                .setUserId("manager123")
+                .setTopCalculateApproveDurationParam(topCalculateApproveDurationParam)
+                .setTagName("请假")  // 休暇
+                .setSubType("年次有給休暇")
+                .setApproveId("1234abcd")
+                .setJumpUrl("https://open.dingtalk.io/")
+                .setOvertimeDuration("1.07")
+                .setOverTimeToMore(1L);
+        try {
+            client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import os
+import sys
+import json
+
+from typing import List
+
+from alibabacloud_dingtalk.attendance_1_0.client import Client as dingtalkattendance_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.attendance_1_0 import models as dingtalkattendance__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkattendance_1_0Client:
+        """
+        トークンを使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkattendance_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_approve_finish_headers = dingtalkattendance__1__0_models.ProcessApproveFinishHeaders()
+        process_approve_finish_headers.x_acs_dingtalk_access_token = '<your access token>'
+        top_calculate_approve_duration_param = dingtalkattendance__1__0_models.ProcessApproveFinishRequestTopCalculateApproveDurationParam(
+            biz_type=3,
+            from_time='2019-08-15',
+            to_time='2019-08-15',
+            duration_unit='day',
+            calculate_model=1,
+            leave_code='3afdsf-143dsadw3-ad23'
+        )
+        process_approve_finish_request = dingtalkattendance__1__0_models.ProcessApproveFinishRequest(
+            user_id='manager123',
+            top_calculate_approve_duration_param=top_calculate_approve_duration_param,
+            tag_name='请假',  # 休暇
+            sub_type='年次有給休暇',
+            approve_id='1234abcd',
+            jump_url='https://open.dingtalk.io/',
+            overtime_duration='1.07',
+            over_time_to_more=1
+        )
+        try:
+            client.process_approve_finish_with_options(process_approve_finish_request, process_approve_finish_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_approve_finish_headers = dingtalkattendance__1__0_models.ProcessApproveFinishHeaders()
+        process_approve_finish_headers.x_acs_dingtalk_access_token = '<your access token>'
+        top_calculate_approve_duration_param = dingtalkattendance__1__0_models.ProcessApproveFinishRequestTopCalculateApproveDurationParam(
+            biz_type=3,
+            from_time='2019-08-15',
+            to_time='2019-08-15',
+            duration_unit='day',
+            calculate_model=1,
+            leave_code='3afdsf-143dsadw3-ad23'
+        )
+        process_approve_finish_request = dingtalkattendance__1__0_models.ProcessApproveFinishRequest(
+            user_id='manager123',
+            top_calculate_approve_duration_param=top_calculate_approve_duration_param,
+            tag_name='请假',  # 休暇
+            sub_type='年次有給休暇',
+            approve_id='1234abcd',
+            jump_url='https://open.dingtalk.io/',
+            overtime_duration='1.07',
+            over_time_to_more=1
+        )
+        try:
+            await client.process_approve_finish_with_options_async(process_approve_finish_request, process_approve_finish_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\ProcessApproveFinishHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\ProcessApproveFinishRequest\topCalculateApproveDurationParam;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\ProcessApproveFinishRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * トークンを使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $processApproveFinishHeaders = new ProcessApproveFinishHeaders([]);
+        $processApproveFinishHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $topCalculateApproveDurationParam = new topCalculateApproveDurationParam([
+            "bizType" => 3,
+            "fromTime" => "2019-08-15",
+            "toTime" => "2019-08-15",
+            "durationUnit" => "day",
+            "calculateModel" => 1,
+            "leaveCode" => "3afdsf-143dsadw3-ad23"
+        ]);
+        $processApproveFinishRequest = new ProcessApproveFinishRequest([
+            "userId" => "manager123",
+            "topCalculateApproveDurationParam" => $topCalculateApproveDurationParam,
+            "tagName" => "请假",  // 休暇
+            "subType" => "年次有給休暇",
+            "approveId" => "1234abcd",
+            "jumpUrl" => "https://open.dingtalk.io/",
+            "overtimeDuration" => "1.07",
+            "overTimeToMore" => 1
+        ]);
+        try {
+            $client->processApproveFinishWithOptions($processApproveFinishRequest, $processApproveFinishHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkattendance_1_0  "github.com/alibabacloud-go/dingtalk/attendance_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Description:
+// 
+// トークンを使用してアカウント Client を初期化します
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkattendance_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkattendance_1_0.Client{}
+  _result, _err = dingtalkattendance_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  processApproveFinishHeaders := &dingtalkattendance_1_0.ProcessApproveFinishHeaders{}
+  processApproveFinishHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  topCalculateApproveDurationParam := &dingtalkattendance_1_0.ProcessApproveFinishRequestTopCalculateApproveDurationParam{
+    BizType: tea.Int64(3),
+    FromTime: tea.String("2019-08-15"),
+    ToTime: tea.String("2019-08-15"),
+    DurationUnit: tea.String("day"),
+    CalculateModel: tea.Int64(1),
+    LeaveCode: tea.String("3afdsf-143dsadw3-ad23"),
+  }
+  processApproveFinishRequest := &dingtalkattendance_1_0.ProcessApproveFinishRequest{
+    UserId: tea.String("manager123"),
+    TopCalculateApproveDurationParam: topCalculateApproveDurationParam,
+    TagName: tea.String("请假"),  // 休暇
+    SubType: tea.String("年次有給休暇"),
+    ApproveId: tea.String("1234abcd"),
+    JumpUrl: tea.String("https://open.dingtalk.io/"),
+    OvertimeDuration: tea.String("1.07"),
+    OverTimeToMore: tea.Int64(1),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ProcessApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```javascript
+'use strict';
+// このファイルは自動生成されています。編集しないでください
+const Util = require('@alicloud/tea-util');
+const dingtalkattendance_1_0 = require('@alicloud/dingtalk/attendance_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * トークンを使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkattendance_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let processApproveFinishHeaders = new dingtalkattendance_1_0.ProcessApproveFinishHeaders({ });
+    processApproveFinishHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let topCalculateApproveDurationParam = new dingtalkattendance_1_0.ProcessApproveFinishRequestTopCalculateApproveDurationParam({
+      bizType: 3,
+      fromTime: '2019-08-15',
+      toTime: '2019-08-15',
+      durationUnit: 'day',
+      calculateModel: 1,
+      leaveCode: '3afdsf-143dsadw3-ad23',
+    });
+    let processApproveFinishRequest = new dingtalkattendance_1_0.ProcessApproveFinishRequest({
+      userId: 'manager123',
+      topCalculateApproveDurationParam: topCalculateApproveDurationParam,
+      tagName: '请假',  // 休暇
+      subType: '年次有給休暇',
+      approveId: '1234abcd',
+      jumpUrl: 'https://open.dingtalk.io/',
+      overtimeDuration: '1.07',
+      overTimeToMore: 1,
+    });
+    try {
+      await client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+using Newtonsoft.Json;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Description:</b></term>
+        /// <description>
+        /// <para>トークンを使用してアカウント Client を初期化します</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkattendance_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkattendance_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishHeaders processApproveFinishHeaders = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishHeaders();
+            processApproveFinishHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam
+            {
+                BizType = 3,
+                FromTime = "2019-08-15",
+                ToTime = "2019-08-15",
+                DurationUnit = "day",
+                CalculateModel = 1,
+                LeaveCode = "3afdsf-143dsadw3-ad23",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest processApproveFinishRequest = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest
+            {
+                UserId = "manager123",
+                TopCalculateApproveDurationParam = topCalculateApproveDurationParam,
+                TagName = "请假",  // 休暇
+                SubType = "年次有給休暇",
+                ApproveId = "1234abcd",
+                JumpUrl = "https://open.dingtalk.io/",
+                OvertimeDuration = "1.07",
+                OverTimeToMore = 1,
+            };
+            try
+            {
+                client.ProcessApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には、開発者が問題を特定するための code 属性と message 属性が含まれます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| result | Object | 返される結果です。 |
+| duration | double | 合計時間です。単位は、社内で該当する承認フォームに設定されている単位と同じです。 |
+| durationDetail | Array | 詳細です。 |
+| date | String | 承認が完了した日付です。 |
+| duration | double | 日ごとの時間です。 |
+| success | Boolean | API 呼び出しが成功したかどうかを示します。 |
+
+### レスポンスボディの例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "duration" : 2,
+    "durationDetail" : [ {
+      "date" : "2019-08-15",
+      "duration" : 1
+    } ]
+  },
+  "success" : true
+}
+```
+
+### エラーコード
+
+API 呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決策を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | illegalCalculateType | 時間の計算方法が無効です | 時間の計算方法が無効です |
+| 400 | illegalDurationUnit | 時間の単位が無効です | 時間の単位が無効です |
+| 400 | illegalApproveType | 承認タイプが無効です | 承認タイプが無効です |
+| 400 | invalidRequestParams | パラメータエラー（ドキュメントを参照してパラメータを確認してください） | パラメータエラー（ドキュメントを参照してパラメータを確認してください） |
+| 400 | illegalOvertimeDurationUnit | 残業時間の単位が無効です（残業は時間単位のみ対応しています） | 残業時間の単位が無効です（残業は時間単位のみ対応しています） |
+| 400 | illegalDateTypeForHalfDay | DURATION_UNIT が半日の場合の開始時刻/終了時刻の形式が無効です | DURATION_UNIT が半日の場合の開始時刻/終了時刻の形式が無効です |
+| 400 | beginDateCannotAfterEndDate | 開始時刻を終了時刻より後に設定することはできません | 開始時刻を終了時刻より後に設定することはできません |
+| 400 | durationTooLong | 開始時刻から終了時刻までの期間が長すぎます | 開始時刻から終了時刻までの期間が長すぎます |
+| 400 | dateTooEarly | 指定された日数より前の時刻は設定できません | 指定された日数より前の時刻は設定できません |
+| 400 | overtimeDurationTooLong | 残業時間が長すぎます | 残業時間が長すぎます |
+| 400 | repeatApprovesOverLimit | 時間が重複する承認フォームの書き込み数が上限を超えています | 時間が重複する承認フォームの書き込み数が上限を超えています |
+| 400 | systemError | システムエラー | システムエラー |

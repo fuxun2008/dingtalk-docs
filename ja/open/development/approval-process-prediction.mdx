@@ -1,0 +1,1014 @@
+---
+title: "承認フォームのフローにおけるノード情報の取得"
+description: "承認フローコード・部門・ユーザーをもとに、承認フォームのノード情報（ノード名、承認タイプ、承認者、自選ノードの有無）を予測取得する API です。"
+---
+
+この API を呼び出して、承認フォームのフローにおけるノード情報を取得します。
+
+## API 呼び出し説明
+
+### 使用上の注意
+
+この API を呼び出すと、次のノード情報を取得できます。
+
+- 自選ノードの場合：ノード名、承認タイプ、承認者の設定、選択スコープ、複数承認者の承認方法、ノードのアクティブ化タイプなど。
+- 自選ノード以外の場合：ノード名、承認タイプ、承認者の設定、複数承認者の承認方法、ノードのアクティブ化タイプなど。
+
+承認ノードには次の設定項目があります。
+
+**タイプ**：**手動承認**、**自動承認**、または **自動却下**。
+
+**承認者** の **設定**：**指定メンバー**、**申請者が自分で選択**、**連続する複数階層の上司**、**部門マネージャー**、**直属の上司**、**ロール**、または **申請者本人**。申請者が選択する場合は、選択可能な **スコープ**（例：**指定メンバー**）と、1 人選択または複数人選択のモードを設定します。
+
+**複数承認者の承認方法**：
+
+| 方法 | 動作 |
+| --- | --- |
+| 順次承認 | 承認者が順番に処理します |
+| 全員承認 | すべての承認者による承認が必要です |
+| いずれか承認 | 1 人の承認者の承認または却下で結果が確定します |
+
+### ユースケース
+
+1. 自選ノードの有無を判断します。この API は、[承認インスタンスの作成](/ja/open/development/create-an-approval-instance) API と組み合わせて使用します。
+
+   **注意**：この API は、**承認インスタンスの作成** API の呼び出し時に承認フローを指定せず、承認の管理コンソールで設定済みの承認フローを再利用する場合にのみ適用されます。
+
+   承認テンプレートの編集画面では、設定が **基本設定**、**フォーム設計**、**フロー設計**、**高度な設定** の 4 つのステップに分かれています。**フロー設計** のキャンバスでは、承認フローが上から下へ順にノードとして配置されます。
+
+   1. **申請者** ノード：承認インスタンスを開始する人です。
+   2. **自選ノード**（申請者が処理担当者を選択するノード）：**申請者が自分で選択** として表示されます。
+   3. **承認者** ノード：指定された承認者です。
+
+   自選ノードでは、申請者がリクエストの送信時にそのステップの処理担当者を選択できます。
+2. ノードタイプやノード名など、承認テンプレートに設定されたノード情報を取得します。
+
+### 自選ノードの有無の判断
+
+#### 自選ノードがある場合
+
+この API を呼び出します。返される情報に、`activityType` フィールドの値が `target_select` であるノードが含まれます。
+
+この API を **承認インスタンスの作成** API と組み合わせて使用する場合は、次の点に注意してください。
+
+- 該当ノードの `actorKey` フィールドの値を、承認インスタンスの作成 API の actionerKey パラメータとして使用します。
+- `actorSelectionRange` 内の `workNo` フィールドの値を、承認インスタンスの作成 API の `actionerUserIds` パラメータとして使用します。
+
+  承認フローのデザイナーでは、**フロー設計** ステップ（**基本設定** > **フォーム設計** > **フロー設計** > **高度な設定**）で自選ノードを設定します。例のフローは **申請者** > **自選ノード**（タイプ：**申請者が選択**）> **承認者** の順に構成されています。
+
+#### 自選ノードがない場合
+
+この API を呼び出します。返される情報に、`activityType` フィールドの値が `target_approval` であるノードは含まれません。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processes/forecast |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-Workflow.Instance.Write-ワークフローインスタンスの書き込み権限 |
+
+### リクエストヘッダー
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。取得方法は次のとおりです。   - 社内アプリ：[社内アプリのアクセストークンを取得](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリが承認された組織のアクセストークンを取得する API を呼び出します。 |
+
+### リクエストボディ
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| processCode | String | はい | 承認フローの一意のコードです。[承認フォームテンプレートの作成または更新](/ja/open/development/create-an-approval-form-template) API を呼び出して取得します。[OA承認の概要 - 用語集](/ja/open/development/workflow-overview) も参照してください。 |
+| deptId | Integer | はい | 承認フォームを送信する社員の部門 ID です。[部門リストの取得](/ja/open/development/user-management-acquires-the-list-departments) API を呼び出して取得します。 |
+| userId | String | はい | 承認フォームを送信する社員の userId です。[部門のユーザー ID リストの取得](/ja/open/development/query-the-list-of-department-userids) API を呼び出して取得します。 |
+| formComponentValues | Array | はい | フォームコントロールのデータリストです。最大長：150。 |
+| id | String | いいえ | コントロール ID です。 |
+| bizAlias | String | いいえ | コントロールの表示名です。 |
+| name | String | はい | コントロール名です。 |
+| value | String | はい | コントロールの値です。 |
+| extValue | String | いいえ | コントロールの拡張値です。 |
+| componentType | String | いいえ | コントロールのタイプです。有効な値：   - **TextField**：一行テキストフィールド - **TextareaField**：複数行テキストフィールド - **NumberField**：数値フィールド - **DDSelectField**：単一選択フィールド - **DDMultiSelectField**：複数選択フィールド - **DDDateField**：日付コントロール - **DDDateRangeField**：期間コントロール - **TextNote**：説明テキストコントロール - **PhoneField**：電話番号コントロール - **DDPhotoField**：画像コントロール - **MoneyField**：金額コントロール - **TableField**：明細コントロール - **DDAttachment**：添付 - **InnerContactField**：連絡先コントロール - **RelateField**：関連承認フォーム - **FormRelateField**：関連コントロール |
+| details | Array | いいえ | 子コントロールのリストです。最大長：150。 |
+| id | String | いいえ | コントロール ID です。 |
+| bizAlias | String | いいえ | コントロールの表示名です。 |
+| name | String | いいえ | コントロール名です。 |
+| value | String | いいえ | コントロールの値です。 |
+| extValue | String | いいえ | コントロールの拡張値です。 |
+| details | Array | いいえ | 子コントロールのリストです。最大長：150。 |
+| id | String | いいえ | コントロール ID です。 |
+| bizAlias | String | いいえ | コントロールの表示名です。 |
+| name | String | いいえ | コントロール名です。 |
+| value | String | いいえ | コントロールの値です。 |
+| extValue | String | いいえ | コントロールの拡張値です。 |
+| componentType | String | いいえ | コントロールのタイプです。有効な値：   - **TextField**：一行テキストフィールド - **TextareaField**：複数行テキストフィールド - **NumberField**：数値フィールド - **DDSelectField**：単一選択フィールド - **DDMultiSelectField**：複数選択フィールド - **DDDateField**：日付コントロール - **DDDateRangeField**：期間コントロール - **TextNote**：説明テキストコントロール - **PhoneField**：電話番号コントロール - **DDPhotoField**：画像コントロール - **MoneyField**：金額コントロール - **TableField**：明細コントロール - **DDAttachment**：添付 - **InnerContactField**：連絡先コントロール - **RelateField**：関連承認フォーム - **FormRelateField**：関連コントロール |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/workflow/processes/forecast HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:ea96fed0eda0325e8b30f182805f5f4e
+Content-Type:application/json
+
+{ 
+    /*
+      この API は、承認アプリのすべてのコントロールにはまだ対応していません。以下の例に記載されたコントロールを参照してください。
+      基本コントロールでは、name 属性と value 属性のみが必須です。どちらも文字列です。
+      データが JSON 形式の場合は、先に文字列にエスケープしてください。
+    */ 
+    "userId": "26652461xxxx5992",
+    "deptId": 1,
+    "processCode": "PROC-17428B8C-6C60-xxxx-924C-64F1037AE067",
+    "formComponentValues": [
+        {
+          "name": "一行テキスト",
+          "value": "一行テキストの例"
+        },
+        {
+          "name": "複数行テキスト",
+          "value": "複数行テキストの例"
+        },
+        {
+          "name": "数値",
+          "value": "100"
+        },
+        {
+          /*
+            value には実際の選択肢の値を指定できます
+          */
+          "name": "単一選択",
+          "value": "選択肢1"
+        },
+        {
+          /*
+            value には、実際の選択肢の値の配列を文字列にエスケープして指定する必要があります。
+            選択肢が 1 つだけの場合も配列形式を使用してください。
+          */
+          "name": "複数選択",
+          "value": "[\"選択肢1\",\"選択肢2\"]"
+        }, 
+        {
+          /*
+            value は yyyy-MM-dd 形式のみ対応しています
+          */
+          "name": "日付",
+          "value": "2021-08-17"
+        },
+        {
+          /*
+            value は文字列形式の時刻配列です。yyyy-MM-dd 形式のみ対応しています。
+          */
+          "name": "[\"開始時刻\",\"終了時刻\"]",
+          "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+          "name": "身分証明書",
+          "value": "xxxx"
+        },
+        {
+          /*
+            value には、実際の URL の配列を文字列にエスケープして指定する必要があります。
+            項目が 1 つだけの場合も配列形式を使用してください。
+          */
+          "name": "画像",
+          "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+          /*
+            表コントロールの value は、JSON オブジェクトの 2 次元配列です。配列の各行は表のデータの 1 行を表し、
+            行内の各 JSON オブジェクトは表内の 1 つのコントロールを表します。
+          */
+          "name": "表",
+          "value": "[[{\"id\":\"TextField_CM2IN2SOB600\", \"value\":\"こんにちは\"}, {\"id\":\"TextField_QQOAK1OA2G00\", \"value\":\"世界\"}]]"
+        },
+        {
+          "name": "金額（元）",
+          "value": "100"
+        },
+        {
+          /*
+            添付コントロールの value は、文字列にエスケープした JSON 配列です。配列内の各 JSON オブジェクトが 1 つの添付ファイルです。
+            各ファイルには spaceId、fileName、fileSize、fileType、fileId フィールドが必要です。これらのフィールドは
+            ドライブの添付ファイルアップロード API を呼び出して取得します。
+          */
+          "name": "添付",
+          "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+          "\"643xxxx140\"}]"
+        },
+        {
+          "name": "連絡先",
+          "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+          /*
+            value には、実際の承認フォームの配列を文字列にエスケープして指定する必要があります。
+            項目が 1 つだけの場合も配列形式を使用してください。
+          */
+          "name": "関連承認フォーム",
+          "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        }
+    ]
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.teautil.models.*;
+import com.aliyun.dingtalkworkflow_1_0.*;
+import com.aliyun.dingtalkworkflow_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        ProcessForecastHeaders processForecastHeaders = new ProcessForecastHeaders();
+        processForecastHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetailsDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("電話番号")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("合計件数:1")
+                .setComponentType("TextField");
+        ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetails formComponentValues0Details0 = new ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("電話番号")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("合計件数:1")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0Details0
+                ));
+        ProcessForecastRequest.ProcessForecastRequestFormComponentValues formComponentValues0 = new ProcessForecastRequest.ProcessForecastRequestFormComponentValues()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("電話番号")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("合計件数:1")
+                .setComponentType("TextField")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0
+                ));
+        ProcessForecastRequest processForecastRequest = new ProcessForecastRequest()
+                .setProcessCode("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1")
+                .setDeptId(1)
+                .setUserId("manager432")
+                .setFormComponentValues(java.util.Arrays.asList(
+                    formComponentValues0
+                ));
+        try {
+            client.processForecastWithOptions(processForecastRequest, processForecastHeaders, new RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Token を使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_forecast_headers = dingtalkworkflow__1__0_models.ProcessForecastHeaders()
+        process_forecast_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='電話番号',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='合計件数:1',
+            component_type='TextField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='電話番号',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='合計件数:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='電話番号',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='合計件数:1',
+            component_type='TextField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        process_forecast_request = dingtalkworkflow__1__0_models.ProcessForecastRequest(
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            user_id='manager432',
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            client.process_forecast_with_options(process_forecast_request, process_forecast_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_forecast_headers = dingtalkworkflow__1__0_models.ProcessForecastHeaders()
+        process_forecast_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='電話番号',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='合計件数:1',
+            component_type='TextField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='電話番号',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='合計件数:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='電話番号',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='合計件数:1',
+            component_type='TextField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        process_forecast_request = dingtalkworkflow__1__0_models.ProcessForecastRequest(
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            user_id='manager432',
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            await client.process_forecast_with_options_async(process_forecast_request, process_forecast_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest\formComponentValues\details\details;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest\formComponentValues;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $processForecastHeaders = new ProcessForecastHeaders([]);
+        $processForecastHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $formComponentValues0Details0Details0 = new details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "電話番号",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "合計件数:1",
+            "componentType" => "TextField"
+        ]);
+        $formComponentValues0Details0 = new \AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest\formComponentValues\details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "電話番号",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "合計件数:1",
+            "details" => [
+                $formComponentValues0Details0Details0
+            ]
+        ]);
+        $formComponentValues0 = new formComponentValues([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "電話番号",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "合計件数:1",
+            "componentType" => "TextField",
+            "details" => [
+                $formComponentValues0Details0
+            ]
+        ]);
+        $processForecastRequest = new ProcessForecastRequest([
+            "processCode" => "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+            "deptId" => 1,
+            "userId" => "manager432",
+            "formComponentValues" => [
+                $formComponentValues0
+            ]
+        ]);
+        try {
+            $client->processForecastWithOptions($processForecastRequest, $processForecastHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されています。編集しないでください。
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Token を使用してアカウント Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  processForecastHeaders := &dingtalkworkflow_1_0.ProcessForecastHeaders{}
+  processForecastHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  formComponentValues0Details0Details0 := &dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetailsDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("電話番号"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("合計件数:1"),
+    ComponentType: tea.String("TextField"),
+  }
+  formComponentValues0Details0 := &dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("電話番号"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("合計件数:1"),
+    Details: []*dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetailsDetails{formComponentValues0Details0Details0},
+  }
+  formComponentValues0 := &dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValues{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("電話番号"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("合計件数:1"),
+    ComponentType: tea.String("TextField"),
+    Details: []*dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetails{formComponentValues0Details0},
+  }
+  processForecastRequest := &dingtalkworkflow_1_0.ProcessForecastRequest{
+    ProcessCode: tea.String("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1"),
+    DeptId: tea.Int32(1),
+    UserId: tea.String("manager432"),
+    FormComponentValues: []*dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValues{formComponentValues0},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ProcessForecastWithOptions(processForecastRequest, processForecastHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```typescript
+// このファイルは自動生成されています。編集しないでください
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Token を使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let processForecastHeaders = new $dingtalkworkflow_1_0.ProcessForecastHeaders({ });
+    processForecastHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let formComponentValues0Details0Details0 = new $dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetailsDetails({
+      id: "PhoneField_IZI2LP8QF6O0",
+      bizAlias: "電話番号",
+      name: "PhoneField",
+      value: "123xxxxxxxx",
+      extValue: "合計件数:1",
+      componentType: "TextField",
+    });
+    let formComponentValues0Details0 = new $dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetails({
+      id: "PhoneField_IZI2LP8QF6O0",
+      bizAlias: "電話番号",
+      name: "PhoneField",
+      value: "123xxxxxxxx",
+      extValue: "合計件数:1",
+      details: [
+        formComponentValues0Details0Details0
+      ],
+    });
+    let formComponentValues0 = new $dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValues({
+      id: "PhoneField_IZI2LP8QF6O0",
+      bizAlias: "電話番号",
+      name: "PhoneField",
+      value: "123xxxxxxxx",
+      extValue: "合計件数:1",
+      componentType: "TextField",
+      details: [
+        formComponentValues0Details0
+      ],
+    });
+    let processForecastRequest = new $dingtalkworkflow_1_0.ProcessForecastRequest({
+      processCode: "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+      deptId: 1,
+      userId: "manager432",
+      formComponentValues: [
+        formComponentValues0
+      ],
+    });
+    try {
+      await client.processForecastWithOptions(processForecastRequest, processForecastHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// このファイルは自動生成されています。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Token を使用してアカウント Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastHeaders processForecastHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastHeaders();
+            processForecastHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails.ProcessForecastRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails.ProcessForecastRequestFormComponentValuesDetailsDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "電話番号",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "合計件数:1",
+                ComponentType = "TextField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails formComponentValues0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "電話番号",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "合計件数:1",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails.ProcessForecastRequestFormComponentValuesDetailsDetails>
+                {
+                    formComponentValues0Details0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues formComponentValues0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "電話番号",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "合計件数:1",
+                ComponentType = "TextField",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails>
+                {
+                    formComponentValues0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest processForecastRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest
+            {
+                ProcessCode = "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+                DeptId = 1,
+                UserId = "manager432",
+                FormComponentValues = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues>
+                {
+                    formComponentValues0
+                },
+            };
+            try
+            {
+                client.ProcessForecastWithOptions(processForecastRequest, processForecastHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+C++
+
+```cpp
+// このファイルは自動生成されています。編集しないでください。
+
+#include <alibabacloud/dingtalkworkflow__1__0.hpp>
+#include <alibabacloud/open_api.hpp>
+#include <boost/any.hpp>
+#include <darabonba/core.hpp>
+#include <darabonba/util.hpp>
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+Alibabacloud_Dingtalkworkflow_1_0::Client createClient() {
+  shared_ptr<Alibabacloud_OpenApi::Config> config = make_shared<Alibabacloud_OpenApi::Config>();
+  config->protocol = make_shared<string>("https");
+  config->regionId = make_shared<string>("central");
+  return Alibabacloud_Dingtalkworkflow_1_0::Client(config);
+}
+
+int main(int argc, char *args[]) {
+  args++;
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::Client> client = make_shared<Alibabacloud_Dingtalkworkflow_1_0::Client>(createClient());
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastHeaders> processForecastHeaders = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastHeaders>();
+  processForecastHeaders->xAcsDingtalkAccessToken = make_shared<string>("<your access token>");
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetailsDetails> formComponentValues0Details0Details0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetailsDetails>(map<string, boost::any>({
+    {"id", boost::any(string("PhoneField_IZI2LP8QF6O0"))},
+    {"bizAlias", boost::any(string("電話番号"))},
+    {"name", boost::any(string("PhoneField"))},
+    {"value", boost::any(string("123xxxxxxxx"))},
+    {"extValue", boost::any(string("合計件数:1"))},
+    {"componentType", boost::any(string("TextField"))}
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetails> formComponentValues0Details0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetails>(map<string, boost::any>({
+    {"id", boost::any(string("PhoneField_IZI2LP8QF6O0"))},
+    {"bizAlias", boost::any(string("電話番号"))},
+    {"name", boost::any(string("PhoneField"))},
+    {"value", boost::any(string("123xxxxxxxx"))},
+    {"extValue", boost::any(string("合計件数:1"))},
+    {"details", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetailsDetails>({
+      formComponentValues0Details0Details0
+    }))}
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValues> formComponentValues0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValues>(map<string, boost::any>({
+    {"id", boost::any(string("PhoneField_IZI2LP8QF6O0"))},
+    {"bizAlias", boost::any(string("電話番号"))},
+    {"name", boost::any(string("PhoneField"))},
+    {"value", boost::any(string("123xxxxxxxx"))},
+    {"extValue", boost::any(string("合計件数:1"))},
+    {"componentType", boost::any(string("TextField"))},
+    {"details", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetails>({
+      formComponentValues0Details0
+    }))}
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequest> processForecastRequest = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequest>(map<string, boost::any>({
+    {"processCode", boost::any(string("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1"))},
+    {"deptId", boost::any(1)},
+    {"userId", boost::any(string("manager432"))},
+    {"formComponentValues", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValues>({
+      formComponentValues0
+    }))}
+  }));
+  try {
+    client->processForecastWithOptions(processForecastRequest, processForecastHeaders, make_shared<Darabonba_Util::RuntimeOptions>(Darabonba_Util::RuntimeOptions()));
+  }
+  catch (std::exception &err) {
+    if (!Darabonba_Util::Client::empty(err.code) && !Darabonba_Util::Client::empty(err.message)) {
+      // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+    }
+  }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| result | Object | 結果の詳細です。 |
+| isForecastSuccess | Boolean | 予測が成功したかどうかです。成功した場合は true を返します。 |
+| processCode | String | フォームの一意のコードです。 |
+| userId | String | ユーザー ID です。 |
+| processId | Long | フロー ID です。現在は使用されていません。 |
+| isStaticWorkflow | Boolean | 静的なフローかどうかです。   - **true**: - **false**: |
+| workflowActivityRules | Array | 作業フローのノードルールです。 |
+| activityId | String | ノード ID です。現在は使用されていません。 |
+| prevActivityId | String | フロー内の前のノードの ID です。 |
+| activityName | String | ノード名です。 |
+| activityType | String | ルールタイプです。有効な値：   - **target_select**：承認者自選ノード - **target_approval**：承認者指定ノード |
+| isTargetSelect | Boolean | 自選承認ノードかどうかです。  activityType が target_select の場合、このフィールドは true になります。 |
+| workflowActor | Object | ノードの処理者情報です。 |
+| actorKey | String | ノードの処理者キーです。 |
+| actorType | String | ノードの処理者タイプです。有効な値：   - **approver**：承認者 - **notifier**：CC受信者 - **audit**：処理担当者 |
+| actorSelectionType | String | ノードの処理者の選択スコープタイプです。有効な値：   - **allStaff**：企業全体 - **approvals**：指定メンバー - **labels**：ロール |
+| actorSelectionRange | Object | ノードの処理者の選択スコープです。 |
+| approvals | Array | 指定された承認メンバーです。ノードが指定メンバーに設定されている場合に返されます。 |
+| workNo | String | 社員の userId です。 |
+| userName | String | 社員名です。 |
+| labels | Array | 指定された承認ロールです。ノードがロールに設定されている場合に返されます。 |
+| labels | String | ロール ID です。 |
+| labelNames | String | ロール名です。 |
+| allowedMulti | Boolean | 複数選択が可能か、1 人のみ選択可能かを示します。 |
+| approvalType | String | ノードの承認タイプです。有効な値：   - MANUAL：手動承認 - AUTO_AGREE：自動承認 - AUTO_REFUSE：自動却下 |
+| approvalMethod | String | ノードの承認方法です。有効な値：   - ONE_BY_ONE：順次承認 - AND：全員承認 - OR：いずれか承認 |
+| actorActivateType | String | ノードのアクティブ化タイプです。有効な値：   - ALL：並列 - ONE_BY_ONE：直列 |
+| required | Boolean | 承認の送信時に、この承認者ノードが必須かどうかです。 |
+| activityActioners | Array | ノードの承認者リストです。 |
+| userId | String | 承認者の userId です。 |
+| name | String | 承認者の名前です。 |
+| avatar | String | 承認者のプロフィール写真です。 |
+| workflowForecastNodes | Array | 作業フローのノードの流れです。 |
+| activityId | String | ノード ID です。 |
+| outId | String | ノードの出力ライン ID です。 |
+
+### レスポンスボディの例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "isForecastSuccess" : true,
+    "processCode" : "PROC-2B60E506-D6CB-43F3-B661-359B27F90947",
+    "userId" : "2665246100805992",
+    "processId" : 63657309999,
+    "isStaticWorkflow" : true,
+    "workflowActivityRules" : [ {
+      "activityId" : "1918_5cd3",
+      "prevActivityId" : "1918_5cd3",
+      "activityName" : "承認者",
+      "activityType" : "target_select",
+      "isTargetSelect" : true,
+      "workflowActor" : {
+        "actorKey" : "manual_e203_14a3_895a_45ad",
+        "actorType" : "approver: 承認者, notifier: CC受信者, audit: 処理担当者",
+        "actorSelectionType" : "allStaff",
+        "actorSelectionRange" : {
+          "approvals" : [ {
+            "workNo" : "26652461xxxx5992",
+            "userName" : "山田太郎"
+          } ],
+          "labels" : [ {
+            "labels" : "200649095",
+            "labelNames" : "財務"
+          } ]
+        },
+        "allowedMulti" : true,
+        "approvalType" : "MANUAL",
+        "approvalMethod" : "ONE_BY_ONE",
+        "actorActivateType" : "ALL",
+        "required" : true
+      },
+      "activityActioners" : [ {
+        "userId" : "2665246100805992",
+        "name" : "佐藤花子",
+        "avatar" : "https://url1"
+      } ]
+    } ],
+    "workflowForecastNodes" : [ {
+      "activityId" : "1cc3_959a",
+      "outId" : "line-random-1cc3_959a-831a_607b"
+    } ]
+  }
+}
+```
+
+### エラーコード
+
+API の呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | forecastError | フローの予測に失敗しました | フローの予測に失敗しました |
+| 400 | invalidParameter | パラメータエラー | パラメータエラー |
+| 400 | componentIsNull | フォームデータが空です | フォームデータが空です |
+| 400 | processCodeError | 承認テンプレートの取得に失敗したか、テンプレートが削除されています | 承認テンプレートの取得に失敗したか、テンプレートが削除されています |
+| 400 | formNotExist | フォームが存在しません | フォームが存在しません |
+| 400 | internalError | %s | 内部システムエラー |
+| 400 | invalidUserId | ユーザーの userId が空です | ユーザーの userId が空です |
+| 400 | userNotExist | ユーザーが存在しません | ユーザーが存在しません |
+| 500 | systemError | システムエラー | システムエラー |

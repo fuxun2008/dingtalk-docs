@@ -1,0 +1,1016 @@
+---
+title: "自社 OA 承認の統合：サードパーティの作業フローとページを使用して接続"
+description: "自社 OA を DingTalk 承認センターに接続する API 連携手順を、テンプレート同期からステータス書き戻しまで解説します。"
+---
+
+# 自社 OA 承認：サードパーティの作業フローとページの統合
+
+## 概要
+
+### 背景
+
+多くの組織は、独自に OA システムを開発するか、サードパーティ製のシステムを導入しています。これらのシステムには、通常それぞれ独自の承認フローと承認ページがあります。社員は複数のシステムを切り替えて承認を処理する必要があり、業務が分断されて効率が低下します。自社の承認フローを DingTalk OA承認センターに接続すると、ユーザーは DingTalk 上で業務システムのページを開き、そのまま承認できます。これにより、ワンストップの承認体験を実現できます。
+
+組織が一般的に抱える課題は次のとおりです。
+
+- **承認の入口が分散している：** 社員は複数のシステムで個別に承認を処理しています。DingTalk ToDo のリマインダーは自社システムの承認タスクに対応していないため、承認者がタスクを見落としやすくなります。
+- **承認体験に一貫性がない：** 自社システムの承認ページは DingTalk のスタイルと異なります。ユーザーは異なるインターフェースに慣れる必要があり、学習コストが増えます。
+- **ToDo 通知の到達率が低い：** 自社システムは承認通知をメールや SMS に頼っています。これらのチャネルは反応が遅く、DingTalk のメッセージプッシュや ToDo センターを活用できません。
+- **承認データがサイロ化している：** 承認ステータスや処理履歴が複数のシステムに分散しています。管理者は DingTalk 上で承認の進捗を一元的に確認できません。
+
+### 主な価値
+
+本ソリューションは、サードパーティの承認システムと DingTalk 内のアプリページを連携させます。DingTalk オープンプラットフォームの承認プロセスセンター API を呼び出し、承認データを双方向に同期します。
+
+- **承認テンプレートの同期：** 自社システムの承認フォームテンプレートを DingTalk に同期します。ユーザーは DingTalk OA承認の管理コンソールで、サードパーティの承認テンプレートを確認・管理できます。
+- **承認インスタンスの連携：** 自社システムで承認が開始されると、DingTalk に対応する承認インスタンスが自動的に作成されます。ユーザーは DingTalk 承認センターの 4 つのリスト（未処理、処理済み、申請済み、受信）で、その承認を確認・処理できます。
+- **ToDo タスクのプッシュ：** 承認ノードの情報が DingTalk に同期されると、DingTalk が ToDo タスクを自動生成します。これらのタスクには、DingTalk 共通の ToDo リマインダーとメッセージプッシュが適用されます。
+- **承認ステータスの書き戻し：** ユーザーが DingTalk で承認を完了したら、その結果（同意・却下など）を自社システムに書き戻し、双方のデータの整合性を保ちます。
+
+### ユースケース
+
+本ソリューションは、次のような代表的な業務シナリオに適用できます。
+
+- **ERP 購買承認の統合：** 社員が ERP システムで購買申請を提出すると、申請が DingTalk に自動で同期されます。承認者が DingTalk で承認を完了すると、結果が ERP システムに書き戻され、発注書のステータスが更新されます。
+- **HR 休暇承認の連携：** HR システムの休暇申請を DingTalk に同期します。社員は DingTalk ToDo センターでリマインダーを受け取り、そのまま処理できます。承認結果は HR の勤怠モジュールに自動反映されます。
+- **プロジェクト管理における経費精算の統合：** プロジェクト管理システムの経費精算フローを DingTalk 承認センターに接続します。プロジェクトマネージャーが DingTalk で承認すると、精算データがプロジェクト予算モジュールに同期されます。
+- **CRM 契約承認のコラボレーション：** CRM システムの契約承認フローを DingTalk に同期します。営業チームは DingTalk で多段階の承認を完了し、契約ステータスが CRM システムにリアルタイムで反映されます。
+
+## 代表的な業務シナリオ
+
+### シナリオ1：CIMC Ruijiang が複数の業務システムの承認を DingTalk に一元化
+
+#### 課題
+
+CIMC Ruijiang は、CIMC グループの社内 IT 開発パイロットセンターとしての役割を担っています。同社は MES、IOT、SRM など 10 を超える独立した業務システムを構築しており、各システムが特定の機能のデータと作業フローを担当しています。この高度に専門化されたモデルは、各事業部門の効率を高める一方で、組織内の情報を分断し、その流れを途切れさせています。
+
+- 社員は 10 を超えるシステムで個別に承認タスクを処理しています。手順が煩雑で、緊急の承認を見落としやすくなります。
+- システムごとに承認ページのスタイルが異なります。ユーザーは異なるインターフェースに慣れる必要があり、学習コストが増えます。
+- 承認通知は各システムの内部メッセージに依存しており、DingTalk 共通の ToDo リマインダーやメッセージプッシュを活用できません。
+- 管理者は DingTalk 上ですべての承認の進捗を一元的に確認できず、複数のシステムにログインして確認する必要があります。
+
+#### 導入効果
+
+- **自動化されたプロセス**
+
+  統合フロー：
+
+  1. **MES/IOT/SRM** システムが承認を開始します。
+  2. **DingTalk OA承認** センターの API を呼び出し、承認インスタンスを作成します。
+  3. 承認タスクが **DingTalk ToDo** リストに同期されます。
+  4. 承認者が DingTalk 上で承認を完了します。
+  5. 承認結果が元の業務システムにリアルタイムで書き戻されます。
+
+  各システムで個別に申請・承認する従来の方法と比べて、効率が **83%+** 向上します。
+- **主なメリット**
+
+  - **複数システムの承認を統一窓口で処理：** MES、IOT、SRM など 10 を超える独立システムの承認フロー、ToDo、重要な業務通知が DingTalk に集約され、一元的に処理できます。
+  - **効率的なデータ共有とコラボレーション：** システム間の情報サイロを解消し、システムをまたいだデータ共有とプロセスの自動化を実現して、組織全体の対応力を高めます。
+  - **承認体験の向上：** 社員は複数のシステムに 1 つずつログインする必要がなくなり、DingTalk を開いてワンタップですべてを処理できます。操作の複雑さが大幅に軽減され、承認の対応時間も大きく短縮されます。
+
+### シナリオ2：HR 休暇承認と DingTalk 勤怠の連携
+
+#### 課題
+
+HR システムは休暇承認を独自に管理している一方、打刻データは DingTalk にあります。2 つのシステム間でデータが連携していないため、社員は休暇取得後も DingTalk で打刻修正を手動で申請する必要があります。HR 担当者は、休暇記録と勤怠記録をシステムをまたいで照合しなければなりません。
+
+#### 導入効果
+
+- **自動化されたプロセス**
+
+  エンドツーエンドの自動化プロセスは、次の 5 ステップで実行されます。
+
+  1. **MES** システムが製造指図を作成します。
+  2. **DingTalk OA承認 API** を呼び出し、承認インスタンスを作成します。
+  3. **ERP** システムが資材在庫（原材料、副資材、包装材）を確認します。
+  4. 工場の現場責任者が DingTalk で内容を確認し、**却下** または **承認** をタップします。
+  5. 承認結果が **MES**（製造指図ステータス）、**ERP**（在庫）、**QMS**（品質記録）の 3 システムすべてに同期されます。
+
+  MES、ERP、QMS にそれぞれログインする従来の方法（1 件あたり約 15 分）と比べ、統合後は DingTalk の単一窓口から 2 分以内に承認を完了でき、承認効率が 87% 向上します。
+- **主なメリット**
+
+  - **製造指図承認の統合：** MES、ERP、QMS の製造指図の承認ノードがすべて DingTalk のタスクリストに表示されます。承認者はシステムを切り替える必要がありません。
+  - **承認フローのリアルタイムな可視化：** DingTalk には、部品表、品質検査要件、過去の製造指図データなど、3 システムから集約した製造指図の全データが表示されます。承認の進捗がひと目でわかります。
+  - **エンドツーエンドのデータ同期：** 承認結果は元の業務システムにリアルタイムで書き戻されます。承認が却下された場合は、後続の ToDo タスクが一括でキャンセルされます。これにより、双方のデータの整合性とトレーサビリティを確保します。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+本ソリューションでは、次の 5 つのコア技術コンポーネントを使用して、自社の承認システムと DingTalk OA承認センターを接続します。
+
+- **認証レイヤー：** DingTalk オープンプラットフォームの OAuth 2.0 プロトコルに基づきます。アプリ認証情報を使用してアクセストークンを取得し、すべての API 呼び出しに統一された本人確認を提供して、呼び出しの安全性と正当性を確保します。
+- **承認テンプレート管理レイヤー：** 自社の承認テンプレートを DingTalk OA承認センターに同期し、識別子としてグローバルに一意なテンプレートコードを取得します。テンプレートの作成・更新・削除に対応し、承認フォームの構造をクラウドで一元管理します。
+- **承認インスタンスエンジン：** DingTalk に承認インスタンスを作成し、一意のインスタンス識別子を生成します。申請者、承認コンテンツ、添付などの具体的な承認業務データを保持し、承認のライフサイクル全体を管理します。
+- **ToDo タスク同期レイヤー：** 承認タスクを DingTalk プロセスセンターに一括同期し、タスク識別子を生成して DingTalk ユーザーに紐付けます。承認者は、複数の業務システムの承認タスクを DingTalk の 1 つのタスクリストで確認・処理できます。
+- **双方向ステータス同期レイヤー：** 承認ステータスを双方向に同期します。ユーザーが DingTalk で承認を完了すると、ステータスが業務システムにリアルタイムで書き戻されます。業務システム側で承認を終了または完了した場合は、DingTalk のタスクステータスもそれに応じて更新されます。これにより、双方のデータの整合性を確保します。
+
+### 前提条件
+
+- **アプリの準備**：[アプリの作成と設定](/ja/open/dingstart/create-application)を完了していること。
+- **権限要件**：DingTalk の組織管理者またはサブ管理者の権限を持ち、次の API 権限を申請していること。
+
+  - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）
+  - `Workflow.Form.Read`（作業フローテンプレートの読み取り権限）、任意
+  - `Workflow.Instance.Write`（ワークフローインスタンスの書き込み権限）
+  - `Workflow.Instance.Read`（ワークフローインスタンスの読み取り権限）
+  - `qyapi_aflow`（承認フローデータの管理権限）
+- **開発環境**：Java 開発環境（JDK 1.6 以降）と Maven ビルドツールがインストールされていること。
+- **SDK の準備**：DingTalk サーバーサイド SDK をダウンロードしていること。Java、Python、Go など複数の言語に対応しています。
+
+### コード実装
+
+ステップ1：クライアント ID と Client Secret を含むアプリ認証情報を取得します。
+
+ステップ2：承認関連の API の API 権限を申請します。
+
+ステップ3：アクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app)を参照してください。API を呼び出す際、アクセストークンによって呼び出し元の身元が認証されます。
+
+ステップ4：サーバーサイドの承認 API を呼び出します。
+
+1. 新しいサーバー API [承認テンプレートの作成または更新](/ja/open/development/create-orupdate-the-approval-template-new)を呼び出し、一意のテンプレートコード `processCode` を取得します。
+2. `processCode` を保存していない場合は、[テンプレートコードの取得](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。
+3. 承認テンプレートの作成後、ユーザーは DingTalk OA承認の管理コンソールで、サードパーティの自社承認フォームテンプレートの確認、テンプレートデータの表示・検索、エクスポート・削除を行えます。
+4. テンプレートコード `processCode` を使用して新しいサーバー API [インスタンスの作成](/ja/open/development/create-a-ticket-approval-instance)を呼び出し、承認インスタンスを開始して承認インスタンス ID `processInstanceId` を取得します。
+5. 承認インスタンスの作成後、ユーザーは DingTalk OA承認センターでも 4 つの承認リスト（未処理、処理済み、申請済み、受信）の確認、承認インスタンスデータの検索、承認操作を行えます。
+6. 承認インスタンス `processInstanceId` と ToDo リスト `tasks` を使用して、[プロセスセンターに未処理タスクを作成](/ja/open/development/create-pending-tasks-in-process-center) API を呼び出します。これにより、サードパーティシステムの承認ノード情報が DingTalk OA承認に同期され、各 ToDo 項目の taskId が返されて、対応する DingTalk ToDo タスクが生成されます。
+7. 未処理タスクの作成後、[プロセスセンター経由で統合された OA 承認タスクの照会](/ja/open/development/query-oa-approval-tasks-integrated-through-process-center) API を呼び出し、ユーザーの進行中の承認タスクを照会します。
+8. 承認インスタンス `processInstanceId` と承認 ToDo の taskId を使用して、[プロセスセンターのタスクステータスの更新](/ja/open/development/update-process-center-task-status) API を呼び出し、自社承認の ToDo 項目のステータス更新を同期します。OR 署名（承認者のうち 1 人が承認すればよい）などのシナリオでは、[プロセスセンターの複数の未処理タスクのキャンセル](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出し、承認インスタンス配下で進行中のすべての ToDo 項目を一括で CANCELED に設定します。
+9. 承認インスタンス `processInstanceId`、インスタンスステータス `status`、インスタンス結果 `result` などのパラメータを使用して、[インスタンスステータスの更新](/ja/open/development/update-instance-status) または [インスタンスステータスの一括更新](/ja/open/development/self-owned-batch-update-of-instance-status) API を呼び出し、インスタンスステータスを更新します。
+10. 最後に、承認テンプレートのデータを整理する場合は、[テンプレートの削除](/ja/open/development/self-owned-approval-deletion-template) API を呼び出します。社内向けに作成した承認テンプレートと、その配下で作成されたインスタンスおよび ToDo タスクが削除されます。
+
+## 実装手順
+
+### **ステップ1：アプリ認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/)にログインします。
+2. 対象のアプリを選択して詳細ページを開きます。
+3. **基本情報** > **認証情報と基本情報** をクリックします。
+4. アプリの `Client ID` と `Client Secret` を控えておきます。
+
+### 注意
+
+   `Client Secret` は安全に保管し、第三者と絶対に共有しないでください。コードにハードコーディングせず、環境変数または鍵管理システムに保存してください。
+
+### ステップ2：API 権限を追加する
+
+1. アプリの詳細ページで **権限管理** をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `Workflow.Form.Write`（作業フローテンプレートの書き込み権限）：承認テンプレートを作成・更新・削除します。
+   - `Workflow.Form.Read`（作業フローテンプレートの読み取り権限）：テンプレートコードを取得します。任意です。
+   - `Workflow.Instance.Write`（ワークフローインスタンスの書き込み権限）：承認インスタンスを作成し、インスタンスステータスを更新します。
+   - `Workflow.Instance.Read`（ワークフローインスタンスの読み取り権限）：承認タスクとインスタンス情報を照会します。
+   - `qyapi_aflow`（承認フローデータの管理権限）：承認フローのデータを包括的に管理します。
+
+<Note>
+業務シナリオによって、必要な権限の組み合わせは異なります。実際の要件に応じて申請してください。たとえば、一括インポートのシナリオでは、ユーザーの一括操作に関する権限も必要です。
+</Note>
+
+### ステップ3：アクセス認証情報（アクセストークン）を取得する
+
+ステップ1 で取得した Client ID と Client Secret を使用して、アプリのアクセス認証情報を取得します。[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app)を参照してください。
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略**：`accessToken` の有効期間は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に事前に更新してください。
+- **同時実行の制御**：複数のスレッドによるトークン更新の予定が重なって競合しないよう、分散ロックを使用してください。
+- **エラー時のリトライ**：ネットワークが不安定な場合は自動でリトライします。最大 3 回まで、間隔を段階的に延ばしてください（1 秒 → 2 秒 → 4 秒）。
+
+### ステップ4：コア API を呼び出す
+
+1. **承認テンプレートの作成または更新**：新しいサーバー API [承認テンプレートの作成または更新](/ja/open/development/create-orupdate-the-approval-template-new)を呼び出し、一意のテンプレートコード `processCode` を取得します。
+
+### 注意
+
+   このシナリオでは、processFeatureConfig でプロセスセンターの統合設定を行う必要はありません。デフォルトでは、承認時に業務システムの詳細ページが開きます。
+
+   ```java
+   public void  saveProcess() throws Exception {
+     Config config = new Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+     SaveProcessHeaders saveProcessHeaders = new SaveProcessHeaders();
+     saveProcessHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+     // 1. 単一行入力コンポーネント
+     FormComponentProps formComponentProps1 = new FormComponentProps()
+       .setComponentId("TextField-abcd")
+       .setPlaceholder("入力してください")
+       .setLabel("単一行入力")
+       .setRequired(true);
+     FormComponent formComponent1 = new FormComponent()
+       .setComponentType("TextField")
+       .setProps(formComponentProps1);
+     // 2. 複数行入力コンポーネント
+     FormComponentProps formComponentProps2 = new FormComponentProps()
+       .setComponentId("TextareaField-abcd")
+       .setPlaceholder("入力してください")
+       .setLabel("複数行入力")
+       .setRequired(true);
+     FormComponent formComponent2 = new FormComponent()
+       .setComponentType("TextareaField")
+       .setProps(formComponentProps2);
+     // 3. 数値入力コンポーネント
+     FormComponentProps formComponentProps3 = new FormComponentProps()
+       .setComponentId("NumberField-abcd")
+       .setPlaceholder("入力してください")
+       .setLabel("数値入力")
+       .setUnit("人民元")
+       .setRequired(true);
+     FormComponent formComponent3 = new FormComponent()
+       .setComponentType("NumberField")
+       .setProps(formComponentProps3);
+     // 4. 単一選択コンポーネント
+     SelectOption option1 = new SelectOption();
+     option1.setKey("option1");
+     option1.setValue("選択肢1");
+     SelectOption option2 = new SelectOption();
+     option2.setKey("option2");
+     option2.setValue("選択肢2");
+     FormComponentProps formComponentProps4 = new FormComponentProps()
+       .setComponentId("DDSelectField-abcd")
+       .setPlaceholder("選択してください")
+       .setLabel("単一選択")
+       .setBizAlias("staff_type")
+       .setOptions(java.util.Arrays.asList(option1, option2))
+       .setRequired(true);
+     FormComponent formComponent4 = new FormComponent()
+       .setComponentType("DDSelectField")
+       .setProps(formComponentProps4);
+
+     // 5. 複数選択コンポーネント
+     SelectOption option3 = new SelectOption();
+     option3.setKey("option1");
+     option3.setValue("選択肢1");
+     SelectOption option4 = new SelectOption();
+     option4.setKey("option2");
+     option4.setValue("選択肢2");
+     FormComponentProps formComponentProps5 = new FormComponentProps()
+       .setComponentId("DDMultiSelectField-abcd")
+       .setPlaceholder("選択してください")
+       .setLabel("複数選択")
+       .setOptions(java.util.Arrays.asList(option3, option4))
+       .setRequired(true);
+           FormComponent formComponent5 = new FormComponent()
+                   .setComponentType("DDMultiSelectField")
+                   .setProps(formComponentProps5);
+
+           // 6. 日付コンポーネント
+           FormComponentProps formComponentProps6 = new FormComponentProps()
+                   .setComponentId("DDDateField-abcd")
+                   .setPlaceholder("選択してください")
+                   .setLabel("日付")
+                   .setUnit("時間")
+                   .setFormat("yyyy-MM-dd HH:mm")
+                   .setRequired(true);
+           FormComponent formComponent6 = new FormComponent()
+                   .setComponentType("DDDateField")
+                   .setProps(formComponentProps6);
+
+           // 7. 期間コンポーネント
+           FormComponentProps formComponentProps7 = new FormComponentProps()
+                   .setComponentId("DDDateRangeField-abcd")
+                   .setPlaceholder("選択してください")
+                   .setLabel("[\"開始時刻\",\"終了時刻\"]")
+                   .setUnit("時間")
+                   .setFormat("yyyy-MM-dd HH:mm")
+                   .setRequired(true);
+           FormComponent formComponent7 = new FormComponent()
+                   .setComponentType("DDDateRangeField")
+                   .setProps(formComponentProps7);
+
+           // 8. テキスト説明コンポーネント
+           FormComponentProps formComponentProps8 = new FormComponentProps()
+                   .setComponentId("TextNote-abcd")
+                   .setLabel("説明")
+                   .setContent("詳細な説明")
+                   .setLink("https://www.dingtalk.io/")
+                   .setPrint("0")
+                   .setRequired(false);
+           FormComponent formComponent8 = new FormComponent()
+                   .setComponentType("TextNote")
+                   .setProps(formComponentProps8);
+
+           // 10. 画像コンポーネント
+           FormComponentProps formComponentProps10 = new FormComponentProps()
+                   .setComponentId("DDPhotoField-abcd")
+                   .setLabel("画像");
+           FormComponent formComponent10 = new FormComponent()
+                   .setComponentType("DDPhotoField")
+                   .setProps(formComponentProps10);
+
+           // 11. 金額コンポーネント
+           FormComponentProps formComponentProps11 = new FormComponentProps()
+                   .setComponentId("MoneyField-abcd")
+                   .setUpper("0")
+                   .setPlaceholder("金額を入力してください")
+                   .setLabel("賞与（人民元）");
+           FormComponent formComponent11 = new FormComponent()
+                   .setComponentType("MoneyField")
+                   .setProps(formComponentProps11);
+
+           // 13. 添付コンポーネント
+           FormComponentProps formComponentProps13 = new FormComponentProps()
+                   .setComponentId("DDAttachment-abcd")
+                   .setLabel("添付");
+           FormComponent formComponent13 = new FormComponent()
+                   .setComponentType("DDAttachment")
+                   .setProps(formComponentProps13);
+
+           // 14. 連絡先コンポーネント
+           FormComponentProps formComponentProps14 = new FormComponentProps()
+                   .setComponentId("InnerContactField-abcd")
+                   .setLabel("連絡先")
+                   .setChoice("1");
+           FormComponent formComponent14 = new FormComponent()
+                   .setComponentType("InnerContactField")
+                   .setProps(formComponentProps14);
+
+           // 15. 部門コンポーネント
+           FormComponentProps formComponentProps15 = new FormComponentProps()
+                   .setComponentId("DepartmentField-abcd")
+                   .setLabel("部門")
+                   .setMultiple(false);
+           FormComponent formComponent15 = new FormComponent()
+                   .setComponentType("DepartmentField")
+                   .setProps(formComponentProps15);
+
+           // 16. 関連承認フォームコンポーネント
+           AvaliableTemplate template = new AvaliableTemplate();
+           template.setName("出張申請");
+           template.setProcessCode("出張申請の ProcessCode");
+           FormComponentProps formComponentProps16 = new FormComponentProps()
+                   .setComponentId("RelateField-abcd")
+                   .setLabel("関連承認フォーム")
+                   .setAvailableTemplates(java.util.Arrays.asList(template));
+           FormComponent formComponent16 = new FormComponent()
+                   .setComponentType("RelateField")
+                   .setProps(formComponentProps16);
+
+           // 17. 省/市/区コンポーネント
+           FormComponentProps formComponentProps17 = new FormComponentProps()
+                   .setComponentId("AddressField-abcd")
+                   .setLabel("省/市/区")
+                   .setPlaceholder("選択してください")
+                   .setAddressModel("city");
+           FormComponent formComponent17 = new FormComponent()
+                   .setComponentType("AddressField")
+                   .setProps(formComponentProps17);
+
+           // 18. 評価コンポーネント
+           FormComponentProps formComponentProps18 = new FormComponentProps()
+                   .setComponentId("StarRatingField-abcd")
+                   .setLabel("入力してください")
+                   .setLimit(5);
+           FormComponent formComponent18 = new FormComponent()
+                   .setComponentType("StarRatingField")
+                   .setProps(formComponentProps18);        
+
+           SaveProcessRequestProcessFeatureConfigFeatures features1 = new SaveProcessRequestProcessFeatureConfigFeatures()
+               .setName("TASK_EXECUTE")
+               .setRunType("REDIRECT")
+               .setPcUrl("https://www.dingtalk.io")
+               .setMobileUrl("https://www.dingtalk.io");
+
+         	SaveProcessRequestProcessFeatureConfig processFeatureConfig = new SaveProcessRequestProcessFeatureConfig()
+           		.setFeatures(java.util.Arrays.asList(features1));
+
+           SaveProcessRequest saveProcessRequest = new SaveProcessRequest()
+                   .setName("サードパーティの作業フローとページを使用して DingTalk OA に接続")
+                   .setDescription("DingTalk OA承認では、外部システム（自社開発または導入したサードパーティシステム）の承認タスクを DingTalk 承認アプリにプッシュできます。ユーザーは DingTalk 承認ですべての承認を一元的に確認・処理でき、ワンストップの承認体験を実現できます。")
+                   .setFormComponents(java.util.Arrays.asList(
+                           formComponent1, formComponent2, formComponent3, formComponent4, formComponent5,
+                           formComponent6, formComponent7, formComponent8, formComponent10,
+                           formComponent11, formComponent13, formComponent14, formComponent15,
+                           formComponent16, formComponent17, formComponentProps18
+                   ))
+                   .setProcessFeatureConfig(processFeatureConfig);
+           try {
+               SaveProcessResponse saveProcessResponse = client.saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(saveProcessResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                 	System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                 	System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } 
+       }
+   ```
+
+   **リクエストパラメータ：**
+
+   - `name`：フォームテンプレートの名前。最大 200 文字です。
+   - `description`：フォームテンプレートの説明。最大 300 文字です。
+   - `formComponents`：フォームコンポーネントのリスト。1 つのフォームにつき最大 200 個のコンポーネントを設定できます。
+   - `processCode`：テンプレートを更新する場合に指定します。新規作成する場合は空のままにします。
+
+### レスポンスフィールド
+
+   - `processCode`：承認テンプレートの一意のコード。以降のすべての操作でこのコードが必要です。
+
+### 注意
+
+   API から返されたテンプレートコード `processCode` を保存していない場合は、[テンプレートコードの取得](/ja/open/development/obtain-the-template-code) API を呼び出して取得してください。
+2. **テンプレートコードの取得（代替手段）：** `processCode` を保存していない場合は、[テンプレートコードの取得](/ja/open/development/obtain-the-template-code) API を呼び出して取得します。
+
+   ```java
+   public void getProcessCodeByName() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessCodeByNameHeaders getProcessCodeByNameHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessCodeByNameHeaders();
+           getProcessCodeByNameHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetProcessCodeByNameRequest getProcessCodeByNameRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetProcessCodeByNameRequest()
+                   .setName("名前");
+           try {
+               GetProcessCodeByNameResponse getProcessCodeByNameResponse = client.getProcessCodeByNameWithOptions(getProcessCodeByNameRequest, getProcessCodeByNameHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(getProcessCodeByNameResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ
+
+   - `name`：承認テンプレートの名前。
+
+### レスポンスフィールド
+
+   - `processCode`：承認テンプレートの一意のコード。
+3. 承認テンプレートの作成後、ユーザーは DingTalk OA承認の管理コンソールで、サードパーティの自社承認フォームテンプレートの確認、テンプレートデータの表示・検索、エクスポート・削除を行えます。
+
+   **OA承認** を開くには、DingTalk クライアントの左サイドバーで **ワークベンチ** をクリックし、**OA承認** アプリを選択します。
+4. **承認インスタンスデータを DingTalk に同期する：** テンプレートコード `processCode` を使用して新しいサーバー API [インスタンスの作成](/ja/open/development/create-a-ticket-approval-instance)を呼び出し、承認インスタンスを開始して承認インスタンス ID `processInstanceId` を取得します。
+
+   ```java
+   public void saveIntegratedInstance() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new SaveIntegratedInstanceHeaders();
+           saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           //1. 単一行入力コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues1 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("顧客名")
+                   .setValue("山田太郎");
+
+           //2. 複数行入力コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues2 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("顧客の説明")
+                   .setValue("高価値の見込み顧客");
+
+           //3. 数値入力コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues3 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("数量")
+                   .setValue("100");
+
+           //4. 単一選択コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues4 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("顧客区分")
+                   .setValue("重要顧客");
+
+           //5. 複数選択コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues5;
+           formComponentValues5 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("顧客タグ")
+                   .setValue("[\"重要\",\"通常\"]")
+                   .setComponentType("DDMultiSelectField");
+
+           //6. 日付コンポーネント。日時の形式は、OA 承認テンプレートの日付コンポーネントの形式と一致させる必要があります。
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues6 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("日付")
+                   .setValue("2022-08-14 15:00");
+
+           //7. 期間コンポーネント。日時の形式は、OA 承認テンプレートの期間コンポーネントの形式と一致させる必要があります。
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues7 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("[\"顧客の希望開始時刻\",\"顧客の希望終了時刻\"]")
+                   .setValue("[\"2022-08-14 15:00\",\"2022-08-15 15:00\"]");
+
+           //8. テキスト説明コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues8 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("テキスト説明")
+                   .setValue("詳細な説明");
+
+           //10. 画像コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues10 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("画像")
+                   .setValue("[\"http://url1\",\"http://url2\",\"http://url3\"]");
+
+     			//11. 金額コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues11 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("金額（人民元）")
+                   .setValue("100");
+
+     			/*
+           		添付コンポーネントの値は、文字列としてエスケープした JSON 配列です。配列内の各 JSON オブジェクトが 1 つの添付ファイルを表します。
+             	各ファイルには spaceId、fileName、fileSize、fileType、fileId フィールドが必要です。
+             	これらのフィールドはすべて、ドライブの添付アップロード API を呼び出して取得できます。
+           */
+       		//13. 添付コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues13 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("添付")
+                   .setValue("[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+       "\"643xxxx140\"}]");    
+
+     			//14. 連絡先コンポーネント。連絡先コンポーネントには extValue が必要です。形式は以下の例を参照してください。emplId と itemId はユーザーの userId です。
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues14 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("連絡先")
+                   .setValue(JSON.toJSONString(Arrays.asList("連絡先の氏名")))
+                   .setExtValue("[{\"name\":\"山田太郎\",\"emplId\":\"userid123\",\"itemId\":\"userid123\"}]");
+
+           //15. 部門コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues15 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("連絡先の部門")
+                   .setValue("部門 ID");
+
+           //16. 関連承認フォームコンポーネント。関連承認フォームコンポーネントには extValue が必要です。形式は以下の例を参照してください。procInstId は関連付ける承認インスタンスの ID です。
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues16 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("関連承認フォーム")
+                   .setValue(JSON.toJSONString(Arrays.asList("xxx が提出した出張旅費精算の承認")))
+             			.setExtValue("{\"list\":[{\"procInstId\":\"zUUgcEmeSQG-xxx\"}]}");
+
+           //17. 省/市/区コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues17 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("顧客の住所")
+                   .setValue(JSON.toJSONString(Arrays.asList("北京市,北京市,朝陽区,東湖街道,A棟 xxxxxxx")));
+
+           //18. 評価コンポーネント
+           SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValues18 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                   .setName("評価")
+                   .setValue("5");
+
+     			//CC受信者を設定する
+          SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers()
+                   .setUserid("manager001")
+                   .setPosition("start");
+
+     		SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new SaveIntegratedInstanceRequest()
+                   .setProcessCode("proc")
+                   .setOriginatorUserId("manager1234")
+                   .setFormComponentValueList(java.util.Arrays.asList(
+                      formComponentValues1, formComponentValues2, formComponentValues3, formComponentValues4,
+                      formComponentValues5, formComponentValues6, formComponentValues7, formComponentValues8,
+                      formComponentValues10, formComponentValues11,
+                      formComponentValues13,formComponentValues14,formComponentValues15, formComponentValues16, 
+                      formComponentValues17, formComponentValues18
+                   ))
+                   .setTitle("xxx からの承認")
+                   .setUrl("https://www.dingtalk.io/")
+                   .setNotifiers(java.util.Arrays.asList(
+                       notifiers0
+                   ));
+           try {
+               SaveIntegratedInstanceResponse saveIntegratedInstanceResponse = client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(saveIntegratedInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ
+
+   - `processCode`：承認テンプレートのコード。テンプレートコードの取得 API で取得します。
+   - `originatorUserId`：承認インスタンスの申請者の userId。
+   - `formComponentValueList`：フォームコンポーネントのリスト。最大 100 要素です。
+   - `title`：インスタンスのタイトル。最大 64 文字です。
+   - `url`：サードパーティ承認システムにおける承認フォーム詳細ページの URL。最大 1,024 文字です。
+
+### レスポンスフィールド
+
+   - `processInstanceId`：承認インスタンス ID。
+5. 承認インスタンスの作成後、ユーザーは DingTalk OA承認センターでも 4 つの承認リスト（未処理、処理済み、申請済み、受信）の確認、承認インスタンスデータの検索、承認操作を行えます。
+6. **プロセスセンターに未処理タスクを作成する**：承認インスタンス processInstanceId と ToDo リスト tasks を使用して、[プロセスセンターに未処理タスクを作成](/ja/open/development/create-pending-tasks-in-process-center) API を呼び出します。これにより、サードパーティシステムの承認ノード情報が DingTalk OA承認に同期され、各 ToDo 項目の taskId が返されて、対応する DingTalk ToDo タスクが生成されます。
+
+   ```java
+   public void createIntegratedTask() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+     			CreateIntegratedTaskHeaders createIntegratedTaskHeaders = new CreateIntegratedTaskHeaders();
+           createIntegratedTaskHeaders.xAcsDingtalkAccessToken = "accessToken";
+           CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks tasks0 = new CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks()
+                   .setUserId("manager001")
+                   .setUrl("https://www.dingtalk.io");
+           CreateIntegratedTaskRequest createIntegratedTaskRequest = new CreateIntegratedTaskRequest()
+                   .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+                   .setActivityId("act_xxxxx")
+                   .setTasks(java.util.Arrays.asList(
+                       tasks0
+                   ));
+           try {
+               CreateIntegratedTaskResponse createIntegratedTaskResponse = client.createIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(createIntegratedTaskResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+   **注意** 
+   - 未処理タスクを作成すると、承認フォームの詳細ページに「同意」と「却下」のボタンが表示されます。また、プロセスセンターが承認タスクを DingTalk ToDo タスクとして同期し、DingTalk 共通の ToDo リマインダーが適用されます。
+   - **このシナリオでは、同期された承認タスクは業務システムの詳細ページを開いて承認します。**
+
+### リクエストパラメータ
+
+   - `processInstanceId`：OA承認のワークフローインスタンス ID。
+   - `activityId`：カスタム承認ノードの ID。最大 256 文字です。
+   - `tasks`：タスクリスト。最大 20 要素です。
+   - `userId`：ユーザーの userId。
+   - `url`：ToDo 項目のリダイレクト先 URL。最大 1,024 文字です。
+
+### レスポンスフィールド
+
+   - `taskId`：OA 承認タスクの ID。
+7. **OA 承認タスクを照会する**：未処理タスクの作成後、[プロセスセンター経由で統合された OA 承認タスクの照会](/ja/open/development/query-oa-approval-tasks-integrated-through-process-center) API を呼び出し、ユーザーの進行中の承認タスクを照会します。
+
+   ```java
+   public void  queryIntegratedTodoTask() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           QueryIntegratedTodoTaskHeaders queryIntegratedTodoTaskHeaders = new QueryIntegratedTodoTaskHeaders();
+           queryIntegratedTodoTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+           QueryIntegratedTodoTaskRequest queryIntegratedTodoTaskRequest = new QueryIntegratedTodoTaskRequest()
+                   .setUserId("manager001")
+                   .setPageSize(10)
+                   .setPageNumber(1)
+                   .setCreateBefore(1660036833411L);
+           try {
+               QueryIntegratedTodoTaskResponse queryIntegratedTodoTaskResponse = client.queryIntegratedTodoTaskWithOptions(queryIntegratedTodoTaskRequest, queryIntegratedTodoTaskHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(queryIntegratedTodoTaskResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### リクエストパラメータ
+
+   - `processInstanceId`：承認インスタンス ID。
+   - `userId`：ユーザーの userId。
+   - `status`：タスクのステータス。PENDING、COMPLETED、CANCELED のいずれかです。
+
+### レスポンスフィールド
+
+   - `list`：タスクリスト。
+8. **プロセスセンターのタスクステータスを更新する**：承認インスタンス `processInstanceId` と承認 ToDo の taskId を使用して、ToDo のステータスを更新するか、承認インスタンス配下で進行中のすべての ToDo 項目を CANCELED に設定します。
+
+   - [プロセスセンターのタスクステータスの更新](/ja/open/development/update-process-center-task-status) API を呼び出し、自社承認の ToDo 項目のステータス更新を同期します。
+
+     ```java
+     public void  updateIntegratedTask() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+       			UpdateIntegratedTaskHeaders updateIntegratedTaskHeaders = new UpdateIntegratedTaskHeaders();
+             updateIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+             UpdateIntegratedTaskRequest.UpdateIntegratedTaskRequestTasks tasks0 = new UpdateIntegratedTaskRequest.UpdateIntegratedTaskRequestTasks()
+                     .setTaskId(1234567L)
+                     .setStatus("COMPLETED")
+                     .setResult("AGREE");
+             UpdateIntegratedTaskRequest updateIntegratedTaskRequest = new UpdateIntegratedTaskRequest()
+                     .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+                     .setTasks(java.util.Arrays.asList(
+                         tasks0
+                     ));
+             try {
+                 UpdateIntegratedTaskResponse updateIntegratedTaskResponse = client.updateIntegratedTaskWithOptions(updateIntegratedTaskRequest, updateIntegratedTaskHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(updateIntegratedTaskResponse.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+### リクエストパラメータ
+
+     - `processInstanceId`：OA承認のワークフローインスタンス ID。
+     - `tasks`：OA 承認タスクのリスト。最大 20 件です。
+     - `taskId`：OA 承認タスクの ID。
+     - `status`：変更後のタスクステータス。CANCELED は取り消し、COMPLETED は完了を表します。
+     - `result`：タスクの結果。AGREE は同意、REFUSE は却下を表します。
+   - OR 署名（承認者のうち 1 人が承認すればよい）などのシナリオでは、[プロセスセンターの複数の未処理タスクのキャンセル](/ja/open/development/cancel-multiple-oa-approval-tasks) API を呼び出し、承認インスタンス配下で進行中のすべての ToDo 項目を一括で CANCELED に設定します。
+
+     ```java
+     public void  cancelIntegratedTask() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+       			CancelIntegratedTaskHeaders cancelIntegratedTaskHeaders = new CancelIntegratedTaskHeaders();
+             cancelIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+             CancelIntegratedTaskRequest cancelIntegratedTaskRequest = new CancelIntegratedTaskRequest()
+                     .setProcessInstanceId("tPr_FB_mT_xxxxxxxxx2hQ05201655306463")
+                     .setActivityId("act_xxxx")
+                     .setActivityIds(java.util.Arrays.asList(
+                         "act_xxxx"
+                     ));
+             CancelIntegratedTaskRequest cancelIntegratedTaskRequest = new UpdateIntegratedTaskRequest()
+                     .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+                     .setTasks(java.util.Arrays.asList(
+                         tasks0
+                     ));
+             try {
+                 CancelIntegratedTaskResponse cancelIntegratedTaskResponse = client.cancelIntegratedTaskWithOptions(cancelIntegratedTaskRequest, cancelIntegratedTaskHeaders, new RuntimeOptions());
+                 System.out.println(JSON.toJSONString(cancelIntegratedTaskResponse.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+### リクエストパラメータ
+
+     - `processInstanceId`：OA承認のワークフローインスタンス ID。
+     - `activityId`：ToDo グループの ID。
+     - `activityIds`：ToDo グループ ID のリスト。
+9. **インスタンスステータスを更新する**：承認インスタンス `processInstanceId`、インスタンスステータス `status`、インスタンス結果 `result` などのパラメータを使用して、インスタンスステータスを更新します。
+
+   - [インスタンスステータスの更新](/ja/open/development/update-instance-status) API を呼び出し、インスタンスステータスを更新します。
+
+     ```java
+     public void  updateProcessInstance() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+       			com.aliyun.dingtalkworkflow_1_0.models.UpdateProcessInstanceHeaders updateProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.UpdateProcessInstanceHeaders();
+             updateProcessInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+             com.aliyun.dingtalkworkflow_1_0.models.UpdateProcessInstanceRequest.UpdateProcessInstanceRequestNotifiers notifiers0 = new com.aliyun.dingtalkworkflow_1_0.models.UpdateProcessInstanceRequest.UpdateProcessInstanceRequestNotifiers()
+                     .setUserId("001");
+             com.aliyun.dingtalkworkflow_1_0.models.UpdateProcessInstanceRequest updateProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.UpdateProcessInstanceRequest()
+                     .setProcessInstanceId("proc")
+                     .setStatus("COMPLETED")
+                     .setResult("agree")
+                     .setNotifiers(java.util.Arrays.asList(
+                         notifiers0
+                     ));
+             try {
+                 UpdateProcessInstanceResponse updateProcessInstanceResponse = client.updateProcessInstanceWithOptions(updateProcessInstanceRequest, updateProcessInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+                 System.out.println(JSON.toJSONString(updateProcessInstanceResponse.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+### リクエストパラメータ
+
+     - `processInstanceId`：承認インスタンス ID。
+     - `status`：インスタンスステータス。COMPLETED は承認フローを完了し、TERMINATED は承認フローを終了します。
+     - `result`：インスタンスの結果。agree は同意、refuse は却下を表します。
+     - `notifiers`：CC受信者の userId のリスト。最大 30 件です。
+   - [インスタンスステータスの一括更新](/ja/open/development/self-owned-batch-update-of-instance-status) API を呼び出し、インスタンスステータスを一括で更新します。
+
+     ```java
+     public void  batchUpdateProcessInstances() throws Exception {
+             Config config = new Config();
+             config.protocol = "https";
+             config.regionId = "central";
+             com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+       			com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceHeaders batchUpdateProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceHeaders();
+             batchUpdateProcessInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+             com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceRequest.BatchUpdateProcessInstanceRequestUpdateProcessInstanceRequestsNotifiers updateProcessInstanceRequests0Notifiers0 = new com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceRequest.BatchUpdateProcessInstanceRequestUpdateProcessInstanceRequestsNotifiers()
+                     .setUserId("001");
+             com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceRequest.BatchUpdateProcessInstanceRequestUpdateProcessInstanceRequests updateProcessInstanceRequests0 = new com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceRequest.BatchUpdateProcessInstanceRequestUpdateProcessInstanceRequests()
+                     .setProcessInstanceId("EF6YJL35")
+                     .setStatus("COMPLETED")
+                     .setResult("agree")
+                     .setNotifiers(java.util.Arrays.asList(
+                         updateProcessInstanceRequests0Notifiers0
+                     ));
+             com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceRequest batchUpdateProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.BatchUpdateProcessInstanceRequest()
+                     .setUpdateProcessInstanceRequests(java.util.Arrays.asList(
+                         updateProcessInstanceRequests0
+                     ));
+             try {
+                 BatchUpdateProcessInstanceResponse batchUpdateProcessInstanceResponse = client.batchUpdateProcessInstanceWithOptions(batchUpdateProcessInstanceRequest, batchUpdateProcessInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+                 System.out.println(JSON.toJSONString(batchUpdateProcessInstanceResponse.getBody()));
+             } catch (TeaException err) {
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             } catch (Exception _err) {
+                 TeaException err = new TeaException(_err.getMessage(), _err);
+                 if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                     // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                     System.out.println(err.code);
+                     System.out.println(err.message);
+                 }
+             }
+         }
+     ```
+
+### リクエストパラメータ
+
+     - `updateProcessInstanceRequests`：インスタンスのリスト。最大 50 件です。
+     - `processInstanceId`：インスタンス ID。
+     - `status`：インスタンスステータス。COMPLETED は承認フローを完了し、TERMINATED は承認フローを終了します。
+     - `result`：インスタンスの結果。agree は同意、refuse は却下を表します。
+10. **承認テンプレートを削除する**：承認テンプレートのデータを整理する場合は、[テンプレートの削除](/ja/open/development/self-owned-approval-deletion-template) API を呼び出します。社内向けに作成した承認テンプレートと、その配下で作成されたインスタンスおよび ToDo タスクが削除されます。
+
+    ```java
+    public void  deleteProcess() throws Exception {
+            Config config = new Config();
+            config.protocol = "https";
+            config.regionId = "central";
+            com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+      			DeleteProcessHeaders deleteProcessHeaders = new DeleteProcessHeaders();
+            deleteProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+            DeleteProcessRequest deleteProcessRequest = new DeleteProcessRequest()
+                    .setProcessCode("proc-abc")
+                    .setCleanRunningTask(false);
+            try {
+                DeleteProcessResponse deleteProcessResponse = client.deleteProcessWithOptions(deleteProcessRequest, deleteProcessHeaders, new RuntimeOptions());
+                System.out.println(JSON.toJSONString(deleteProcessResponse.getBody()));
+            } catch (TeaException err) {
+                if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                    // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                    System.out.println(err.code);
+                    System.out.println(err.message);
+                }
+            } catch (Exception _err) {
+                TeaException err = new TeaException(_err.getMessage(), _err);
+                if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                    // err には code 属性と message 属性が含まれ、開発者が問題を特定するのに役立ちます
+                    System.out.println(err.code);
+                    System.out.println(err.message);
+                }
+            }
+        }
+    ```
+
+### リクエストパラメータ
+
+    - `processCode`：承認テンプレートのコード。
+
+### レスポンスフィールド
+
+    - `processCode`：テンプレートコード。
+
+**実装チェックリスト**：
+
+- ✅ アプリ認証情報（Client ID / Client Secret）を取得した。
+- ✅ OA承認の権限（Workflow.Form.Write、Workflow.Instance.Write、Workflow.Instance.Read、qyapi_aflow）が付与された。
+- ✅ アクセストークンを取得した。
+- ✅ 承認テンプレートを作成し、processCode を取得した。
+- ✅ 承認インスタンスを作成し、processInstanceId を取得した。
+- ✅ 未処理タスクを作成し、DingTalk で承認フォームが表示されることを確認した。
+- ✅ 承認タスクの照会で正しいタスクリストが返された。
+- ✅ タスクステータスを更新し、承認結果が自社システムに同期された。
+- ✅ インスタンスステータスを更新し、承認フローが正常に終了した。
+- ✅ テンプレートの削除を検証した（任意）。
+
+## よくある質問
+
+- **Q1：承認テンプレートの作成時に必要なパラメータは何ですか？**
+
+  A：必須パラメータは次のとおりです。
+
+  - `name`：承認テンプレートの名前。
+  - `formComponents`：フォームコンポーネントのリスト。少なくとも 1 つのコンポーネントを含める必要があります。
+  - 任意パラメータには、`description`（テンプレートの説明）などがあります。
+- **Q2：processCode はどのように取得しますか？**
+
+  A：次のいずれかの方法で取得します。
+
+  - 承認テンプレートの作成または更新 API を呼び出した後、レスポンスから `result.processCode` を取得します。
+  - processCode を保存していない場合は、テンプレートコードの取得 API を呼び出し、テンプレート名で照会します。
+- **Q3：未処理タスクを作成すると、DingTalk では何が変わりますか？**
+
+  A：未処理タスクを作成すると、次のようになります。
+
+  1. 承認フォームの詳細ページに「同意」と「却下」のボタンが表示されます。
+  2. プロセスセンターが承認タスクを DingTalk ToDo タスクとして同期します。
+  3. 承認者は DingTalk ToDo センターで承認のリマインダーを確認できます。
+- **Q4：ToDo タスクのデータはどのように同期しますか？**
+
+  A：次の手順で同期します。
+
+  1. プロセスセンターに未処理タスクを作成 API を呼び出し、サードパーティシステムの承認ノード情報を DingTalk に同期します。
+  2. OA 承認タスクの照会 API を呼び出し、タスクが正しく同期されたことを確認します。
+  3. 承認ステータスが変わったら、プロセスセンターのタスクステータスの更新 API を呼び出し、最新のステータスを同期します。
+- **Q5：DingTalk オープンプラットフォームで申請が必要な権限は何ですか？**
+
+  A：OA承認のプロセスセンターに接続するには、次の権限を申請してください。
+
+  | **権限スコープコード** | **権限スコープ名** | **説明** |
+  | --- | --- | --- |
+  | Workflow.Form.Write | 作業フローテンプレートの書き込み権限 | 承認テンプレートを作成・更新・削除する |
+  | Workflow.Instance.Write | ワークフローインスタンスの書き込み権限 | 承認インスタンスを作成し、インスタンスステータスを更新する |
+  | Workflow.Instance.Read | ワークフローインスタンスの読み取り権限 | 承認タスクとインスタンス情報を照会する |
+  | qyapi_aflow | 承認フローデータの管理権限 | 承認フローのデータを包括的に管理する |
+
+  業務シナリオによって、必要な権限の組み合わせは異なります。実際の要件に応じて申請してください。

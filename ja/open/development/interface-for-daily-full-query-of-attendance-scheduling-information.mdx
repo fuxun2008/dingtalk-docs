@@ -1,0 +1,159 @@
+---
+title: "組織の勤怠シフト設定詳細の照会"
+description: "指定日における社内全従業員の勤怠シフトとシフト設定情報をページングで取得する API です。"
+---
+
+この API を呼び出して、指定した日における社内全従業員の勤怠シフトとシフト設定情報を照会します。
+
+## API 呼び出し説明
+
+- 固定シフト制の場合、照会できるのは今後 15 日間のシフト設定情報のみです。
+- この API は、メンバー数が 10,000 人未満の組織でのみ利用できます。
+
+## リクエスト
+
+| **ベーシック情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/listschedule |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_base-組織 API の呼び出しに必要なベーシック権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得](/ja/open/development/obtain-orgapp-token)を呼び出して取得します。 - サードパーティ社内アプリの場合は、「サードパーティ組織の access_token を取得」を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| workDate | Date | はい | 2020-09-06 | シフト設定の日付です。年・月・日のみが使用されます。 |
+| offset | Number | いいえ | 0 | ページングのオフセットです（0 から開始）。size パラメータと併せて設定した場合のみ有効です。 |
+| size | Number | いいえ | 200 | ページサイズです。最大値：200。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/listschedule" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=b9305xxxxea83' \
+-d 'offset=0' \
+-d 'size=200' \
+-d 'workDate=2016-03-09+11%3A11%3A11'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/listschedule");
+OapiAttendanceListscheduleRequest req = new OapiAttendanceListscheduleRequest();
+req.setWorkDate(StringUtils.parseDateTime("2016-03-09 11:11:11"));
+req.setOffset(0L);
+req.setSize(200L);
+OapiAttendanceListscheduleResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceListscheduleRequest("https://api.dingtalk.io/topapi/attendance/listschedule")
+
+req.workDate="2016-03-09 11:11:11"
+req.offset=0
+req.size=200
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceListscheduleRequest;
+$req->setWorkDate("2016-03-09 11:11:11");
+$req->setOffset("0");
+$req->setSize("200");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/listschedule");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/listschedule");
+OapiAttendanceListscheduleRequest req = new OapiAttendanceListscheduleRequest();
+req.WorkDate = DateTime.Parse("2016-03-09 11:11:11");
+req.Offset = 0L;
+req.Size = 200L;
+OapiAttendanceListscheduleResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | AtScheduleListForTopVo |  | 照会結果です。 |
+| schedules | AtScheduleForTopVo[] |  | シフトの一覧です。 |
+| plan_id | Number | 157062792171 | シフト設定 ID です。 |
+| check_type | String | OnDuty | 打刻タイプです。   - **Onduty**：出勤打刻 - **OffDuty**：退勤打刻 |
+| approve_id | Number | 1 | 承認 ID です。  **注意**  承認フォームがない場合、このパラメータは返されません。 |
+| userid | String | user01 | 勤怠対象ユーザーのユーザー ID です。 |
+| class_id | Number | 677995086 | 勤怠シフト ID です。 |
+| class_setting_id | Number | 599315627 | シフト構成 ID です。  **注意**  グローバル設定を使用している場合、このパラメータは返されません。 |
+| plan_check_time | Date | 2020-11-11 09:30:00 | 打刻時刻です。 |
+| group_id | Number | 685935028 | 勤怠グループ ID です。 |
+| changed_check_time | Date | 2020-09-06 15:36:04 | 調整後の打刻時刻です。 |
+| has_more | Boolean | false | 次のページがあるかどうかを示します。   - **true**：あり - **false**：なし |
+| errmsg | String | ok | リターンコードの説明です。 |
+| errcode | Number | 0 | リターンコードです。 |
+| request_id | String | 6ha75i2o99fj | リクエスト ID です。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": {
+    "has_more": false,
+    "schedules": [
+      {
+        "check_type": "OnDuty",
+        "class_id": 677995086,
+        "class_setting_id": 599315627,
+        "group_id": 685935028,
+        "plan_check_time": "2020-11-11 09:30:00",
+        "plan_id": 157062792171,
+        "userid": "user01"
+      },
+      {
+        "check_type": "OffDuty",
+        "class_id": 677995086,
+        "class_setting_id": 599315627,
+        "group_id": 685935028,
+        "plan_check_time": "2020-11-11 18:30:00",
+        "plan_id": 157062792172,
+        "userid": "user01"
+      }
+    ]
+  },
+  "request_id": "6ha75i2o99fj"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

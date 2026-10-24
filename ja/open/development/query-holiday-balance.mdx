@@ -1,0 +1,161 @@
+---
+title: "休暇残数の照会"
+description: "休暇タイプと社員番号を指定し、休暇残数（クォータ）をページングで照会する API です。リクエストパラメータ、各言語のコード例、レスポンス形式を紹介します。"
+---
+
+この API を呼び出すと、組織または社員ごとに休暇残数をページング照会できます。1 回の呼び出しで最大 50 件のレコードを返します。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/vacation/quota/list |
+| HTTP メソッド | POST |
+| 対応するアプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_holiday_readonly-DingTalk 休暇の読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | 文字列 | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリ：[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリ：サードパーティ社内アプリの access_token の取得 API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| leave_code | 文字列 | はい | f84a2xxxx | 休暇タイプの一意の識別子です。[休暇ルール一覧の照会](/ja/open/development/holiday-type-query) API を呼び出して leave_code の値を取得します。 |
+| op_userid | 文字列 | はい | user01 | **OA承認** のアプリ権限を持つ、社内の管理者のユーザー ID です。 |
+| userids | 文字列 | はい | user02,user03 | 照会対象の社員番号のリストです。 |
+| offset | 数値 | はい | 0 | ページングのオフセットです。0 から始まる 0 以上の整数を指定してください。 |
+| size | 数値 | はい | 10 | ページサイズです。最大値：50。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/vacation/quota/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=48acxxxx0dbdbee' \
+-d 'leave_code=f84a2829-d245-4312-9ff2-0653e5b3abb2' \
+-d 'offset=0' \
+-d 'op_userid=zhangsan' \
+-d 'size=10' \
+-d 'userids=zhangsan%2Clisi'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/list");
+OapiAttendanceVacationQuotaListRequest req = new OapiAttendanceVacationQuotaListRequest();
+req.setLeaveCode("f84a2xxxx");
+req.setOpUserid("user01");
+req.setUserids("user02,user03");
+req.setOffset(0L);
+req.setSize(10L);
+OapiAttendanceVacationQuotaListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceVacationQuotaListRequest("https://api.dingtalk.io/topapi/attendance/vacation/quota/list")
+
+req.leave_code="f84a2829-d245-4312-9ff2-0653e5b3abb2"
+req.op_userid="zhangsan"
+req.userids="zhangsan,lisi"
+req.offset=0
+req.size=10
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceVacationQuotaListRequest;
+$req->setLeaveCode("f84a2829-d245-4312-9ff2-0653e5b3abb2");
+$req->setOpUserid("zhangsan");
+$req->setUserids("zhangsan,lisi");
+$req->setOffset("0");
+$req->setSize("10");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/vacation/quota/list");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/list");
+OapiAttendanceVacationQuotaListRequest req = new OapiAttendanceVacationQuotaListRequest();
+req.LeaveCode = "f84a2829-d245-4312-9ff2-0653e5b3abb2";
+req.OpUserid = "zhangsan";
+req.Userids = "zhangsan,lisi";
+req.Offset = 0L;
+req.Size = 10L;
+OapiAttendanceVacationQuotaListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | OapiLeaveQuotaUserListVo |  | 返される結果です。 |
+| has_more | 真偽値 | false | ほかにレコードが存在するかどうかを示します。   - **true**：ほかにレコードが存在します。 - **false**：ほかにレコードは存在しません。 |
+| leave_quotas | Leavequotas[] |  | 休暇残数のリストです。 |
+| userid | 文字列 | user01 | 社員のユーザー ID です。 |
+| leave_code | 文字列 | f84a2xxxx | 休暇タイプの一意の識別子です。 |
+| quota_cycle | 文字列 | 2019 | クォータが適用される周期です。 |
+| quota_id | 文字列 | f8abb2xxxx | クォータの一意の識別子です。 |
+| start_time | 数値 | 1653851001000 | 休暇の有効期間の開始時刻です（ミリ秒単位のタイムスタンプ）。 |
+| end_time | 数値 | 1753851001000 | クォータの有効期間の終了時刻です（ミリ秒単位のタイムスタンプ）。 |
+| quota_num_per_hour | 数値 | 1000 | 時間単位で計算したクォータの合計です。  **注意**  休暇タイプが時間単位で計算される場合、この値は空ではなく、1/100 時間単位で表されます。  例：1000 = 10 時間。 |
+| quota_num_per_day | 数値 | 1000 | 日単位で計算したクォータの合計です。  **注意**  休暇タイプが日単位で計算される場合、この値は空ではなく、1/100 日単位で表されます。  例：1000 = 10 日。 |
+| used_num_per_day | 数値 | 100 | 日単位で計算した使用済みクォータです。  **注意**  休暇タイプが日単位で計算される場合、この値は空ではなく、1/100 日単位で表されます。  例：100 = 1 日。 |
+| used_num_per_hour | 数値 | 1000 | 時間単位で計算した使用済みクォータです。  **注意**  休暇タイプが時間単位で計算される場合、この値は空ではなく、1/100 時間単位で表されます。  例：1000 = 10 時間。 |
+| errcode | 数値 | 0 | 戻りコードです。 |
+| errmsg | 文字列 | ok | 戻りコードの説明です。 |
+| success | 真偽値 | true | 呼び出しに成功したかどうかを示します。   - **true**：はい - **false**：いいえ |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "has_more": false,
+    "leave_quotas": [
+      {
+        "end_time": 1753851001000,
+        "leave_code": "f84a2xxxx",
+        "quota_cycle": "2019",
+        "quota_id": "f8abb2xxxx",
+        "quota_num_per_day": 1000,
+        "start_time": 1653851001000,
+        "used_num_per_day": 100,
+        "quota_num_per_hour": 1000,
+        "userid": "user01",
+        "used_num_per_hour": 1000
+      }
+    ]
+  },
+  "success": true,
+  "request_id": "exz4w88xfo7n"
+}
+```
+
+### エラーコード
+
+この API の呼び出しに失敗した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を検索してください。

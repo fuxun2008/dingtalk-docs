@@ -1,0 +1,574 @@
+---
+title: "勤怠グループの作成・取得・更新・削除"
+description: "勤怠グループの作成・取得・更新・削除を行う API です。人事・OA システムと連携し、勤怠ルールを一括で管理できます。"
+---
+
+# 勤怠ルールの設定：勤怠グループを一括作成し、動的に調整する
+
+## 概要
+
+本ソリューションは、勤怠グループ管理をエンドツーエンドで自動化します。DingTalk オープンプラットフォームの勤怠グループ管理 API を使い、人事システムや OA システムなどの業務プラットフォームを DingTalk 勤怠と連携させます。
+
+### 背景
+
+勤怠管理において、組織は次のような課題を抱えています。
+
+- **複雑な勤怠ルール**：固定シフト制、シフト制、フレックスタイムなど、複数の形態が混在しています。手動での設定は時間がかかり、ミスも起こりがちです。
+- **頻繁な人事異動**：入社・退社・異動のたびに、勤怠グループのメンバーを手動で更新する必要があります。社員数 1,000 人以上の組織では、この作業に毎週数時間を費やしています。
+- **システム間の同期がない**：人事システムでの組織構成の変更が DingTalk の勤怠グループにすぐ反映されず、打刻データの誤りにつながります。
+- **一括操作ができない**：管理者は複数の勤怠グループを一度に作成・更新できません。1 つずつ更新するため、非常に非効率です。
+
+### 主なメリット
+
+本ソリューションにより、組織は次のことを実現できます。
+
+- **勤怠グループ管理の自動化**：API で勤怠グループを作成・照会・更新・削除し、手作業を一切不要にします。
+- **スマートなシフト関連付け**：新しいシフトを作成するか、既存のシフトを自動で関連付けて、勤怠ルールの正確性を保ちます。
+- **効率的な一括実行**：勤怠グループを一括で取得・検索・更新し、運用効率を大幅に高めます。
+- **システム間データの一元化**：人事、OA、DingTalk 勤怠のデータをリアルタイムで同期し、データのサイロ化を解消します。
+
+### ユースケース
+
+本ソリューションは、次のような代表的な業務シナリオに適しています。
+
+- **人事システム連携**：人事管理システムの勤怠ルールを DingTalk の勤怠グループに自動で同期します。
+- **合併・買収**：新たに買収した企業向けに、勤怠グループとシフト設定をすばやく一括作成します。
+- **OA 作業フロー連携**：承認フローの完了時に、対応する勤怠グループを自動で作成または調整します。
+- **権限の動的調整**：部門の変更に応じて、勤怠グループのメンバーと管理者権限を自動で更新します。
+
+## 代表的な業務シナリオ
+
+### シナリオ 1：人事システムから勤怠グループを同期する（一括作成と管理）
+
+#### 課題
+
+従来のモデルでは、人事担当者が人事システムで新しい勤怠ルールを策定した後、DingTalk 管理コンソールにログインし、勤怠グループの作成、シフトの設定、メンバーの追加を 1 つずつ手動で行う必要がありました。社員数 1,000 人以上の組織では、勤怠グループは通常 20〜50 個あります。手動での設定には数時間かかり、シフトの誤りやメンバーの登録漏れが頻繁に発生します。
+
+#### 効果の検証
+
+- **自動化された作業フロー**
+
+  API ベースの自動化フローは次の手順で実行されます。
+  1. 人事システムに新しい社員が登録されます。
+  2. システムが社員の部門に基づいて、該当する勤怠グループを自動で特定します。
+  3. システムが API で新しいメンバーを一括追加します。
+  4. システムが結果をリアルタイムで検証・確認します。
+  5. 打刻権限が即座に有効になります。
+- **主な利点**
+
+  - **完全自動のトリガー**：人事担当者が人事システムに新しい社員を入力すると、API 呼び出しが自動で実行されます。DingTalk 管理コンソールへのログインや、手動でのアクション開始は不要です。エントリと同期が同時に行われます。
+  - **正確なマッチング**：システムが社員の部門 ID に基づいて勤怠グループの `groupKey` を自動で照会・照合します。勤怠グループの手動選択ミスによる打刻エラーを防ぎます。
+  - **即時反映**：社員一括追加 API でメンバーを一括追加した後、ID によるメンバー照会 API で結果を即座に検証します。社員は勤怠グループに参加した時点で打刻できます。
+  - **監査証跡**：API 呼び出しごとに、操作者、タイムスタンプ、勤怠グループ ID、社員の `userId` などの詳細を記録し、コンプライアンス監査とトレーサビリティの要件を満たします。
+
+### シナリオ 2：組織構成の変更後に勤怠グループを自動同期する
+
+#### 課題
+
+部門の統合・分割や社員の異動が発生すると、人事担当者は影響を受ける各勤怠グループのメンバーリストとシフト設定ルールを手動で更新する必要があります。大規模な組織再編では、数十の勤怠グループが対象になることもあります。手動更新は時間がかかるうえに一部のグループを見落としやすく、社員の打刻エラーの原因になります。
+
+#### 効果の検証
+
+- **自動化された作業フロー**
+
+  自動化フローは次の 5 つの手順で実行されます。
+
+  1. **OA承認によるトリガー**：部門の統合・分割や人事異動の承認が通過すると、システムが変更**イベント**を自動で取得します。
+  2. **影響を受ける勤怠グループの特定**：システムが変更された部門 ID に基づいて、関連するすべての勤怠グループを自動で照会します。
+  3. **API による一括更新**：システムが DingTalk の勤怠グループ更新 API を呼び出し、メンバーリストとシフト設定を一括で変更します。
+  4. **リアルタイムのデータ検証**：更新直後に、システムが照会 API を呼び出し、すべての勤怠グループのデータ整合性を検証します。
+  5. **同期完了**：勤怠グループの同期が完了し、更新された勤怠ルールが手作業なしで有効になります。
+- **主な利点**
+
+  - **自動トリガー**：OA承認の承認フローが完了すると、システムが変更イベントを取得して同期を自動で実行します。手動での開始や監視は不要です。承認と同期が同時に行われます。
+  - **正確な一括処理**：影響を受けるすべての勤怠グループを一度に特定して更新します。手動での確認による漏れを防ぎ、組織変更を 100% 反映します。
+  - **リアルタイムの検証とフィードバック**：更新直後に照会 API を呼び出してデータ整合性を検証し、エラー時には自動でアラートを送信します。勤怠ルールが正しく有効になることを保証します。
+  - **完全な監査ログ**：API 呼び出しごとに、操作者、タイムスタンプ、変更コンテンツを記録し、コンプライアンス監査とトレーサビリティの要件を満たします。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+本ソリューションは、DingTalk オープンプラットフォームのサーバー API をベースに構築されています。主な技術コンポーネントは次のとおりです。
+
+- **認証レイヤー**：`Client ID` と `Client Secret` を使って `access_token` を取得し、API 呼び出しの安全性を確保します。
+- **勤怠グループ管理レイヤー**：勤怠グループを作成・照会・更新・削除するための API 機能一式を提供します。固定シフト制の勤怠グループとシフト制の勤怠グループに対応しています。
+- **シフト管理レイヤー**：シフトを作成・照会するための API 機能を提供します。シフトは勤怠グループの前提となるリソースです。
+- **エラーハンドリングレイヤー**：包括的なエラーコード体系を提供し、問題の特定と解決を迅速化します。
+
+**API バージョン**：サーバー API には新バージョンと旧バージョンがあります。パフォーマンスと機能サポートに優れた新バージョンを優先して使用してください。
+
+### 前提条件
+
+ソリューションを実装する前に、次の条件を満たしてください。
+
+- **アプリの準備**：社内アプリを作成して設定します。詳しくは、[アプリの作成と設定](/ja/open/dingstart/create-application)を参照してください。
+- **権限要件**：DingTalk の組織管理者またはサブ管理者の権限を持ち、次の API 権限を申請します。
+
+  - `qyapi_attendance_group_manage`（勤怠グループ管理権限）
+  - `qyapi_attendance_group_read`（勤怠グループ照会権限）
+- **開発環境**：Java 開発環境（JDK 1.6 以降）と Maven ビルドツールをインストールします。
+- **SDK の準備**：DingTalk サーバーサイド SDK をダウンロードします。詳しくは、「サーバーサイド SDK のダウンロード」を参照してください。SDK は Java、Python、Go などの言語に対応しています。
+
+### コードの実装
+
+ステップ 1：クライアント ID と Client Secret を含む、アプリ認証情報を取得します。
+
+ステップ 2：勤怠関連の API 権限を申請します。
+
+ステップ 3：アプリのアクセス認証情報を取得します。[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token)を参照してください。API を呼び出す際、アクセストークンによって呼び出し元の身元が認証されます。
+
+ステップ 4：勤怠関連の API を呼び出します。
+
+1. サーバー API [勤怠グループの作成](/ja/open/development/attendance-group-write)を呼び出し、勤怠グループの `id` を取得します。
+
+### 注意
+
+   本ドキュメントの例では、固定シフト制の勤怠グループを使用しています。
+
+   **固定シフト制の勤怠グループ**を作成するには、勤怠グループ作成 API を呼び出す前に、シフトが存在することを確認してください。
+
+   - シフトが存在しない場合は、サーバー API [シフトの作成](/ja/open/development/create-modify-shifts)を呼び出してシフト ID を取得します。
+   - シフトがすでに存在する場合は、サーバー API [シフト概要の取得](/ja/open/development/enterprise-shift-query-in-batches)を呼び出して既存のシフト ID を取得します。
+2. 勤怠グループ情報を取得します。
+
+   - 組織内のすべての勤怠グループの情報を取得する
+
+     - サーバー API [勤怠グループ概要の一括取得](/ja/open/development/batch-query-of-simple-information-of-the-attendance-group)を呼び出し、組織内のすべての勤怠グループの概要を取得します。
+     - サーバー API [勤怠グループ詳細の一括取得](/ja/open/development/batch-obtain-attendance-group-details)を呼び出し、組織内のすべての勤怠グループの詳細を取得します。
+   - サーバー API [勤怠グループ概要の検索](/ja/open/development/attendance-group-search)を呼び出し、名前で勤怠グループをあいまい検索します。
+   - 単一の勤怠グループの情報を取得する
+
+     - 勤怠グループの `id` を指定してサーバー API [勤怠グループ詳細の取得](/ja/open/development/query-a-single-attendance-group)を呼び出し、単一の勤怠グループの詳細を取得します。
+     - `groupKey` で勤怠グループの詳細を取得する
+
+       1. 勤怠グループの `id` を指定してサーバー API [groupId から groupKey への変換](/ja/open/development/groupid-to-groupkey)を呼び出し、勤怠グループの `groupKey` を取得します。
+       2. 勤怠グループの `groupKey` を指定してサーバー API [groupKey による勤怠グループ情報の照会](/ja/open/development/queries-attendance-group-information-by-id)を呼び出し、勤怠グループ情報を取得します。
+3. 勤怠グループの `id` を指定してサーバー API [勤怠グループの更新](/ja/open/development/attendance-group-update-interface)を呼び出し、勤怠グループの名前やシフトなどの情報を変更します。
+4. 勤怠グループの `groupKey` を指定してサーバー API [勤怠グループの削除](/ja/open/development/delete-attendance-group)を呼び出し、勤怠グループを削除します。
+
+## 実装手順
+
+### **ステップ 1：アプリ認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/)にログインします。
+2. 対象のアプリを選択し、アプリの詳細ページを開きます。
+3. **基本情報** > **認証情報と基本情報**をクリックします。
+4. アプリの `Client ID` と `Client Secret` を控えておきます。
+
+### 注意
+
+   `Client Secret` は安全に保管し、第三者と絶対に共有しないでください。コードにハードコーディングせず、環境変数または鍵管理システムに保存してください。
+
+### ステップ 2：API 権限を追加する
+
+1. アプリの詳細ページで、**権限管理**をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `qyapi_attendance_group_manage`（勤怠グループ管理権限）：勤怠グループの作成・更新・削除に使用します。
+   - `qyapi_attendance_group_read`（勤怠グループ照会権限）：勤怠グループの概要と詳細の照会に使用します。
+
+<Note>
+業務シナリオによって、必要な権限の組み合わせは異なります。実際のニーズに応じて申請してください。たとえば、一括インポートのシナリオでは、ユーザーの一括操作に関する権限も必要です。
+</Note>
+
+### ステップ 3：アクセス認証情報（access_token）を取得する
+
+ステップ 1 で取得した Client ID と Client Secret を使い、アプリのアクセス認証情報を取得します。[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token)を参照してください。
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略**：`access_token` の有効期間は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に先行して更新してください。
+- **同時実行制御**：複数のスレッドが同時にトークンを更新すると、競合が発生します。分散ロックを使用して防止してください。
+- **エラー時のリトライ**：ネットワークが不安定な場合は、最大 3 回まで、間隔を段階的に延ばしながら（1 秒 → 2 秒 → 4 秒）自動でリトライしてください。
+
+### **ステップ 4：** コア API を呼び出す
+
+#### 勤怠グループを作成する
+
+<Note>
+本ドキュメントの例では、固定シフト制の勤怠グループを使用しています。
+</Note>
+
+固定シフト制の勤怠グループを作成するには、勤怠グループ作成 API を呼び出す前に、シフトが存在することを確認してください。
+
+- シフトが存在しない場合は、サーバー API [シフトの作成](/ja/open/development/create-modify-shifts)を呼び出してシフト ID を取得します。
+
+  ```java
+  public void createShift() throws ApiException {
+      DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/add");
+      OapiAttendanceShiftAddRequest request = new OapiAttendanceShiftAddRequest();
+      request.setOpUserId("ma*****75");
+
+      // シフトの基本情報
+      OapiAttendanceShiftAddRequest.TopAtClassVo topAtClassVo = new OapiAttendanceShiftAddRequest.TopAtClassVo();
+      topAtClassVo.setOwner("ma******75");
+      topAtClassVo.setClassGroupName("シフト 1009");
+      topAtClassVo.setCorpId("ding******288");
+      topAtClassVo.setName("新規シフト");
+
+      // シフトの時間帯設定（出勤・退勤の打刻）
+      List<OapiAttendanceShiftAddRequest.TopAtSectionVo> sectionVos = new ArrayList<>();
+      OapiAttendanceShiftAddRequest.TopAtSectionVo sectionVo = new OapiAttendanceShiftAddRequest.TopAtSectionVo();
+
+      List<OapiAttendanceShiftAddRequest.TopAtTimeVo> timeVos = new ArrayList<>();
+
+      // 始業時刻
+      OapiAttendanceShiftAddRequest.TopAtTimeVo timeVo = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      timeVo.setAcross(0L);
+      timeVo.setBeginMin(60L);
+      timeVo.setCheckTime(StringUtils.parseDateTime("2022-10-09 09:00:00"));
+      timeVo.setCheckType("OnDuty");
+      timeVo.setEndMin(30L);
+      timeVo.setFreeCheck(false);
+      timeVos.add(timeVo);
+
+      // 終業時刻
+      OapiAttendanceShiftAddRequest.TopAtTimeVo timeVo1 = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      timeVo1.setAcross(0L);
+      timeVo1.setBeginMin(0L);
+      timeVo1.setCheckTime(StringUtils.parseDateTime("2022-10-09 18:00:00"));
+      timeVo1.setCheckType("OffDuty");
+      timeVo1.setEndMin(-1L);
+      timeVo1.setFreeCheck(false);
+      timeVos.add(timeVo1);
+
+      sectionVo.setTimes(timeVos);
+      sectionVos.add(sectionVo);
+      topAtClassVo.setSections(sectionVos);
+
+      // シフト設定
+      OapiAttendanceShiftAddRequest.TopAtClassSettingVo settingVo = new OapiAttendanceShiftAddRequest.TopAtClassSettingVo();
+      settingVo.setCorpId("ding16*******c288");
+      settingVo.setIsDeleted("N");
+      settingVo.setAbsenteeismLateMinutes(60L);
+      settingVo.setIsFlexible(false);
+      settingVo.setSeriousLateMinutes(30L);
+
+      // 休憩開始時刻
+      OapiAttendanceShiftAddRequest.TopAtTimeVo restBeginTime = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      restBeginTime.setFreeCheck(false);
+      restBeginTime.setAcross(0L);
+      restBeginTime.setCheckType("OnDuty");
+      restBeginTime.setCheckTime(StringUtils.parseDateTime("2022-10-09 12:00:00"));
+      settingVo.setRestBeginTime(restBeginTime);
+
+      // 休憩終了時刻
+      OapiAttendanceShiftAddRequest.TopAtTimeVo restEndTime = new OapiAttendanceShiftAddRequest.TopAtTimeVo();
+      restEndTime.setAcross(0L);
+      restEndTime.setCheckType("OffDuty");
+      restEndTime.setFreeCheck(false);
+      restEndTime.setCheckTime(StringUtils.parseDateTime("2022-10-09 13:00:00"));
+      settingVo.setRestEndTime(restEndTime);
+
+      topAtClassVo.setSetting(settingVo);
+
+      request.setShift(topAtClassVo);
+
+      OapiAttendanceShiftAddResponse response = client.execute(request, "access_token");
+      System.out.println(response.getBody());
+  }
+  ```
+- シフトがすでに存在する場合は、サーバー API [シフト概要の取得](/ja/open/development/enterprise-shift-query-in-batches)を呼び出して既存のシフト ID を取得します。
+
+  ```java
+  public void shiftList() throws ApiException {
+      DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/shift/list");
+
+      OapiAttendanceShiftListRequest req = new OapiAttendanceShiftListRequest();
+      req.setOpUserId("ma******75");
+      req.setCursor(0L);
+
+      OapiAttendanceShiftListResponse rsp = client.execute(req, "access_token");
+      System.out.println(rsp.getBody());
+  }
+  ```
+
+API 説明：サーバー API [勤怠グループの作成](/ja/open/development/attendance-group-write)を呼び出し、勤怠グループの `id` を取得します。
+
+```java
+public void createGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/add");
+    OapiAttendanceGroupAddRequest req = new OapiAttendanceGroupAddRequest();
+    req.setOpUserId("ma*****75");
+
+    // 勤怠グループ情報
+    OapiAttendanceGroupAddRequest.TopGroupVo topGroupVo = new OapiAttendanceGroupAddRequest.TopGroupVo();
+    topGroupVo.setOwner("ma*****75");
+    topGroupVo.setEnableEmpSelectClass(true);
+    topGroupVo.setCorpId("ding***********288");
+    topGroupVo.setSkipHolidays(true);
+    topGroupVo.setEnableOutsideCameraCheck(true);
+
+    // 打刻場所の設定
+    List<OapiAttendanceGroupAddRequest.TopPositionVo> positionVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopPositionVo topPositionVo = new OapiAttendanceGroupAddRequest.TopPositionVo();
+    topPositionVo.setAddress("バイオテクノロジー産業園区 経二路21号");
+    topPositionVo.setCorpId("ding*******288");
+    topPositionVo.setLatitude("36.687495");
+    topPositionVo.setAccuracy("0");
+    topPositionVo.setTitle("青蔵高原自然博物館");
+    topPositionVo.setLongitude("101.750329");
+    positionVos.add(topPositionVo);
+    topGroupVo.setPositions(positionVos);
+
+    topGroupVo.setModifyMember(true);
+    topGroupVo.setType("FIXED");
+    topGroupVo.setEnableFaceCheck(false);
+    topGroupVo.setCheckNeedHealthyCode(true);
+    topGroupVo.setEnableCameraCheck(false);
+
+    // シフト設定
+    List<OapiAttendanceGroupAddRequest.TopShiftVo> topShiftVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopShiftVo topShiftVo = new OapiAttendanceGroupAddRequest.TopShiftVo();
+    topShiftVo.setId(1006170802L);
+    topShiftVos.add(topShiftVo);
+    topGroupVo.setShiftVoList(topShiftVos);
+
+    topGroupVo.setEnableOutsideCheck(false);
+
+    // メンバー設定
+    List<OapiAttendanceGroupAddRequest.TopMemberVo> memberVos = new ArrayList<>();
+    OapiAttendanceGroupAddRequest.TopMemberVo topMemberVo = new OapiAttendanceGroupAddRequest.TopMemberVo();
+    topMemberVo.setRole("Attendance");
+    topMemberVo.setCorpId("ding********288");
+    topMemberVo.setType("StaffMember");
+    topMemberVo.setUserId("014***********041");
+    memberVos.add(topMemberVo);
+    topGroupVo.setMembers(memberVos);
+
+    topGroupVo.setName("新規勤怠グループ");
+    topGroupVo.setEnableNextDay(false);
+    topGroupVo.setManagerList(Arrays.asList("08*******272", "ma*******75"));
+    topGroupVo.setWorkdayClassList(Arrays.asList(0L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 0L));
+    topGroupVo.setDefaultClassId(1006170802L);
+    topGroupVo.setOffset(300L);
+
+    // 管理ロールの権限設定
+    OapiAttendanceGroupAddRequest.TopGroupManageRolePermissionVo groupManageRolePermissionVo = new OapiAttendanceGroupAddRequest.TopGroupManageRolePermissionVo();
+    groupManageRolePermissionVo.setSchedule("w");
+    groupManageRolePermissionVo.setGroupMember("w");
+    groupManageRolePermissionVo.setGroupType("r");
+    groupManageRolePermissionVo.setCheckTime("w");
+    groupManageRolePermissionVo.setCheckPositionType("r");
+    groupManageRolePermissionVo.setOverTimeRule("r");
+    groupManageRolePermissionVo.setCameraCheck("w");
+    groupManageRolePermissionVo.setOutSideCheck("w");
+    topGroupVo.setResourcePermissionMap(groupManageRolePermissionVo);
+
+    // 勤怠の Wi-Fi 打刻設定（コメントアウト）
+    // List<OapiAttendanceGroupAddRequest.TopWifiVo> topWifiVos = new ArrayList<>();
+    // OapiAttendanceGroupAddRequest.TopWifiVo topWifiVo = new OapiAttendanceGroupAddRequest.TopWifiVo();
+    // topWifiVos.add(topWifiVo);
+    // topWifiVo.setMacAddr("C0:E0:D0:E0:C0:0F");
+    // topWifiVo.setSsid("OFFICE-WiFi");
+    // topWifiVo.setCorpId("dinge8xxxx");
+    // topGroupVo.setWifis(topWifiVos);
+
+    topGroupVo.setDisableCheckWithoutSchedule(true);
+    topGroupVo.setFreecheckDayStartMinOffset(240L);
+    topGroupVo.setDisableCheckWhenRest(true);
+
+    req.setTopGroup(topGroupVo);
+
+    OapiAttendanceGroupAddResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+#### 勤怠グループ情報を取得する
+
+- **組織内のすべての勤怠グループの情報を取得する**
+
+  1. **勤怠グループ概要の一括取得**：サーバー API [勤怠グループ概要の一括取得](/ja/open/development/batch-query-of-simple-information-of-the-attendance-group)を呼び出し、組織内のすべての勤怠グループの概要を取得します。
+
+     ```java
+     public void groupMinimalismList() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/minimalism/list");
+
+         OapiAttendanceGroupMinimalismListRequest req = new OapiAttendanceGroupMinimalismListRequest();
+         req.setOpUserId("ma******75");
+         req.setCursor(0L);
+
+         OapiAttendanceGroupMinimalismListResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  2. **勤怠グループ詳細の一括取得**：サーバー API [勤怠グループ詳細の一括取得](/ja/open/development/batch-obtain-attendance-group-details)を呼び出し、組織内のすべての勤怠グループの詳細を取得します。
+
+     ```java
+     public void simpleGroups() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+
+         OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+         req.setOffset(0L);
+         req.setSize(10L);
+
+         OapiAttendanceGetsimplegroupsResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  3. **勤怠グループ概要の検索**：サーバー API [勤怠グループ概要の検索](/ja/open/development/attendance-group-search)を呼び出し、名前で勤怠グループをあいまい検索します。
+
+     ```java
+     public void groupSearch() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/search");
+
+         OapiAttendanceGroupSearchRequest req = new OapiAttendanceGroupSearchRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupName("新規勤怠グループ");
+
+         OapiAttendanceGroupSearchResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+- **単一の勤怠グループの情報を取得する**
+
+  1. **単一の勤怠グループの詳細を取得**：勤怠グループの `id` を指定してサーバー API [勤怠グループ詳細の取得](/ja/open/development/query-a-single-attendance-group)を呼び出し、単一の勤怠グループの詳細を取得します。
+
+     ```java
+     public void groupQuery() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/query");
+
+         OapiAttendanceGroupQueryRequest req = new OapiAttendanceGroupQueryRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupId(1010195506L);
+
+         OapiAttendanceGroupQueryResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  2. **groupId から groupKey への変換**：勤怠グループの `id` を指定してサーバー API [groupId から groupKey への変換](/ja/open/development/groupid-to-groupkey)を呼び出し、勤怠グループの `groupKey` を取得します。
+
+     ```java
+     public void groupsIdToKey() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/groups/idtokey");
+
+         OapiAttendanceGroupsIdtokeyRequest req = new OapiAttendanceGroupsIdtokeyRequest();
+         req.setOpUserId("ma******75");
+         req.setGroupId(1010195506L);
+
+         OapiAttendanceGroupsIdtokeyResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+  3. **groupKey による勤怠グループ情報の照会**：勤怠グループの `groupKey` を指定してサーバー API [groupKey による勤怠グループ情報の照会](/ja/open/development/queries-attendance-group-information-by-id)を呼び出し、勤怠グループ情報を取得します。
+
+     ```java
+     public void groupInfo() throws ApiException {
+         DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/get");
+
+         OapiAttendanceGroupGetRequest req = new OapiAttendanceGroupGetRequest();
+         req.setOpUserid("ma******75");
+         req.setGroupKey("19F************2B2");
+
+         OapiAttendanceGroupGetResponse rsp = client.execute(req, "access_token");
+         System.out.println(rsp.getBody());
+     }
+     ```
+
+#### 勤怠グループを更新する
+
+勤怠グループの `id` を指定してサーバー API [勤怠グループの更新](/ja/open/development/attendance-group-update-interface)を呼び出し、勤怠グループの名前やシフトなどの情報を変更します。
+
+```java
+public void updateGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/modify");
+
+    OapiAttendanceGroupModifyRequest req = new OapiAttendanceGroupModifyRequest();
+    req.setOpUserId("ma*****75");
+
+    // 勤怠グループの基本情報
+    OapiAttendanceGroupModifyRequest.TopGroupVo topGroupVo = new OapiAttendanceGroupModifyRequest.TopGroupVo();
+    topGroupVo.setId(1010195506L); // 勤怠グループ ID
+    topGroupVo.setName("新規勤怠グループ 1");
+    topGroupVo.setOwner("ma*****75");
+    topGroupVo.setEnableEmpSelectClass(false);
+    topGroupVo.setSkipHolidays(true);
+    topGroupVo.setEnableFaceCheck(true);
+    topGroupVo.setOpenCameraCheck(false);
+    topGroupVo.setOpenFaceCheck(false);
+    topGroupVo.setEnableOutsideCheck(false);
+    topGroupVo.setDisableCheckWithoutSchedule(false);
+    topGroupVo.setOffset(500L);
+    topGroupVo.setManagerList(Arrays.asList("0147******041", "0852*******72"));
+
+    // 打刻場所の設定
+    List<OapiAttendanceGroupModifyRequest.TopPositionVo> positionVos = new ArrayList<>();
+    OapiAttendanceGroupModifyRequest.TopPositionVo topPositionVo = new OapiAttendanceGroupModifyRequest.TopPositionVo();
+    topPositionVo.setAddress("バイオテクノロジー産業園区 経二路21号");
+    topPositionVo.setCorpId("din***********88");
+    topPositionVo.setLatitude("30.123");
+    topPositionVo.setLongitude("120.123");
+    topPositionVo.setAccuracy("0");
+    topPositionVo.setTitle("青蔵高原自然博物館");
+    positionVos.add(topPositionVo);
+    topGroupVo.setPositions(positionVos);
+
+    // シフト設定
+    List<OapiAttendanceGroupModifyRequest.TopShiftVo> topShiftVos = new ArrayList<>();
+    OapiAttendanceGroupModifyRequest.TopShiftVo topShiftVo = new OapiAttendanceGroupModifyRequest.TopShiftVo();
+    topShiftVo.setId(1006170802L); // シフト ID
+    topShiftVos.add(topShiftVo);
+    topGroupVo.setShiftVoList(topShiftVos);
+
+    // 勤務日のシフトリスト（1006170802L：シフト ID）
+    topGroupVo.setWorkdayClassList(Arrays.asList(0L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 1006170802L, 0L));
+
+    req.setTopGroup(topGroupVo);
+
+    OapiAttendanceGroupModifyResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+#### 勤怠グループを削除する
+
+勤怠グループの `groupKey` を指定してサーバー API [勤怠グループの削除](/ja/open/development/delete-attendance-group)を呼び出し、勤怠グループを削除します。
+
+### 注意
+
+- 勤怠グループに在籍中の社員がいないことを確認してください。事前に勤怠グループ詳細の取得 API を呼び出して確認します。
+- 勤怠グループに関連付けられたタスクや承認フォームなどを、他の勤怠グループに転送してください。
+- 必要に応じて、勤怠グループの履歴データをバックアップしてください。
+- 関係部門（IT、人事、総務など）に通知し、後続のクリーンアップを完了してもらってください。
+
+```java
+public void deleteGroup() throws ApiException {
+    DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/delete");
+
+    OapiAttendanceGroupDeleteRequest req = new OapiAttendanceGroupDeleteRequest();
+    req.setOpUserid("ma********75");
+    req.setGroupKey("19FB************22B2");
+
+    OapiAttendanceGroupDeleteResponse rsp = client.execute(req, "access_token");
+    System.out.println(rsp.getBody());
+}
+```
+
+## よくある質問
+
+- **Q1：勤怠グループの作成時に「シフトが存在しません」というエラーが表示された場合は、どうすればよいですか？**
+
+  A：固定シフト制の勤怠グループには、既存のシフトが必要です。まず [シフトの作成](/ja/open/development/create-modify-shifts) API を呼び出すか、[シフト概要の取得](/ja/open/development/enterprise-shift-query-in-batches) API を呼び出して既存のシフト ID を取得してください。その後、勤怠グループを作成します。
+- **Q2：すべての勤怠グループの情報を一括で取得するには、どうすればよいですか？**
+
+  A：2 つの手順で行います。まず、[勤怠グループ概要の一括取得](/ja/open/development/batch-query-of-simple-information-of-the-attendance-group)を呼び出し、すべての勤怠グループの概要情報（`id` を含む）を取得します。次に、必要に応じて [勤怠グループ詳細の一括取得](/ja/open/development/batch-obtain-attendance-group-details)を呼び出し、詳細情報を取得します。
+- **Q3：勤怠グループの id と groupKey の違いは何ですか？**
+
+  A：`id` は勤怠グループの数値型の識別子で、`groupKey` は文字列型の識別子です。勤怠グループの削除など、一部の API では `groupKey` が必要です。[groupId から groupKey への変換](/ja/open/development/groupid-to-groupkey) API を使って相互に変換できます。
+- **Q4：勤怠グループを更新する際、すべてのフィールドを渡す必要がありますか？**
+
+  A：いいえ、必要ありません。変更するフィールドと勤怠グループの `id` だけを渡してください。省略したフィールドは元の値が維持されます。

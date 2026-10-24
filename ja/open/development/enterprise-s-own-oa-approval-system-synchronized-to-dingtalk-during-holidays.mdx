@@ -1,0 +1,296 @@
+---
+title: "自社の休暇・勤怠承認を DingTalk に同期する"
+description: "自社 OA の残業・出張・休暇の承認データを DingTalk 勤怠へ同期する API です。事前計算から承認完了・取り消しの通知まで対応。"
+---
+
+# 打刻データ同期：ハードウェアの打刻記録を DingTalk に自動アップロード
+
+## 概要
+
+本ソリューションは、休暇・勤怠承認データをエンドツーエンドで同期します。DingTalk Open Platform の休暇・勤怠承認 API を使用して、社内の自社システムの承認データを DingTalk に自動同期します。
+
+### 背景
+
+多くの組織では、社員の残業・出張・休暇申請を処理するために、自社開発の休暇・勤怠管理システムを運用しています。しかし、これらのシステムには DingTalk 勤怠モジュールとの標準的なデータインターフェースがありません。そのため、次のような問題が発生します。
+
+- **深刻なデータのサイロ化**：自社システムで休暇申請が承認された後も、社員は DingTalk で手動で打刻または打刻修正を行う必要があります。作業が重複し、データの不整合が発生します。
+- **複雑な時間計算**：シフトの勤務時間は日によって異なります（例：平日は 8 時間、週末は 4 時間）。取得可能な休暇時間を手動で計算するとミスが起きやすく、シフト変更にも対応できません。
+- **ステータスの不一致**：DingTalk 勤怠は、自社システムで完了した承認を検知できません。人事担当者は両システムのデータを手動で照合する必要があり、時間がかかるうえに漏れも発生しやすくなります。
+
+### 主なメリット
+
+本ソリューションは、自社の休暇・勤怠承認システムと DingTalk 勤怠を連携させます。標準化された API 呼び出しフローとベストプラクティスを提供し、承認データの同期自動化と一元管理を支援します。
+
+- **軽量な連携**：業務システムのフロントエンドを変更する必要はありません。3 つのコア API を呼び出すだけで連携が完了し、開発コストを抑えられます。
+- **シフトに基づくスマートな計算**：勤怠システムのシフトに基づいて残業・出張・休暇の時間を事前計算し、手動計算によるミスをなくします。
+- **リアルタイムのステータス同期**：申請が承認されると DingTalk 勤怠同期に自動で通知し、承認が取り消された場合も取り消しを同期して、データの整合性を保ちます。
+- **柔軟なシナリオ対応**：日をまたぐ休暇や日ごとに異なるシフトなど、複雑なシナリオに対応します。各日のシフト時間が自動で合算されるため、ユーザーエクスペリエンスが向上します。
+
+### ユースケース
+
+本ソリューションは、次のような代表的な業務シナリオに適用できます。
+
+- **自社休暇・勤怠システムとの連携**：自社開発の残業・出張・休暇承認システムを DingTalk 勤怠モジュールと接続し、承認結果を自動で同期します。
+- **シフトに基づく時間の事前計算**：社員のシフトに基づいて申請可能な最大休暇時間を計算し、上限超過の申請やリソースの無駄を防ぎます。
+- **承認結果の同期**：自社システムの承認を DingTalk 勤怠に自動同期するため、人事担当者が両システムのデータを照合する必要がなくなります。
+- **日をまたぐ休暇の管理**：シフト時間の異なる複数の勤務日にわたる休暇でも、各日のシフト時間を自動で合算し、手続きを簡素化します。
+
+## 代表的な業務シナリオ
+
+### シナリオ 1：自社の休暇・勤怠承認を DingTalk 勤怠と同期する
+
+#### 課題
+
+社内で自社開発の休暇・勤怠管理システムを運用していますが、そのデータは DingTalk 勤怠から切り離されています。自社システムで休暇申請を行った後も、社員は DingTalk で手動で打刻または打刻修正を行う必要があります。社員数が 1,000 人を超えると手動での運用はほぼ不可能になり、人為的ミスによってデータの不整合が起きやすくなります。
+
+さらに、シフトの勤務時間は日によって異なります（例：平日は 8 時間、週末は 4 時間）。人事担当者は社員ごとに取得可能な休暇時間を手動で計算する必要があり、時間がかかるうえにミスも発生しがちです。DingTalk 勤怠は完了した承認を検知できないため、同期には手動の介入が必要となり、管理コストがさらに増加します。
+
+#### 提供価値
+
+- **自動化された作業フロー**
+
+  連携は次の 5 つのステップで行います。
+
+  1. DingTalk Open Platform でアプリを作成し、アプリ認証情報（**Client ID** / **Client Secret**）を取得します。
+  2. DingTalk Open Platform で勤怠権限 **qyapi_attendance_group_manage** と **qyapi_attendance_group_read** を申請します。
+  3. 以降の API 呼び出しに使用する **access_token** を API で取得します。
+  4. 社員のシフト設定と申請する休暇時間に基づいて、許可される最大休暇時間を事前計算します。
+  5. 申請が承認されたら DingTalk に自動同期し、返却された **approve_id** を保存します。
+- **主な利点**
+
+  - **時間のスマートな事前計算**：シフトに基づいて最大休暇時間を自動計算し、上限超過の申請を防いで人事担当者の確認作業を軽減します。
+  - **承認の自動同期**：承認後に追加の操作なしで DingTalk 勤怠へ自動通知し、人事担当者の照合時間を 80% 削減します。
+  - **リアルタイムの取り消し**：取り消された承認を DingTalk に自動同期してデータの整合性を保ち、勤怠統計の誤りを防ぎます。
+  - **低コストな連携**：3 つのコア API を呼び出すだけで開発期間を 70% 短縮し、迅速に本番稼働できます。
+
+### シナリオ 2：日をまたぐ休暇時間のスマート計算
+
+#### 課題
+
+社員の休暇が、日ごとにシフト時間の異なる複数の勤務日にわたる場合があります（例：山田さんのシフトは 10月15日が 8 時間、10月16日が 4 時間）。従来の方法では各日のシフト時間を手動で合算する必要があり、ミスが起きやすく非効率です。休暇期間が長い場合（例：丸 1 週間）、人事担当者は各日のシフトルールを 1 日ずつ確認しなければならず、時間がかかるうえに漏れも発生しやすくなります。
+
+また、休暇期間中に代休や一時的なシフト変更が発生すると、手動で計算した時間が不正確になる可能性があります。その結果、休暇申請が却下されたり、勤怠データに誤りが生じたりします。
+
+#### 提供価値
+
+- **自動化された作業フロー**
+
+  自動化されたフローは 5 つのステップで構成されます。
+
+  1. **社員**が、日をまたぐ休暇申請の日付範囲を選択します（例：10月15日～10月16日）。
+  2. システムがシフト事前計算 API を呼び出してデータを取得します：`GET /api/leave/precalc`。
+  3. システムが選択範囲内の各日のシフト時間を自動で合算します（例：10月15日のシフト 8 時間 + 10月16日のシフト 4 時間 = 最大 12 時間の休暇申請が可能）。
+  4. API が計算結果を、申請可能な休暇時間の上限として返します（例：最大休暇時間 **12.0 時間**）。
+  5. **社員**が休暇申請を確認して送信すると、承認フローに進みます。
+- **主な利点**
+
+  - **シフトの自動合算**：事前計算 API を呼び出すと、日をまたぐ休暇で申請可能な最大時間が自動で返されるため、手動計算によるミスがなくなります。
+  - **精密な制御**：実際のシフトに基づいて最大休暇時間を動的に調整し、リソースの無駄や上限超過の申請を防ぎます。
+  - **ユーザーエクスペリエンスの向上**：社員が時間を手動で計算する必要はありません。取得可能な休暇時間がシステムに自動表示されるため、利用のハードルが下がります。
+  - **動的な対応**：シフトが変更された場合は、事前計算 API を再度呼び出して最新の時間を取得し、データの正確性を確保します。
+
+## 実装ガイド
+
+### 技術アーキテクチャ
+
+本ソリューションは、DingTalk Open Platform の勤怠関連 OpenAPI をベースに構築されています。主な技術コンポーネントは次のとおりです。
+
+- **認証レイヤー**：`Client ID` / `Client Secret` を使用して `access_token` を取得し、API 呼び出しを保護します。
+- **権限管理レイヤー**：勤怠関連の API 権限（`qyapi_attendance_group_manage` と `qyapi_attendance_group_read`）を申請します。
+- **時間事前計算エンジン**：時間を事前計算するサーバー API を呼び出し、勤怠システムのシフトに基づいて残業・出張・休暇の時間を事前計算します。
+- **承認同期レイヤー**：承認後、承認完了を通知する API を呼び出して DingTalk 勤怠に同期します。承認が取り消された場合は、承認取り消しを通知する API を呼び出して取り消しを同期します。
+
+### 前提条件
+
+ソリューションを実装する前に、次の条件を満たしていることを確認してください。
+
+- **アプリの準備**：社内アプリを作成・設定します。詳しくは、[アプリの作成と設定](/ja/open/dingstart/create-application)を参照してください。
+- **権限の要件**：DingTalk の組織管理者またはサブ管理者の権限を持ち、勤怠関連の API 権限を申請します。
+
+  - `qyapi_attendance_group_manage`（勤怠グループ管理権限）
+  - `qyapi_attendance_group_read`（勤怠グループ照会権限）
+- **開発環境**：Java 開発環境（JDK 1.6 以降）と Maven ビルドツールをインストールします。
+- **SDK の準備**：DingTalk のサーバーサイド SDK をダウンロードします。詳しくは、「サーバーサイド SDK のダウンロード」を参照してください。SDK は Java、Python、Go など複数の言語に対応しています。
+
+### コードの実装
+
+ステップ 1：クライアント ID と Client Secret を含むアプリ認証情報を取得します。
+
+ステップ 2：勤怠関連の API 権限を含む API 権限を申請します。
+
+ステップ 3：アプリのアクセス認証情報を取得します。[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token)を参照してください。API を呼び出す際は、アクセストークンによって呼び出し元の ID が認証されます。
+
+ステップ 4：勤怠関連の API を呼び出します。
+
+<Note>
+この機能は、自社システムの残業・出張・休暇情報を DingTalk に同期します。
+</Note>
+
+1. サーバー API [時間の事前計算](/ja/open/development/api-calculateduration)を呼び出し、勤怠システムのシフトに基づいて残業・出張・休暇の時間を事前計算します。
+2. 自社の承認システムで休暇・勤怠申請が送信・承認されたら、サーバー API [承認完了の通知](/ja/open/development/api-processapprovefinish)を呼び出して DingTalk 勤怠に通知し、承認を DingTalk 勤怠に同期します。カスタム承認フォーム ID `approve_id` を保存してください。
+3. 自社の承認システムで休暇・勤怠申請の取り消しが送信されたら、カスタム承認フォーム ID `approve_id` を指定してサーバー API [承認取り消しの通知](/ja/open/development/notify-the-attendance-to-modify-the-punch-result-when-the)を呼び出し、取り消しを DingTalk 勤怠に同期します。
+
+## 実装手順
+
+### **ステップ 1：アプリ認証情報を取得する**
+
+1. [DingTalk 開発者コンソール](https://open-dev.dingtalk.io/)にログインします。
+2. 対象のアプリを選択して詳細ページを開きます。
+3. **基本情報** > **認証情報と基本情報**をクリックします。
+4. アプリの `Client ID` と `Client Secret` を控えます。
+
+### 注意
+
+   `Client SECRET` は安全に保管し、第三者と共有しないでください。ハードコードせず、環境変数またはキー管理システムに保存してください。
+
+### ステップ 2：API 権限を追加する
+
+1. アプリの詳細ページで **権限管理** をクリックします。
+2. 権限の検索ボックスに次の権限識別子を入力し、申請します。
+
+   - `qyapi_attendance_group_manage`（勤怠グループ管理権限）
+   - `qyapi_attendance_group_read`（勤怠グループ照会権限）
+
+<Note>
+業務シナリオによって必要な権限の組み合わせは異なります。実際の要件に応じて権限を申請してください。たとえば、一括インポートのシナリオでは、ユーザーの一括操作に関する権限も必要です。
+</Note>
+
+### ステップ 3：アクセス認証情報（access_token）を取得する
+
+ステップ 1 で取得した Client ID と Client Secret を使用して、アプリのアクセス認証情報を取得します。[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token)を参照してください。
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**ベストプラクティス**：
+
+- **キャッシュ戦略**：`access_token` の有効期間は 2 時間です。メモリまたは Redis にキャッシュし、有効期限の 5分前に事前に更新してください。
+- **同時実行制御**：複数のスレッドが同時にトークンを更新することによる競合を防いでください。必要に応じて分散ロックを使用します。
+- **エラー時のリトライ**：ネットワークが不安定な場合は自動でリトライします。最大 3 回まで、間隔を段階的に延ばしてください（1 秒 → 2 秒 → 4 秒）。
+
+### **ステップ 4：** コア API を呼び出す
+
+1. **時間の事前計算**：サーバー API [時間の事前計算](/ja/open/development/api-calculateduration)を呼び出し、勤怠システムのシフトに基づいて残業・出張・休暇の時間を事前計算します。
+
+### 注意
+
+   このステップは省略しないでください。自社システムの承認フォーム情報を DingTalk に正しく同期するために必要です。たとえば、山田さんのシフトが 10月15日は 8 時間、10月16日は 4 時間だとします。通常のシフトでは、この 2 日間の勤務時間は合計 12 時間です。山田さんが自社システムで休暇の承認フォームを送信する場合、申請可能な休暇時間は次のケースごとに異なります。
+
+   - ケース 1：休暇の開始日が 10月15日、終了日が 10月15日の場合。時間の事前計算 API を呼び出すと、申請可能な最大休暇時間は 8 時間です。
+   - ケース 2：休暇の開始日が 10月15日、終了日が 10月16日の場合。時間の事前計算 API を呼び出すと、申請可能な最大休暇時間は 12 時間です。
+
+   ```text
+   public CalculateDurationResponseBody durationCalculate(){
+     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     try {
+       com.aliyun.dingtalkattendance_1_0.Client client = new  com.aliyun.dingtalkattendance_1_0.Client(config);
+       CalculateDurationHeaders calculateDurationHeaders = new CalculateDurationHeaders();
+       calculateDurationHeaders.xAcsDingtalkAccessToken = "<your access token>";
+       CalculateDurationRequest calculateDurationRequest = new CalculateDurationRequest()
+         .setUserId("01472825524039877041")
+         .setBizType(3L)
+         .setFromTime("2022-10-13 09:00")
+         .setToTime("2022-10-13 18:00")
+         .setDurationUnit("day")
+         .setCalculateModel(1L)
+         .setLeaveCode("e2dsad-34dfa-2vas23da");
+       CalculateDurationResponse calculateDurationResponse = client.calculateDurationWithOptions(calculateDurationRequest, calculateDurationHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+       System.out.println(calculateDurationResponse.getBody());
+       return calculateDurationResponse.getBody();
+     } catch (Exception e) {
+       throw new RuntimeException(e);
+     }
+   }
+   ```
+2. **承認完了の通知**：自社の承認システムで休暇・勤怠申請が送信・承認されたら、サーバー API [承認完了の通知](/ja/open/development/api-processapprovefinish)を呼び出して DingTalk 勤怠に通知し、承認を DingTalk 勤怠に同期します。
+
+   **注意** 
+   - このステップでは、DingTalk に OA承認フォームは作成されません。
+   - カスタム承認フォーム ID `approve_id` を保存してください。後で承認を取り消す際にこの ID が必要です。
+
+   ```text
+   public ProcessApproveFinishResponseBody approveFinish(){
+     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     try {
+       com.aliyun.dingtalkattendance_1_0.Client client = new  com.aliyun.dingtalkattendance_1_0.Client(config);
+       ProcessApproveFinishHeaders processApproveFinishHeaders = new ProcessApproveFinishHeaders();
+       processApproveFinishHeaders.xAcsDingtalkAccessToken = "<your access token>";
+       ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam()
+         .setBizType(2L)
+         .setFromTime("2022-10-13 09:00")
+         .setToTime("2022-10-13 19:00")
+         .setDurationUnit("hour")
+         .setCalculateModel(1L);
+       com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest processApproveFinishRequest = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest()
+         .setUserId("manager123")
+         .setTopCalculateApproveDurationParam(topCalculateApproveDurationParam)
+         .setTagName("外出")  // 外出
+         .setApproveId("dingTalk")
+         .setJumpUrl("https://open.dingtalk.io/");
+       ProcessApproveFinishResponse processApproveFinishResponse = client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+       System.out.println(processApproveFinishResponse.getBody());
+       return processApproveFinishResponse.getBody();
+     } catch (Exception e) {
+       throw new RuntimeException(e);
+     }
+   }
+   ```
+3. **承認取り消しの通知**：自社の承認システムで休暇・勤怠申請の取り消しが送信されたら、カスタム承認フォーム ID `approve_id` を指定してサーバー API [承認取り消しの通知](/ja/open/development/notify-the-attendance-to-modify-the-punch-result-when-the)を呼び出し、取り消しを DingTalk 勤怠に同期します。
+
+   ```java
+   public void approveCancel() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/cancel");
+
+       OapiAttendanceApproveCancelRequest req = new OapiAttendanceApproveCancelRequest();
+       req.setUserid("01472825524039877041");
+       req.setApproveId("dingTalk");
+
+       OapiAttendanceApproveCancelResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+
+**実装チェックリスト**：
+
+- アプリ認証情報（Client ID / Client Secret）を取得済みである。
+- 勤怠権限（qyapi_attendance_group_manage / qyapi_attendance_group_read）が付与されている。
+- access_token を取得済みである。
+- 時間の事前計算 API の呼び出しに成功し、正しい取得可能休暇時間が返される。
+- 承認後に承認完了の通知 API を呼び出し、DingTalk 勤怠への同期に成功している。
+- 取り消し時に承認取り消しの通知 API を呼び出し、取り消しが DingTalk 勤怠に正常に同期されている。
+
+## FAQ
+
+- **Q1：なぜ最初に時間の事前計算 API を呼び出す必要があるのですか？**
+
+  A：時間の事前計算 API は、社員のシフトに基づいて申請可能な最大休暇時間を計算します。たとえば、ある日のシフトが 4 時間の社員は、その日に最大 4 時間までしか休暇を申請できません。このステップを省略すると、休暇時間が実際のシフトと一致せず、勤怠統計の正確性が低下するおそれがあります。
+- **Q2：approve_id は何に使用しますか？**
+
+  A：`approve_id` はカスタム承認フォームの一意の識別子で、業務システム側で生成・保存します。承認を取り消す際は、この ID を指定して承認取り消しの通知 API を呼び出してください。これにより、DingTalk が該当する勤怠記録を特定して取り消します。
+- **Q3：このソリューションでは DingTalk に OA承認フォームが作成されますか？**
+
+  A：いいえ、作成されません。本ソリューションは、自社システムの承認結果を DingTalk 勤怠に同期するだけです。DingTalk の OA承認センターに承認インスタンスは作成されません。承認フローは引き続き自社システム内で完結し、DingTalk は勤怠データのみを受け取ります。
+- **Q4：時間の事前計算 API は日をまたぐ休暇をどのように処理しますか？**
+
+  A：API は休暇期間内のすべての勤務日のシフト時間を自動で合算します。たとえば、山田さんのシフトが 10月15日は 8 時間、10月16日は 4 時間の場合、10月15日から 10月16日まで休暇を申請すると、API は最大休暇時間として 12 時間（8 + 4）を返します。
+- **Q5：権限の申請に失敗した場合はどうすればよいですか？**
+
+  A：次の点を確認してください。
+
+  - アプリタイプが「社内アプリ」であること。
+  - アカウントに組織管理者またはサブ管理者の権限があること。
+  - 権限識別子（`qyapi_attendance_group_manage` と `qyapi_attendance_group_read`）が正しく入力されていること。
+  - それでも失敗する場合は、アプリ ID とエラーログを添えて DingTalk テクニカルサポートにお問い合わせください。

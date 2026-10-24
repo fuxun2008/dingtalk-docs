@@ -1,0 +1,623 @@
+---
+title: "Maklumkan penyelesaian kelulusan"
+description: "Gunakan API ini untuk memaklumkan kelulusan cuti, kerja lebih masa atau perjalanan perniagaan kepada DingTalk Attendance dan kemas kini status kehadiran pekerja."
+---
+
+Panggil API ini untuk memaklumkan DingTalk bahawa sesuatu kelulusan telah diluluskan. Jenis yang disokong ialah kerja lebih masa, cuti, keluar pejabat dan perjalanan perniagaan.
+
+## Penerangan panggilan API
+
+Contohnya, seorang pekerja dijadualkan bekerja dari 8:00 hingga 18:00 hari ini. Pekerja itu menghantar permohonan cuti melalui sistem kelulusan organisasi sendiri. Selepas permohonan diluluskan, panggil API ini untuk memaklumkan DingTalk Attendance. Pekerja tidak perlu daftar masuk hari ini dan tidak ditanda sebagai tidak hadir. Status pekerja dipaparkan sebagai cuti. Dalam contoh lain, pekerja Xiaoding tidak daftar masuk pada 15 November, dan statistik kehadiran merekodkan daftar masuk terlepas ini.
+
+Panggil API ini untuk memaklumkan DingTalk bahawa sesuatu kelulusan telah diluluskan. Tindakan ini menukar kehadiran Xiaoding pada 15 November kepada cuti, perjalanan perniagaan atau kerja lebih masa.
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/attendance/approvals/finish |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran yang diperlukan | permission-qyapi_attendance_group_read-Kebenaran pertanyaan kumpulan kehadiran |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkannya seperti berikut:   - Aplikasi dalaman: panggil API [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). - Aplikasi perusahaan pihak ketiga: panggil API Dapatkan access token organisasi yang diberi kebenaran kepada aplikasi pihak ketiga. |
+
+### Parameter pertanyaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| userId | String | Tidak | userId pekerja. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| topCalculateApproveDurationParam | Object | Tidak | Parameter input berkaitan tempoh. |
+| bizType | Long | Tidak | Jenis borang kelulusan. Nilai yang sah:   - **1**: Kerja lebih masa - **2**: Perjalanan perniagaan atau keluar pejabat - **3**: Cuti |
+| fromTime | String | Tidak | Masa mula. Masa mula tidak boleh lebih daripada 31 hari sebelum masa semasa.  Format yang disokong:   - 2019-08-15 - 2019-08-15 AM - 2019-08-15 12:43 |
+| toTime | String | Tidak | Masa tamat.  Format yang disokong:   - 2019-08-15 - 2019-08-15 AM - 2019-08-15 12:43   **Nota**  - Masa tamat tidak boleh lebih awal daripada masa mula. - Julat masa tidak boleh melebihi 360 hari. - Bilangan hari antara masa mula dan masa tamat tidak boleh melebihi 31. - Apabila `biz_type` ialah 1, bilangan hari antara masa mula dan masa tamat tidak boleh melebihi 1. |
+| durationUnit | String | Tidak | Unit tempoh. Nilai yang disokong:   - **day** - **halfDay** - **hour**: Apabila `biz_type` ialah 1, hanya hour disokong.   Format masa mesti sepadan dengan unit tempoh:   - 2019-08-15 sepadan dengan day - 2019-08-15 AM sepadan dengan halfDay - 2019-08-15 12:43 sepadan dengan hour |
+| calculateModel | Long | Tidak | Kaedah pengiraan:   - **0**: Kira mengikut hari kalendar - **1**: Kira mengikut hari bekerja |
+| leaveCode | String | Tidak | Pengecam unik peraturan cuti. Pilihan.  **Nota**  Hantar nilai yang tidak kosong hanya apabila `bizType=3` (cuti). Tempoh kemudian dibundarkan mengikut peraturan pembundaran yang ditetapkan untuk jenis cuti tersebut. |
+| timeZoneId | String | Tidak | ID zon waktu, dalam format `Asia/Shanghai`. |
+| tagName | String | Tidak | Nama jenis borang kelulusan, maksimum 20 aksara. Nilai yang disokong: 请假 (cuti), 出差 (perjalanan perniagaan), 外出 (keluar pejabat), 加班 (kerja lebih masa). |
+| subType | String | Tidak | Nama subjenis, maksimum 64 aksara.  **Nota**  Parameter ini wajib apabila jenis borang kelulusan biz_type ialah 3. |
+| approveId | String | Tidak | ID borang kelulusan, maksimum 100 aksara. Nilai tersuai.  **Nota**  Aplikasi perusahaan pihak ketiga mesti menyimpan nilai ini. Nilai ini wajib semasa memaklumkan pembatalan kelulusan. Panggilan semula API ini dengan approveId yang sama akan melaksanakan kemas kini. |
+| jumpUrl | String | Tidak | URL ubah hala borang kelulusan, maksimum 200 aksara.  **Nota**  Apabila pengguna mengklik entri aplikasi perusahaan pihak ketiga pada halaman statistik kehadiran, DingTalk mengubah hala mereka ke URL ini. Hantar URL halaman butiran borang kelulusan. |
+| overtimeDuration | String | Tidak | Wajib apabila biz_type ialah 1. Tempoh kerja lebih masa, dalam jam. |
+| overTimeToMore | Long | Tidak | Wajib apabila biz_type ialah 1:   - **1**: Tukar kerja lebih masa kepada cuti ganti - **2**: Tukar kerja lebih masa kepada bayaran |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/attendance/approvals/finish?userId=manager123 HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:234adfw423xxx
+Content-Type:application/json
+
+{
+  "topCalculateApproveDurationParam" : {
+    "bizType" : 3,
+    "fromTime" : "2019-08-15",
+    "toTime" : "2019-08-15",
+    "durationUnit" : "day",
+    "calculateModel" : 1,
+    "leaveCode" : "3afdsf-143dsadw3-ad23"
+    "timeZoneId":"Asia/Shanghai"
+  },
+  "tagName" : "请假",  // Cuti
+  "subType" : "Cuti tahunan",
+  "approveId" : "1234abcd",
+  "dingtalkApproveId" : "https://open.dingtalk.io/",
+  "jumpUrl" : "https://open.dingtalk.io/",
+  "overtimeDuration" : "1.07",
+  "overTimeToMore" : 1
+}
+```
+
+Java
+
+```java
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>penerangan</b> :
+     * <p>Mulakan Client akaun menggunakan Token</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkattendance_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkattendance_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkattendance_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishHeaders processApproveFinishHeaders = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishHeaders();
+        processApproveFinishHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam()
+                .setBizType(3L)
+                .setFromTime("2019-08-15")
+                .setToTime("2019-08-15")
+                .setDurationUnit("day")
+                .setCalculateModel(1L)
+                .setLeaveCode("3afdsf-143dsadw3-ad23");
+                .setTimeZoneId("Asia/Shanghai");
+        com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest processApproveFinishRequest = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest()
+                .setUserId("manager123")
+                .setTopCalculateApproveDurationParam(topCalculateApproveDurationParam)
+                .setTagName("请假")  // Cuti
+                .setSubType("Cuti tahunan")
+                .setApproveId("1234abcd")
+                .setJumpUrl("https://open.dingtalk.io/")
+                .setOvertimeDuration("1.07")
+                .setOverTimeToMore(1L);
+        try {
+            client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan edit. Terima kasih.
+import os
+import sys
+import json
+
+from typing import List
+
+from alibabacloud_dingtalk.attendance_1_0.client import Client as dingtalkattendance_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.attendance_1_0 import models as dingtalkattendance__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkattendance_1_0Client:
+        """
+        Mulakan Client akaun menggunakan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkattendance_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_approve_finish_headers = dingtalkattendance__1__0_models.ProcessApproveFinishHeaders()
+        process_approve_finish_headers.x_acs_dingtalk_access_token = '<your access token>'
+        top_calculate_approve_duration_param = dingtalkattendance__1__0_models.ProcessApproveFinishRequestTopCalculateApproveDurationParam(
+            biz_type=3,
+            from_time='2019-08-15',
+            to_time='2019-08-15',
+            duration_unit='day',
+            calculate_model=1,
+            leave_code='3afdsf-143dsadw3-ad23'
+        )
+        process_approve_finish_request = dingtalkattendance__1__0_models.ProcessApproveFinishRequest(
+            user_id='manager123',
+            top_calculate_approve_duration_param=top_calculate_approve_duration_param,
+            tag_name='请假',  # Cuti
+            sub_type='Cuti tahunan',
+            approve_id='1234abcd',
+            jump_url='https://open.dingtalk.io/',
+            overtime_duration='1.07',
+            over_time_to_more=1
+        )
+        try:
+            client.process_approve_finish_with_options(process_approve_finish_request, process_approve_finish_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_approve_finish_headers = dingtalkattendance__1__0_models.ProcessApproveFinishHeaders()
+        process_approve_finish_headers.x_acs_dingtalk_access_token = '<your access token>'
+        top_calculate_approve_duration_param = dingtalkattendance__1__0_models.ProcessApproveFinishRequestTopCalculateApproveDurationParam(
+            biz_type=3,
+            from_time='2019-08-15',
+            to_time='2019-08-15',
+            duration_unit='day',
+            calculate_model=1,
+            leave_code='3afdsf-143dsadw3-ad23'
+        )
+        process_approve_finish_request = dingtalkattendance__1__0_models.ProcessApproveFinishRequest(
+            user_id='manager123',
+            top_calculate_approve_duration_param=top_calculate_approve_duration_param,
+            tag_name='请假',  # Cuti
+            sub_type='Cuti tahunan',
+            approve_id='1234abcd',
+            jump_url='https://open.dingtalk.io/',
+            overtime_duration='1.07',
+            over_time_to_more=1
+        )
+        try:
+            await client.process_approve_finish_with_options_async(process_approve_finish_request, process_approve_finish_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// Fail ini dijana secara automatik, jangan edit. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\ProcessApproveFinishHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\ProcessApproveFinishRequest\topCalculateApproveDurationParam;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\ProcessApproveFinishRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $processApproveFinishHeaders = new ProcessApproveFinishHeaders([]);
+        $processApproveFinishHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $topCalculateApproveDurationParam = new topCalculateApproveDurationParam([
+            "bizType" => 3,
+            "fromTime" => "2019-08-15",
+            "toTime" => "2019-08-15",
+            "durationUnit" => "day",
+            "calculateModel" => 1,
+            "leaveCode" => "3afdsf-143dsadw3-ad23"
+        ]);
+        $processApproveFinishRequest = new ProcessApproveFinishRequest([
+            "userId" => "manager123",
+            "topCalculateApproveDurationParam" => $topCalculateApproveDurationParam,
+            "tagName" => "请假",  // Cuti
+            "subType" => "Cuti tahunan",
+            "approveId" => "1234abcd",
+            "jumpUrl" => "https://open.dingtalk.io/",
+            "overtimeDuration" => "1.07",
+            "overTimeToMore" => 1
+        ]);
+        try {
+            $client->processApproveFinishWithOptions($processApproveFinishRequest, $processApproveFinishHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkattendance_1_0  "github.com/alibabacloud-go/dingtalk/attendance_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Penerangan:
+// 
+// Mulakan Client akaun menggunakan Token
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkattendance_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkattendance_1_0.Client{}
+  _result, _err = dingtalkattendance_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  processApproveFinishHeaders := &dingtalkattendance_1_0.ProcessApproveFinishHeaders{}
+  processApproveFinishHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  topCalculateApproveDurationParam := &dingtalkattendance_1_0.ProcessApproveFinishRequestTopCalculateApproveDurationParam{
+    BizType: tea.Int64(3),
+    FromTime: tea.String("2019-08-15"),
+    ToTime: tea.String("2019-08-15"),
+    DurationUnit: tea.String("day"),
+    CalculateModel: tea.Int64(1),
+    LeaveCode: tea.String("3afdsf-143dsadw3-ad23"),
+  }
+  processApproveFinishRequest := &dingtalkattendance_1_0.ProcessApproveFinishRequest{
+    UserId: tea.String("manager123"),
+    TopCalculateApproveDurationParam: topCalculateApproveDurationParam,
+    TagName: tea.String("请假"),  // Cuti
+    SubType: tea.String("Cuti tahunan"),
+    ApproveId: tea.String("1234abcd"),
+    JumpUrl: tea.String("https://open.dingtalk.io/"),
+    OvertimeDuration: tea.String("1.07"),
+    OverTimeToMore: tea.Int64(1),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ProcessApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```javascript
+'use strict';
+// Fail ini dijana secara automatik, jangan edit
+const Util = require('@alicloud/tea-util');
+const dingtalkattendance_1_0 = require('@alicloud/dingtalk/attendance_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Mulakan Client akaun menggunakan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkattendance_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let processApproveFinishHeaders = new dingtalkattendance_1_0.ProcessApproveFinishHeaders({ });
+    processApproveFinishHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let topCalculateApproveDurationParam = new dingtalkattendance_1_0.ProcessApproveFinishRequestTopCalculateApproveDurationParam({
+      bizType: 3,
+      fromTime: '2019-08-15',
+      toTime: '2019-08-15',
+      durationUnit: 'day',
+      calculateModel: 1,
+      leaveCode: '3afdsf-143dsadw3-ad23',
+    });
+    let processApproveFinishRequest = new dingtalkattendance_1_0.ProcessApproveFinishRequest({
+      userId: 'manager123',
+      topCalculateApproveDurationParam: topCalculateApproveDurationParam,
+      tagName: '请假',  // Cuti
+      subType: 'Cuti tahunan',
+      approveId: '1234abcd',
+      jumpUrl: 'https://open.dingtalk.io/',
+      overtimeDuration: '1.07',
+      overTimeToMore: 1,
+    });
+    try {
+      await client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+using Newtonsoft.Json;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Penerangan:</b></term>
+        /// <description>
+        /// <para>Mulakan Client akaun menggunakan Token</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Pengecualian:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkattendance_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkattendance_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishHeaders processApproveFinishHeaders = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishHeaders();
+            processApproveFinishHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam
+            {
+                BizType = 3,
+                FromTime = "2019-08-15",
+                ToTime = "2019-08-15",
+                DurationUnit = "day",
+                CalculateModel = 1,
+                LeaveCode = "3afdsf-143dsadw3-ad23",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest processApproveFinishRequest = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.ProcessApproveFinishRequest
+            {
+                UserId = "manager123",
+                TopCalculateApproveDurationParam = topCalculateApproveDurationParam,
+                TagName = "请假",  // Cuti
+                SubType = "Cuti tahunan",
+                ApproveId = "1234abcd",
+                JumpUrl = "https://open.dingtalk.io/",
+                OvertimeDuration = "1.07",
+                OverTimeToMore = 1,
+            };
+            try
+            {
+                client.ProcessApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message untuk membantu pembangun mengenal pasti masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| result | Object | Hasil yang dikembalikan. |
+| duration | double | Jumlah tempoh. Unit medan ini sepadan dengan unit yang ditetapkan untuk borang kelulusan berkaitan dalam organisasi anda. |
+| durationDetail | Array | Butiran. |
+| date | String | Tarikh kelulusan diluluskan. |
+| duration | double | Tempoh harian. |
+| success | Boolean | Sama ada panggilan API berjaya. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "duration" : 2,
+    "durationDetail" : [ {
+      "date" : "2019-08-15",
+      "duration" : 1
+    } ]
+  },
+  "success" : true
+}
+```
+
+### Kod ralat
+
+Jika panggilan API mengembalikan ralat, cari penyelesaian berdasarkan mesej ralat dalam dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1).
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | illegalCalculateType | Mod pengiraan tempoh tidak sah | Mod pengiraan tempoh tidak sah |
+| 400 | illegalDurationUnit | Unit tempoh tidak sah | Unit tempoh tidak sah |
+| 400 | illegalApproveType | Jenis kelulusan tidak sah | Jenis kelulusan tidak sah |
+| 400 | invalidRequestParams | Ralat parameter (semak parameter berdasarkan dokumentasi) | Ralat parameter (semak parameter berdasarkan dokumentasi) |
+| 400 | illegalOvertimeDurationUnit | Unit tempoh kerja lebih masa tidak sah (kerja lebih masa hanya menyokong jam) | Unit tempoh kerja lebih masa tidak sah (kerja lebih masa hanya menyokong jam) |
+| 400 | illegalDateTypeForHalfDay | Format masa mula/tamat tidak sah apabila DURATION_UNIT ialah separuh hari | Format masa mula/tamat tidak sah apabila DURATION_UNIT ialah separuh hari |
+| 400 | beginDateCannotAfterEndDate | Masa mula tidak boleh lewat daripada masa tamat | Masa mula tidak boleh lewat daripada masa tamat |
+| 400 | durationTooLong | Julat masa antara masa mula dan masa tamat terlalu panjang | Julat masa antara masa mula dan masa tamat terlalu panjang |
+| 400 | dateTooEarly | Masa tidak boleh lebih awal daripada bilangan hari yang ditetapkan | Masa tidak boleh lebih awal daripada bilangan hari yang ditetapkan |
+| 400 | overtimeDurationTooLong | Tempoh kerja lebih masa terlalu panjang | Tempoh kerja lebih masa terlalu panjang |
+| 400 | repeatApprovesOverLimit | Penulisan borang kelulusan dengan masa bertindih melebihi had | Penulisan borang kelulusan dengan masa bertindih melebihi had |
+| 400 | systemError | Ralat sistem | Ralat sistem |

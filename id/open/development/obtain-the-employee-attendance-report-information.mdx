@@ -1,0 +1,282 @@
+---
+title: "Mendapatkan data laporan absensi harian karyawan"
+description: "Ambil data laporan absensi harian karyawan via API DingTalk, lalu agregasikan secara lokal untuk mengotomatiskan laporan bulanan dan analisis multidimensi."
+---
+
+# Membuat laporan absensi harian: Statistik harian dan analisis data multidimensi
+
+## Ikhtisar
+
+Solusi ini mengambil dan mengagregasi data laporan absensi karyawan secara menyeluruh. Solusi ini menggunakan API laporan absensi di DingTalk Open Platform untuk mengumpulkan metrik tingkat harian dan mengagregasinya secara lokal.
+
+### Latar belakang
+
+Organisasi perlu melacak dan menganalisis data absensi karyawan secara berkala. Metrik utamanya meliputi hari wajib hadir, hari hadir aktual, keterlambatan, pulang lebih awal, dan ketidakhadiran. DingTalk Admin Console menyediakan laporan absensi visual. Namun, sistem internal seperti sistem HR, platform BI, dan dasbor OA harus mengambil data ini secara otomatis melalui API untuk keperluan berikut:
+
+- **Pembuatan laporan otomatis**: Ekspor laporan ringkasan absensi bulanan, triwulanan, atau tahunan sesuai jadwal tanpa proses manual.
+- **Integrasi lintas sistem**: Sinkronkan data absensi ke sistem ERP dan penggajian organisasi untuk menutup siklus data.
+- **Analisis data mendalam**: Korelasikan data absensi dengan data bisnis, seperti pendapatan penjualan dan kepuasan pelanggan, dalam berbagai dimensi.
+- **Pemantauan dan peringatan kesalahan**: Pantau tren anomali absensi per departemen atau individu secara real time dan tandai risiko sejak dini.
+
+API laporan absensi di DingTalk Open Platform tidak mengembalikan tabel ringkasan bulanan. Sebaliknya, API mengembalikan nilai metrik dasar pada tingkat harian, dan developer harus mengagregasi data sendiri. Hal ini menimbulkan beberapa tantangan:
+
+- **Kurva belajar yang curam**: Developer yang baru mengenal API sering salah memahami kemampuannya dan mengharapkan hasil ringkasan bulanan.
+- **Biaya pengembangan tinggi**: Developer harus menulis logika agregasi tambahan untuk melakukan iterasi rentang tanggal, mengisi nilai kosong, dan menyaring kesalahan.
+- **Tantangan performa**: Organisasi besar dengan lebih dari 1.000 karyawan mungkin memerlukan ribuan panggilan API untuk satu kueri bulanan. Hal ini dapat memicu batas laju (rate limit) atau timeout.
+
+### Manfaat utama
+
+Solusi ini mencakup seluruh proses pengambilan dan agregasi data laporan absensi karyawan. Solusi ini menggunakan alur panggilan API yang terstandardisasi dan praktik terbaik untuk membantu organisasi mengotomatiskan pengumpulan dan analisis data absensi.
+
+- **Alur integrasi terstandardisasi**: Menetapkan urutan yang jelas untuk 4 panggilan API inti (konfirmasi statistik cerdas → dapatkan definisi kolom → kueri nilai kolom → agregasi data) guna menurunkan kurva belajar.
+- **Granularitas data yang fleksibel**: Mendukung kueri berdasarkan hari, pengguna, departemen, dan grup absensi untuk memenuhi berbagai kebutuhan bisnis.
+- **Pemrosesan batch berperforma tinggi**: Menggunakan paginasi, kontrol konkurensi, dan caching untuk memastikan pengambilan data bervolume besar secara stabil.
+- **Validasi data lengkap**: Dilengkapi pemeriksaan konsistensi bawaan yang otomatis mendeteksi tanggal yang hilang, catatan duplikat, dan nilai abnormal.
+
+### Kasus penggunaan
+
+Solusi ini berlaku untuk skenario bisnis umum berikut:
+
+- **Laporan bulanan HR otomatis**: Setiap tanggal 1, buat ringkasan absensi seluruh perusahaan untuk bulan sebelumnya secara otomatis dan kirimkan ke manajemen melalui Mail.
+- **Integrasi sistem penggajian**: Sinkronkan data absensi, seperti potongan keterlambatan dan durasi lembur, ke sistem penggajian untuk menghitung gaji secara otomatis.
+- **Dasbor kinerja departemen**: Tampilkan peringkat departemen berdasarkan tingkat kehadiran dan tingkat keterlambatan secara real time untuk mendukung keputusan manajemen.
+- **Aplikasi pencarian absensi pribadi**: Biarkan karyawan mencari riwayat absensi mereka sendiri sehingga pertanyaan ke HR berkurang.
+
+## Skenario bisnis umum
+
+### Skenario 1: Otomatiskan laporan absensi bulanan HR
+
+#### Kendala
+
+Biasanya, staf HR masuk ke DingTalk Admin Console setiap awal bulan dan mengekspor laporan absensi seluruh perusahaan untuk bulan sebelumnya secara manual. Setelah itu, mereka membersihkan, mengagregasi, dan memformat data di Excel. Proses ini memakan waktu 2–3 jam dan rawan kesalahan. Saat organisasi berkembang melebihi 1.000 karyawan, pemrosesan manual hampir mustahil dilakukan.
+
+#### Nilai
+
+- **Alur kerja otomatis**
+
+  Pipeline laporan bulanan otomatis berjalan dalam lima langkah:
+
+  1. Tugas terjadwal dipicu pada dini hari setiap tanggal 1.
+  2. Panggil API DingTalk Open Platform untuk mengambil definisi kolom dan nilai kolom data absensi secara batch.
+  3. Bersihkan dan agregasikan data secara lokal untuk menghitung metrik bulanan.
+  4. Buat laporan dalam berbagai format: Excel (dengan rumus), PDF (versi berstempel), dan HTML (pratinjau online).
+  5. Kirim laporan secara otomatis melalui Mail ke manajemen, dengan dukungan CC dan kontrol izin.
+- **Keunggulan utama**
+
+  - **Pembuatan sepenuhnya otomatis**: Skrip berjalan otomatis pada dini hari setiap tanggal 1, membuat laporan Excel dan PDF, lalu mengirimkannya melalui Mail ke penerima yang ditentukan tanpa upaya manual.
+  - **Beragam format output**: Mendukung Excel (dengan rumus), PDF (versi berstempel), dan HTML (pratinjau online) untuk memenuhi berbagai kebutuhan distribusi.
+  - **Metrik kustom**: Pilih metrik yang sesuai dengan organisasi Anda. Misalnya, lacak hanya "keterlambatan + hari tidak hadir" dan abaikan bidang lainnya.
+  - **Perbandingan historis**: Hitung data year-over-year dan month-over-month secara otomatis serta tandai perubahan yang tidak wajar, misalnya tingkat keterlambatan suatu departemen naik 20% dibanding bulan sebelumnya.
+
+### Skenario 2: Sinkronkan data absensi ke sistem penggajian
+
+#### Kendala
+
+Perhitungan gaji bergantung pada data absensi yang akurat, seperti potongan keterlambatan dan dasar upah lembur. Namun, DingTalk dan sistem penggajian tidak memiliki antarmuka data standar. Setiap bulan, HR harus mengekspor detail absensi secara manual, mencocokkan ID Karyawan dengan VLOOKUP di Excel, lalu mengimpor data ke sistem penggajian. Proses ini memakan waktu, dan ID Karyawan yang tidak konsisten dapat menyebabkan data tidak cocok.
+
+#### Nilai
+
+- **Alur kerja otomatis**
+
+  Sinkronisasi otomatis berjalan dalam lima langkah:
+
+  1. Setelah karyawan melakukan absen, tugas sinkronisasi dipicu pada hari T+1.
+  2. Panggil DingTalk Open API untuk mengkueri nilai kolom absensi per hari kalender dan mengambil catatan absen mentah.
+  3. Petakan **userId** DingTalk ke **ID Karyawan** organisasi untuk membangun asosiasi identitas yang terpadu.
+  4. Jalankan deteksi kesalahan dan buat tiket peninjauan untuk ditangani HR.
+  5. Setelah peninjauan disetujui, data otomatis ditulis ke database sistem penggajian untuk menyelesaikan sinkronisasi.
+- **Keunggulan utama**
+
+  - **Sinkronisasi tepat waktu**: Data absen disinkronkan ke sistem penggajian pada hari T+1 sehingga penggajian bulanan selalu didasarkan pada data terbaru.
+  - **Pencocokan akurat**: Tabel pemetaan antara userId DingTalk dan ID Karyawan memastikan asosiasi data 100% akurat dan menghilangkan kesalahan pencocokan manual.
+  - **Penahanan data bermasalah**: Deteksi data abnormal secara otomatis, seperti absen yang melebihi 24 jam dalam satu hari atau tidak ada catatan absen selama 7 hari berturut-turut. Sistem membuat tiket peninjauan, dan data baru disinkronkan setelah HR mengonfirmasinya.
+  - **Jejak audit**: Setiap sinkronisasi mencatat log lengkap, termasuk stempel waktu, volume data, dan catatan yang gagal, untuk memenuhi persyaratan audit keuangan.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Solusi ini dibangun di atas Server API DingTalk Open Platform. Komponen teknis intinya adalah:
+
+- **Lapisan autentikasi**: Dapatkan `access_token` menggunakan `Client ID` dan `Client Secret` untuk mengamankan panggilan API.
+- **Lapisan konfirmasi statistik cerdas**: Panggil API untuk mengonfirmasi apakah statistik cerdas diaktifkan untuk organisasi agar panggilan API berikutnya tidak gagal.
+- **Lapisan manajemen definisi kolom**: Dapatkan ID dan nama semua kolom laporan absensi yang tersedia sebagai metadata dasar untuk kueri berikutnya.
+- **Mesin kueri nilai kolom**: Kueri nilai metrik per hari berdasarkan ID kolom, ID pengguna, dan rentang tanggal. Mendukung paginasi dan pemrosesan batch.
+- **Lapisan agregasi dan validasi data**: Agregasikan data harian mentah (jumlah, rata-rata, hitungan) dan jalankan pemeriksaan konsistensi data.
+
+**Alur data**: Dapatkan access_token → Konfirmasi bahwa statistik cerdas diaktifkan → Dapatkan definisi kolom (daftar ID kolom) → Lakukan iterasi rentang tanggal dan kueri nilai kolom per hari → Agregasikan secara lokal (bulanan, triwulanan, atau tahunan) → Hasilkan laporan akhir.
+
+### Prasyarat
+
+Pastikan Anda memenuhi persyaratan berikut sebelum menerapkan solusi:
+
+- **Persiapan aplikasi**: Buat dan konfigurasikan Aplikasi internal. Untuk detailnya, lihat Pembuatan dan konfigurasi aplikasi.
+- **Izin**: Anda harus memiliki izin Admin Organisasi atau Sub Admin DingTalk.
+- **Lingkungan pengembangan**: Instal lingkungan pengembangan Java (JDK 1.6 atau lebih baru) dan alat build Maven.
+- **Persiapan SDK**: Unduh SDK sisi server DingTalk. Untuk detailnya, lihat Unduhan SDK sisi server. SDK mendukung Java, Python, Go, dan bahasa lainnya.
+- **Statistik cerdas diaktifkan**: Pastikan statistik cerdas diaktifkan untuk aplikasi absensi organisasi. Versi UI lama mungkin belum mengaktifkannya, jadi panggil API untuk mengonfirmasi.
+
+### Implementasi kode
+
+1. Langkah 1: Dapatkan informasi kredensial aplikasi, termasuk client ID dan Client Secret.
+
+   Langkah 2: Dapatkan kredensial akses aplikasi. Untuk detailnya, lihat [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). Saat Anda memanggil API, access token mengautentikasi identitas pemanggil.
+
+   Langkah 3: Panggil API absensi:
+
+   1. Panggil Server API [Memeriksa apakah laporan statistik cerdas diaktifkan](/id/open/development/determine-whether-to-enable-attendance-intelligent-report) untuk mengonfirmasi bahwa statistik cerdas diaktifkan.
+   2. Panggil Server API [Mendapatkan definisi kolom laporan absensi](/id/open/development/queries-the-enterprise-attendance-report-column) untuk mendapatkan `ID` kolom laporan absensi.
+   3. Dengan menggunakan `ID` kolom laporan absensi, panggil Server API [Mendapatkan nilai kolom laporan absensi](/id/open/development/queries-the-column-value-of-the-attendance-report) untuk mendapatkan nilai setiap definisi kolom.
+   4. Agregasikan data harian mentah secara lokal untuk membuat laporan bulanan, triwulanan, atau tahunan.
+
+## Langkah implementasi
+
+### **Langkah 1: Dapatkan kredensial aplikasi**
+
+1. Masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih aplikasi target untuk membuka halaman detailnya.
+3. Klik **Basic Information** > **Credentials and Basic Information**.
+4. Catat `Client ID` dan `Client Secret` aplikasi.
+
+### Catatan
+
+   Jaga kerahasiaan `Client Secret` dan jangan bagikan kepada pihak ketiga. Simpan di variabel lingkungan atau sistem manajemen kunci, bukan di-hardcode.
+
+### **Langkah 2**: Dapatkan kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk mendapatkan kredensial akses aplikasi. Untuk detailnya, lihat [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Praktik terbaik**:
+
+- **Caching**: `access_token` berlaku selama 2 jam. Simpan di cache memori atau Redis dan muat ulang secara proaktif 5 menit sebelum masa berlakunya habis.
+- **Kontrol konkurensi**: Cegah konflik akibat beberapa thread memuat ulang token secara bersamaan. Gunakan distributed lock.
+- **Coba ulang saat terjadi kesalahan**: Coba ulang secara otomatis saat jaringan tidak stabil, maksimal 3 kali, dengan interval yang meningkat (1s → 2s → 4s).
+
+### Langkah 3: Panggil API inti
+
+1. **Periksa apakah laporan statistik cerdas diaktifkan**: Panggil Server API [Memeriksa apakah laporan statistik cerdas diaktifkan](/id/open/development/determine-whether-to-enable-attendance-intelligent-report) untuk mengonfirmasi bahwa statistik cerdas diaktifkan untuk organisasi.
+
+### Catatan
+
+   Statistik cerdas kini telah diaktifkan untuk aplikasi absensi. Namun, versi UI lama mungkin belum mengaktifkannya. Panggil API ini untuk mencegah panggilan API berikutnya gagal karena fitur tersebut nonaktif.
+
+   ```java
+   public void checkIsopensmartreportEnabled() throws ApiException {
+     DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/isopensmartreport");
+     OapiAttendanceIsopensmartreportRequest req = new OapiAttendanceIsopensmartreportRequest();
+     OapiAttendanceIsopensmartreportResponse rsp = client.execute(req, access_token);
+     System.out.println(rsp.getBody());
+      // Uraikan respons dan periksa apakah bidang enabled bernilai true
+   }
+   ```
+2. **Dapatkan definisi kolom laporan absensi**: Panggil Server API [Mendapatkan definisi kolom laporan absensi](/id/open/development/queries-the-enterprise-attendance-report-column) untuk mendapatkan ID dan nama semua kolom laporan absensi yang tersedia.
+
+### Catatan
+
+   Definisi kolom tidak mencakup informasi pengajuan cuti. Untuk mendapatkan statistik cuti dalam laporan, panggil API [Mendapatkan data cuti dari laporan](/id/open/development/obtains-the-holiday-data-from-the-smart-attendance-report).
+
+   ```java
+    public void attendanceColumns() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getattcolumns");
+       OapiAttendanceGetattcolumnsRequest req = new OapiAttendanceGetattcolumnsRequest();
+       OapiAttendanceGetattcolumnsResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+3. **Dapatkan nilai kolom laporan absensi (harian)**: Dengan menggunakan ID kolom laporan absensi, ID pengguna, dan tanggal, panggil Server API [Mendapatkan nilai kolom laporan absensi](/id/open/development/queries-the-column-value-of-the-attendance-report) untuk mendapatkan nilai setiap definisi kolom.
+
+   ```java
+    public void attendanceColumnsValue() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+        OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+        req.setUserid("01472825524039877041");
+        req.setColumnIdList("184678999,184727001");
+        req.setFromDate(StringUtils.parseDateTime("2022-10-24 00:00:00"));
+        req.setToDate(StringUtils.parseDateTime("2022-10-25 00:00:00"));
+        OapiAttendanceGetcolumnvalResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+   }
+   ```
+4. **Agregasikan dan validasi data**: Agregasikan data harian mentah secara lokal untuk membuat laporan bulanan, triwulanan, atau tahunan.
+
+   ```text
+   public Map aggregateMonthlyData(String userId, List columnIds, String startDate, String endDate) {
+     Map result = new HashMap<>();
+
+     // Inisialisasi akumulator untuk setiap kolom
+     for (String columnId : columnIds) {
+       result.put(columnId, 0.0);
+     }
+
+     // Lakukan iterasi pada rentang tanggal
+     LocalDate start = LocalDate.parse(startDate);
+     LocalDate end = LocalDate.parse(endDate);
+     for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+       String workDate = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+       for (String columnId : columnIds) {
+         try {
+           double value = getColumnValue(userId, columnId, workDate);
+           result.merge(columnId, value, Double::sum);
+         } catch (Exception e) {
+           log.warn("Kueri gagal: userId={}, columnId={}, date={}", userId, columnId, workDate, e);
+         }
+       }
+     }
+
+     return result;
+   }
+   ```
+
+**Daftar periksa implementasi**:
+
+- ✅ Statistik cerdas telah dikonfirmasi aktif.
+- ✅ Daftar semua ID kolom yang tersedia berhasil diambil.
+- ✅ API nilai kolom harian berfungsi dan mengembalikan data yang valid.
+- ✅ Logika agregasi lokal lulus pengujian, dan hasilnya sesuai dengan DingTalk Admin Console.
+- ✅ Penanganan data bermasalah telah lengkap (tanggal yang hilang diisi 0, catatan duplikat dihapus).
+
+## FAQ
+
+- **Q1: Mengapa saya tidak bisa langsung mendapatkan tabel ringkasan bulanan?**
+
+  A: DingTalk Open Platform dirancang untuk menyediakan **kemampuan data atomik**, bukan laporan ringkasan yang sudah ditentukan sebelumnya. Alasannya meliputi:
+
+  - Fleksibilitas: Setiap organisasi mendefinisikan "ringkasan bulanan" secara berbeda. Ada yang menggunakan bulan kalender, ada pula yang menggunakan siklus absensi. Open API memungkinkan developer menentukan logika agregasi sendiri.
+  - Performa: Mengembalikan ringkasan bulanan untuk organisasi dengan 1.000+ karyawan dalam satu respons dapat menyebabkan timeout. Kueri harian mempermudah paginasi dan caching.
+  - Kebaruan data: Kueri harian mengembalikan data terbaru secara real time, sedangkan tabel ringkasan bulanan biasanya diperbarui pada hari T+1.
+
+    **Rekomendasi**: Bangun data warehouse lokal, sinkronkan data harian secara terjadwal, dan hitung terlebih dahulu metrik ringkasan yang umum digunakan untuk menyeimbangkan kebaruan dan performa.
+- **Q2: Bagaimana cara mengkueri data bulanan secara efisien untuk organisasi dengan 1.000+ karyawan?**
+
+  A: Gunakan strategi optimasi berikut:
+
+  1. **Batch paralel**: Bagi daftar karyawan menjadi 10–20 batch berisi 50–100 karyawan per batch, lalu kueri secara paralel dengan thread pool.
+  2. **Rentang tanggal lebih sempit**: Jika Anda hanya memerlukan data hari kerja, saring akhir pekan dan hari libur terlebih dahulu. Cara ini memangkas kueri yang tidak perlu sebesar 30%–40%.
+  3. **Cache hit**: Simpan hasil kueri di cache untuk ID kolom yang sama dalam rentang tanggal yang sama guna menghindari panggilan berulang.
+  4. **Sinkronisasi inkremental**: Setelah sinkronisasi penuh pertama, sinkronkan hanya data baru atau yang berubah setiap hari untuk mengurangi biaya pemeliharaan rutin secara signifikan.
+- **Q3: Bagaimana cara menangani tanggal yang tidak lengkap saat karyawan bergabung atau keluar di tengah periode?**
+
+  A: API laporan absensi secara otomatis mengembalikan data berdasarkan tanggal kerja aktual setiap karyawan:
+
+  - **Tanggal sebelum bergabung**: Mengembalikan nilai kosong atau 0. Lewati tanggal tersebut dalam logika lokal Anda.
+  - **Tanggal setelah keluar**: Juga mengembalikan nilai kosong atau 0.
+- **Q4: Apakah ID kolom dapat berubah? Apakah saya perlu mengambilnya kembali secara berkala?**
+
+  A: ID kolom umumnya stabil setelah organisasi mengaktifkan statistik cerdas, tetapi dapat berubah dalam kasus berikut:
+
+  - **Peningkatan versi DingTalk**: ID kolom baru ditambahkan saat metrik statistik baru diperkenalkan.
+  - **Bidang kustom organisasi**: Jika organisasi mengonfigurasi aturan absensi kustom, ID kolom khusus dapat dibuat.
+  - **Rekomendasi**: Panggil API "Mendapatkan definisi kolom laporan absensi" setiap minggu atau setiap bulan dan perbarui tabel pemetaan ID kolom lokal Anda untuk memastikan kompatibilitas.

@@ -1,0 +1,546 @@
+---
+title: "Mendapatkan daftar ID instans persetujuan"
+description: "Panggil API DingTalk ini untuk mengambil daftar ID instans persetujuan per halaman, dengan filter kode alur kerja, rentang waktu, pengaju, dan status."
+---
+
+Panggil API ini untuk mengambil daftar ID instans persetujuan dari departemen terkait dalam cakupan izin Anda.
+
+## Deskripsi panggilan API
+
+### Alur panggilan API
+
+1. Panggil API ini untuk mendapatkan ID instans persetujuan dari suatu alur kerja persetujuan.
+2. Panggil API [Mendapatkan detail satu instans persetujuan](/id/open/development/obtains-the-details-of-a-single-approval-instance-pop) untuk mendapatkan detail setiap instans persetujuan.
+
+### Catatan penggunaan
+
+- Jika Anda hanya mengirimkan **startTime**, nilainya tidak boleh lebih dari 120 hari sebelum waktu saat ini. Jika **endTime** tidak diisi, nilai default-nya adalah waktu saat ini.
+- Jika Anda mengirimkan **startTime** dan **endTime** sekaligus, rentang waktunya tidak boleh melebihi 120 hari, dan **startTime** tidak boleh lebih dari 365 hari sebelum waktu saat ini.
+- Total ID instans yang diambil secara bertahap (melalui panggilan berulang) tidak boleh melebihi 10.000.
+
+## Permintaan
+
+### Informasi dasar
+
+| Bidang | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/workflow/processes/instanceIds/query |
+| Metode HTTP | POST |
+| Tipe Aplikasi yang didukung | appType-Aplikasi internal |
+| Izin yang diperlukan | permission-Workflow.Instance.Read-Izin baca instans alur kerja |
+
+### Header permintaan
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkan dengan memanggil API [Mendapatkan access token Aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app). |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| processCode | String | Ya | Kode unik alur kerja persetujuan.   - Panggil API [Membuat atau memperbarui templat formulir persetujuan](/id/open/development/create-an-approval-form-template) untuk mendapatkan nilai `processCode`. - Lihat [Glosarium - processCode](/id/open/development/workflow-overview). |
+| startTime | Long | Ya | Waktu mulai instans persetujuan, dalam format Unix timestamp milidetik.    Misalnya, untuk mendapatkan formulir persetujuan yang diajukan antara 10 April 2020 dan 14 April 2020, kirimkan 1586448000000, yaitu stempel waktu untuk 10 April 2020 00:00:00. |
+| endTime | Long | Tidak | Waktu berakhir instans persetujuan, dalam format Unix timestamp milidetik.    Misalnya, untuk mendapatkan formulir persetujuan yang diajukan antara 10 April 2020 dan 14 April 2020, kirimkan 1586879999000, yaitu stempel waktu untuk 14 April 2020 23:59:59. |
+| nextToken | Long | Ya | Cursor paginasi.   - Untuk panggilan pertama, kirimkan 0. - Untuk panggilan berikutnya, kirimkan nextToken yang dikembalikan oleh panggilan sebelumnya. |
+| maxResults | Long | Ya | Parameter paginasi yang menentukan ukuran halaman. Nilai maksimum: 20. |
+| userIds | Array of String | Tidak | Daftar ID pengguna pengaju. Panjang daftar maksimum: 10. Dapatkan dengan memanggil API [Mendapatkan daftar ID pengguna di departemen](/id/open/development/query-the-list-of-department-userids). |
+| statuses | Array of String | Tidak | Status instans alur kerja:   - **RUNNING**: Dalam proses persetujuan - **TERMINATED**: Ditarik - **COMPLETED**: Persetujuan selesai     Jika tidak diisi, ID instans dengan semua status akan dikembalikan. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/workflow/processes/instanceIds/query HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:6d1bxxxx
+Content-Type:application/json
+
+{
+  "processCode" : "PROC-FF6Y2xxxx",
+  "startTime" : 1496678400000,
+  "endTime" : 1496678400000,
+  "nextToken" : 0,
+  "maxResults" : 10,
+  "userIds" : [ "initiatorUserId" ],
+  "statuses" : [ "RUNNING" ]
+}
+```
+
+Java
+
+```java
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Inisialisasi Client akun dengan Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders listProcessInstanceIdsHeaders = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders();
+        listProcessInstanceIdsHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest listProcessInstanceIdsRequest = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest()
+                .setProcessCode("PROC-FF6Y2xxxx")
+                .setStartTime(1496678400000L)
+                .setEndTime(1496678400000L)
+                .setNextToken(0L)
+                .setMaxResults(10L)
+                .setUserIds(java.util.Arrays.asList(
+                    "initiatorUserId"
+                ))
+                .setStatuses(java.util.Arrays.asList(
+                    "RUNNING"
+                ));
+        try {
+            client.listProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi atribut code dan message untuk membantu menemukan masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi atribut code dan message untuk membantu menemukan masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Inisialisasi Client akun dengan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        list_process_instance_ids_headers = dingtalkworkflow__1__0_models.ListProcessInstanceIdsHeaders()
+        list_process_instance_ids_headers.x_acs_dingtalk_access_token = '<your access token>'
+        list_process_instance_ids_request = dingtalkworkflow__1__0_models.ListProcessInstanceIdsRequest(
+            process_code='PROC-FF6Y2xxxx',
+            start_time=1496678400000,
+            end_time=1496678400000,
+            next_token=0,
+            max_results=10,
+            user_ids=[
+                'initiatorUserId'
+            ],
+            statuses=[
+                'RUNNING'
+            ]
+        )
+        try:
+            client.list_process_instance_ids_with_options(list_process_instance_ids_request, list_process_instance_ids_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi atribut code dan message untuk membantu menemukan masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        list_process_instance_ids_headers = dingtalkworkflow__1__0_models.ListProcessInstanceIdsHeaders()
+        list_process_instance_ids_headers.x_acs_dingtalk_access_token = '<your access token>'
+        list_process_instance_ids_request = dingtalkworkflow__1__0_models.ListProcessInstanceIdsRequest(
+            process_code='PROC-FF6Y2xxxx',
+            start_time=1496678400000,
+            end_time=1496678400000,
+            next_token=0,
+            max_results=10,
+            user_ids=[
+                'initiatorUserId'
+            ],
+            statuses=[
+                'RUNNING'
+            ]
+        )
+        try:
+            await client.list_process_instance_ids_with_options_async(list_process_instance_ids_request, list_process_instance_ids_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi atribut code dan message untuk membantu menemukan masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ListProcessInstanceIdsHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ListProcessInstanceIdsRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Inisialisasi Client akun dengan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $listProcessInstanceIdsHeaders = new ListProcessInstanceIdsHeaders([]);
+        $listProcessInstanceIdsHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $listProcessInstanceIdsRequest = new ListProcessInstanceIdsRequest([
+            "processCode" => "PROC-FF6Y2xxxx",
+            "startTime" => 1496678400000,
+            "endTime" => 1496678400000,
+            "nextToken" => 0,
+            "maxResults" => 10,
+            "userIds" => [
+                "initiatorUserId"
+            ],
+            "statuses" => [
+                "RUNNING"
+            ]
+        ]);
+        try {
+            $client->listProcessInstanceIdsWithOptions($listProcessInstanceIdsRequest, $listProcessInstanceIdsHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err berisi atribut code dan message untuk membantu menemukan masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Inisialisasi Client akun dengan Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  listProcessInstanceIdsHeaders := &dingtalkworkflow_1_0.ListProcessInstanceIdsHeaders{}
+  listProcessInstanceIdsHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  listProcessInstanceIdsRequest := &dingtalkworkflow_1_0.ListProcessInstanceIdsRequest{
+    ProcessCode: tea.String("PROC-FF6Y2xxxx"),
+    StartTime: tea.Int64(1496678400000),
+    EndTime: tea.Int64(1496678400000),
+    NextToken: tea.Int64(0),
+    MaxResults: tea.Int64(10),
+    UserIds: []*string{tea.String("initiatorUserId")},
+    Statuses: []*string{tea.String("RUNNING")},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ListProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err berisi atribut code dan message untuk membantu menemukan masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```typescript
+// File ini dibuat secara otomatis, jangan diedit
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Inisialisasi Client akun dengan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let listProcessInstanceIdsHeaders = new $dingtalkworkflow_1_0.ListProcessInstanceIdsHeaders({ });
+    listProcessInstanceIdsHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let listProcessInstanceIdsRequest = new $dingtalkworkflow_1_0.ListProcessInstanceIdsRequest({
+      processCode: "PROC-FF6Y2xxxx",
+      startTime: 1496678400000,
+      endTime: 1496678400000,
+      nextToken: 0,
+      maxResults: 10,
+      userIds: [
+        "initiatorUserId"
+      ],
+      statuses: [
+        "RUNNING"
+      ],
+    });
+    try {
+      await client.listProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err berisi atribut code dan message untuk membantu menemukan masalah
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Inisialisasi Client akun dengan Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsHeaders listProcessInstanceIdsHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsHeaders();
+            listProcessInstanceIdsHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsRequest listProcessInstanceIdsRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsRequest
+            {
+                ProcessCode = "PROC-FF6Y2xxxx",
+                StartTime = 1496678400000,
+                EndTime = 1496678400000,
+                NextToken = 0,
+                MaxResults = 10,
+                UserIds = new List<string>
+                {
+                    "initiatorUserId"
+                },
+                Statuses = new List<string>
+                {
+                    "RUNNING"
+                },
+            };
+            try
+            {
+                client.ListProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi atribut code dan message untuk membantu menemukan masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi atribut code dan message untuk membantu menemukan masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Deskripsi |
+| --- | --- | --- |
+| result | Object | Hasil yang dikembalikan. |
+| list | Array of String | ID instans persetujuan. |
+| nextToken | String | Cursor paginasi.    Nilai yang tidak kosong menandakan masih ada data lainnya. |
+| success | Boolean | Menunjukkan apakah permintaan API berhasil.   - **true**: Berhasil - **false**: Gagal |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "list" : [ "123" ],
+    "nextToken" : "10"
+  },
+  "success" : true
+}
+```
+
+### Kode error
+
+Jika panggilan API mengembalikan error, cari solusinya di dokumen [Kode error global](/id/open/development/server-api-error-codes-1) berdasarkan pesan error yang muncul.
+
+| HttpCode | Kode error | Pesan error | Deskripsi |
+| --- | --- | --- | --- |
+| 400 | invalidProcessCode | processCode templat persetujuan tidak boleh kosong | processCode templat persetujuan tidak boleh kosong |
+| 400 | invalidInstanceListIdsStartTime | Mendapatkan daftar ID instans persetujuan: waktu mulai instans persetujuan tidak boleh kosong | Mendapatkan daftar ID instans persetujuan: waktu mulai instans persetujuan tidak boleh kosong |
+| 400 | invalidNextToken | Mendapatkan daftar ID instans persetujuan: cursor paginasi tidak boleh kosong | Mendapatkan daftar ID instans persetujuan: cursor paginasi tidak boleh kosong |
+| 400 | invalidMaxResults | Mendapatkan daftar ID instans persetujuan: parameter paginasi tidak valid. Ukuran halaman tidak boleh melebihi 20. | Mendapatkan daftar ID instans persetujuan: parameter paginasi tidak valid. Ukuran halaman tidak boleh melebihi 20. |
+| 400 | invalidEndTime | Mendapatkan daftar ID instans persetujuan: waktu berakhir instans persetujuan tidak boleh lebih awal dari waktu mulai, dan rentang waktu kueri tidak boleh melebihi 120 hari. | Mendapatkan daftar ID instans persetujuan: waktu berakhir instans persetujuan tidak boleh lebih awal dari waktu mulai, dan rentang waktu kueri tidak boleh melebihi 120 hari. |
+| 400 | invalidUserIds | Mendapatkan daftar ID instans persetujuan: parameter daftar ID pengguna pengaju tidak valid. Panjang daftar maksimum adalah 10. | Mendapatkan daftar ID instans persetujuan: parameter daftar ID pengguna pengaju tidak valid. Panjang daftar maksimum adalah 10. |
+| 400 | internalError | %s | Error sistem internal |
+| 500 | systemError | Error sistem | Error sistem |

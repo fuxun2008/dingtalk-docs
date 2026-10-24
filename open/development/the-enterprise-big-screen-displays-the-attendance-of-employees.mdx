@@ -1,0 +1,285 @@
+---
+title: "Get Employee On-Duty Status with Attendance APIs and Events"
+description: "Collect employee clock-in data via attendance events and APIs to determine on-duty status such as normal, late, or absent for anomaly alerts."
+---
+
+# Attendance Data Visualization: Real-Time On-Duty Monitoring and Anomaly Alerts
+
+## Overview
+
+This solution displays employee attendance on an enterprise dashboard from end to end. It uses the Stream push mechanism and attendance APIs of the DingTalk Open Platform to collect data in real time, determine statuses automatically, and output standardized data.
+
+### Background
+
+Organizations need real-time visibility into employee attendance. This is especially true in manufacturing workshops, customer service centers, and retail stores, where managers rely on a dashboard to view key metrics such as current on-duty headcount, late arrivals, and absences. However, native DingTalk attendance data resides in the admin console and cannot connect directly to an organization's own dashboard system. This causes the following problems:
+
+- **Delayed data access**: HR must export attendance reports manually, so updates cannot happen in seconds.
+- **Difficult system integration**: Without standardized APIs, embedding attendance data into in-house BI or dashboard systems is difficult.
+- **Complex status determination**: Clock-in times alone cannot determine "Normal/Late/Absent." Staff must compare them against scheduling rules manually.
+- **Monitoring blind spots**: Abnormal clock-ins, such as clock-ins from unexpected locations or buddy punching, cannot trigger real-time alerts.
+
+### Key Benefits
+
+This solution collects and analyzes attendance data in real time. It replaces manually exported offline data with an API-driven real-time stream, which significantly improves decision-making efficiency and data transparency.
+
+- **Real-time data collection**: The Stream push mechanism sends a callback to your server within milliseconds of each clock-in, keeping data in sync with no noticeable latency.
+- **Automatic status determination**: Clock-in times are automatically compared against scheduling rules to accurately identify statuses such as "Normal/Late/Early Leave/Absent."
+- **Standardized API output**: A unified RESTful API integrates seamlessly with dashboards, BI systems, and OA Kanban boards.
+- **Full historical tracking**: Batch queries of historical attendance records support monthly statistics, trend analysis, and other in-depth needs.
+
+### Use Cases
+
+This solution applies to the following business scenarios:
+
+- **Manufacturing workshop dashboards**: Display on-duty headcount, absence rates, and late arrival alerts for each production line in real time to support production scheduling.
+- **Customer service center monitoring**: Monitor agent attendance to ensure adequate staffing and reallocate resources promptly.
+- **Retail store management**: Monitor employee clock-in status across stores to align scheduling with customer traffic.
+- **Headquarters command centers**: Aggregate group-wide attendance data to support cross-region comparisons and anomaly alerts.
+
+## Typical Business Scenarios
+
+### Scenario 1: Real-Time On-Duty Monitoring in Manufacturing Workshops
+
+#### Pain Points
+
+Traditionally, workshop supervisors count the on-duty headcount for each production line manually every 2 hours. Each count takes 30 minutes, and the data is already outdated. When unexpected absences occur, production plans cannot be adjusted in time, which causes capacity losses.
+
+#### Value
+
+- **Automated flow**
+
+  End-to-end flow:
+
+  1. An employee completes a start-of-shift or end-of-shift clock-in in the DingTalk App.
+  2. The clock-in data is pushed in real time through the **Stream** channel (callback).
+  3. The enterprise server receives the data and automatically determines the status against the **scheduling** rules.
+  4. The result is written to the database and cached in **Redis** for performance.
+  5. The data is returned through an **API**, and the dashboard displays the latest on-duty status in real time.
+- **Key advantages**
+
+  - **Updates in seconds**: The dashboard refreshes within 1 second of a clock-in, so managers see workforce distribution in real time.
+  - **Automatic alerts**: When the absence rate exceeds a threshold (such as 10%), an SMS or DingTalk notification is sent automatically for a fast response.
+  - **Historical comparison**: Year-over-year and period-over-period analysis reveals seasonal absence patterns and helps optimize scheduling.
+  - **Multi-dimensional filtering**: Filter by production line, team, or job type to pinpoint problem areas.
+
+### Scenario 2: Workforce Scheduling Optimization in Customer Service Centers
+
+#### Pain Points
+
+Customer service supervisors cannot see the actual on-duty headcount for each time slot in real time. As a result, teams are often understaffed during peak hours and overstaffed during off-peak hours, which hurts customer satisfaction and raises operating costs.
+
+#### Value
+
+- **Automated flow**
+
+  The automated flow has five stages:
+
+  1. A customer service agent clocks in on **DingTalk**, which records the clock-in time and location.
+  2. **Stream** pushes the clock-in event to the server in real time (millisecond-level callback).
+  3. AI determines the on-duty status and stores the attendance data for historical queries and analysis.
+  4. A heatmap engine calculates workforce distribution across time slots and identifies peaks, valleys, and understaffing risks.
+  5. A large-screen dashboard displays the forecast curve and scheduling suggestions to support manager decisions and early warnings.
+- **Key advantages**
+
+  - **Heatmap display**: Visualize workforce hotspots by timeline and agent count.
+  - **Predictive scheduling**: Forecast workforce demand for the next 2 hours from historical data and adjust schedules in advance.
+  - **Anomaly detection**: Automatically identify patterns such as repeated late arrivals and frequent early leaves, and generate a watch list.
+  - **Performance correlation**: Correlate attendance data with KPIs such as answer rate and customer satisfaction to quantify the return on workforce investment.
+
+## Implementation Guide
+
+### Technical Architecture
+
+This solution uses the Server APIs and Stream push mechanism of the DingTalk Open Platform. The core technical components are:
+
+- **Authentication layer**: Use the `Client ID` and `Client Secret` to get an `access_token` and secure API calls.
+- **Real-time data ingestion layer**: Configure Stream push to subscribe to attendance clock-in events and receive callbacks on your server within milliseconds.
+- **Status determination engine**: A local algorithm compares clock-in times with scheduling rules and identifies "Normal/Late/Seriously Late/Absent" statuses automatically.
+- **Data storage and caching**: Attendance group scheduling rules are fully synced every hour. Clock-in records are written to the database and cached in real time.
+- **Standardized API output layer**: RESTful APIs serve dashboards and BI systems, with support for multi-dimensional filtering and aggregate queries.
+
+Data flow: An employee clocks in on the DingTalk App → Stream pushes a real-time callback → The enterprise server receives the data and determines the status → The data is written to the database and cached → The dashboard API returns the data.
+
+### Prerequisites
+
+Before you implement this solution, make sure that you meet the following requirements:
+
+- **App preparation**: Create and configure an Internal app. For details, see [Create and Configure an App](/open/dingstart/create-application).
+- **Permission requirements**: You have DingTalk Organization Admin or Sub Admin permissions.
+- **Development environment**: A Java development environment (JDK 1.6 or later) and the Maven build tool are installed.
+- **SDK preparation**: Download the DingTalk Server-side SDK. For details, see Server-side SDK Download. Java, Python, Go, and other languages are supported.
+- **Server requirements**: Your organization has a publicly accessible server to receive Stream push callbacks.
+- **Dashboard system**: Your dashboard system supports HTTP API data ingestion (such as ECharts, DataV, or Tableau).
+
+### Code Implementation
+
+Step 1: Get the App credentials, including the client ID and Client Secret.
+
+Step 2: No API permissions are required for this example.
+
+Step 3: Get the App access credential. For details, see [Get the access_token of an Internal App](/open/development/obtain-orgapp-token). When you call an API, the access token authenticates the caller.
+
+Step 4: Follow this call flow:
+
+1. Call the attendance Server API [Batch Get Attendance Group Details](/open/development/batch-obtain-attendance-group-details) to get the scheduled start and end times of attendance groups in your organization.
+2. To get employee clock-in data, register an attendance event callback. Configure Stream push (recommended) as described in the documentation, and subscribe to attendance events.
+3. Implement the status determination logic: Compare the clock-in information pushed in real time (userId, groupId, checkTime) with the cached attendance group schedule, and determine the clock-in status (Normal/Late/SeriousLate/Absent).
+4. Provide standardized APIs for the dashboard system to query real-time on-duty data by department, attendance group, time range, and other dimensions.
+
+## Implementation Steps
+
+### **Step 1: Get the App Credentials**
+
+1. Sign in to the [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Select the target App to open its details page.
+3. Click **Basic Information** > **Credentials and Basic Information**.
+4. Record the App's `Client ID` and `Client Secret`.
+
+### Note
+
+   Keep your `Client Secret` secure and never share it with third parties. Store it in environment variables or a key management system instead of hard-coding it.
+
+### **Step 2**: Get the Access Credential (access_token)
+
+Use the Client ID and Client Secret from Step 1 to get the App access credential. For details, see [Get the access_token of an Internal App](/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Best practices**:
+
+- **Caching strategy**: The `access_token` is valid for 2 hours. Cache it in memory or Redis, and refresh it 5 minutes before it expires.
+- **Concurrency control**: Prevent conflicts caused by multiple threads refreshing the token at the same time. Use a distributed lock.
+- **Retry on error**: Retry automatically during network fluctuations, up to 3 times, with increasing intervals (1s → 2s → 4s).
+
+### Step 3: Call the Core APIs
+
+1. **Batch get attendance group details**: Call the attendance Server API [Batch Get Attendance Group Details](/open/development/batch-obtain-attendance-group-details) to get the scheduled start and end times of attendance groups in your organization.
+
+   ```java
+   public void batchGetAttendanceGroups() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/detail/batchquery");
+       OapiAttendanceGroupDetailBatchqueryRequest req = new OapiAttendanceGroupDetailBatchqueryRequest();
+       // Set request parameters
+       OapiAttendanceGroupDetailBatchqueryResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+2. **Configure Stream push and subscribe to attendance events**: Follow the Configure Stream Push (Recommended) documentation to register an attendance event callback, and subscribe to attendance events.
+
+   **Callback data structure**:
+
+   ```json
+   {
+     "DataList":[
+       {
+         // userId of the employee who clocked in
+         "userId":"0126xxxx",
+         // Clock-in time, in milliseconds
+         "checkTime":1570791880000,
+         // Address at the time of clock-in
+         "address":"Building 7 East, Zhejiang Overseas High-Level Talent Innovation Park, Institute of Engineering Thermophysics, Chinese Academy of Sciences",
+         // Organization ID (corpId)
+         "corpId":"dingxxxx",
+         // ID of the employee's attendance group
+         "groupId":"4C63xxxx",
+         // Latitude of the clock-in address
+         "latitude":30.285230848524307,
+         // Longitude of the clock-in address
+         "longitude":120.01713514539931,
+         // Clock-in business ID
+         "bizId":"FF62xxxx",
+         // Location method
+         "locationMethod":"MAP",
+       }
+     ],
+     "EventType":"attendance_check_record"
+   }
+   ```
+3. **Status determination logic**:
+
+   **Core algorithm**: Compare the clock-in information pushed in real time (userId, groupId, checkTime) with the cached attendance group schedule to determine the clock-in status.
+
+   ```text
+   public String determineAttendanceStatus(String userId, String groupId, String checkTime) {
+       // 1. Get the scheduling rule for this attendance group from the cache
+       ScheduleRule rule = cache.getScheduleRule(groupId);
+
+       // 2. Parse the clock-in time
+       LocalDateTime punchTime = LocalDateTime.parse(checkTime, formatter);
+
+       // 3. Compare against the scheduled time
+       if (punchTime.isBefore(rule.getStartTime().plusMinutes(rule.getLateThreshold()))) {
+           return "Normal";  // On-time clock-in
+       } else if (punchTime.isBefore(rule.getStartTime().plusMinutes(rule.getSeriousLateThreshold()))) {
+           return "Late";    // Late arrival
+       } else {
+           return "SeriousLate";  // Seriously late
+       }
+   }
+   ```
+
+   **Status mapping**:
+
+   | **Condition** | **Returned Status** | **Dashboard Color** |
+   | --- | --- | --- |
+   | Clock-in time ≤ Scheduled start time + Late threshold | Normal | 🟢 Green |
+   | Scheduled start time + Late threshold &lt; Clock-in time ≤ Serious late threshold | Late | 🟡 Yellow |
+   | Clock-in time > Serious late threshold | SeriousLate (Seriously late) | 🔴 Red |
+
+**Implementation checklist**:
+
+- ✅ Stream push is configured and receives clock-in callbacks.
+- ✅ Attendance group scheduling rules are cached correctly and refresh automatically every hour.
+- ✅ Status determination logic passes testing with 100% accuracy.
+- ✅ Dashboard API response time is &lt;200ms.
+- ✅ Abnormal clock-ins (such as clock-ins from unexpected locations) are flagged correctly and trigger alerts.
+
+## FAQ
+
+- **Q1: What is the difference between Stream push and polling?**
+
+  A: The two methods retrieve data in completely different ways:
+
+  - **Polling**: Your server calls the API on a schedule to query clock-in records. This introduces latency (typically 5–15 minutes), and frequent calls can easily trigger rate limits.
+  - **Stream push**: DingTalk pushes data to your specified URL as soon as an employee clocks in. Latency is &lt;1 second, and no active queries are needed. This method suits real-time dashboards.
+
+  **Key difference**: Stream push is event-driven and pushes data only when needed. Polling is schedule-driven and calls the API whether or not new data exists. Use Stream push whenever possible.
+- **Q2: How do I determine whether an employee is "late" or "absent"?**
+
+  A: Apply the following logic:
+
+  - **Late arrival**: The employee has a clock-in record, but the clock-in time is later than the scheduled start time plus the late threshold (typically 10–30 minutes, configurable in the attendance group settings).
+  - **Absent**: As of the current time (for example, 3:00 PM), the employee has no clock-in record for the day, and the scheduling rules require the employee to work today.
+
+  **Note**: Always check the scheduling rules. If the employee has a scheduled day off, no clock-in does not count as an absence.
+- **Q3: How do I handle clock-ins from unexpected locations or buddy punching?**
+
+  A: The DingTalk attendance event callback includes the `LocationResult` field, which indicates whether the clock-in location is valid:
+
+  - `Normal`: The clock-in location is within the range allowed by the attendance group.
+  - `Outside`: The clock-in location is outside the allowed range, which suggests a clock-in from an unexpected location.
+
+  **Handling strategy**:
+
+  - Mark records with `LocationResult=Abnormal` as orange warnings on the dashboard.
+  - Generate a daily report of abnormal clock-ins and send it to HR Admins for review.
+  - Combine multi-factor verification, such as Wi-Fi and location, to reduce the risk of buddy punching.
+- **Q4: How often should the dashboard refresh?**
+
+  A: It depends on the business scenario:
+
+  - **Manufacturing workshops/customer service centers**: Refresh every 1–5 seconds to ensure real-time visibility.
+  - **Retail stores**: Refresh every 30 seconds to 1 minute to balance performance and timeliness.
+  - **Headquarters command centers**: Refresh every 5–10 minutes, focusing on trend analysis rather than second-by-second monitoring.
+
+  **Performance optimization**: Use incremental updates that push only changed data (such as new clock-in records) instead of full refreshes. This can reduce network overhead by more than 90%.

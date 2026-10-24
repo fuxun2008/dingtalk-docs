@@ -1,0 +1,1654 @@
+---
+title: "Cipta atau kemas kini templat kelulusan"
+description: "Panggil API DingTalk untuk mencipta atau mengemas kini templat kelulusan, konfigurasikan kawalan borang dan integrasi Pusat Proses, serta dapatkan processCode."
+---
+
+Panggil API ini untuk mencipta atau mengemas kini templat kelulusan.
+
+## Penerangan panggilan API
+
+- Setiap organisasi boleh mencipta sehingga 200 templat dalam Pusat Proses. Selepas had ini dicapai, panggilan API ini akan mengembalikan ralat.
+- Klien DingTalk hanya memaparkan tiga medan pertama borang templat dalam senarai kelulusan.
+- Simpan nama templat dan processCode yang dikembalikan oleh API ini bagi setiap templat aliran kerja kelulusan sendiri yang anda cipta. API lain memerlukan nilai ini.
+- Templat Kelulusan OA sendiri hanya menyokong komponen kelulusan yang disenaraikan dalam dokumen ini. Komponen lain tidak disokong.
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/workflow/processCentres/schemas |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran yang diperlukan | permission-Workflow.Form.Write-Kebenaran tulis templat aliran kerja |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkannya seperti berikut:   - Aplikasi dalaman: Panggil API untuk mendapatkan access token aplikasi dalaman. - Aplikasi perusahaan pihak ketiga: Panggil API untuk mendapatkan access token organisasi yang memberikan kebenaran kepada aplikasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| processCode | String | Tidak | ProcessCode borang. Nyatakannya apabila anda mengemas kini templat borang. Untuk mendapatkan nilai processCode, panggil API [Dapatkan kod templat](/ms/open/development/obtain-the-template-code).      Jika anda menghantar ProcessCode untuk mengubah suai dan mengemas kini komponen borang, anda tidak boleh memadam atau mengubah suai kawalan yang telah digunakan sebagai cabang bersyarat dalam reka bentuk aliran kerja. Contohnya, jika borang asal menggunakan kawalan pilihan tunggal [Jenis pekerja] sebagai syarat cabang, anda tidak boleh mengubah suai jenis kawalan medan [Jenis pekerja] atau memadamnya semasa mengemas kini borang ini.     - Biarkan parameter ini kosong untuk mencipta templat baharu. - Nyatakan parameter ini untuk mengemas kini templat kelulusan yang sepadan dengan nilai yang dihantar. |
+| name | String | Ya | Nama templat borang. Panjang maksimum: 200 aksara. |
+| description | String | Tidak | Penerangan templat borang. Panjang maksimum: 300 aksara. |
+| formComponents | Array | Ya | Senarai kawalan borang. Kawalan yang disokong disenaraikan di bawah. Satu borang boleh mengandungi sehingga 200 komponen.  Untuk butiran tentang jenis kawalan yang disokong, lihat **Nota tambahan tentang parameter FormComponent** dalam dokumen ini.   - **TextField**: Input satu baris - **TextareaField**: Input berbilang baris - **NumberField**: Input nombor - **DDSelectField**: Pilihan tunggal - **DDMultiSelectField**: Pilih Banyak - **DDDateField**: Kawalan tarikh - **DDDateRangeField**: Kawalan julat masa - **TextNote**: Kawalan nota teks - **DDPhotoField**: Kawalan imej - **MoneyField**: Kawalan jumlah - **TableField**: Kawalan butiran (kawalan jadual) - **DDAttachment**: Lampiran - **InnerContactField**: Kawalan kenalan - **RelateField**: Borang kelulusan berkaitan - **AddressField**: Kawalan wilayah/bandar/daerah - **StarRatingField**: Kawalan penilaian - **DepartmentField**: Kawalan jabatan |
+| FormComponent | FormComponent | Ya | Kawalan borang. Untuk kawalan yang disokong, lihat [Penerangan parameter FormComponent](/ms/open/development/oa-formcomponent-message). Satu borang boleh mengandungi sehingga 200 komponen. |
+| processFeatureConfig | Object | Tidak | Konfigurasi integrasi Pusat Proses. |
+| features | Array | Tidak | Senarai konfigurasi. |
+| name | String | Tidak | Nama modul ciri yang boleh disesuaikan oleh pihak ketiga. Nilai yang disokong:   - **TASK_EXECUTE**: Modul pelaksanaan tugas, iaitu butang Terima dan Tolak pada halaman butiran - **SYNC_BOXSTER**: Cara tugas disegerakkan ke To-Do - **CUSTOM_SHORTCUT**: Butang tindakan pintasan dalam item To-Do dan notifikasi kad - **AFFILIATION_DIR**: Menentukan kumpulan perniagaan To-Do |
+| pcUrl | String | Tidak | Pautan ubah hala tersuai pihak ketiga untuk PC. Panjang maksimum: 1,024 aksara. |
+| mobileUrl | String | Tidak | Pautan ubah hala tersuai pihak ketiga untuk peranti mudah alih. Panjang maksimum: 1,024 aksara. |
+| runType | String | Tidak | Mod larian. Apabila features.name ialah `TASK_EXECUTE`, nilai yang disokong:   - **ORIGIN**: Larian asli. Ciri ini berjalan dalam aplikasi Kelulusan rasmi dan mencetuskan API Callback yang dikonfigurasikan dalam callback. - **REDIRECT**: Larian ubah hala luaran. Ciri ini berjalan pada alamat pihak ketiga, dan pengguna diubah hala ke alamat yang dikonfigurasikan dalam pcUrl atau mobileUrl.   Apabila features.name ialah `SYNC_BOXSTER`, nilai yang disokong:   - **DEFAULT**: Menyegerakkan tugas kelulusan ke To-Do secara lalai. - **OUTBIZ_CUSTOM**: Tidak menyegerakkan ke To-Do. Pihak perniagaan melaksanakan pengendalian tersuai.   Apabila features.name ialah `CUSTOM_SHORTCUT`, nilai yang disokong:   - **ORIGIN**: Larian asli. Membuka halaman butiran To-Do akan mengubah hala ke halaman butiran aplikasi Kelulusan rasmi. - **REDIRECT**: Larian ubah hala luaran. Membuka halaman butiran To-Do akan mengubah hala ke alamat yang dikonfigurasikan dalam pcUrl atau mobileUrl.   Apabila features.name ialah `AFFILIATION_DIR`, nilai yang disokong:   - **OUTBIZ_CUSTOM**: Menentukan kumpulan To-Do. Pihak perniagaan menentukan kategori item To-Do. |
+| callback | Object | Tidak | Konfigurasi Callback get laluan. Wajib apabila runType ialah ORIGIN.  Daftarkan semua API data luaran yang dipanggil semula oleh get laluan sebagai get laluan dalam "Pengurusan Sumber Data". Untuk butiran, lihat Cipta sumber data. |
+| appUuid | String | Tidak | appUuid get laluan. Wajib apabila runType ialah ORIGIN.  Hantar ID organisasi (corpId) bagi organisasi yang mencipta sumber data. |
+| apiKey | String | Tidak | apiKey get laluan. Wajib apabila runType ialah ORIGIN. Dapatkan `apiKey` daripada sumber data yang telah dicipta.       - Apabila get laluan memanggil API luaran, DingTalk mengembalikan parameter yang diperlukan untuk pemprosesan perniagaan, bergantung pada senario perniagaan. Untuk menghuraikan parameter ini selepas menerima permintaan Callback, ISV mesti mengkonfigurasikan kunci parameter yang sepadan semasa mencipta sumber data.   Contohnya, apabila Callback dikonfigurasikan untuk modul TASK_EXECUTE (butang Terima dan Tolak pada halaman butiran), DingTalk mengembalikan parameter tetap berikut: `&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"Setuju","title":"Permohonan aset yang dihantar oleh xxx","taskId":111,"operator":"manager0001"&#125;`. - Semasa mencipta sumber data, ISV mesti mengkonfigurasikan kunci yang diperlukan untuk penghuraian berdasarkan keperluan perniagaan: outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | Tidak | Versi API get laluan.       - Wajib apabila runType ialah ORIGIN. - Lalai: 1. |
+| config | String | Tidak | Konfigurasi modul ciri yang disesuaikan oleh pihak ketiga. |
+| templateConfig | Object | Tidak | Konfigurasi templat Pusat Proses. |
+| hidden | Boolean | Tidak | Sama ada templat disembunyikan:   - **true**: Templat tersembunyi - **false**: Bukan templat tersembunyi |
+| createInstanceMobileUrl | String | Tidak | URL mudah alih untuk mencipta borang. Panjang maksimum: 1,024 aksara. |
+| createInstancePcUrl | String | Tidak | URL PC untuk mencipta borang. Panjang maksimum: 1,024 aksara. |
+| templateEditUrl | String | Tidak | URL penyuntingan templat. Panjang maksimum: 1,024 aksara. |
+| disableSendCard | Boolean | Tidak | Sama ada untuk menyahaktifkan notifikasi kad mesej semasa mencipta tugas belum selesai dalam Pusat Proses:   - **true**: Dinyahaktifkan. Tiada notifikasi kad mesej dihantar. - **false**: Lalai. Tidak dinyahaktifkan. Notifikasi kad mesej dihantar. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/schemas HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:BExxx
+Content-Type:application/json
+
+{
+    "name":"Tuntutan Perbelanjaan Perjalanan Perniagaan",
+    "description":"Digunakan untuk tuntutan perbelanjaan perjalanan pekerja",
+    // Jika processCode wujud, templat dikemas kini; jika tidak, templat dicipta. Contoh ini mencipta templat.
+    // "processCode":"PROC-9EA4B75F-****-****-****-AC70E0704E3D",
+    "formComponents": [
+        {
+            "componentType": "TextField",
+            "props": {
+                "label": "Input satu baris", // Tajuk kawalan
+                "placeholder": "Masukkan", // Petunjuk input
+                "componentId": "TextField_17EZKEGSOCTC0", // ID kawalan. Unik dalam borang; tiada makna perniagaan
+                "required": false, // Sama ada medan wajib. Pilihan secara lalai
+                "bizAlias": "staffId" // Pengecam perniagaan kawalan. Unik dalam borang. Nyatakan sama ada ini atau componentId
+            }
+        },
+        {
+            "componentType": "TextareaField",
+            "props": {
+                "label": "Input berbilang baris",
+                "placeholder": "Masukkan",
+                "componentId": "TextareaField_17EZKEGSOCTC0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "NumberField",
+            "props": {
+                "label": "Input nombor",
+                "placeholder": "Masukkan nombor",
+                "componentId": "NumberField_108PIFZM21F40",
+                "required": false,
+                "unit": "CNY", // Unit nombor
+                "defaultValue": "10" // Nilai lalai
+            }
+        },
+        {
+            "componentType": "DDSelectField",
+            "props": {
+                "options": [ // Senarai pilihan
+                    {
+                        "value": "Pilihan 1", // Nama paparan pilihan
+                        "key": "option_0" // Kunci unik dalam kawalan. Pilihan; dijana oleh sistem secara lalai
+                    },
+                    {
+                        "value": "Pilihan 2",
+                        "key": "option_1"
+                    },
+                    {
+                        "value": "Pilihan 3",
+                        "key": "option_2"
+                    },
+                    {
+                        "key": "other", // Kunci khas untuk pilihan Lain-lain
+                        "value": "Lain-lain"
+                    }
+                ],
+                "label": "Pilihan tunggal",
+                "placeholder": "Pilih",
+                "componentId": "DDSelectField_14T8M4EKXAV40",
+                "required": false
+            }
+        },
+        {
+            "componentType": "DDMultiSelectField",
+            "props": {
+                "options": [
+                    {
+                        "value": "Pilihan 1",
+                        "key": "option_0"
+                    },
+                    {
+                        "value": "Pilihan 2",
+                        "key": "option_1"
+                    },
+                    {
+                        "value": "Pilihan 3",
+                        "key": "option_2"
+                    },
+                    {
+                        "key": "other", // Kunci khas untuk pilihan Lain-lain
+                        "value": "Lain-lain"
+                    }
+                ],
+                "label": "Pilih Banyak",
+                "placeholder": "Pilih",
+                "componentId": "DDMultiSelectField_1XJ7NG1GSD6O0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "DDDateField",
+            "props": {
+                "unit": "小时", // Unit tarikh. Nilai enum: 小时 (Jam), 天 (Hari)
+                "format": "yyyy-MM-dd HH:mm", // Format tarikh. Pilihan. 小时 (Jam) dipetakan kepada yyyy-MM-dd HH:mm; 天 (Hari) dipetakan kepada yyyy-MM-dd HH:mm
+                "bizAlias": "",
+                "label": "Tarikh",
+                "placeholder": "Pilih",
+                "componentId": "DDDateField_SQL0DF3MS9C0",
+                "required": false,
+                "defaultValue": "2021-12-21 17:46" // Nilai lalai
+            }
+        },
+        {
+            "componentType": "DDDateRangeField",
+            "props": {
+                "unit": "小时", // Jam
+                "format": "yyyy-MM-dd HH:mm",
+                "bizAlias": "",
+                "label": "[\"Masa mula\",\"Masa tamat\"]",
+                "placeholder": "Pilih",
+                "componentId": "DDDateRangeField_7MPG14N3OOO0",
+                "duration": true, // Sama ada tempoh dikira secara automatik
+                "durationLabel": "Tempoh", // Teks paparan untuk tempoh yang dikira
+                "required": false
+            }
+        },
+         {
+            "componentType": "TextNote",
+            "props": {
+                "link": "https://www.dingtalk.io/", // Hiperpautan
+                "notPrint": "0",
+                "bizAlias": "",
+                "componentId": "TextNote_13RP7230RAF40",
+                "content": "Teks penerangan" // Teks penerangan
+            }
+        },
+        {
+            "componentType": "DDPhotoField",
+            "props": {
+                "label": "Imej",
+                "componentId": "DDPhotoField_P50A0HMHB280",
+                "required": false
+            }
+        },
+        {
+            "componentType": "MoneyField",
+            "props": {
+                "upper": "0", // Sama ada jumlah dipaparkan dalam angka huruf besar Cina (0: tidak; 1: ya). Lalai: ya
+                "label": "Jumlah (CNY)",
+                "placeholder": "Masukkan jumlah",
+                "componentId": "MoneyField_L1PP26ZDV400",
+                "required": false
+            }
+        },
+        {
+            "children": [ // Senarai kawalan anak dalam kawalan butiran. Kawalan anak mematuhi piawaian atribut setiap kawalan
+                {
+                    "componentType": "TextField",
+                    "props": {
+                        "label": "Input satu baris",
+                        "placeholder": "Masukkan",
+                        "componentId": "TextField_1UE1ZY1A28AO0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "MoneyField",
+                    "props": {
+                        "payEnable": false,
+                        "upper": "0",
+                        "bizAlias": "",
+                        "label": "Jumlah (CNY)",
+                        "placeholder": "Masukkan jumlah",
+                        "componentId": "MoneyField_1S85G4YLMM5C0",
+                        "required": false
+                    }
+                },
+                {
+                    "componentType": "NumberField",
+                    "props": {
+                        "unit": "CNY",
+                        "payEnable": false,
+                        "bizAlias": "",
+                        "label": "Input nombor",
+                        "placeholder": "Masukkan nombor",
+                        "componentId": "NumberField_1XP6AWG50SE80",
+                        "required": false
+                    }
+                }
+            ],
+            "componentType": "TableField",
+            "props": {
+                "tableViewMode": "table", // Mod kemasukan butiran. Nilai enum: list: paparan senarai; table: paparan jadual
+                "verticalPrint": true, // Orientasi cetakan butiran. true: potret; false: landskap
+                "statField": [ // Konfigurasikan jumlah keseluruhan untuk kawalan nombor dan kawalan jumlah
+                    {
+                        "upper": "1",
+                        "componentId": "MoneyField_1S85G4YLMM5C0",
+                        "label": "Jumlah (CNY)"
+                    },
+                    {
+                        "componentId": "NumberField_1XP6AWG50SE80",
+                        "label": "Input nombor"
+                    }
+                ],
+                "bizAlias": "",
+                "label": "Jadual",
+                "componentId": "TableField_1MLEPEAQSXHC0"
+            }
+        },
+        {
+            "componentType": "DDAttachment",
+            "props": {
+                "label": "Lampiran",
+                "componentId": "DDAttachment_18U4QTOWLMPS0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "InnerContactField",
+            "props": {
+                "label": "Kenalan",
+                "placeholder": "Pilih",
+                "componentId": "InnerContactField_162USP4V1BC00",
+                "choice": "1", // Nilai enum: 1 untuk pilih banyak, 0 untuk pilihan tunggal. Lalai: 0
+                "required": false,
+                "bizAlias": ""
+            }
+        },
+        {
+            "componentType": "DepartmentField",
+            "props": {
+                "multiple": false, // Sama ada pilih banyak disokong. true: pilih banyak; false: pilihan tunggal
+                "label": "Jabatan",
+                "placeholder": "Pilih",
+                "componentId": "DepartmentField_1GY5JSPOCY000",
+                "required": false
+            }
+        },
+        {
+            "componentType": "RelateField",
+            "props": {
+                "label": "Borang kelulusan berkaitan",
+                "placeholder": "Pilih",
+                "componentId": "RelateField_5X1DL4KMKUW0",
+                "required": false,
+                "bizAlias": "",
+                "availableTemplates": [ // Templat kelulusan yang boleh dikaitkan. Jika kosong, instans semua templat kelulusan boleh dikaitkan
+                    {
+                        "name": "Templat saya", // Nama borang kelulusan yang boleh dikaitkan
+                        "processCode": "PROC-9EA4B75F-****-****-****-AC70E0704E3D" // formCode borang kelulusan yang boleh dikaitkan
+                    }
+                ]
+            }
+        },
+        {
+            "componentType": "AddressField",
+            "props": {
+                "addressModel": "district", // Nilai enum: city: wilayah/bandar; district: wilayah/bandar/daerah; street: wilayah/bandar/daerah/jalan
+                "bizAlias": "",
+                "label": "Wilayah/Bandar/Daerah",
+                "componentId": "AddressField_1P9H21H8R2LC0",
+                "required": false
+            }
+        },
+        {
+            "componentType": "StarRatingField",
+            "props": {
+                "limit": 5, // Nilai enum: skala 5 mata, skala 10 mata
+                "label": "Penilaian",
+                "placeholder": "Masukkan",
+                "componentId": "StarRatingField_10E5NHTA2W0G0",
+                "required": false,
+                "bizAlias": ""
+            }
+        }
+    ],
+    "processFeatureConfig":{
+        "features":[
+            {
+                "name":"TASK_EXECUTE",
+                "pcUrl":"https://www.dingtalk.io",
+                "mobileUrl":"https://www.dingtalk.io",
+                "runType":"REDIRECT"
+            }
+        ]
+    }
+}
+```
+
+Java
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.teautil.models.*;
+import com.aliyun.dingtalkworkflow_1_0.*;
+import com.aliyun.dingtalkworkflow_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * Mulakan Client akaun dengan Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        SaveProcessHeaders saveProcessHeaders = new SaveProcessHeaders();
+        saveProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        // 1. Kawalan input satu baris
+        FormComponentProps formComponentProps1 = new FormComponentProps()
+                .setComponentId("TextField-abcd")
+                .setPlaceholder("Masukkan")
+                .setLabel("Input satu baris")
+                .setRequired(true);
+        FormComponent formComponent1 = new FormComponent()
+                .setComponentType("TextField")
+                .setProps(formComponentProps1);
+        // 2. Kawalan input berbilang baris
+        FormComponentProps formComponentProps2 = new FormComponentProps()
+                .setComponentId("TextareaField-abcd")
+                .setPlaceholder("Masukkan")
+                .setLabel("Input berbilang baris")
+                .setRequired(true);
+        FormComponent formComponent2 = new FormComponent()
+                .setComponentType("TextareaField")
+                .setProps(formComponentProps2);
+        // 3. Kawalan input nombor
+        FormComponentProps formComponentProps3 = new FormComponentProps()
+                .setComponentId("NumberField-abcd")
+                .setPlaceholder("Masukkan")
+                .setLabel("Input nombor")
+                .setUnit("CNY")
+                .setRequired(true);
+        FormComponent formComponent3 = new FormComponent()
+                .setComponentType("NumberField")
+                .setProps(formComponentProps3);
+        // 4. Kawalan pilihan tunggal
+        SelectOption option1 = new SelectOption();
+        option1.setKey("option1");
+        option1.setValue("Pilihan 1");
+        SelectOption option2 = new SelectOption();
+        option2.setKey("option2");
+        option2.setValue("Pilihan 2");
+        FormComponentProps formComponentProps4 = new FormComponentProps()
+                .setComponentId("DDSelectField-abcd")
+                .setPlaceholder("Pilih")
+                .setLabel("Pilihan tunggal")
+                .setBizAlias("staff_type")
+                .setOptions(java.util.Arrays.asList(option1, option2))
+                .setRequired(true);
+        FormComponent formComponent4 = new FormComponent()
+                .setComponentType("DDSelectField")
+                .setProps(formComponentProps4);
+
+        // 5. Kawalan pilih banyak
+        SelectOption option3 = new SelectOption();
+        option3.setKey("option1");
+        option3.setValue("Pilihan 1");
+        SelectOption option4 = new SelectOption();
+        option4.setKey("option2");
+        option4.setValue("Pilihan 2");
+        FormComponentProps formComponentProps5 = new FormComponentProps()
+                .setComponentId("DDMultiSelectField-abcd")
+                .setPlaceholder("Pilih")
+                .setLabel("Pilih Banyak")
+                .setOptions(java.util.Arrays.asList(option3, option4))
+                .setRequired(true);
+        FormComponent formComponent5 = new FormComponent()
+                .setComponentType("DDMultiSelectField")
+                .setProps(formComponentProps5);
+
+        // 6. Kawalan tarikh
+        FormComponentProps formComponentProps6 = new FormComponentProps()
+                .setComponentId("DDDateField-abcd")
+                .setPlaceholder("Pilih")
+                .setLabel("Tarikh")
+                .setUnit("小时") // Jam
+                .setFormat("yyyy-MM-dd HH:mm")
+                .setRequired(true);
+        FormComponent formComponent6 = new FormComponent()
+                .setComponentType("DDDateField")
+                .setProps(formComponentProps6);
+
+        // 7. Kawalan julat masa
+        FormComponentProps formComponentProps7 = new FormComponentProps()
+                .setComponentId("DDDateRangeField-abcd")
+                .setPlaceholder("Pilih")
+                .setLabel("[\"Masa mula\",\"Masa tamat\"]")
+                .setUnit("小时") // Jam
+                .setFormat("yyyy-MM-dd HH:mm")
+                .setRequired(true);
+        FormComponent formComponent7 = new FormComponent()
+                .setComponentType("DDDateRangeField")
+                .setProps(formComponentProps7);
+
+        // 8. Kawalan nota teks
+        FormComponentProps formComponentProps8 = new FormComponentProps()
+                .setComponentId("TextNote-abcd")
+                .setLabel("Catatan")
+                .setContent("Penerangan terperinci")
+                .setLink("https://www.dingtalk.io/")
+                .setPrint("0")
+                .setRequired(false);
+        FormComponent formComponent8 = new FormComponent()
+                .setComponentType("TextNote")
+                .setProps(formComponentProps8);
+
+        // 10. Kawalan imej
+        FormComponentProps formComponentProps10 = new FormComponentProps()
+                .setComponentId("DDPhotoField-abcd")
+                .setLabel("Imej");
+        FormComponent formComponent10 = new FormComponent()
+                .setComponentType("DDPhotoField")
+                .setProps(formComponentProps10);
+
+        // 11. Kawalan jumlah
+        FormComponentProps formComponentProps11 = new FormComponentProps()
+                .setComponentId("MoneyField-abcd")
+                .setUpper("0")
+                .setPlaceholder("Masukkan jumlah")
+                .setLabel("Bonus (CNY)");
+        FormComponent formComponent11 = new FormComponent()
+                .setComponentType("MoneyField")
+                .setProps(formComponentProps11);
+                
+        // 12. Kawalan butiran
+        // 12.1. Kawalan anak dalam kawalan butiran: kawalan input nombor
+        FormComponentProps childFormComponentProps1 = new FormComponentProps()
+                .setComponentId("NumberField-child-1")
+                .setPlaceholder("Masukkan")
+                .setLabel("Input nombor")
+                .setUnit("CNY")
+                .setRequired(true);
+        FormComponent childFormComponentChild1 = new FormComponent()
+                .setComponentType("NumberField")
+                .setProps(childFormComponentProps1);
+
+        // 12.2. Kawalan anak dalam kawalan butiran: kawalan input satu baris
+        FormComponentProps childFormComponentProps2 = new FormComponentProps()
+                .setComponentId("TextField-child-2")
+                .setPlaceholder("Masukkan")
+                .setLabel("Input satu baris")
+                .setRequired(true);
+        FormComponent childFormComponent2 = new FormComponent()
+                .setComponentType("TextField")
+                .setProps(childFormComponentProps2);
+        // 12.2. Jumlah keseluruhan berangka untuk kawalan anak dalam kawalan butiran
+        FormComponentProps.FormComponentPropsStatField statField1 = new FormComponentProps.FormComponentPropsStatField();
+        statField1.setComponentId("NumberField-child-1");
+        statField1.setLabel("Input nombor");
+
+        FormComponentProps formComponentProps12 = new FormComponentProps()
+                .setComponentId("TableField-abcd")
+                .setUpper("0")
+                .setTableViewMode("table")
+                .setLabel("Butiran")
+                .setStatField(java.util.Arrays.asList(statField1));
+        FormComponent formComponent12 = new FormComponent()
+                .setComponentType("TableField")
+                .setProps(formComponentProps12)
+                .setChildren(java.util.Arrays.asList(childFormComponentChild1, childFormComponent2));  
+
+        // 13. Kawalan lampiran
+        FormComponentProps formComponentProps13 = new FormComponentProps()
+                .setComponentId("DDAttachment-abcd")
+                .setLabel("Lampiran");
+        FormComponent formComponent13 = new FormComponent()
+                .setComponentType("DDAttachment")
+                .setProps(formComponentProps13);
+
+        // 14. Kawalan kenalan
+        FormComponentProps formComponentProps14 = new FormComponentProps()
+                .setComponentId("InnerContactField-abcd")
+                .setLabel("Kenalan")
+                .setChoice("1");
+        FormComponent formComponent14 = new FormComponent()
+                .setComponentType("InnerContactField")
+                .setProps(formComponentProps14);
+
+        // 15. Kawalan jabatan
+        FormComponentProps formComponentProps15 = new FormComponentProps()
+                .setComponentId("DepartmentField-abcd")
+                .setLabel("Jabatan")
+                .setMultiple(false);
+        FormComponent formComponent15 = new FormComponent()
+                .setComponentType("DepartmentField")
+                .setProps(formComponentProps15);
+
+        // 16. Kawalan borang kelulusan berkaitan
+        AvaliableTemplate template = new AvaliableTemplate();
+        template.setName("Permohonan perjalanan perniagaan");
+        template.setProcessCode("ProcessCode borang permohonan perjalanan perniagaan");
+        FormComponentProps formComponentProps16 = new FormComponentProps()
+                .setComponentId("RelateField-abcd")
+                .setLabel("Borang kelulusan berkaitan")
+                .setAvailableTemplates(java.util.Arrays.asList(template));
+        FormComponent formComponent16 = new FormComponent()
+                .setComponentType("RelateField")
+                .setProps(formComponentProps16);
+
+        // 17. Kawalan wilayah/bandar/daerah
+        FormComponentProps formComponentProps17 = new FormComponentProps()
+                .setComponentId("AddressField-abcd")
+                .setLabel("Wilayah/Bandar/Daerah")
+                .setPlaceholder("Pilih")
+                .setAddressModel("city");
+        FormComponent formComponent17 = new FormComponent()
+                .setComponentType("AddressField")
+                .setProps(formComponentProps17);
+
+        // 18. Kawalan penilaian
+        FormComponentProps formComponentProps18 = new FormComponentProps()
+                .setComponentId("StarRatingField-abcd")
+                .setLabel("Masukkan")
+                .setLimit(5);
+        FormComponent formComponent18 = new FormComponent()
+                .setComponentType("StarRatingField")
+                .setProps(formComponentProps18);        
+            
+        SaveProcessRequestProcessFeatureConfigFeatures features1 = new SaveProcessRequestProcessFeatureConfigFeatures()
+            .setName("TASK_EXECUTE")
+            .setRunType("REDIRECT")
+            .setPcUrl("https://www.dingtalk.io")
+            .setMobileUrl("https://www.dingtalk.io");
+
+      	SaveProcessRequestProcessFeatureConfig processFeatureConfig = new SaveProcessRequestProcessFeatureConfig()
+        		.setFeatures(java.util.Arrays.asList(features1));
+        
+        SaveProcessRequest saveProcessRequest = new SaveProcessRequest()
+                .setName("Tuntutan Perbelanjaan Perjalanan Perniagaan")
+                .setDescription("Digunakan untuk tuntutan perbelanjaan perjalanan pekerja")
+                .setFormComponents(java.util.Arrays.asList(
+                        formComponent1, formComponent2, formComponent3, formComponent4, formComponent5,
+                        formComponent6, formComponent7, formComponent8, formComponent9, formComponent10,
+                        formComponent11, formComponent12, formComponent13, formComponent14, formComponent15,
+                        formComponent16, formComponent17
+                ))
+                .setProcessFeatureConfig(processFeatureConfig)
+;
+        try {
+            client.saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu mengesan isu
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu mengesan isu
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Mulakan Client akaun dengan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_Process_headers = dingtalkworkflow__1__0_models.SaveProcessHeaders()
+        save_Process_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_components_0children_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='Kewangan'
+        )
+        form_components_0children_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='Nama',
+            required=True,
+            print='1',
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0children_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFields(
+            props=form_components_0children_0children_0props_fields_0props
+        )
+        form_components_0children_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSourceTarget()
+        form_components_0children_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSource(
+            target=form_components_0children_0children_0props_data_source_target
+        )
+        form_components_0children_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsStatField()
+        form_components_0children_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsOptions(
+            value='Pilihan 1',
+            key='option_1'
+        )
+        form_components_0children_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenProps(
+            label='Nama',
+            async_condition=True,
+            required=False,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0children_0props_options_0
+            ],
+            stat_field=[
+                form_components_0children_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0children_0props_data_source,
+            fields=[
+                form_components_0children_0children_0props_fields_0
+            ]
+        )
+        form_components_0children_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildren(
+            props=form_components_0children_0children_0props
+        )
+        form_components_0children_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsAvailableTemplates(
+            name='Borang kelulusan perjalanan perniagaan',
+            process_code='PROC-abcd'
+        )
+        form_components_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='Kewangan'
+        )
+        form_components_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='Nama',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0props_fields_0props_options_0
+            ],
+            not_upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFields(
+            props=form_components_0children_0props_fields_0props
+        )
+        form_components_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSourceTarget()
+        form_components_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSource(
+            target=form_components_0children_0props_data_source_target
+        )
+        form_components_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsStatField()
+        form_components_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsOptions(
+            value='Pilihan 1',
+            key='option_1'
+        )
+        form_components_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenProps(
+            label='Nama',
+            async_condition=True,
+            required=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0props_data_source,
+            fields=[
+                form_components_0children_0props_fields_0
+            ],
+            address_model='city',
+            limit=5,
+            available_templates=[
+                form_components_0children_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildren(
+            component_type='NumberField',
+            props=form_components_0children_0props,
+            children=[
+                form_components_0children_0children_0
+            ]
+        )
+        form_components_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsAvailableTemplates(
+            name='Permohonan perjalanan perniagaan',
+            process_code='PROC-abcd'
+        )
+        form_components_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsPropsOptions(
+            key='finance',
+            value='Kewangan'
+        )
+        form_components_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsProps(
+            component_id='TextField-1',
+            label='Nama',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            print='1',
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFields(
+            component_type='TextField',
+            props=form_components_0props_fields_0props
+        )
+        form_components_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSourceTarget(
+            app_uuid='SWAPP-abcd',
+            app_type=0
+        )
+        form_components_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSource(
+            type='form',
+            target=form_components_0props_data_source_target
+        )
+        form_components_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsStatField(
+            component_id='NumberField-abcd',
+            label='Jumlah'
+        )
+        form_components_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsOptions(
+            value='Pilihan 1',
+            key='option_1'
+        )
+        form_components_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsProps(
+            component_id='TextField-abcd',
+            label='Nama',
+            async_condition=True,
+            required=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0props_stat_field_0
+            ],
+            data_source=form_components_0props_data_source,
+            fields=[
+                form_components_0props_fields_0
+            ],
+            multiple=True,
+            limit=5,
+            available_templates=[
+                form_components_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponents(
+            component_type='TextField',
+            props=form_components_0props,
+            children=[
+                form_components_0children_0
+            ]
+        )
+        save_process_request = dingtalkworkflow__1__0_models.SaveProcessRequest(
+            name='Tuntutan Perbelanjaan Perjalanan Perniagaan',
+            description='Digunakan untuk tuntutan perbelanjaan perjalanan pekerja',
+            form_components=[
+                form_components_0
+            ]
+        )
+        try:
+            client.save_process_with_options(save_process_request, save_process_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu mengesan isu
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_process_headers = dingtalkworkflow__1__0_models.SaveProcessHeaders()
+        save_process_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_components_0children_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='Kewangan'
+        )
+        form_components_0children_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='Nama',
+            required=True,
+            print='1',
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0children_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsFields(
+            props=form_components_0children_0children_0props_fields_0props
+        )
+        form_components_0children_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSourceTarget()
+        form_components_0children_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsDataSource(
+            target=form_components_0children_0children_0props_data_source_target
+        )
+        form_components_0children_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsStatField()
+        form_components_0children_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenPropsOptions(
+            value='Pilihan 1',
+            key='option_1'
+        )
+        form_components_0children_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildrenProps(
+            label='Nama',
+            async_condition=True,
+            required=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0children_0props_options_0
+            ],
+            stat_field=[
+                form_components_0children_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0children_0props_data_source,
+            fields=[
+                form_components_0children_0children_0props_fields_0
+            ]
+        )
+        form_components_0children_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenChildren(
+            props=form_components_0children_0children_0props
+        )
+        form_components_0children_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsAvailableTemplates(
+            name='Borang kelulusan perjalanan perniagaan',
+            process_code='PROC-abcd'
+        )
+        form_components_0children_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsPropsOptions(
+            key='finance',
+            value='Kewangan'
+        )
+        form_components_0children_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFieldsProps(
+            component_id='TextField-1',
+            label='Nama',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0children_0props_fields_0props_options_0
+            ],
+            not_upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0children_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsFields(
+            props=form_components_0children_0props_fields_0props
+        )
+        form_components_0children_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSourceTarget()
+        form_components_0children_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsDataSource(
+            target=form_components_0children_0props_data_source_target
+        )
+        form_components_0children_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsStatField()
+        form_components_0children_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenPropsOptions(
+            value='Pilihan 1',
+            key='option_1'
+        )
+        form_components_0children_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildrenProps(
+            label='Nama',
+            async_condition=True,
+            required=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0children_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0children_0props_stat_field_0
+            ],
+            data_source=form_components_0children_0props_data_source,
+            fields=[
+                form_components_0children_0props_fields_0
+            ],
+            address_model='city',
+            limit=5,
+            available_templates=[
+                form_components_0children_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0children_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsChildren(
+            component_type='NumberField',
+            props=form_components_0children_0props,
+            children=[
+                form_components_0children_0children_0
+            ]
+        )
+        form_components_0props_available_templates_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsAvailableTemplates(
+            name='Permohonan perjalanan perniagaan',
+            process_code='PROC-abcd'
+        )
+        form_components_0props_fields_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsPropsOptions(
+            key='finance',
+            value='Kewangan'
+        )
+        form_components_0props_fields_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFieldsProps(
+            component_id='TextField-1',
+            label='Nama',
+            label_editable_freeze=False,
+            required=True,
+            required_editable_freeze=True,
+            print='1',
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            options=[
+                form_components_0props_fields_0props_options_0
+            ],
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top'
+        )
+        form_components_0props_fields_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsFields(
+            component_type='TextField',
+            props=form_components_0props_fields_0props
+        )
+        form_components_0props_data_source_target = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSourceTarget(
+            app_uuid='SWAPP-abcd',
+            app_type=0
+        )
+        form_components_0props_data_source = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsDataSource(
+            type='form',
+            target=form_components_0props_data_source_target
+        )
+        form_components_0props_stat_field_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsStatField(
+            component_id='NumberField-abcd',
+            label='Jumlah'
+        )
+        form_components_0props_options_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsPropsOptions(
+            value='Pilihan 1',
+            key='option_1'
+        )
+        form_components_0props = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponentsProps(
+            component_id='TextField-abcd',
+            label='Nama',
+            async_condition=True,
+            required=True,
+            content='Ini ialah kawalan nota teks',
+            format='yyyy-MM-dd',
+            upper='1',
+            unit='天',  # Hari
+            placeholder='Masukkan',
+            biz_alias='finance_name',
+            biz_type='attendance.leave',
+            duration=True,
+            choice='0',
+            disabled=True,
+            align='top',
+            invisible=True,
+            link='http://www.',
+            vertical_print=True,
+            common_biz_type='custom_view',
+            options=[
+                form_components_0props_options_0
+            ],
+            print='1',
+            stat_field=[
+                form_components_0props_stat_field_0
+            ],
+            data_source=form_components_0props_data_source,
+            fields=[
+                form_components_0props_fields_0
+            ],
+            multiple=True,
+            limit=5,
+            available_templates=[
+                form_components_0props_available_templates_0
+            ],
+            table_view_mode='table'
+        )
+        form_components_0 = dingtalkworkflow__1__0_models.SaveProcessRequestFormComponents(
+            component_type='TextField',
+            props=form_components_0props,
+            children=[
+                form_components_0children_0
+            ]
+        )
+        save_process_request = dingtalkworkflow__1__0_models.SaveProcessRequest(
+            name='Tuntutan Perbelanjaan Perjalanan Perniagaan',
+            description='Digunakan untuk tuntutan perbelanjaan perjalanan pekerja',
+            form_components=[
+                form_components_0
+            ]
+        )
+        try:
+            await client.save_process_with_options_async(save_process_request, save_process_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu mengesan isu
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest\formComponents;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest\formComponents\props;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveProcessRequest\processFeatureConfig;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan Client akaun dengan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $saveProcessHeaders = new SaveProcessHeaders([]);
+        $saveProcessHeaders->xAcsDingtalkAccessToken = "<your access token>";
+           $formComponents0Props = new \AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\FormCreateRequest\formComponents\props([
+            "componentId" => "TextField-abcd",
+            "label" => "Nama",
+            "required" => true,
+            "content" => "Ini ialah kawalan nota teks",
+            "placeholder" => "Masukkan",
+            "bizAlias" => "finance_name",
+            "disabled" => true,         
+        ]);
+        $formComponents0 = new formComponents([
+            "componentType" => "TextField",
+            "props" => $formComponents0Props,
+        ]);
+        
+$processFeatureConfig0 = new processFeatureConfig([
+        ]);
+        $saveProcessRequest = new SaveProcessRequest([
+            "name" => "Tuntutan Perbelanjaan Perjalanan Perniagaan",
+            "description" => "Digunakan untuk tuntutan perbelanjaan perjalanan pekerja",
+            "formComponents" => [
+                $formComponents0
+            ],
+            "processFeatureConfig" => [
+                $processFeatureConfig0 
+            ]
+        ]);
+        try {
+            $client->saveProcessWithOptions($saveProcessRequest, $saveProcessHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message yang membantu mengesan isu
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Mulakan Client akaun dengan Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  saveProcessHeaders := &dingtalkworkflow_1_0.SaveProcessHeaders{}
+  saveProcessHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  formComponents0Props := &dingtalkworkflow_1_0.SaveProcessRequestFormComponentsProps{
+    ComponentId: tea.String("TextField-abcd"),
+    Label: tea.String("Nama"),
+    Required: tea.Bool(true),
+    Content: tea.String("Ini ialah kawalan nota teks"),
+    Placeholder: tea.String("Masukkan"),
+    BizAlias: tea.String("finance_name"),
+    Duration: tea.Bool(true),
+  
+  formComponents0 := &dingtalkworkflow_1_0.SaveProcessRequestFormComponents{
+    ComponentType: tea.String("TextField"),
+    Props: formComponents0Props,
+  }
+  processFeatureConfig0 := &dingtalkworkflow_1_0.SaveProcessRequestProcessFeatureConfig{
+  }
+  saveProcessRequest := &dingtalkworkflow_1_0.SaveProcessRequest{
+    Name: tea.String("Tuntutan Perbelanjaan Perjalanan Perniagaan"),
+    Description: tea.String("Digunakan untuk tuntutan perbelanjaan perjalanan pekerja"),
+    FormComponents: []*dingtalkworkflow_1_0.SaveProcessRequestFormComponents{formComponents0},
+    ProcessFeatureConfig: dingtalkworkflow_1_0.SaveProcessRequestProcessFeatureConfig{processFeatureConfig0}
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.SaveProcessWithOptions(saveProcessRequest, saveProcessHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message yang membantu mengesan isu
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```typescript
+// Fail ini dijana secara automatik, jangan suntingnya
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Mulakan Client akaun dengan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let saveProcessHeaders = new $dingtalkworkflow_1_0.SaveProcessHeaders({ });
+    saveProcessHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let formComponents0Props = new $dingtalkworkflow_1_0.SaveProcessRequestFormComponentsProps({
+      componentId: "TextField-abcd",
+      label: "Nama",
+      required: true,
+      content: "Ini ialah kawalan nota teks",
+      placeholder: "Masukkan",
+      bizAlias: "finance_name",
+      disabled: true,  
+    });
+    let formComponents0 = new $dingtalkworkflow_1_0.SaveProcessRequestFormComponents({
+      componentType: "TextField",
+      props: formComponents0Props,
+    });
+    let processFeatureConfig0 = new $dingtalkworkflow_1_0.SaveProcessRequestFormComponents({
+    });
+    let saveProcessRequest = new $dingtalkworkflow_1_0.SaveProcessRequest({
+      name: "Tuntutan Perbelanjaan Perjalanan Perniagaan",
+      description: "Digunakan untuk tuntutan perbelanjaan perjalanan pekerja",
+      formComponents: [
+        formComponents0
+      ],
+      processFeatureConfig: processFeatureConfig0,
+    });
+    try {
+      await client.saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err mengandungi atribut code dan message yang membantu mengesan isu
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Mulakan Client akaun dengan Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessHeaders saveProcessHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessHeaders();
+            saveProcessHeaders.XAcsDingtalkAccessToken = "<your access token>";
+                   AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents.SaveProcessRequestFormComponentsProps formComponents0Props = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents.SaveProcessRequestFormComponentsProps
+            {
+                ComponentId = "TextField-abcd",
+                Label = "Nama",
+                Required = true,
+                Content = "Ini ialah kawalan nota teks",
+                BizAlias = "finance_name",
+                Disabled = true,
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents formComponents0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents
+            {
+                ComponentType = "TextField",
+                Props = formComponents0Props,
+ 
+            };
+
+AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestProcessFeatureConfig processFeatureConfig0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestProcessFeatureConfig
+            {
+        
+ 
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest saveProcessRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest
+            {
+                Name = "Tuntutan Perbelanjaan Perjalanan Perniagaan",
+                Description = "Digunakan untuk tuntutan perbelanjaan perjalanan pekerja",
+                FormComponents = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveProcessRequest.SaveProcessRequestFormComponents>
+                {
+                    formComponents0
+                },
+ProcessFeatureConfig = processFeatureConfig0,
+            };
+            try
+            {
+                client.SaveProcessWithOptions(saveProcessRequest, saveProcessHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu mengesan isu
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu mengesan isu
+                }
+            }
+        }
+
+    }
+}
+```
+
+C++
+
+```cpp
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+#include <alibabacloud/dingtalkworkflow__1__0.hpp>
+#include <alibabacloud/open_api.hpp>
+#include <boost/any.hpp>
+#include <darabonba/core.hpp>
+#include <darabonba/util.hpp>
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+Alibabacloud_Dingtalkworkflow_1_0::Client createClient() {
+  shared_ptr<Alibabacloud_OpenApi::Config> config = make_shared<Alibabacloud_OpenApi::Config>();
+  config->protocol = make_shared<string>("https");
+  config->regionId = make_shared<string>("central");
+  return Alibabacloud_Dingtalkworkflow_1_0::Client(config);
+}
+
+int main(int argc, char *args[]) {
+  args++;
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::Client> client = make_shared<Alibabacloud_Dingtalkworkflow_1_0::Client>(createClient());
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessHeaders> saveProcessHeaders = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessHeaders>();
+  saveProcessHeaders->xAcsDingtalkAccessToken = make_shared<string>("<your access token>");
+  
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponentsProps> formComponents0Props = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponentsProps>(map<string, boost::any>({
+    {"componentId", boost::any(string("TextField-abcd"))},
+    {"label", boost::any(string("Nama"))},
+    {"required", boost::any(true)},
+    {"content", boost::any(string("Ini ialah kawalan nota teks"))},
+    {"placeholder", boost::any(string("Masukkan"))},
+    {"bizAlias", boost::any(string("finance_name"))},
+  }));
+
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestProcessFeatureConfig> processFeatureConfig0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestProcessFeatureConfig>();
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponents> formComponents0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponents>(map<string, boost::any>({
+    {"componentType", boost::any(string("TextField"))},
+    {"props", !formComponents0Props ? boost::any() : boost::any(*formComponents0Props)},
+
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequest> saveProcessRequest = make_shared<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequest>(map<string, boost::any>({
+    {"name", boost::any(string("Tuntutan Perbelanjaan Perjalanan Perniagaan"))},
+    {"description", boost::any(string("Digunakan untuk tuntutan perbelanjaan perjalanan pekerja"))},
+    {"formComponents", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::SaveProcessRequestFormComponents>({
+      formComponents0
+    }))}
+    {"processFeatureConfig", processFeatureConfig}
+  }));
+  try {
+    client->saveProcessWithOptions(saveProcessRequest, saveProcessHeaders, make_shared<Darabonba_Util::RuntimeOptions>(Darabonba_Util::RuntimeOptions()));
+  }
+  catch (std::exception &err) {
+    if (!Darabonba_Util::Client::empty(err.code) && !Darabonba_Util::Client::empty(err.message)) {
+      // err mengandungi atribut code dan message yang membantu mengesan isu
+    }
+  }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| result | Object | Maklumat templat borang. |
+| processCode | String | Kod borang yang disimpan atau dikemas kini. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "processCode" : "PROC-abcdef-example"
+  }
+}
+```
+
+### Kod ralat
+
+Jika panggilan API ini mengembalikan ralat, cari penyelesaian berdasarkan mesej ralat dalam [Kod ralat global](/ms/open/development/server-api-error-codes-1).
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | formschema.error | Kawalan borang yang digunakan dalam cabang bersyarat aliran kerja tidak boleh diubah suai atau dipadam | Jenis kawalan borang yang digunakan dalam cabang bersyarat aliran kerja tidak boleh diubah suai, dan kawalan tersebut tidak boleh dipadam |
+| 400 | permission.error | Tiada kebenaran akses | Tiada kebenaran akses |
+| 400 | processcode.error | Proses kelulusan untuk processCode ini tidak wujud | Proses kelulusan untuk processCode ini tidak wujud |
+| 400 | formschema.error | %s | Skema borang tidak sah |
+| 400 | formName.error | Borang dengan nama yang sama sudah wujud | Nama borang tidak sah |
+| 400 | parameter.error | Ralat parameter konfigurasi Pusat Proses: %s | Ralat parameter konfigurasi Pusat Proses |
+| 400 | processes.error | Gagal mendapatkan senarai templat | Gagal mendapatkan senarai templat |
+| 400 | processes.error | Bilangan aliran kerja kelulusan melebihi had | Bilangan aliran kerja kelulusan melebihi had |
+| 400 | needAuth | Tiada kebenaran untuk memulakan kelulusan | Tiada kebenaran untuk memulakan kelulusan |
+| 400 | invalidAgentId | ID aplikasi mikro tidak sah | ID aplikasi mikro tidak sah |
+| 400 | invalidSuiteKey | suiteKey tidak sah | suiteKey tidak sah |
+| 400 | internalError | %s | Ralat sistem dalaman |
+| 400 | system.error | Gagal menambah maklumat lanjutan borang | Gagal menambah atribut lanjutan proses |
+| 400 | aflowProcessSetupNoPermission | Tiada kebenaran untuk mengendalikan aliran kerja kelulusan. Semak sama ada processCode adalah betul. | Tiada kebenaran untuk mengendalikan aliran kerja kelulusan. Semak sama ada processCode adalah betul. |
+| 500 | system.error | Ralat sistem | Ralat sistem |

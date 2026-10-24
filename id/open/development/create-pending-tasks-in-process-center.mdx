@@ -1,0 +1,716 @@
+---
+title: "Membuat tugas tertunda di Pusat Proses"
+description: "Panggil API DingTalk untuk membuat tugas tertunda bagi instans alur kerja Persetujuan OA. Atur penerima tugas, tautan pengalihan, dan tenggat waktu."
+---
+
+Panggil API ini untuk membuat tugas Tugas bagi Persetujuan OA.
+
+## Permintaan
+
+### Informasi dasar
+
+| Bidang | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/workflow/processCentres/tasks |
+| Metode HTTP | POST |
+| Jenis aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-qyapi_aflow-Izin pengelolaan data alur persetujuan |
+
+### Header permintaan
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkan dengan cara berikut:   - Aplikasi internal: Panggil API [Mendapatkan access token aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app). - Aplikasi perusahaan pihak ketiga: Panggil API untuk mendapatkan access token organisasi yang telah memberikan otorisasi kepada Aplikasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Deskripsi |
+| --- | --- | --- | --- |
+| processInstanceId | String | Ya | ID instans alur kerja Persetujuan OA. Panggil API [Membuat instans](/id/open/development/create-a-ticket-approval-instance) untuk mendapatkan nilai `processInstanceId`. |
+| activityId | String | Tidak | ID node persetujuan kustom. Ini adalah parameter kustom dengan panjang maksimum 256 karakter. |
+| tasks | Array | Ya | Daftar tugas. Maksimum: 20 elemen. |
+| userId | String | Tidak | ID pengguna. Panggil API [Mendapatkan daftar ID pengguna di departemen](/id/open/development/query-the-list-of-department-userids) untuk mendapatkannya. |
+| url | String | Tidak | URL pengalihan item Tugas. Panjang maksimum: 1.024 karakter.  - url pada API pembuatan instans persetujuan mengarahkan ke Formulir persetujuan di aplikasi Persetujuan DingTalk. - url pada API ini mengarahkan dari Kartu Tugas terkait di halaman Tugas DingTalk. - Halaman Tugas DingTalk mendukung klien seluler dan PC. Pastikan halaman untuk url yang dikirimkan ke API ini kompatibel dengan seluler dan PC. |
+| customData | String | Tidak | Data kustom pengguna. Data ini dikembalikan melalui parameter URL saat pengalihan halaman. Panjang maksimum: 500 karakter. |
+| dueTimestamp | Long | Tidak | Tenggat waktu tugas, berupa Unix timestamp dalam milidetik. Jika diatur, pusat Tugas DingTalk menampilkan tenggat waktu tugas persetujuan, mendukung pengurutan berdasarkan tenggat waktu, serta mendukung pemfilteran berdasarkan tag seperti Jatuh Tempo Hari Ini dan Terlambat. |
+| featureConfig | Object | Tidak | Konfigurasi integrasi Pusat Proses. Konfigurasikan entri tombol tindakan pintasan di item Tugas dan Notifikasi Kartu untuk setiap tugas. |
+| features | Array | Tidak | Daftar konfigurasi. |
+| name | String | Tidak | Nama modul fitur yang dapat dikustomisasi oleh pihak ketiga. Saat ini didukung:   - **CUSTOM_SHORTCUT**: Tombol tindakan pintasan di item Tugas dan Notifikasi Kartu |
+| pcUrl | String | Tidak | Tautan pengalihan kustom pihak ketiga untuk PC. Panjang maksimum: 1.024 karakter. |
+| mobileUrl | String | Tidak | Tautan pengalihan kustom pihak ketiga untuk seluler. Panjang maksimum: 1.024 karakter. |
+| runType | String | Tidak | Mode eksekusi.  Jika features.name bernilai `CUSTOM_SHORTCUT`, nilai berikut didukung:   - **ORIGIN**: Mode native. Membuka halaman detail Tugas akan mengarahkan ke halaman detail Persetujuan resmi. - **REDIRECT**: Mode pengalihan eksternal. Membuka halaman detail Tugas akan mengarahkan ke alamat yang dikonfigurasi di pcUrl atau mobileUrl. |
+| callback | Object | Tidak | Konfigurasi Callback gateway. Wajib diisi jika tombol tindakan pintasan diperlukan. API data eksternal yang dipanggil kembali melalui gateway harus didaftarkan sebagai gateway di "Manajemen Sumber Data". Untuk detailnya, lihat Membuat Sumber Data. |
+| appUuid | String | Tidak | appUuid gateway. Wajib diisi jika tombol tindakan pintasan diperlukan.  Isi dengan ID organisasi dari Organisasi pemilik Sumber Data. |
+| apiKey | String | Tidak | apiKey gateway. Wajib diisi jika entri tombol tindakan pintasan diperlukan. Dapatkan `apiKey` dari Sumber Data yang telah Anda buat.  - Saat gateway memanggil kembali API eksternal, DingTalk mengembalikan parameter yang diperlukan untuk pemrosesan bisnis kepada ISV sesuai skenario bisnis. Agar dapat mengurai parameter tersebut setelah menerima Permintaan callback, ISV harus mengonfigurasi key parameter yang sesuai saat membuat Sumber Data.   Contohnya, jika callback dikonfigurasi untuk modul eksekusi tugas TASK_EXECUTE (tombol Terima dan Tolak di halaman detail), DingTalk mengembalikan parameter tetap berikut: `&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"Terima","title":"Permintaan pengadaan aset yang diajukan oleh xxx","taskId":111,"operator":"manager0001"&#125;`. - Saat membuat Sumber Data, ISV harus mengonfigurasi key yang akan diurai sesuai kebutuhan bisnis: outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | Tidak | Versi API gateway.  - Wajib diisi jika entri tombol tindakan pintasan diperlukan. - Default: 1. |
+| config | String | Tidak | Konfigurasi modul fitur yang dikustomisasi oleh pihak ketiga. Panjang maksimum: 1.024 karakter. |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/tasks HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:xxxx
+Content-Type:application/json
+
+{
+  "processInstanceId" : "S3j8rbiNT1CsXXXXXV3Q1Q04431661334483",
+  "activityId" : "act_xxxxx",
+  "tasks" : [ {
+    "userId" : "manager001",
+    "url" : "https://www.dingtalk.io",
+    "customData" : "test***",
+    "dueTimestamp" : 1758729600000
+  } ],
+  "featureConfig" : {
+    "features" : [ {
+      "name" : "CUSTOM_SHORTCUT",
+      "pcUrl" : "www.dingtalk.io",
+      "mobileUrl" : "www.dingtalk.io",
+      "runType" : "REDIRECT",
+      "callback" : {
+        "appUuid" : "corpId organisasi developer",
+        "apiKey" : "apiKey yang dihasilkan setelah konfigurasi Sumber Data",
+        "version" : "1"
+      },
+      "config" : "{\\\"shortcutStyle\\\":\\\"EXECUTE_ACTION\\\",       \\\"buttonConfig\\\":{\\\"agreeBtn\\\":\\\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\\\",\\\"refuseBtn\\\":\\\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\\\"}}"
+    } ]
+  }
+}
+```
+
+Java
+
+```java
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Inisialisasi Client akun dengan Token</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskHeaders createIntegratedTaskHeaders = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskHeaders();
+        createIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<access token Anda>";
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback()
+                .setAppUuid("corpId organisasi developer")
+                .setApiKey("apiKey yang dihasilkan setelah konfigurasi Sumber Data")
+                .setVersion("1");
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeatures featureConfigFeatures0 = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeatures()
+                .setName("CUSTOM_SHORTCUT")
+                .setPcUrl("www.dingtalk.io")
+                .setMobileUrl("www.dingtalk.io")
+                .setRunType("REDIRECT")
+                .setCallback(featureConfigFeatures0Callback)
+                .setConfig("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}");
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig featureConfig = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig()
+                .setFeatures(java.util.Arrays.asList(
+                    featureConfigFeatures0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks tasks0 = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks()
+                .setUserId("manager001")
+                .setUrl("https://www.dingtalk.io")
+                .setCustomData("test***")
+                .setDueTimestamp(1758729600000L);
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest createIntegratedTaskRequest = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest()
+                .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+                .setActivityId("act_xxxxx")
+                .setTasks(java.util.Arrays.asList(
+                    tasks0
+                ))
+                .setFeatureConfig(featureConfig);
+        try {
+            client.createIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi atribut code dan message untuk membantu menemukan masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err berisi atribut code dan message untuk membantu menemukan masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Inisialisasi Client akun dengan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_integrated_task_headers = dingtalkworkflow__1__0_models.CreateIntegratedTaskHeaders()
+        create_integrated_task_headers.x_acs_dingtalk_access_token = '<access token Anda>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback(
+            app_uuid='corpId organisasi developer',
+            api_key='apiKey yang dihasilkan setelah konfigurasi Sumber Data',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeatures(
+            name='CUSTOM_SHORTCUT',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        tasks_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestTasks(
+            user_id='manager001',
+            url='https://www.dingtalk.io',
+            custom_data='test***',
+            due_timestamp=1758729600000
+        )
+        create_integrated_task_request = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequest(
+            process_instance_id='S3j8rbiNT1CsXXXXXV3Q1Q04431661334483',
+            activity_id='act_xxxxx',
+            tasks=[
+                tasks_0
+            ],
+            feature_config=feature_config
+        )
+        try:
+            client.create_integrated_task_with_options(create_integrated_task_request, create_integrated_task_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi atribut code dan message untuk membantu menemukan masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_integrated_task_headers = dingtalkworkflow__1__0_models.CreateIntegratedTaskHeaders()
+        create_integrated_task_headers.x_acs_dingtalk_access_token = '<access token Anda>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback(
+            app_uuid='corpId organisasi developer',
+            api_key='apiKey yang dihasilkan setelah konfigurasi Sumber Data',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeatures(
+            name='CUSTOM_SHORTCUT',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        tasks_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestTasks(
+            user_id='manager001',
+            url='https://www.dingtalk.io',
+            custom_data='test***',
+            due_timestamp=1758729600000
+        )
+        create_integrated_task_request = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequest(
+            process_instance_id='S3j8rbiNT1CsXXXXXV3Q1Q04431661334483',
+            activity_id='act_xxxxx',
+            tasks=[
+                tasks_0
+            ],
+            feature_config=feature_config
+        )
+        try:
+            await client.create_integrated_task_with_options_async(create_integrated_task_request, create_integrated_task_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err berisi atribut code dan message untuk membantu menemukan masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\featureConfig\features\callback;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\featureConfig\features;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\featureConfig;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\tasks;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Inisialisasi Client akun dengan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $createIntegratedTaskHeaders = new CreateIntegratedTaskHeaders([]);
+        $createIntegratedTaskHeaders->xAcsDingtalkAccessToken = "<access token Anda>";
+        $featureConfigFeatures0Callback = new callback([
+            "appUuid" => "corpId organisasi developer",
+            "apiKey" => "apiKey yang dihasilkan setelah konfigurasi Sumber Data",
+            "version" => "1"
+        ]);
+        $featureConfigFeatures0 = new features([
+            "name" => "CUSTOM_SHORTCUT",
+            "pcUrl" => "www.dingtalk.io",
+            "mobileUrl" => "www.dingtalk.io",
+            "runType" => "REDIRECT",
+            "callback" => $featureConfigFeatures0Callback,
+            "config" => "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}"
+        ]);
+        $featureConfig = new featureConfig([
+            "features" => [
+                $featureConfigFeatures0
+            ]
+        ]);
+        $tasks0 = new tasks([
+            "userId" => "manager001",
+            "url" => "https://www.dingtalk.io",
+            "customData" => "test***",
+            "dueTimestamp" => 1758729600000
+        ]);
+        $createIntegratedTaskRequest = new CreateIntegratedTaskRequest([
+            "processInstanceId" => "S3j8rbiNT1CsXXXXXV3Q1Q04431661334483",
+            "activityId" => "act_xxxxx",
+            "tasks" => [
+                $tasks0
+            ],
+            "featureConfig" => $featureConfig
+        ]);
+        try {
+            $client->createIntegratedTaskWithOptions($createIntegratedTaskRequest, $createIntegratedTaskHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err berisi atribut code dan message untuk membantu menemukan masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Deskripsi:
+// 
+// Inisialisasi Client akun dengan Token
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  createIntegratedTaskHeaders := &dingtalkworkflow_1_0.CreateIntegratedTaskHeaders{}
+  createIntegratedTaskHeaders.XAcsDingtalkAccessToken = tea.String("<access token Anda>")
+  featureConfigFeatures0Callback := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback{
+    AppUuid: tea.String("corpId organisasi developer"),
+    ApiKey: tea.String("apiKey yang dihasilkan setelah konfigurasi Sumber Data"),
+    Version: tea.String("1"),
+  }
+  featureConfigFeatures0 := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeatures{
+    Name: tea.String("CUSTOM_SHORTCUT"),
+    PcUrl: tea.String("www.dingtalk.io"),
+    MobileUrl: tea.String("www.dingtalk.io"),
+    RunType: tea.String("REDIRECT"),
+    Callback: featureConfigFeatures0Callback,
+    Config: tea.String("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}"),
+  }
+  featureConfig := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfig{
+    Features: []*dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeatures{featureConfigFeatures0},
+  }
+  tasks0 := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestTasks{
+    UserId: tea.String("manager001"),
+    Url: tea.String("https://www.dingtalk.io"),
+    CustomData: tea.String("test***"),
+    DueTimestamp: tea.Int64(1758729600000),
+  }
+  createIntegratedTaskRequest := &dingtalkworkflow_1_0.CreateIntegratedTaskRequest{
+    ProcessInstanceId: tea.String("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483"),
+    ActivityId: tea.String("act_xxxxx"),
+    Tasks: []*dingtalkworkflow_1_0.CreateIntegratedTaskRequestTasks{tasks0},
+    FeatureConfig: featureConfig,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.CreateIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err berisi atribut code dan message untuk membantu menemukan masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```javascript
+'use strict';
+// File ini dibuat secara otomatis, jangan diedit
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Inisialisasi Client akun dengan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let createIntegratedTaskHeaders = new dingtalkworkflow_1_0.CreateIntegratedTaskHeaders({ });
+    createIntegratedTaskHeaders.xAcsDingtalkAccessToken = '<access token Anda>';
+    let featureConfigFeatures0Callback = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback({
+      appUuid: 'corpId organisasi developer',
+      apiKey: 'apiKey yang dihasilkan setelah konfigurasi Sumber Data',
+      version: '1',
+    });
+    let featureConfigFeatures0 = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeatures({
+      name: 'CUSTOM_SHORTCUT',
+      pcUrl: 'www.dingtalk.io',
+      mobileUrl: 'www.dingtalk.io',
+      runType: 'REDIRECT',
+      callback: featureConfigFeatures0Callback,
+      config: '{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'test\',\'zh_HK\':\'test\',\'zh_TW\':\'test\'}}","refuseBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'test\',\'zh_HK\':\'test\',\'zh_TW\':\'test\'}}"}}',
+    });
+    let featureConfig = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfig({
+      features: [
+        featureConfigFeatures0
+      ],
+    });
+    let tasks0 = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestTasks({
+      userId: 'manager001',
+      url: 'https://www.dingtalk.io',
+      customData: 'test***',
+      dueTimestamp: 1758729600000,
+    });
+    let createIntegratedTaskRequest = new dingtalkworkflow_1_0.CreateIntegratedTaskRequest({
+      processInstanceId: 'S3j8rbiNT1CsXXXXXV3Q1Q04431661334483',
+      activityId: 'act_xxxxx',
+      tasks: [
+        tasks0
+      ],
+      featureConfig: featureConfig,
+    });
+    try {
+      await client.createIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err berisi atribut code dan message untuk membantu menemukan masalah
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// File ini dibuat secara otomatis, jangan diedit. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Deskripsi:</b></term>
+        /// <description>
+        /// <para>Inisialisasi Client akun dengan Token</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskHeaders createIntegratedTaskHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskHeaders();
+            createIntegratedTaskHeaders.XAcsDingtalkAccessToken = "<access token Anda>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback
+            {
+                AppUuid = "corpId organisasi developer",
+                ApiKey = "apiKey yang dihasilkan setelah konfigurasi Sumber Data",
+                Version = "1",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures featureConfigFeatures0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures
+            {
+                Name = "CUSTOM_SHORTCUT",
+                PcUrl = "www.dingtalk.io",
+                MobileUrl = "www.dingtalk.io",
+                RunType = "REDIRECT",
+                Callback = featureConfigFeatures0Callback,
+                Config = "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig featureConfig = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig
+            {
+                Features = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures>
+                {
+                    featureConfigFeatures0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks tasks0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks
+            {
+                UserId = "manager001",
+                Url = "https://www.dingtalk.io",
+                CustomData = "test***",
+                DueTimestamp = 1758729600000,
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest createIntegratedTaskRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest
+            {
+                ProcessInstanceId = "S3j8rbiNT1CsXXXXXV3Q1Q04431661334483",
+                ActivityId = "act_xxxxx",
+                Tasks = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks>
+                {
+                    tasks0
+                },
+                FeatureConfig = featureConfig,
+            };
+            try
+            {
+                client.CreateIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi atribut code dan message untuk membantu menemukan masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err berisi atribut code dan message untuk membantu menemukan masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Deskripsi |
+| --- | --- | --- |
+| result | Array | Daftar hasil yang dikembalikan. |
+| taskId | Long | ID tugas Persetujuan OA. |
+| userId | String | ID pengguna penerima tugas Persetujuan OA. |
+| success | Boolean | Menunjukkan apakah tugas berhasil dibuat. true menandakan Berhasil. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : [ {
+    "taskId" : 1234567,
+    "userId" : "manager001"
+  } ],
+  "success" : true
+}
+```
+
+### Kode error
+
+Jika panggilan gagal, cari solusinya di dokumen [Kode error global](/id/open/development/server-api-error-codes-1) berdasarkan pesan error.
+
+| HttpCode | Kode error | Pesan error | Deskripsi |
+| --- | --- | --- | --- |
+| 400 | integrated.concurrency.error | Pembuatan tugas dan instans secara bersamaan tidak didukung. Coba lagi nanti. | Pembuatan tugas dan instans secara bersamaan tidak didukung. Coba lagi nanti. |
+| 400 | integrated.state.invalid | Instans alur kerja telah berakhir. Tugas baru tidak dapat dibuat lagi. | Instans alur kerja telah berakhir. Tugas baru tidak dapat dibuat lagi. |
+| 400 | integrated.number.exceed | Jumlah tugas alur kerja telah mencapai batas maksimum. | Jumlah tugas alur kerja telah mencapai batas maksimum. |
+| 400 | integrated.qps.exceed | Jumlah panggilan API ini telah melampaui batas hari ini. Coba lagi besok. | Jumlah panggilan API ini telah melampaui batas hari ini. Coba lagi besok. |
+| 400 | integrated.state.invalid | Instans alur kerja tidak ada. | Instans alur kerja tidak ada. |
+| 400 | internalError | %s | Error sistem internal. |
+| 400 | process.inst.notExist | Formulir persetujuan tidak ada atau telah dihapus. | Formulir persetujuan tidak ada atau telah dihapus. |
+| 400 | setup.no.permission | Tidak memiliki izin untuk mengoperasikan alur persetujuan. Periksa apakah instans persetujuan sudah benar. | Tidak memiliki izin untuk mengoperasikan alur persetujuan. Periksa apakah instans persetujuan sudah benar. |
+| 400 | tasks.is.null | Error parameter: daftar tugas tasks tidak boleh kosong. | Error parameter: daftar tugas tasks tidak boleh kosong. |
+| 400 | task.url.error | url pada daftar tugas tasks tidak boleh melebihi 1.024 karakter. | url pada daftar tugas tasks tidak boleh melebihi 1.024 karakter. |
+| 400 | task.dueTime.error | Tenggat waktu dueTimestamp pada daftar tugas tasks tidak boleh lebih awal dari waktu pembuatan tugas. | Tenggat waktu dueTimestamp pada daftar tugas tasks tidak boleh lebih awal dari waktu pembuatan tugas. |
+| 500 | system.error | Error sistem | Error sistem |

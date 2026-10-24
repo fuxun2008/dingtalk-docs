@@ -1,0 +1,159 @@
+---
+title: "Dapatkan nilai lajur laporan kehadiran"
+description: "Panggil API DingTalk ini untuk mendapatkan nilai dan maklumat lajur laporan kehadiran Smart Attendance mengikut ID pengguna, ID lajur dan julat masa."
+---
+
+Panggil API ini untuk mendapatkan data nilai lajur daripada laporan kehadiran DingTalk Smart Attendance. Data ini merangkumi semua nilai bagi sesuatu lajur laporan dalam julat masa yang ditetapkan, berserta maklumat lajur yang berkaitan, untuk digunakan oleh ISV yang ditetapkan.
+
+## Penerangan panggilan API
+
+- Maklumat kehadiran pengguna yang telah meninggalkan organisasi tidak boleh diperoleh melalui API ini. Semak data kehadiran pengguna tersebut di [OA Admin Console](https://attend.dingtalk.io/portal/index.html).
+- Apabila anda mendapatkan nilai medan "Hari kehadiran wajib", API ini hanya memulangkan nilai dalam tempoh 15 hari terakhir. Bagi tarikh yang melebihi 15 hari lalu, nilai hari kehadiran wajib ialah 0.
+
+## Permintaan
+
+| **Maklumat asas** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/getcolumnval |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran | permission-qyapi_base-Kebenaran asas yang diperlukan untuk memanggil API organisasi |
+
+### Parameter query
+
+| Nama | Jenis | Wajib | Contoh | Penerangan |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | 6d1bxxxx | Kelayakan aplikasi yang digunakan untuk memanggil API ini.   - Bagi Aplikasi dalaman, panggil API [Dapatkan access_token Aplikasi dalaman](/ms/open/development/obtain-orgapp-token) untuk mendapatkannya. - Bagi Aplikasi perusahaan pihak ketiga, panggil API untuk mendapatkan access_token organisasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Contoh | Penerangan |
+| --- | --- | --- | --- | --- |
+| userid | String | Ya | manager4220 | ID pengguna bagi pengguna tersebut. |
+| column_id_list | String | Ya | 129339038 | ID lajur laporan. Panggil API [Dapatkan definisi lajur laporan kehadiran](/ms/open/development/queries-the-enterprise-attendance-report-column) untuk mendapatkan nilai parameter id. Pisahkan berbilang nilai dengan koma. Panjang maksimum: 20. |
+| from_date | Date | Ya | 2018-07-11 12:12:12 | Masa mula. |
+| to_date | Date | Ya | 2018-07-11 12:12:12 | Masa tamat. Selang antara masa mula dengan masa tamat mestilah dalam lingkungan 31 hari. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/getcolumnval" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=4bfc0fxxxx3916c7' \
+-d 'column_id_list=1%2C2%2C3' \
+-d 'from_date=2018-07-11+12%3A12%3A12' \
+-d 'to_date=2018-07-11+12%3A12%3A12' \
+-d 'userid=zhangsan'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+req.setUserid("manager4220");
+req.setColumnIdList("129339038");
+req.setFromDate(StringUtils.parseDateTime("2020-09-07 12:12:12"));
+req.setToDate(StringUtils.parseDateTime("2020-09-09 12:12:12"));
+OapiAttendanceGetcolumnvalResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGetcolumnvalRequest("https://api.dingtalk.io/topapi/attendance/getcolumnval")
+
+req.userid="zhangsan"
+req.column_id_list="1,2,3"
+req.from_date="2018-07-11 12:12:12"
+req.to_date="2018-07-11 12:12:12"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGetcolumnvalRequest;
+$req->setUserid("zhangsan");
+$req->setColumnIdList("1,2,3");
+$req->setFromDate("2018-07-11 12:12:12");
+$req->setToDate("2018-07-11 12:12:12");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/getcolumnval");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+req.Userid = "zhangsan";
+req.ColumnIdList = "1,2,3";
+req.FromDate = DateTime.Parse("2018-07-11 12:12:12");
+req.ToDate = DateTime.Parse("2018-07-11 12:12:12");
+OapiAttendanceGetcolumnvalResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Contoh | Penerangan |
+| --- | --- | --- | --- |
+| request_id | String | 45n2azecqj21 | ID permintaan. |
+| errcode | Number | 0 | Kod pulangan. |
+| result | ColumnValListForTopVo |  | Hasil yang dipulangkan. |
+| column_vals | ColumnValForTopVo[] |  | Maklumat lajur dan data nilai lajur. |
+| column_vals | ColumnDayAndVal[] |  | Data nilai lajur. |
+| date | Date | 2020-09-09 00:00:00 | Tarikh. |
+| value | String | 1.0 | Nilai lajur. |
+| column_vo | ColumnForTopVo |  | Maklumat lajur. |
+| id | Number | 129339038 | ID lajur laporan. |
+| fixed_value | String | 0 | Nilai tetap.  **Nota**  Sesetengah lajur laporan mempunyai nilai tetap. Nilainya hanya dipulangkan dalam medan ini dan tidak dalam column_vals. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "column_vals": [
+      {
+        "column_vals": [
+          {
+            "date": "2020-09-07 00:00:00",
+            "value": "1.0"
+          },
+          {
+            "date": "2020-09-08 00:00:00",
+            "value": "1.0"
+          },
+          {
+            "date": "2020-09-09 00:00:00",
+            "value": "1.0"
+          }
+        ],
+        "column_vo": {
+          "id": 129339038
+        }
+      }
+    ]
+  },
+  "request_id": "45n2azecqj21"
+}
+```
+
+### Kod ralat
+
+Jika ralat berlaku semasa anda memanggil API ini, cari penyelesaian dalam dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1) berdasarkan mesej ralat.

@@ -1,0 +1,278 @@
+---
+title: "Mendapatkan detail grup absensi secara batch"
+description: "Gunakan API DingTalk ini untuk mengambil detail semua grup absensi organisasi Anda dengan paginasi, termasuk pengaturan shift dan aturan absensi."
+---
+
+Panggil API ini untuk mengkueri detail semua grup absensi.
+
+## Deskripsi panggilan API
+
+Di aplikasi Absensi DingTalk, grup absensi adalah sekumpulan pengguna atau departemen yang memiliki aturan absensi yang sama, seperti shift dan lokasi absensi. Organisasi dapat membuat beberapa grup absensi sesuai kebutuhan bisnis.
+
+<Note>
+Berbeda dengan API [Mendapatkan detail grup absensi](/id/open/development/query-a-single-attendance-group), API ini mengembalikan informasi grup absensi yang mencakup pengaturan shift.
+</Note>
+
+Untuk melihat grup absensi, buka **Kelola Grup Absensi** di admin console **Absensi** DingTalk. Misalnya, grup yang dibuat melalui API dapat berupa grup absensi shift tetap dengan shift siang pukul 09.00–18.00 dari Senin hingga Jumat serta hari libur pada Sabtu dan Minggu.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/getsimplegroups |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin | permission-qyapi_base-Izin dasar yang diperlukan untuk memanggil API organisasi |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Untuk Aplikasi internal, panggil API [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). - Untuk Aplikasi perusahaan pihak ketiga, panggil API untuk mendapatkan access_token organisasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| offset | Number | Tidak | 0 | Offset paginasi. Hanya berlaku jika diatur bersama parameter size. Offset dimulai dari 0. Pada panggilan berikutnya, kirim jumlah size dan offset dari panggilan sebelumnya. |
+| size | Number | Tidak | 10 | Ukuran halaman. Nilai maksimum: 10. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/getsimplegroups" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=c4a715xxxx0a0da2' \
+-d 'offset=0' \
+-d 'size=10'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+req.setOffset(0L);
+req.setSize(10L);
+OapiAttendanceGetsimplegroupsResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGetsimplegroupsRequest("https://api.dingtalk.io/topapi/attendance/getsimplegroups")
+
+req.offset=0
+req.size=10
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGetsimplegroupsRequest;
+$req->setOffset("0");
+$req->setSize("10");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+req.Offset = 0L;
+req.Size = 10L;
+OapiAttendanceGetsimplegroupsResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| request_id | String | 8pi2725sgame | ID permintaan. |
+| errcode | Number | 0 | Kode pengembalian. |
+| errmsg | String | ok | Deskripsi kode pengembalian. |
+| result | AtGroupListForTopVo |  | Hasil yang dikembalikan. |
+| has_more | Boolean | true | Digunakan untuk paginasi. Menunjukkan apakah masih ada data lainnya.   - **true**: Ya - **false**: Tidak |
+| groups | AtGroupForTopVo[] |  | Daftar grup absensi. |
+| group_id | Number | 20015047 | ID grup absensi. |
+| is_default | Boolean | false | Menunjukkan apakah ini grup absensi default.   - **false**: Tidak - **true**: Ya |
+| group_name | String | Penjadwalan shift tetap | Nama grup absensi. |
+| selected_class | AtClassVo[] |  | Daftar shift grup absensi. |
+| enable_emp_select_class | Boolean | true | Menunjukkan apakah karyawan dapat memilih shift untuk absen jika penjadwalan shift belum diatur.   - **true**: Diizinkan - **false**: Tidak diizinkan |
+| disable_check_without_schedule | Boolean | false | Menunjukkan apakah karyawan dilarang absen jika penjadwalan shift belum diatur.   - **true**: Dilarang - **false**: Tidak dilarang |
+| disable_check_when_rest | Boolean | true | Menunjukkan apakah absen pada hari libur memerlukan persetujuan.   - **true**: Wajib - **false**: Tidak wajib |
+| setting | ClassSettingVo |  | Pengaturan shift grup absensi. |
+| class_setting_id | Number | 1 | ID pengaturan shift grup absensi. |
+| rest_begin_time | AtTimeVo |  | Waktu mulai istirahat. Hanya tersedia untuk shift dengan satu periode waktu. |
+| check_time | Date | 2017-04-11 11:11:11 | Waktu mulai. |
+| permit_late_minutes | Number | 10 | Durasi keterlambatan yang diizinkan, dalam menit. Nilai -1 menunjukkan bahwa fitur ini dinonaktifkan. |
+| work_time_minutes | Number | -1 | Durasi kerja, dalam menit. Nilai -1 menunjukkan bahwa fitur ini dinonaktifkan. |
+| rest_end_time | AtTimeVo |  | Waktu selesai istirahat. Hanya tersedia untuk shift dengan satu periode waktu. |
+| check_time | Date | 2017-04-11 11:11:11 | Waktu selesai. |
+| absenteeism_late_minutes | Number | 30 | Durasi keterlambatan yang dihitung sebagai mangkir, dalam menit. Nilai -1 menunjukkan bahwa fitur ini dinonaktifkan. |
+| serious_late_minutes | Number | 20 | Durasi keterlambatan berat, dalam menit. Nilai -1 menunjukkan bahwa fitur ini dinonaktifkan. |
+| is_off_duty_free_check | String | Y | Menunjukkan apakah absen pulang bersifat wajib.   - **Y**: Absen pulang tidak wajib - **N**: Absen pulang wajib |
+| class_id | Number | 20008010 | ID shift. |
+| sections | AtSectionVo[] |  | Periode waktu absen pada shift. |
+| times | SetionTimeVO[] |  | Daftar periode waktu. |
+| check_time | Date | 2017-04-11 11:11:11 | Waktu absen. |
+| check_type | String | OnDuty | Tipe absen.   - **OnDuty**: Absen masuk - **OffDuty**: Absen pulang |
+| across | Number | 0 | Rentang hari waktu absen. |
+| class_name | String | A | Nama shift. |
+| type | String | FIXED | Tipe absensi.   - **FIXED**: Penjadwalan shift tetap - **TURN**: Penjadwalan shift bergilir - **NONE**: Tanpa shift |
+| member_count | Number | 1 | Jumlah anggota absensi. |
+| default_class_id | Number | 111 | ID shift default. |
+| work_day_list | String[] | ["0","12","12","12","12","12","0"] | Shift hari kerja untuk shift tetap.  **Catatan**     - 0 menunjukkan hari libur. - Nilai dalam array, dari kiri ke kanan, mewakili penjadwalan shift untuk setiap hari dari Minggu hingga Sabtu. |
+| classes_list | String[] | ["Sen, Sel, Rab, Kam, Jum Shift siang 09.00-16.00 ","Sab, Min Libur"] | Daftar tampilan jadwal shift mingguan. |
+| manager_list | String[] | ["manager4220"] | Sub-admin grup absensi. |
+| dept_name_list | String[] | ["Pemasaran"] | Nama departemen dalam grup absensi. |
+| owner_user_id | String | user456 | Pemilik utama grup absensi. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "groups": [
+      {
+        "group_id": 677765054,
+        "group_name": "Lembur Akhir Pekan",
+        "is_default": false,
+        "owner_user_id": "user456",
+        "manager_list": [
+          "manager4220"
+        ],
+        "member_count": 0,
+        "selected_class": [],
+        "enable_emp_select_class": true,
+        "disable_check_without_schedule": false,
+        "disable_check_when_rest": true,
+        "type": "NONE",
+        "work_day_list": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      {
+        "classes_list": [
+          "Sen, Sel, Rab, Kam A 09.30-18.30 ",
+          "Jum B 19.00-05.00 (hari berikutnya) ",
+          "Sab, Min Libur"
+        ],
+        "default_class_id": 677995086,
+        "dept_name_list": [
+          "Pemasaran",
+          "Dukungan Teknis",
+          "Dokumentasi"
+        ],
+        "group_id": 685935028,
+        "group_name": "Absensi",
+        "is_default": false,
+        "manager_list": [
+          "manager4220"
+        ],
+        "member_count": 3,
+        "selected_class": [
+          {
+            "class_id": 677995086,
+            "class_name": "A",
+            "sections": [
+              {
+                "times": [
+                  {
+                    "across": 0,
+                    "check_time": "1970-01-01 09:30:00",
+                    "check_type": "OnDuty"
+                  },
+                  {
+                    "across": 0,
+                    "check_time": "1970-01-01 18:30:00",
+                    "check_type": "OffDuty"
+                  }
+                ]
+              }
+            ],
+            "setting": {
+              "absenteeism_late_minutes": -1,
+              "class_setting_id": 588655171,
+              "is_off_duty_free_check": "N",
+              "permit_late_minutes": -1,
+              "serious_late_minutes": -1,
+              "work_time_minutes": 540
+            }
+          },
+          {
+            "class_id": 678215070,
+            "class_name": "B",
+            "sections": [
+              {
+                "times": [
+                  {
+                    "across": 0,
+                    "check_time": "1970-01-01 19:00:00",
+                    "check_type": "OnDuty"
+                  },
+                  {
+                    "across": 1,
+                    "check_time": "1970-01-01 05:00:00",
+                    "check_type": "OffDuty"
+                  }
+                ]
+              }
+            ],
+            "setting": {
+              "absenteeism_late_minutes": -1,
+              "class_setting_id": 586985140,
+              "is_off_duty_free_check": "N",
+              "permit_late_minutes": 0,
+              "serious_late_minutes": -1,
+              "work_time_minutes": 600
+                        }
+                    }
+                ],
+                "type": "FIXED",
+                "work_day_list": [
+                    "0",
+                    "677995086",
+                    "677995086",
+                    "677995086",
+                    "677995086",
+                    "678215070",
+                    "0"
+                ],
+                "enable_emp_select_class": true,
+                "disable_check_without_schedule": false,
+                "disable_check_when_rest": true
+            }
+        ],
+        "has_more": false
+    },
+    "request_id": "8pi2725sgame"
+}
+```
+
+### Kode error
+
+Jika terjadi error saat memanggil API ini, cari solusinya di dokumen [Kode error global](/id/open/development/server-api-error-codes-1) berdasarkan pesan error yang muncul.

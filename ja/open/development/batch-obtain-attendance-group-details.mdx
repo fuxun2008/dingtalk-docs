@@ -1,0 +1,278 @@
+---
+title: "勤怠グループ詳細の一括取得"
+description: "勤怠グループの詳細を一括取得する API です。シフト設定を含むリクエスト・レスポンス仕様とサンプルコードを紹介します。"
+---
+
+この API を呼び出して、すべての勤怠グループの詳細を取得します。
+
+## API 呼び出し説明
+
+DingTalk勤怠アプリの勤怠グループとは、シフトや打刻場所などの勤怠ルールが共通するユーザーまたは部署の集まりです。業務上の必要に応じて、複数の勤怠グループを作成できます。
+
+<Note>
+[勤怠グループ詳細の取得](/ja/open/development/query-a-single-attendance-group) API とは異なり、この API はシフト設定を含む勤怠グループ情報を返します。
+</Note>
+
+勤怠グループは、DingTalk **勤怠**の管理コンソールにある **勤怠グループ管理** で確認できます。たとえば、API で作成するグループとして、月曜から金曜は 09:00～18:00 の日勤、土曜と日曜は休日とする固定シフトの勤怠グループが考えられます。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/getsimplegroups |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 権限 | permission-qyapi_base-社内 API の呼び出しに必要な基本権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) API を呼び出してください。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出してください。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| offset | Number | いいえ | 0 | ページングのオフセットです。size パラメータと併せて指定した場合のみ有効です。オフセットは 0 から始まります。次回の呼び出しでは、前回の size と offset の合計値を指定してください。 |
+| size | Number | いいえ | 10 | 1 ページあたりの件数です。最大値は 10 です。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/getsimplegroups" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=c4a715xxxx0a0da2' \
+-d 'offset=0' \
+-d 'size=10'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+req.setOffset(0L);
+req.setSize(10L);
+OapiAttendanceGetsimplegroupsResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGetsimplegroupsRequest("https://api.dingtalk.io/topapi/attendance/getsimplegroups")
+
+req.offset=0
+req.size=10
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGetsimplegroupsRequest;
+$req->setOffset("0");
+$req->setSize("10");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+req.Offset = 0L;
+req.Size = 10L;
+OapiAttendanceGetsimplegroupsResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | 8pi2725sgame | リクエスト ID です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| result | AtGroupListForTopVo |  | 返却結果です。 |
+| has_more | Boolean | true | ページングに使用します。さらにデータがあるかどうかを示します。   - **true**：あり - **false**：なし |
+| groups | AtGroupForTopVo[] |  | 勤怠グループのリストです。 |
+| group_id | Number | 20015047 | 勤怠グループ ID です。 |
+| is_default | Boolean | false | デフォルトの勤怠グループかどうかを示します。   - **false**：いいえ - **true**：はい |
+| group_name | String | 固定シフト | 勤怠グループ名です。 |
+| selected_class | AtClassVo[] |  | 勤怠グループのシフトのリストです。 |
+| enable_emp_select_class | Boolean | true | シフト設定がない場合に、従業員がシフトを選択して打刻できるかどうかを示します。   - **true**：許可 - **false**：不許可 |
+| disable_check_without_schedule | Boolean | false | シフト設定がない場合に、従業員の打刻を禁止するかどうかを示します。   - **true**：禁止 - **false**：禁止しない |
+| disable_check_when_rest | Boolean | true | 休日の打刻に承認が必要かどうかを示します。   - **true**：必要 - **false**：不要 |
+| setting | ClassSettingVo |  | 勤怠グループのシフト設定です。 |
+| class_setting_id | Number | 1 | 勤怠グループのシフト設定 ID です。 |
+| rest_begin_time | AtTimeVo |  | 休憩開始時刻です。時間帯が 1 つのシフトでのみ使用できます。 |
+| check_time | Date | 2017-04-11 11:11:11 | 開始時刻です。 |
+| permit_late_minutes | Number | 10 | 遅刻として許容される時間（分）です。-1 の場合、この機能は無効です。 |
+| work_time_minutes | Number | -1 | 勤務時間（分）です。-1 の場合、この機能は無効です。 |
+| rest_end_time | AtTimeVo |  | 休憩終了時刻です。時間帯が 1 つのシフトでのみ使用できます。 |
+| check_time | Date | 2017-04-11 11:11:11 | 終了時刻です。 |
+| absenteeism_late_minutes | Number | 30 | 欠勤として扱われる遅刻時間（分）です。-1 の場合、この機能は無効です。 |
+| serious_late_minutes | Number | 20 | 重大な遅刻として扱われる時間（分）です。-1 の場合、この機能は無効です。 |
+| is_off_duty_free_check | String | Y | 退勤打刻が必須かどうかを示します。   - **Y**：退勤打刻は不要 - **N**：退勤打刻が必須 |
+| class_id | Number | 20008010 | シフト ID です。 |
+| sections | AtSectionVo[] |  | シフトの打刻時間帯です。 |
+| times | SetionTimeVO[] |  | 時間帯のリストです。 |
+| check_time | Date | 2017-04-11 11:11:11 | 打刻時刻です。 |
+| check_type | String | OnDuty | 打刻タイプです。   - **OnDuty**：出勤打刻 - **OffDuty**：退勤打刻 |
+| across | Number | 0 | 打刻時刻の日付またぎです。 |
+| class_name | String | A | シフト名です。 |
+| type | String | FIXED | 勤怠タイプです。   - **FIXED**：固定シフト - **TURN**：ローテーションシフト - **NONE**：シフトなし |
+| member_count | Number | 1 | 勤怠対象者の人数です。 |
+| default_class_id | Number | 111 | デフォルトのシフト ID です。 |
+| work_day_list | String[] | ["0","12","12","12","12","12","0"] | 固定シフトの勤務日のシフトです。  **注意**     - 0 は休日を示します。 - 配列の値は左から順に、日曜日から土曜日までの各曜日のシフト設定を表します。 |
+| classes_list | String[] | ["月、火、水、木、金 日勤 09:00-16:00 ","土、日 休み"] | 1 週間のシフトの表示用リストです。 |
+| manager_list | String[] | ["manager4220"] | 勤怠グループのサブ管理者です。 |
+| dept_name_list | String[] | ["マーケティング"] | 勤怠グループに含まれる部署名です。 |
+| owner_user_id | String | user456 | 勤怠グループの主担当者です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "groups": [
+      {
+        "group_id": 677765054,
+        "group_name": "週末残業",
+        "is_default": false,
+        "owner_user_id": "user456",
+        "manager_list": [
+          "manager4220"
+        ],
+        "member_count": 0,
+        "selected_class": [],
+        "enable_emp_select_class": true,
+        "disable_check_without_schedule": false,
+        "disable_check_when_rest": true,
+        "type": "NONE",
+        "work_day_list": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ]
+      },
+      {
+        "classes_list": [
+          "月、火、水、木 A 09:30-18:30 ",
+          "金 B 19:00-05:00（翌日） ",
+          "土、日 休み"
+        ],
+        "default_class_id": 677995086,
+        "dept_name_list": [
+          "マーケティング",
+          "テクニカルサポート",
+          "ドキュメント"
+        ],
+        "group_id": 685935028,
+        "group_name": "勤怠",
+        "is_default": false,
+        "manager_list": [
+          "manager4220"
+        ],
+        "member_count": 3,
+        "selected_class": [
+          {
+            "class_id": 677995086,
+            "class_name": "A",
+            "sections": [
+              {
+                "times": [
+                  {
+                    "across": 0,
+                    "check_time": "1970-01-01 09:30:00",
+                    "check_type": "OnDuty"
+                  },
+                  {
+                    "across": 0,
+                    "check_time": "1970-01-01 18:30:00",
+                    "check_type": "OffDuty"
+                  }
+                ]
+              }
+            ],
+            "setting": {
+              "absenteeism_late_minutes": -1,
+              "class_setting_id": 588655171,
+              "is_off_duty_free_check": "N",
+              "permit_late_minutes": -1,
+              "serious_late_minutes": -1,
+              "work_time_minutes": 540
+            }
+          },
+          {
+            "class_id": 678215070,
+            "class_name": "B",
+            "sections": [
+              {
+                "times": [
+                  {
+                    "across": 0,
+                    "check_time": "1970-01-01 19:00:00",
+                    "check_type": "OnDuty"
+                  },
+                  {
+                    "across": 1,
+                    "check_time": "1970-01-01 05:00:00",
+                    "check_type": "OffDuty"
+                  }
+                ]
+              }
+            ],
+            "setting": {
+              "absenteeism_late_minutes": -1,
+              "class_setting_id": 586985140,
+              "is_off_duty_free_check": "N",
+              "permit_late_minutes": 0,
+              "serious_late_minutes": -1,
+              "work_time_minutes": 600
+                        }
+                    }
+                ],
+                "type": "FIXED",
+                "work_day_list": [
+                    "0",
+                    "677995086",
+                    "677995086",
+                    "677995086",
+                    "677995086",
+                    "678215070",
+                    "0"
+                ],
+                "enable_emp_select_class": true,
+                "disable_check_without_schedule": false,
+                "disable_check_when_rest": true
+            }
+        ],
+        "has_more": false
+    },
+    "request_id": "8pi2725sgame"
+}
+```
+
+### エラーコード
+
+この API の呼び出し時にエラーが発生した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。

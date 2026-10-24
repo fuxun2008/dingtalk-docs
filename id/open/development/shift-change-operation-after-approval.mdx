@@ -1,0 +1,168 @@
+---
+title: "Notifikasi persetujuan tukar shift"
+description: "Panggil API DingTalk ini untuk memberi tahu sistem absensi agar melakukan tukar shift setelah persetujuan diberikan, lengkap dengan tanggal tukar, tanggal kembali, dan ID shift."
+---
+
+Panggil API ini untuk memberi tahu sistem absensi agar menjalankan tindakan tukar shift setelah persetujuan tukar shift diberikan. Pengguna dapat menukar shift dengan dirinya sendiri atau dengan pengguna lain.
+
+## Deskripsi panggilan API
+
+Batasan berikut berlaku untuk tukar shift:
+
+- Kedua pihak harus tergabung dalam grup absensi berbasis shift.
+- Kedua pihak harus memiliki shift terjadwal atau hari libur terjadwal pada tanggal tukar maupun tanggal kembali.
+- Waktu absen setelah tukar shift tidak boleh berkonflik. Contoh: shift pada tanggal 1 adalah 08.00-22.00, dan shift pada tanggal 2 adalah 10.00-09.00 (hari berikutnya). Jika shift tanggal 1 dan tanggal 2 ditukar, shift tanggal 1 menjadi 10.00-09.00 (hari berikutnya), dan shift tanggal 2 menjadi 08.00-22.00. Dalam kasus ini, rentang waktu absen tanggal 1 tumpang tindih dengan jam kerja tanggal 2. Kondisi ini disebut konflik waktu absen.
+- Tukar shift tidak dapat dibatalkan.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/approve/schedule/switch |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-qyapi_attendance_group_manage-Izin kelola grup absensi |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Untuk Aplikasi internal, panggil API [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token) untuk memperolehnya. - Untuk Aplikasi perusahaan pihak ketiga, panggil API Mendapatkan access_token Organisasi pihak ketiga untuk memperolehnya. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| userid | String | Ya | manager123 | ID pengguna pengaju. |
+| switch_date | String | Ya | 2019-09-08 | Tanggal tukar shift yang diminta. Pada tanggal ini harus ada shift terjadwal atau hari libur terjadwal. |
+| reback_date | String | Ya | 2019-09-09 | Tanggal kembali. Pada tanggal ini harus ada shift terjadwal atau hari libur terjadwal.  **Catatan**  Jika pemohon dan pengguna target adalah orang yang sama, tanggal kembali wajib diisi. |
+| apply_userid | String | Ya | manager123 | ID pengguna pemohon tukar shift. Hanya mendukung pengguna dalam grup absensi berbasis shift. |
+| target_userid | String | Ya | user123 | ID pengguna target. Hanya mendukung pengguna dalam grup absensi berbasis shift. |
+| approve_id | String | Ya | 2376620852 | ID formulir persetujuan. Nilai ini merupakan parameter kustom. |
+| apply_shift_id | Number | Ya | 1234566 | ID shift pemohon pada tanggal tukar. Panggil API [Kueri massal informasi penjadwalan shift pengguna](/id/open/development/query-batch-scheduling-information) untuk memperoleh nilai shift_id. |
+| target_shift_id | Number | Ya | 1234566 | ID shift pengguna target pada tanggal tukar. Panggil API [Kueri massal informasi penjadwalan shift pengguna](/id/open/development/query-batch-scheduling-information) untuk memperoleh nilai shift_id. |
+| reback_apply_shift_id | Number | Ya | 1234566 | ID shift pemohon pada tanggal kembali. Panggil API [Kueri massal informasi penjadwalan shift pengguna](/id/open/development/query-batch-scheduling-information) untuk memperoleh nilai shift_id. |
+| reback_target_shift_id | Number | Ya | 1234566 | ID shift pengguna target pada tanggal kembali. Panggil API [Kueri massal informasi penjadwalan shift pengguna](/id/open/development/query-batch-scheduling-information) untuk memperoleh nilai shift_id. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/approve/schedule/switch" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=82683xxxxc28be8' \
+-d 'apply_shift_id=123' \
+-d 'apply_userid=dd_dd' \
+-d 'approve_id=asdasdjashd' \
+-d 'reback_apply_shift_id=789' \
+-d 'reback_date=2019-09-09' \
+-d 'reback_target_shift_id=897' \
+-d 'switch_date=2019-09-08' \
+-d 'target_shift_id=456' \
+-d 'target_userid=aa_aa' \
+-d 'userid=dd_dd'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/schedule/switch");
+OapiAttendanceApproveScheduleSwitchRequest req = new OapiAttendanceApproveScheduleSwitchRequest();
+req.setUserid("dd_dd");
+req.setSwitchDate("2019-09-08");
+req.setRebackDate("2019-09-09");
+req.setApplyUserid("dd_dd");
+req.setTargetUserid("aa_aa");
+req.setApplyShiftId(123L);
+req.setTargetShiftId(456L);
+req.setRebackApplyShiftId(789L);
+req.setRebackTargetShiftId(897L);
+req.setApproveId("asdasdjashd");
+OapiAttendanceApproveScheduleSwitchResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceApproveScheduleSwitchRequest("https://api.dingtalk.io/topapi/attendance/approve/schedule/switch")
+
+req.userid="dd_dd"
+req.switch_date="2019-09-08"
+req.reback_date="2019-09-09"
+req.apply_userid="dd_dd"
+req.target_userid="aa_aa"
+req.apply_shift_id=123
+req.target_shift_id=456
+req.reback_apply_shift_id=789
+req.reback_target_shift_id=897
+req.approve_id="asdasdjashd"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceApproveScheduleSwitchRequest;
+$req->setUserid("dd_dd");
+$req->setSwitchDate("2019-09-08");
+$req->setRebackDate("2019-09-09");
+$req->setApplyUserid("dd_dd");
+$req->setTargetUserid("aa_aa");
+$req->setApplyShiftId("123");
+$req->setTargetShiftId("456");
+$req->setRebackApplyShiftId("789");
+$req->setRebackTargetShiftId("897");
+$req->setApproveId("asdasdjashd");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/approve/schedule/switch");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/schedule/switch");
+OapiAttendanceApproveScheduleSwitchRequest req = new OapiAttendanceApproveScheduleSwitchRequest();
+req.Userid = "dd_dd";
+req.SwitchDate = "2019-09-08";
+req.RebackDate = "2019-09-09";
+req.ApplyUserid = "dd_dd";
+req.TargetUserid = "aa_aa";
+req.ApplyShiftId = 123L;
+req.TargetShiftId = 456L;
+req.RebackApplyShiftId = 789L;
+req.RebackTargetShiftId = 897L;
+req.ApproveId = "asdasdjashd";
+OapiAttendanceApproveScheduleSwitchResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | Kode respons. |
+| errmsg | String | ok | Deskripsi kode respons. |
+
+### Contoh isi respons
+
+```json
+{
+        "errcode":0,
+        "errmsg":"872995737"
+}
+```
+
+### Kode kesalahan
+
+Jika terjadi error saat memanggil API ini, cari solusinya di dokumen [Kode kesalahan global](/id/open/development/server-api-error-codes-1) berdasarkan pesan error yang muncul.

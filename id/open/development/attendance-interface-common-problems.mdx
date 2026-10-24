@@ -1,0 +1,134 @@
+---
+title: "FAQ"
+description: "Atasi error umum pada API kehadiran sisi server DingTalk, mulai dari respons kosong hasil absen, unggah rekaman absen, hingga nilai kolom laporan absensi."
+---
+
+Topik ini menjelaskan error umum yang terjadi saat Anda memanggil API kehadiran Sisi server DingTalk.
+
+## Absen kehadiran
+
+### Kapan data absen terlewat, absen tidak valid (di luar shift), dan mangkir dihasilkan?
+
+J: Data dihasilkan pada waktu berikut:
+
+- Absen tidak valid: Dihasilkan secara real time.
+
+  - Data mangkir: Mangkir adalah status hasil kalkulasi. Pengguna yang melewatkan semua absen dalam satu hari penuh akan ditandai mangkir.
+  - Contoh absen terlewat: Shift hari kerja reguler suatu organisasi berlangsung dari pukul 09.00 hingga 18.00.
+- Jika rentang waktu absen tidak diatur:
+
+  - Hasil absen masuk (awal kerja): Absen terlewat dihasilkan pada titik tengah di antara dua waktu absen: (9 + 18) / 2 = 13,5, yaitu pukul 13.30.
+  - Hasil absen pulang (akhir kerja):
+
+    - Jika hari berikutnya adalah hari kerja: Hasil dihitung pada titik tengah di antara dua waktu absen [mengikuti aturan "8 jam sebelum, 12 jam sesudah"]: (18 + 9) / 2 = 13,5, yaitu pukul 01.30 keesokan paginya.
+    - Jika hari berikutnya adalah hari libur: Sistem memperpanjang waktu absen paling akhir [mengikuti aturan "8 jam sebelum, 12 jam sesudah"] dan menghasilkan hasil kehadiran 12 jam kemudian.
+- Jika rentang waktu absen diatur: Hasil kehadiran dihasilkan berdasarkan waktu absen paling akhir yang telah dikonfigurasi.
+
+### API Get clock-in results mengembalikan respons kosong
+
+J: Jika Anda memanggil API [Mendapatkan hasil absen](/id/open/development/open-attendance-clock-in-data) dan API tersebut mengembalikan respons kosong, kemungkinan penyebabnya antara lain (tetapi tidak terbatas pada) hal berikut:
+
+- Nilai parameter userId salah. Pastikan ID pengguna tersebut ada di organisasi saat ini.
+- Parameter isI18n (yang menandakan organisasi luar negeri) salah. Untuk organisasi di Tiongkok daratan, atur isI18n ke false.
+- Periksa checkDateFrom. Misalnya, jika pengguna absen pukul 09.00 dan Anda mengirim 10.00 dalam permintaan, tidak ada data yang dikembalikan.
+- Format parameter userIdList salah. Pisahkan beberapa ID pengguna dengan koma (,).
+
+### API Upload clock-in records mengembalikan Berhasil, tetapi rekaman tidak muncul di OA Admin Console
+
+J: Jika API [Mengunggah rekaman absen](/id/open/development/upload-punch-records) mengembalikan Berhasil tetapi rekaman tidak muncul di statistik kehadiran pada OA Admin Console organisasi, periksa apakah parameter user_check_time berupa stempel waktu 13 digit dalam milidetik.
+
+### API Get clock-in results mengembalikan respons kosong `{"errcode":0,"hasMore":false,"errmsg":"ok","recordresult":[]}`
+
+J: Jika API [Mendapatkan hasil absen](/id/open/development/open-attendance-clock-in-data) mengembalikan respons kosong, periksa hal berikut secara berurutan:
+
+- Periksa apakah nilai parameter userId sudah benar. Gunakan access token yang sama dengan yang Anda gunakan untuk API absen untuk memanggil API [Mengkueri detail pengguna](/id/open/development/query-user-details). Jika API mengembalikan "userId does not exist", berarti nilai userId salah.
+- Periksa parameter isI18n. Untuk organisasi di Tiongkok daratan, atur isI18n ke false. Jika Anda mengirim true, tidak ada data kehadiran yang dikembalikan.
+- Periksa apakah format parameter userIdList sudah benar.
+
+### API Get clock-in details mengembalikan respons kosong `{"errcode":0,"errmsg":"ok","recordresult":[]}`
+
+J: Jika API [Mendapatkan detail absen](/id/open/development/attendance-clock-in-record-is-open) mengembalikan respons kosong, periksa hal berikut secara berurutan:
+
+- Periksa apakah nilai parameter userId sudah benar. Gunakan access token yang sama dengan yang Anda gunakan untuk API absen untuk memanggil API [Mengkueri detail pengguna](/id/open/development/query-user-details). Jika API mengembalikan "userId does not exist", berarti nilai userId salah.
+- Periksa parameter checkDateFrom. Misalnya, jika pengguna absen pukul 09.00 dan Anda mengirim 10.00 dalam permintaan, tidak ada data yang dikembalikan.
+- Periksa parameter isI18n. Untuk organisasi di Tiongkok daratan, atur isI18n ke false. Jika Anda mengirim true, tidak ada data kehadiran yang dikembalikan.
+- Periksa apakah format parameter userIdList sudah benar.
+
+## Statistik kehadiran
+
+### API Get attendance report column values mengembalikan 0 untuk hari kehadiran wajib
+
+J: Saat ini, bidang hari kehadiran wajib hanya mendukung nilai dari 15 hari terakhir.
+
+### API Get attendance report column values mengembalikan error `{errcode:850015,errmsg:System error, please try again later}`
+
+J: Jika API [Mendapatkan nilai kolom laporan absensi](/id/open/development/queries-the-column-value-of-the-attendance-report) mengembalikan error di atas, periksa hal berikut secara berurutan:
+
+- Periksa format parameter column_id_list. Parameter ini bertipe String. Pisahkan beberapa ID dengan koma (contoh: "id1,id2,id3").
+- Periksa apakah nilai dalam column_id_list adalah ID kolom laporan yang dikembalikan oleh API [Mendapatkan definisi kolom laporan absensi](/id/open/development/queries-the-enterprise-attendance-report-column), bukan bidang expression_id.
+
+### API Get attendance report column values mengembalikan Error sistem `{errcode:850015,errmsg:System error, please try again later,request_id:woae9xpid4xi}`
+
+J: Jika API [Mendapatkan nilai kolom laporan absensi](/id/open/development/queries-the-column-value-of-the-attendance-report) mengembalikan Error sistem, periksa hal berikut secara berurutan:
+
+- Periksa format parameter column_id_list. Parameter ini bertipe String. Pisahkan beberapa ID dengan koma. Contoh: "id1,ide2,id3"
+- Periksa apakah nilai dalam column_id_list adalah nilai id yang dikembalikan oleh API [Mendapatkan definisi kolom laporan absensi](/id/open/development/queries-the-enterprise-attendance-report-column), bukan bidang expression_id.
+
+### API Get attendance report column values mengembalikan 0 pada nilai bidang hari kehadiran wajib
+
+J: Saat Anda memanggil API [Mendapatkan nilai kolom laporan absensi](/id/open/development/queries-the-column-value-of-the-attendance-report), nilai **hari kehadiran wajib** dalam respons dapat bernilai 0, seperti berikut:
+
+```json
+ {
+      "date":"2021-12-27 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-28 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-29 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-30 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-31 00:00:00",
+       
+"value":"0.0" 
+
+     }
+```
+
+Solusi: Saat ini, bidang hari kehadiran wajib hanya mendukung nilai dari 15 hari terakhir.
+
+## Statistik kehadiran
+
+### API Get user attendance data mengembalikan respons kosong
+
+J: Saat Anda memanggil API [Mendapatkan data kehadiran pengguna](/id/open/development/obtain-the-attendance-update-data), respons dapat kosong, seperti berikut:
+
+```json
+{
+    "errcode":0,
+    "result":{
+        "approve_list":[],
+        "attendance_result_list":[],
+        "check_record_list":[],
+        "corpId":"ding027f45xxxxxxxxx",
+        "userid":"002",
+        "work_date":"2021-12-13 14:00:00"
+        },
+        "success":true,
+        "request_id":"h21upm1yem14"
+}
+```
+
+Solusi: Periksa apakah nilai parameter userId sudah benar. Gunakan access token yang sama dengan yang Anda gunakan untuk API absen untuk memanggil API [Mengkueri detail pengguna](/id/open/development/query-user-details). Jika API mengembalikan "userId does not exist", berarti nilai userId salah.

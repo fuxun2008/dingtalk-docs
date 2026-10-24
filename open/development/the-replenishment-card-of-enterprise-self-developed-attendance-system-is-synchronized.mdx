@@ -1,0 +1,273 @@
+---
+title: "Sync and Update Makeup Clock-In Data from Your Own Attendance System"
+description: "Call this API to sync makeup clock-in data from your own attendance system; DingTalk updates status when a request is approved or withdrawn."
+---
+
+# Automatic Makeup Clock-In Sync: Update DingTalk Attendance Status in Real Time After Approval
+
+## Overview
+
+This solution syncs makeup clock-in data from an organization's in-house attendance system to DingTalk. It uses the attendance makeup clock-in APIs on the DingTalk Open Platform to connect your own OA or leave and attendance system with the DingTalk Attendance app.
+
+### Background
+
+In daily attendance management, employees sometimes need a makeup clock-in because they were out of the office or forgot to clock in. They usually submit the request in the organization's own OA or leave and attendance system. However, missed clock-in records in DingTalk Attendance do not sync these external approval results automatically. Employees must repeat the work in two systems. First, they submit a makeup clock-in request in the in-house system. Then, they manually change the attendance status in DingTalk. Running two systems in parallel adds work for employees. It also causes data inconsistencies that reduce the accuracy of attendance statistics.
+
+### Key Benefits
+
+This solution automatically syncs makeup clock-in data between your in-house attendance system and DingTalk Attendance. It replaces manual cross-system data entry with a standardized, API-driven process. As a result, attendance management becomes more efficient and data stays consistent.
+
+- **Automatic cross-system sync**: After a request is approved in your in-house leave and attendance system, the system calls the DingTalk API to sync the makeup clock-in data. Employees do not need to take any further action.
+- **Accurate status mapping**: Based on the approval result (approved or withdrawn), the system sets the DingTalk attendance status to "Makeup clock-in approved" or restores the original clock-in status.
+- **Smart schedule matching**: Before syncing, the system queries the employee's scheduled clock-in times for the relevant date. This ensures the makeup clock-in data is linked to the correct time.
+- **Decoupled approval flow**: The sync does not create a makeup clock-in Approval form in DingTalk. This avoids duplicate approvals and keeps your in-house Approval process independent.
+
+### Use Cases
+
+This solution applies to the following business scenarios:
+
+- **In-house OA system sync**: After an employee submits a makeup clock-in request in the in-house OA system and the request is approved, the result syncs to DingTalk Attendance automatically.
+- **Third-party leave and attendance platforms**: When you use a third-party leave and attendance system, approval results sync to the DingTalk Attendance app in real time.
+- **Batch makeup clock-in processing**: When HR imports historical makeup clock-in records in batches, the records sync to DingTalk Attendance automatically.
+- **Withdrawal sync**: After an employee withdraws a makeup clock-in request in the in-house system, the original clock-in status in DingTalk Attendance is restored automatically.
+
+## Typical Business Scenarios
+
+### Scenario 1: Sync to DingTalk After a Makeup Clock-In Request Is Approved in the In-House OA System
+
+#### Pain Points
+
+In the traditional model, an employee submits a makeup clock-in request in the in-house OA system. After approval, the employee still has to open the DingTalk app and manually change that day's attendance status to "Makeup clock-in," or submit a second makeup clock-in request in DingTalk. In organizations with dozens of makeup clock-in requests each month, employees repeat these steps many times. They may also miss a step or select the wrong date, which makes attendance data inaccurate.
+
+#### Value Validation
+
+- **Automated workflow**
+
+Figure: Workflow for syncing to DingTalk after a makeup clock-in request is approved in the in-house OA system
+
+- **Key advantages**
+
+  - **Fully automatic trigger**: After approval in the in-house OA system, the system calls the DingTalk API to sync the makeup clock-in data. Employees do not need to do anything.
+  - **Accurate matching**: Before syncing, the system queries the employee's scheduled clock-in times for the relevant date. This ensures the makeup clock-in data is linked to the correct time.
+  - **Immediate effect**: The makeup clock-in data takes effect as soon as it syncs. The DingTalk attendance status changes from "Missed clock-in" to "Makeup clock-in approved."
+  - **Decoupled approval flow**: The sync does not create a makeup clock-in Approval form in DingTalk. This avoids duplicate approvals and keeps your in-house approval flow independent.
+
+### Scenario 2: Restore the Original Clock-In Status After a Makeup Clock-In Request Is Withdrawn
+
+#### Pain Points
+
+When an employee withdraws a makeup clock-in request in the in-house OA system, DingTalk Attendance does not restore the status automatically. It still shows "Makeup clock-in approved." HR must sign in to the DingTalk admin console and correct each record manually. This takes time, records are easy to miss, and attendance statistics become inaccurate.
+
+#### Value Validation
+
+Figure: Workflow for restoring the original clock-in status after a makeup clock-in request is withdrawn
+
+- **Automated workflow**
+- **Key advantages**
+
+  - **Automatic status rollback**: After a makeup clock-in request is withdrawn in the in-house system, the system calls the DingTalk API to restore the original clock-in status.
+  - **Data consistency**: DingTalk attendance status always matches the approval result in the in-house OA system.
+  - **Audit trail**: Each sync or withdrawal records the operator, timestamp, and Approval form ID to meet compliance requirements.
+  - **Traceable errors**: When a sync fails, the system logs detailed error information to help you troubleshoot and fix the issue.
+
+## Implementation Guide
+
+### Technical Architecture
+
+This solution is built on the Server API of the DingTalk Open Platform. The core technical components are:
+
+- **Authentication layer**: Uses the `Client ID` and `Client Secret` to get an `access_token`, which secures API calls.
+- **Attendance group management layer**: Provides full API support to create, query, update, and delete attendance groups. Supports both fixed shift attendance and shift-based attendance groups.
+- **Shift management layer**: Provides APIs to create and query shifts. Shifts are a prerequisite resource for attendance groups.
+- **Error handling layer**: A complete error code system helps you locate and resolve issues quickly.
+
+**API versions**: The Server API has a new version and a legacy version. Use the new version for better performance and broader feature support.
+
+### Prerequisites
+
+Before you implement this solution, make sure you meet the following requirements:
+
+- **App setup**: Create and configure an Internal app. For details, see [Create and Configure an App](/open/dingstart/create-application).
+- **Permissions**: Have DingTalk Organization Admin or Sub Admin permissions, and apply for the following API permissions:
+
+  - `qyapi_attendance_group_manage` (attendance group management permission)
+  - `qyapi_attendance_group_read` (attendance group read permission)
+- **Development environment**: Install a Java development environment (JDK 1.6 or later) and the Maven build tool.
+- **SDK**: Download the DingTalk Server-side SDK. For details, see Server-side SDK download. The SDK supports Java, Python, Go, and other languages.
+
+### Code Implementation
+
+Step 1: Get the App credential information, including the app's client ID and Client Secret.
+
+Step 2: Apply for API permissions related to attendance.
+
+Step 3: Get the app's Access credential. For details, see [Get the access_token of an Internal App](/open/development/obtain-orgapp-token). When you call an API, the access token authenticates the caller.
+
+Step 4: Call the attendance APIs:
+
+1. When an employee submits a makeup clock-in request in the in-house attendance system, call the Server API [Query a User's Schedule](/open/development/query-scheduling-for-a-day) with the date the employee selected. This returns the employee's scheduled clock-in times for that date.
+2. The employee submits a makeup clock-in Approval form in the in-house leave and attendance system. The next action depends on the approval result.
+
+   - If the request is approved, call the Server API [Notify Makeup Clock-In Approval](/open/development/make-up-the-card-after-approval). The submitted makeup clock-in data syncs to the DingTalk Attendance app, and the attendance status changes from "Missed clock-in" to "Makeup clock-in approved."
+
+### Note
+
+     This step does not create a makeup clock-in Approval form in DingTalk.
+   - If the employee withdraws the makeup clock-in request, call the Server API [Notify Approval Withdrawal](/open/development/notify-the-attendance-to-modify-the-punch-result-when-the). This withdraws the makeup clock-in request that was synced to DingTalk and restores the attendance status to the clock-in status before the change.
+
+## Implementation Steps
+
+### **Step 1: Get the App Credentials**
+
+1. Sign in to the [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Select the target app to open its details page.
+3. Click **Basic Information** > **Credentials and Basic Information**.
+4. Record the app's `Client ID` and `Client Secret`.
+
+### Note
+
+   Keep the `Client Secret` secure and never share it with third parties. Store it in environment variables or a key management system instead of hard-coding it.
+
+### Step 2: Add API Permissions
+
+1. On the app details page, click **Manage permissions**.
+2. In the permission search box, enter the following permission identifiers and apply for them:
+
+   - `qyapi_attendance_group_manage` (attendance group management permission): Used to sync and withdraw makeup clock-in data.
+   - `qyapi_attendance_group_read` (attendance group read permission): Used to query employee schedules.
+
+<Note>
+Different business scenarios may require different combinations of permissions. Apply for the permissions you actually need. For example, batch import scenarios also require permissions for batch user operations.
+</Note>
+
+### Step 3: Get the Access Credential (access_token)
+
+Use the Client ID and Client Secret from Step 1 to get the app's Access credential. For details, see [Get the access_token of an Internal App](/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Best practices**:
+
+- **Caching**: The `access_token` is valid for 2 hours. Cache it in memory or Redis, and refresh it 5 minutes before it expires.
+- **Concurrency control**: Prevent multiple threads from refreshing the token at the same time. Use a distributed lock if needed.
+- **Retry on error**: Retry automatically when the network is unstable, up to 3 times, with increasing intervals (1s → 2s → 4s).
+
+### Step 4: Call the Core APIs
+
+1. **Query a user's schedule**: When an employee submits a makeup clock-in request in the in-house attendance system, call the Server API [Query a User's Schedule](/open/development/query-scheduling-for-a-day) with the date the employee selected. This returns the employee's scheduled clock-in times for that date.
+
+   ```java
+   public void scheduleInfo() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/listbyday");
+       OapiAttendanceScheduleListbydayRequest req = new OapiAttendanceScheduleListbydayRequest();
+       req.setOpUserId("ma******75");
+       req.setUserId("014*********041");
+       req.setDateTime(166*******00L);
+       OapiAttendanceScheduleListbydayResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+2. **Notify makeup clock-in approval**: The employee submits a makeup clock-in Approval form in the in-house leave and attendance system. If the request is approved, call the Server API [Notify Makeup Clock-In Approval](/open/development/make-up-the-card-after-approval). The submitted makeup clock-in data syncs to the DingTalk Attendance app, and the attendance status changes from "Missed clock-in" to "Makeup clock-in approved."
+
+### Note
+
+   This step does not create a makeup clock-in Approval form in DingTalk. It only syncs the makeup clock-in result to the attendance record.
+
+   ```java
+   public void approveCheck() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/check");
+       OapiAttendanceApproveCheckRequest req = new OapiAttendanceApproveCheckRequest();
+       req.setUserid("ma****75");
+       req.setWorkDate("2022-10-10 09:00:00");
+       req.setPunchId(1006170802L);
+       req.setPunchCheckTime("2022-10-10 09:00:00");
+       req.setUserCheckTime("2022-10-10 08:00:00");
+       req.setApproveId("dingTalk10001");
+       req.setJumpUrl("https://www.dingtalk.io");
+       req.setTagName("Makeup clock-in");
+       OapiAttendanceApproveCheckResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+
+### Parameters:
+
+   | **Name** | **Type** | **Required** | **Description** |
+   | --- | --- | --- | --- |
+   | userid | String | Yes | The employee's user ID. |
+   | workDate | String | Yes | The workday for the makeup clock-in. |
+   | punchId | Long | Yes | The ID of the scheduled clock-in to make up. Get it from the schedule query API. |
+   | punchCheckTime | String | Yes | The scheduled clock-in time. |
+   | userCheckTime | String | Yes | The user's clock-in time. |
+   | approveId | String | Yes | The Approval form ID. Use a custom value. |
+   | jumpUrl | String | No | The redirect URL of the Approval form. |
+   | tagName | String | No | The name of the Approval form. |
+3. **Notify approval withdrawal**: If the employee withdraws the makeup clock-in request, call the Server API [Notify Approval Withdrawal](/open/development/notify-the-attendance-to-modify-the-punch-result-when-the). This withdraws the makeup clock-in request that was synced to DingTalk and restores the attendance status to the clock-in status before the change.
+
+   ```java
+   public void approveCancel() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/cancel");
+       OapiAttendanceApproveCancelRequest req = new OapiAttendanceApproveCancelRequest();
+       req.setUserid("ma****75");
+       req.setApproveId("dingTalk10001");
+       OapiAttendanceApproveCancelResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+
+**Implementation checklist**:
+
+- ✅ All API calls return a success status code (errcode=0).
+- ✅ After a makeup clock-in syncs, call the schedule query API to verify the clock-in times are correct.
+- ✅ After a withdrawal, verify the attendance status has been restored to its original state.
+- ✅ Error logs are complete and include the Approval form ID, employee user ID, and operation time.
+- ✅ Makeup clock-in data in the in-house OA system and DingTalk Attendance is compared regularly and stays consistent.
+
+## FAQ
+
+- **Q1: How does makeup clock-in sync differ from DingTalk's native makeup clock-in approval?**
+
+  A: They serve completely different purposes:
+
+  - Native DingTalk makeup clock-in approval: The employee submits a makeup clock-in request in the DingTalk app → the manager approves it → the attendance status updates automatically. This suits organizations without their own OA system.
+  - Makeup clock-in sync in this solution: The employee submits a makeup clock-in request in the in-house OA or leave and attendance system → the OA approval passes → the API syncs the result to DingTalk. This suits organizations with a mature OA approval flow and prevents employees from repeating work in two systems.
+
+  **Key difference**: This solution does not create a makeup clock-in Approval form in DingTalk. It only syncs the OA approval result to DingTalk attendance records, which keeps your in-house Approval process independent.
+- **Q2: How do I handle failures for some employees during a batch makeup clock-in sync?**
+
+  A: For batch syncs, process records one by one and retry failures:
+
+  1. **Process in batches**: Include no more than 50 employees per batch to avoid request timeouts.
+  2. **Isolate failures**: Parse the response and extract the user IDs of failed employees and the error reasons (errcode/errmsg).
+  3. **Handle by category**:
+
+     - `User not in attendance group`: Check whether the employee has joined the correct attendance group.
+     - `Date out of range`: Confirm that the makeup clock-in date falls within the allowed time window.
+     - `Network timeout`: Retry automatically up to 3 times with increasing intervals (1s/2s/4s).
+  4. **Logging**: For every failure, log the Approval form ID, employee user ID, error reason, and retry count so staff can follow up manually.
+- **Q3: How do I verify data consistency after a makeup clock-in sync?**
+
+  A: Set up a three-layer verification mechanism:
+
+  1. **Real-time check**: After a sync succeeds, immediately confirm that the employee's attendance status for that day has changed from "Missed clock-in" to "Makeup clock-in approved."
+  2. **Scheduled comparison**: Run a full comparison job early each morning. Pull the day's makeup clock-in approval records from the in-house OA system and the makeup clock-in records from DingTalk Attendance. Match them by Approval form ID and employee user ID. If you find a mismatch, create an alert ticket.
+  3. **Error monitoring**: Trigger an alert for any employee whose sync fails 3 times in a row, and notify the HR Admin to check manually. Possible causes include a departed employee who was not removed from the attendance group, or a schedule that is not configured.
+- **Q4: What happens after a makeup clock-in is withdrawn if the employee has a normal clock-in record for that day?**
+
+  A: A withdrawal restores the DingTalk attendance status to the **original clock-in status** before the makeup clock-in. Specifically:
+
+  - If the status was "Missed clock-in" (no clock-in) → it reverts to "Missed clock-in."
+  - If the status was "Normal clock-in" → it reverts to "Normal clock-in," and the makeup clock-in record is cleared.
+  - If the status was "Late arrival/Early leave" → it reverts to "Late arrival/Early leave," and the makeup clock-in record is cleared.
+
+  **Important**: A withdrawal cannot be undone. Once executed, the makeup clock-in status cannot be restored. Add a second confirmation step in your in-house OA system to prevent accidental withdrawals.

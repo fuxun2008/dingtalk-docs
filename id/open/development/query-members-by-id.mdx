@@ -1,0 +1,144 @@
+---
+title: "Periksa apakah pengguna termasuk dalam grup absensi saat ini"
+description: "Panggil API DingTalk ini dengan ID dan tipe anggota untuk memverifikasi apakah karyawan atau departemen termasuk dalam grup absensi."
+---
+
+Panggil API ini untuk memeriksa apakah departemen atau karyawan termasuk dalam grup absensi.
+
+## Deskripsi panggilan API
+
+- Jika Anda memeriksa daftar karyawan, API ini mengembalikan nilai userId karyawan yang ada di grup absensi.
+- Jika Anda memeriksa daftar departemen, API ini mengembalikan ID departemen yang ada di grup absensi. API ini tidak mengembalikan daftar userId karyawan di departemen tersebut.
+
+Contohnya, anggota absensi suatu grup absensi mencakup **Departemen Uji** dan karyawan **Budi**. Departemen Uji mencakup karyawan Andi. API mengembalikan hasil berikut untuk departemen atau pengguna yang berbeda:
+
+- Jika Anda memeriksa userId Andi, API ini tidak mengembalikan userId Andi.
+- Jika Anda memeriksa userId Budi, API ini mengembalikan userId Budi.
+- Jika Anda memeriksa ID Departemen Uji, API ini mengembalikan ID Departemen Uji.
+- Jika Anda memeriksa apakah Budi dan Andi ada di grup absensi, API ini mengembalikan userId Budi.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/group/member/listbyids |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin | permission-qyapi_attendance_group_read-Izin kueri grup absensi |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | 6d1bxxxx | - Untuk aplikasi internal, panggil API [Dapatkan access_token aplikasi internal](/id/open/development/obtain-orgapp-token) untuk memperolehnya. - Untuk aplikasi perusahaan pihak ketiga, panggil API Dapatkan access_token perusahaan pihak ketiga untuk memperolehnya. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| op_user_id | String | Ya | dd_dd | userId operator. |
+| group_id | Number | Ya | 98562 | ID grup absensi.  **Catatan**  Jika Anda menggunakan pengenal grup absensi lama group_key, panggil API [Konversi groupKey ke groupId](/id/open/development/convert-groupkey-to-groupid) untuk mengonversi group_key menjadi group_id. |
+| member_ids | String | Ya | user123,user456 | ID anggota. Setiap ID dapat berupa userId atau deptId. Pisahkan beberapa ID dengan koma (,). Setiap panggilan mendukung maksimal 20 nilai. |
+| member_type | Number | Ya | 0 | Tipe anggota:   - **0**: Karyawan - **1**: Departemen |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/member/listbyids" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9bacfaxxxx71260' \
+-d 'group_id=1234' \
+-d 'member_ids=dd_dd' \
+-d 'member_type=0' \
+-d 'op_user_id=dd_dd'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/listbyids");
+OapiAttendanceGroupMemberListbyidsRequest req = new OapiAttendanceGroupMemberListbyidsRequest();
+req.setOpUserId("user123");
+req.setMemberIds("user123,user456");
+req.setMemberType(0L);
+req.setGroupId(68593L);
+OapiAttendanceGroupMemberListbyidsResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupMemberListbyidsRequest("https://api.dingtalk.io/topapi/attendance/group/member/listbyids")
+
+req.op_user_id="dd_dd"
+req.member_ids="dd_dd"
+req.member_type=0
+req.group_id=1234
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupMemberListbyidsRequest;
+$req->setOpUserId("dd_dd");
+$req->setMemberIds("dd_dd");
+$req->setMemberType("0");
+$req->setGroupId("1234");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/member/listbyids");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/listbyids");
+OapiAttendanceGroupMemberListbyidsRequest req = new OapiAttendanceGroupMemberListbyidsRequest();
+req.OpUserId = "dd_dd";
+req.MemberIds = "dd_dd";
+req.MemberType = 0L;
+req.GroupId = 1234L;
+OapiAttendanceGroupMemberListbyidsResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| request_id | String | z81tif88lkot | ID permintaan. |
+| errmsg | String | ok | Deskripsi kode pengembalian. |
+| errcode | Number | 0 | Kode pengembalian. |
+| success | Boolean | true | Menunjukkan apakah panggilan berhasil.   - **true**: Berhasil - **false**: Gagal |
+| result | String[] | ["user123","user456"] | ID anggota yang termasuk dalam grup absensi. Setiap ID dapat berupa userId atau deptId. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    "user123",
+    "user456"
+  ],
+  "success": true,
+  "request_id": "4nvsqf4ij2xq"
+}
+```
+
+### Kode error
+
+Jika panggilan API mengembalikan error, cari solusinya di dokumen [Kode error global](/id/open/development/server-api-error-codes-1) berdasarkan pesan error yang diterima.
