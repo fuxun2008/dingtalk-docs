@@ -1,0 +1,190 @@
+---
+title: "Perbarui saldo cuti secara massal"
+description: "Perbarui saldo cuti karyawan secara massal di DingTalk melalui API: tambah atau kurangi total saldo jenis cuti tertentu tanpa memengaruhi kuota yang sudah terpakai."
+---
+
+Panggil API ini untuk memperbarui informasi total saldo cuti secara massal.
+
+## Deskripsi panggilan API
+
+API ini memperbarui saldo cuti dengan menambahkan atau mengurangi saldo yang ada. API ini tidak memengaruhi kuota cuti yang sudah digunakan karyawan.
+
+Contoh berikut menggambarkan prosesnya:
+
+1. Panggil API [Tambah aturan cuti](/id/open/development/add-holiday-rules) untuk membuat jenis cuti standar. Lalu panggil API [Inisialisasi saldo cuti](/id/open/development/initialize-holiday-balance) untuk menetapkan saldo awal menjadi 8 hari.
+2. Panggil API ini untuk memperbarui saldo cuti Budi dengan **quota_num_per_day** bernilai 900. Catatan yang dihasilkan menambahkan 1 hari ke saldo yang ada.
+3. Budi mengirimkan formulir persetujuan pengajuan cuti untuk jenis cuti ini di DingTalk selama 2 hari. Sistem membuat catatan yang memotong 2 hari.
+4. Panggil API ini untuk memperbarui saldo cuti Budi dengan **quota_num_per_day** bernilai 1000. Catatan yang dihasilkan menambahkan 1 hari, dan saldo akhirnya menjadi 8 hari.
+
+   Di **Admin Console**, manajemen cuti pada aplikasi Kehadiran mencakup **Aturan cuti**, **Saldo cuti karyawan**, **Pengaturan persetujuan cuti**, dan **Ekspor catatan cuti**. Di halaman **Saldo cuti karyawan**, klik **Ekspor** atau **Perbarui massal** untuk saldo, lalu buka catatan karyawan untuk melihat riwayat penggunaan cutinya berdasarkan jenis cuti. Setiap entri penggunaan menampilkan waktu, perubahan (misalnya, +5,0 hari ditambahkan otomatis oleh sistem sesuai aturan cuti), masa berlaku, dan alasan.
+
+Aturan cuti dapat dibuat dengan 2 cara: dengan memanggil API, atau melalui aplikasi resmi DingTalk Kehadiran:
+
+| Metode pembuatan aturan cuti | Dukungan pembaruan jenis cuti oleh API ini |
+| --- | --- |
+| Jenis cuti yang dibuat dengan memanggil API [Tambah aturan cuti](/id/open/development/add-holiday-rules). | Didukung |
+| Jenis cuti yang dibuat di aplikasi Kehadiran pada Admin Console organisasi.   - Dibuat secara default oleh aplikasi Kehadiran. - Dibuat di pengaturan admin aplikasi Kehadiran. | Tidak didukung |
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/vacation/quota/update |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | permission-qyapi_holiday_manage-Izin manajemen cuti DingTalk |
+
+### Parameter query
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Untuk Aplikasi internal, dapatkan dengan memanggil API [Dapatkan access_token aplikasi internal](/id/open/development/obtain-orgapp-token). - Untuk Aplikasi perusahaan pihak ketiga, dapatkan dengan memanggil API untuk mendapatkan access_token organisasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| op_userid | String | Ya | user01 | userId Admin di organisasi Anda yang memiliki izin aplikasi untuk **Persetujuan OA**. |
+| leave_quotas | LeaveQuotas[] | Ya |  | Catatan saldo cuti yang akan diperbarui. |
+| userid | String | Ya | user1 | userId karyawan. |
+| end_time | Number | Tidak | 1753851001000 | Waktu berakhirnya masa berlaku kuota, dalam bentuk stempel waktu milidetik. |
+| start_time | Number | Tidak | 1653851001000 | Waktu mulainya masa berlaku kuota, dalam bentuk stempel waktu milidetik. |
+| leave_code | String | Ya | f84a2dxxxx | Jenis cuti kustom.  **Catatan**  Jenis cuti ini harus dibuat dengan memanggil API [Tambah aturan cuti](/id/open/development/add-holiday-rules). |
+| reason | String | Tidak | Diimpor oleh admin | Alasan tindakan. |
+| quota_num_per_day | Number | Tidak | 100 | Total kuota, dihitung dalam hari.  **Catatan**  Jika jenis cuti dihitung dalam hari, nilai ini tidak boleh kosong. Satuannya adalah 1/100 hari.  Misalnya, 1000 = 10 hari. |
+| quota_num_per_hour | Number | Tidak | 100 | Total kuota, dihitung dalam jam.  **Catatan**  Jika jenis cuti dihitung dalam jam, nilai ini tidak boleh kosong. Satuannya adalah 1/100 jam.  Misalnya, 1000 = 10 jam. |
+| quota_cycle | String | Tidak | 2019 | Siklus kuota. Formatnya harus "yyyy", misalnya "2021". |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/vacation/quota/update" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9e10xxxx4ba535' \
+-d 'leave_quotas=null' \
+-d 'op_userid=zhangsan'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+OapiAttendanceVacationQuotaUpdateRequest req = new OapiAttendanceVacationQuotaUpdateRequest();
+List<LeaveQuotas> list = new ArrayList<LeaveQuotas>();
+LeaveQuotas leaveQuotas = new LeaveQuotas();
+list.add(leaveQuotas);
+leaveQuotas.setUserid("user1");
+leaveQuotas.setEndTime(1753851001000L);
+leaveQuotas.setStartTime(1653851001000L);
+leaveQuotas.setLeaveCode("f84a2dxxxx");
+leaveQuotas.setReason("Diimpor oleh admin");
+leaveQuotas.setQuotaNumPerDay(100L);
+leaveQuotas.setQuotaNumPerHour(100L);
+leaveQuotas.setQuotaCycle("2019");
+req.setLeaveQuotas(list.toString());
+req.setOpUserid("manager1");
+OapiAttendanceVacationQuotaUpdateResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceVacationQuotaUpdateRequest("https://api.dingtalk.io/topapi/attendance/vacation/quota/update")
+
+req.leave_quotas=""
+req.op_userid="zhangsan"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceVacationQuotaUpdateRequest;
+$leave_quotas = new LeaveQuotas;
+$leave_quotas->userid="zhangsan";
+$leave_quotas->end_time="1753851001000";
+$leave_quotas->start_time="1653851001000";
+$leave_quotas->leave_code="f84a2829-d245-4312-9ff2-0653e5b3abb2";
+$leave_quotas->reason="Diimpor oleh admin";
+$leave_quotas->quota_num_per_day="100";
+$leave_quotas->quota_num_per_hour="100";
+$leave_quotas->quota_cycle="2019";
+$req->setLeaveQuotas(array($leave_quotas));
+$req->setOpUserid("zhangsan");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+OapiAttendanceVacationQuotaUpdateRequest req = new OapiAttendanceVacationQuotaUpdateRequest();
+List<OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain> list2 = new List<OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain>();
+OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain obj3 = new OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain();
+list2.Add(obj3);
+obj3.Userid = "zhangsan";
+obj3.EndTime = 1753851001000L;
+obj3.StartTime = 1653851001000L;
+obj3.LeaveCode = "f84a2829-d245-4312-9ff2-0653e5b3abb2";
+obj3.Reason = "Diimpor oleh admin";
+obj3.QuotaNumPerDay = 100L;
+obj3.QuotaNumPerHour = 100L;
+obj3.QuotaCycle = "2019";
+req.LeaveQuotas_ = list2;
+req.OpUserid = "zhangsan";
+OapiAttendanceVacationQuotaUpdateResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| result | Result[] |  | Hasil yang dikembalikan. |
+| reason | String | Jenis cuti tidak ada | Alasan kegagalan. |
+| quota | Quota |  | Catatan yang gagal. |
+| leave_code | String | f84a2dxxxx | Pengenal unik jenis cuti. |
+| userid | String | user1 | userId karyawan. |
+| quota_cycle | String | 2019 | Siklus kuota. |
+| errcode | Number | 0 | Kode pengembalian. |
+| errmsg | String | ok | Deskripsi kode pengembalian. |
+| success | Boolean | true | Menunjukkan apakah permintaan berhasil.   - **true**: Ya - **false**: Tidak |
+| request_id | String | 6fnd2l2tnodd | ID permintaan. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "quota": {
+        "leave_code": "f84a2dxxxx",
+        "quota_cycle": "2019",
+        "userid": "user1"
+      },
+      "reason": "Jenis cuti tidak ada"
+    }
+  ],
+  "success": true,
+  "request_id": "6fnd2l2tnodd"
+}
+```
+
+### Kode error
+
+Jika panggilan API ini mengembalikan error, cari solusinya berdasarkan pesan error di Dokumen [Kode error global](/id/open/development/server-api-error-codes-1).

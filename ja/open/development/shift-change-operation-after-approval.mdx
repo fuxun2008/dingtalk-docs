@@ -1,0 +1,168 @@
+---
+title: "シフト交換承認の通知"
+description: "シフト交換の承認後に呼び出し、勤怠システムにシフト交換を実行させる API です。交換日・返却日・双方のシフト ID を指定します。"
+---
+
+シフト交換の承認後に本 API を呼び出し、勤怠システムにシフト交換のアクションを実行するよう通知します。ユーザーは自分自身または他のユーザーとシフトを交換できます。
+
+## API 呼び出し説明
+
+シフト交換には以下の制約があります。
+
+- 双方がシフト制の勤怠グループに所属している必要があります。
+- 双方とも、交換日と返却日の両方にシフトまたは休日が設定されている必要があります。
+- 交換後の打刻時間が重複してはいけません。たとえば、1日のシフトが 08:00-22:00、2日のシフトが 10:00-09:00（翌日）だとします。1日と2日のシフトを交換すると、1日のシフトは 10:00-09:00（翌日）、2日のシフトは 08:00-22:00 になります。この場合、1日の打刻時間帯が2日の労働時間と重複します。これを打刻時間の重複と呼びます。
+- シフト交換は取り消せません。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/approve/schedule/switch |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_attendance_group_manage-勤怠グループ管理権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | 本 API を呼び出すためのアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token の取得 API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| userid | String | はい | manager123 | 申請者のユーザー ID です。 |
+| switch_date | String | はい | 2019-09-08 | シフト交換を申請する日付です。この日付にシフトまたは休日が設定されている必要があります。 |
+| reback_date | String | はい | 2019-09-09 | 返却日です。この日付にシフトまたは休日が設定されている必要があります。  **注意**  申請者と交換相手が同一人物の場合、返却日は必須です。 |
+| apply_userid | String | はい | manager123 | シフト交換申請者のユーザー ID です。シフト制の勤怠グループのユーザーのみ対応しています。 |
+| target_userid | String | はい | user123 | 交換相手のユーザー ID です。シフト制の勤怠グループのユーザーのみ対応しています。 |
+| approve_id | String | はい | 2376620852 | 承認フォームの ID です。カスタムのパラメータ値です。 |
+| apply_shift_id | Number | はい | 1234566 | 交換日における申請者のシフト ID です。[ユーザーのシフト設定情報の一括照会](/ja/open/development/query-batch-scheduling-information) API を呼び出して shift_id の値を取得します。 |
+| target_shift_id | Number | はい | 1234566 | 交換日における交換相手のシフト ID です。[ユーザーのシフト設定情報の一括照会](/ja/open/development/query-batch-scheduling-information) API を呼び出して shift_id の値を取得します。 |
+| reback_apply_shift_id | Number | はい | 1234566 | 返却日における申請者のシフト ID です。[ユーザーのシフト設定情報の一括照会](/ja/open/development/query-batch-scheduling-information) API を呼び出して shift_id の値を取得します。 |
+| reback_target_shift_id | Number | はい | 1234566 | 返却日における交換相手のシフト ID です。[ユーザーのシフト設定情報の一括照会](/ja/open/development/query-batch-scheduling-information) API を呼び出して shift_id の値を取得します。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/approve/schedule/switch" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=82683xxxxc28be8' \
+-d 'apply_shift_id=123' \
+-d 'apply_userid=dd_dd' \
+-d 'approve_id=asdasdjashd' \
+-d 'reback_apply_shift_id=789' \
+-d 'reback_date=2019-09-09' \
+-d 'reback_target_shift_id=897' \
+-d 'switch_date=2019-09-08' \
+-d 'target_shift_id=456' \
+-d 'target_userid=aa_aa' \
+-d 'userid=dd_dd'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/schedule/switch");
+OapiAttendanceApproveScheduleSwitchRequest req = new OapiAttendanceApproveScheduleSwitchRequest();
+req.setUserid("dd_dd");
+req.setSwitchDate("2019-09-08");
+req.setRebackDate("2019-09-09");
+req.setApplyUserid("dd_dd");
+req.setTargetUserid("aa_aa");
+req.setApplyShiftId(123L);
+req.setTargetShiftId(456L);
+req.setRebackApplyShiftId(789L);
+req.setRebackTargetShiftId(897L);
+req.setApproveId("asdasdjashd");
+OapiAttendanceApproveScheduleSwitchResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceApproveScheduleSwitchRequest("https://api.dingtalk.io/topapi/attendance/approve/schedule/switch")
+
+req.userid="dd_dd"
+req.switch_date="2019-09-08"
+req.reback_date="2019-09-09"
+req.apply_userid="dd_dd"
+req.target_userid="aa_aa"
+req.apply_shift_id=123
+req.target_shift_id=456
+req.reback_apply_shift_id=789
+req.reback_target_shift_id=897
+req.approve_id="asdasdjashd"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceApproveScheduleSwitchRequest;
+$req->setUserid("dd_dd");
+$req->setSwitchDate("2019-09-08");
+$req->setRebackDate("2019-09-09");
+$req->setApplyUserid("dd_dd");
+$req->setTargetUserid("aa_aa");
+$req->setApplyShiftId("123");
+$req->setTargetShiftId("456");
+$req->setRebackApplyShiftId("789");
+$req->setRebackTargetShiftId("897");
+$req->setApproveId("asdasdjashd");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/approve/schedule/switch");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/schedule/switch");
+OapiAttendanceApproveScheduleSwitchRequest req = new OapiAttendanceApproveScheduleSwitchRequest();
+req.Userid = "dd_dd";
+req.SwitchDate = "2019-09-08";
+req.RebackDate = "2019-09-09";
+req.ApplyUserid = "dd_dd";
+req.TargetUserid = "aa_aa";
+req.ApplyShiftId = 123L;
+req.TargetShiftId = 456L;
+req.RebackApplyShiftId = 789L;
+req.RebackTargetShiftId = 897L;
+req.ApproveId = "asdasdjashd";
+OapiAttendanceApproveScheduleSwitchResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errcode | Number | 0 | 戻りコードです。 |
+| errmsg | String | ok | 戻りコードの説明です。 |
+
+### レスポンスボディの例
+
+```json
+{
+        "errcode":0,
+        "errmsg":"872995737"
+}
+```
+
+### エラーコード
+
+本 API の呼び出し時にエラーが発生した場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

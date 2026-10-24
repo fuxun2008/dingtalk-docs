@@ -1,0 +1,924 @@
+---
+title: "Create an Instance"
+description: "Call this API to create a workflow-free approval instance from a template code, initiator userId, and form controls; returns the instance ID."
+---
+
+Call this API to create an approval instance without a workflow. Save the returned approval instance ID for use in subsequent API calls.
+
+## API Call Description
+
+To prevent invalid data from being passed to open APIs, this API will enforce stricter validation of incoming data.
+
+- For single-select and multi-select controls, all option values passed must be configured in the option list.
+- For internal contact controls, the userID passed must belong to an active member of the current organization.
+- For department controls, the department ID must be a valid department ID in the current organization.
+- For related approval form controls, the instance ID passed must be an existing approval instance ID in the current organization.
+
+Approval forms initiated in violation of these rules may fail to be created once enhanced form data validation takes effect.
+
+## Request
+
+### Basic Information
+
+| Field | Value |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processCentres/instances |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app　appType-Third-party enterprise app |
+| Required permissions | permission-Workflow.Instance.Write-Workflow instance write permission |
+
+### Request Header
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Yes | The access credential for calling this API. Obtain it as follows:   - Internal app: Call the [Get the access token of an internal app](/open/development/obtain-the-access-token-of-an-internal-app) API. - Third-party enterprise app: Call the API for getting the access token of an organization that authorized the third-party app. |
+
+### Request Body
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| processCode | String | Yes | The approval template code. Call the [Get the template code](/open/development/obtain-the-template-code) API to obtain the processCode value. |
+| originatorUserId | String | Yes | The userId of the approval instance initiator. |
+| formComponentValueList | Array | No | List of form controls. For details, see [FormComponentValues parameter description](/open/development/oa-formcomponent-message). Maximum number of elements: 100.      This API does not support **Location controls** or **Phone controls**. |
+| name | String | No | Form field name. The name of each form field, which corresponds to the label field of the form component. Maximum length: 64 characters. |
+| value | String | No | Form value. Maximum length: 65,535 characters. |
+| extValue | String | No | Extended form value. Maximum length: 8,192 characters.      Contact controls and related approval form controls currently require this value for the instance to be created successfully. Fill it in according to the request example. |
+| id | String | No | Control ID. Maximum length: 64 characters. Call the API for creating or updating an approval template to obtain the componentId value described in [FormComponent parameter description](/open/development/oa-formcomponent-message). |
+| bizAlias | String | No | Control alias. Maximum length: 64 characters. |
+| componentType | String | No | Control type. Maximum length: 64 characters. For details, see [FormComponent parameter description](/open/development/oa-formcomponent-message).   - **TextField**: Single-line input box - **TextareaField**: Multi-line input box - **NumberField**: Number input box - **DDSelectField**: Single-select box       The option value must be configured in the option list     - **DDMultiSelectField**: Multi-select box       All option values must be configured in the option list     - **DDDateField**: Date control - **DDDateRangeField**: Time range control - **TextNote**: Text description control (configured on the approval template; cannot be modified when initiating an approval instance) - **DDPhotoField**: Image control - **MoneyField**: Amount control - **TableField**: Detail control - **DDAttachment**: Attachment - **InnerContactField**: Contact control       The userID in the contact control must belong to an active member of the current organization     - **RelateField**: Related approval form       The approval instance ID passed for a related approval form must exist in the current organization     - **AddressField**: Province/city/district control - **StarRatingField**: Rating control - **DepartmentField**: Department control       Pass department IDs that exist in the current organization |
+| title | String | No | Instance title. Maximum length: 64 characters. |
+| url | String | Yes | URL of the approval form details page in the third-party approval system. Maximum length: 1,024 characters. |
+| notifiers | Array | No | List of CC information. Maximum number of elements: 20. |
+| userid | String | No | The userId of the CC recipient. |
+| position | String | No | CC timing. Valid values:   - **start**: Notify CC recipients when the approval is initiated - **finish**: Notify CC recipients after the approval is approved - **start_finish**: Notify CC recipients both when the approval is initiated and after it is approved |
+| featureConfig | Object | No | Process Center integration configuration. Specify the approval group and callback configuration at the instance level. |
+| features | Array | No | Configuration list. |
+| name | String | No | Name of the feature module that third parties can customize. Currently supported:   - **CUSTOM_SHORTCUT**: Shortcut action buttons in to-dos and card notifications - **AFFILIATION_DIR**: Specify the to-do business group |
+| pcUrl | String | No | Custom redirect link for PC defined by the third party. Maximum length: 1,024 characters. |
+| mobileUrl | String | No | Custom redirect link for mobile defined by the third party. Maximum length: 1,024 characters. |
+| runType | String | No | Run mode.  When features.name is `CUSTOM_SHORTCUT`, supported values:   - **ORIGIN**: Native mode. Opening the to-do details page redirects to the official approval details page - **REDIRECT**: External redirect mode. Opening the to-do details page redirects to the URL configured in pcUrl or mobileUrl   When features.name is `AFFILIATION_DIR`, supported values:   - **OUTBIZ_CUSTOM**: Specify the to-do group. The business defines the category to which the to-do belongs |
+| callback | Object | No | Gateway callback configuration. Required when shortcut action buttons must be supported.  External data APIs called back by the gateway must be registered as gateways in "Data Source Management". For details, see Create a Data Source. |
+| appUuid | String | No | Gateway appUuid. Required when shortcut action buttons must be supported.  Pass the organization ID (corpId) of the organization that created the data source. |
+| apiKey | String | No | Gateway apiKey. Required when shortcut action buttons must be supported. Obtain the `apiKey` from the created data source.       - When the gateway calls back an external API, DingTalk passes back parameters required for business processing to the ISV based on the business scenario. To parse these parameters after receiving the callback request, the ISV must configure the corresponding parameter keys when creating the data source.   For example, when a callback is configured for the TASK_EXECUTE module (the Accept and Decline buttons on the details page), DingTalk passes back the following fixed parameters: `&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"Accept","title":"Asset requisition request submitted by xxx","taskId":111,"operator":"manager0001"&#125;`. - When creating the data source, the ISV must configure the keys to parse based on business needs: outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | No | Gateway API version       - Required when shortcut action buttons must be supported. - Default value: 1. |
+| config | String | No | Configuration information for the feature module customized by the third party. Maximum length: 1,024 characters. |
+| bizData | String | No | Custom business parameters in JSON string format. Maximum length: 1,024 characters. |
+
+### Request Example
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/instances HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:6dexxx
+Content-Type:application/json
+
+{
+    /*
+      This API does not yet support all controls in the Approval app. Only the controls in the following examples are supported.
+      For basic controls, only the name and value attributes are required. Both are strings.
+      If the data is in JSON format, escape it into a string first.
+    */     
+  "processCode" : "proc",
+  "originatorUserId" : "manager1234",
+  "formComponentValueList" : [ 
+      {
+            "name": "Single-line input box",
+            "value": "Single-line input box example"
+        },
+        {
+            "name": "Multi-line input box",
+            "value": "Enter multi-line text. To insert a line break, enter \r\n"
+        },
+        {
+            "name": "Number input box",
+            "value": "100"
+        },
+        {
+            /*
+                value can be the actual option value
+                The option value, such as "Option 1", must be in the configured option list
+                Invalid option values may cause initiation to fail in the future
+            */
+            "name": "Single-select box",
+            "value": "Option 1"
+        },
+        {
+            /*
+                value must be an array of the actual option values escaped into a string.
+                Use an array even if there is only one option
+                Option values, such as "Option 1" and "Option 2", must be in the configured option list
+                Invalid option values may cause initiation to fail in the future
+            */
+            "name": "Multi-select box",
+            "value": "[\"Option 1\",\"Option 2\"]"
+        }, 
+        {
+            /*
+                value supports only the yyyy-MM-dd format
+            */
+            "name": "Date",
+            "value": "2021-08-17"
+        },
+        {
+            /*
+                value is a time array in string form. Only the yyyy-MM-dd format is supported
+            */
+            "name": "[\"Start time\",\"End time\"]",
+            "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+            /*
+                value must be an array of the actual URLs escaped into a string.
+                Use an array even if there is only one item
+            */
+            "name": "Image",
+            "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+            /*
+                The value of a table control is a two-dimensional array of JSON objects. Each row in the array represents a row of data in the table,
+                and each JSON object in a row represents a control in the table.
+            */
+            "name": "Table",
+            "value": "[[{\"name\":\"Single-line input box\",\"value\":\"Detail single-line input box\"},{\"name\":\"Number input box\",\"value\":\"100\"}]]"
+        },
+        {
+            "name": "Amount (CNY)",
+            "value": "100"
+        },
+        {
+            /*
+                The value of an attachment control is a JSON array escaped into a string. Each JSON object in the array is an attachment file.
+                Each file must include the spaceId, fileName, fileSize, fileType, and fileId fields. Obtain these fields
+                by calling the Drive API for uploading attachments.
+            */
+            "name": "Attachment",
+            "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+    "\"643xxxx140\"}]"
+        },
+        {
+            /*
+                The value passed for a contact is the userId
+                If the userId does not belong to an active user of the current organization, initiation may fail in the future
+            */
+            "name": "Contact",
+            "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+            /*
+                value must be an array of the actual approval forms escaped into a string.
+                Use an array even if there is only one item
+                Passing a nonexistent approval instance ID may cause initiation to fail in the future
+            */
+            "name": "Related approval form",
+            "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        },
+        {
+            /*
+                Province/city/district values must follow the address control format to be recognized, separated by English commas
+            */
+              "name": "Province/City/District",
+              "value": "Beijing,Beijing,Hedong District"
+        },
+        {
+              "name": "Rating",
+              "value": "5"
+        },
+        {
+            /*
+                value is the ID of a department in DingTalk Contacts. To select multiple departments, separate values with English commas
+                Passing an invalid department ID may cause approval initiation to fail in the future
+            */
+              "name": "Department",
+              "value": "ID of DingTalk Contacts department 1,ID of DingTalk Contacts department 2"
+        }
+  ],
+  "title" : "Approval from xxx",
+  "url" : "https://www.dingtalk.io/",
+  "notifiers" : [ {
+    "userid" : "manager001",
+    "position" : "start"
+  } ]
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Initialize the account Client with a Token</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceHeaders();
+        saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback()
+                .setAppUuid("corpId of the developer organization")
+                .setApiKey("apiKey generated after configuring the data source")
+                .setVersion("1");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeatures featureConfigFeatures0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfigFeatures()
+                .setName("AFFILIATION_DIR")
+                .setPcUrl("www.dingtalk.io")
+                .setMobileUrl("www.dingtalk.io")
+                .setRunType("REDIRECT")
+                .setCallback(featureConfigFeatures0Callback)
+                .setConfig("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig featureConfig = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig()
+                .setFeatures(java.util.Arrays.asList(
+                    featureConfigFeatures0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers()
+                .setUserid("manager001")
+                .setPosition("start");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValueList0 = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList()
+                .setName("Text Box")
+                .setValue("abc")
+                .setExtValue("abc")
+                .setId("TextField-abc")
+                .setBizAlias("abc")
+                .setComponentType("TextField");
+        com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.SaveIntegratedInstanceRequest()
+                .setProcessCode("proc")
+                .setOriginatorUserId("manager1234")
+                .setFormComponentValueList(java.util.Arrays.asList(
+                    formComponentValueList0
+                ))
+                .setTitle("Approval from xxx")
+                .setUrl("https://www.dingtalk.io/")
+                .setNotifiers(java.util.Arrays.asList(
+                    notifiers0
+                ))
+                .setFeatureConfig(featureConfig)
+                .setBizData("\"{\"mykey\": \"myData\"}\"");
+        try {
+            client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains the code and message attributes, which help locate the issue
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains the code and message attributes, which help locate the issue
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Initialize the account Client with a Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_integrated_instance_headers = dingtalkworkflow__1__0_models.SaveIntegratedInstanceHeaders()
+        save_integrated_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback(
+            app_uuid='corpId of the developer organization',
+            api_key='apiKey generated after configuring the data source',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeatures(
+            name='AFFILIATION_DIR',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        notifiers_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestNotifiers(
+            userid='manager001',
+            position='start'
+        )
+        form_component_value_list_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFormComponentValueList(
+            name='Text Box',
+            value='abc',
+            ext_value='abc',
+            id='TextField-abc',
+            biz_alias='abc',
+            component_type='TextField'
+        )
+        save_integrated_instance_request = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequest(
+            process_code='proc',
+            originator_user_id='manager1234',
+            form_component_value_list=[
+                form_component_value_list_0
+            ],
+            title='Approval from xxx',
+            url='https://www.dingtalk.io/',
+            notifiers=[
+                notifiers_0
+            ],
+            feature_config=feature_config,
+            biz_data='"{"mykey": "myData"}"'
+        )
+        try:
+            client.save_integrated_instance_with_options(save_integrated_instance_request, save_integrated_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains the code and message attributes, which help locate the issue
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        save_integrated_instance_headers = dingtalkworkflow__1__0_models.SaveIntegratedInstanceHeaders()
+        save_integrated_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback(
+            app_uuid='corpId of the developer organization',
+            api_key='apiKey generated after configuring the data source',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfigFeatures(
+            name='AFFILIATION_DIR',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        notifiers_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestNotifiers(
+            userid='manager001',
+            position='start'
+        )
+        form_component_value_list_0 = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequestFormComponentValueList(
+            name='Text Box',
+            value='abc',
+            ext_value='abc',
+            id='TextField-abc',
+            biz_alias='abc',
+            component_type='TextField'
+        )
+        save_integrated_instance_request = dingtalkworkflow__1__0_models.SaveIntegratedInstanceRequest(
+            process_code='proc',
+            originator_user_id='manager1234',
+            form_component_value_list=[
+                form_component_value_list_0
+            ],
+            title='Approval from xxx',
+            url='https://www.dingtalk.io/',
+            notifiers=[
+                notifiers_0
+            ],
+            feature_config=feature_config,
+            biz_data='"{"mykey": "myData"}"'
+        )
+        try:
+            await client.save_integrated_instance_with_options_async(save_integrated_instance_request, save_integrated_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains the code and message attributes, which help locate the issue
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig\features\callback;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig\features;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\featureConfig;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\notifiers;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest\formComponentValueList;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\SaveIntegratedInstanceRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Initialize the account Client with a Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $saveIntegratedInstanceHeaders = new SaveIntegratedInstanceHeaders([]);
+        $saveIntegratedInstanceHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $featureConfigFeatures0Callback = new callback([
+            "appUuid" => "corpId of the developer organization",
+            "apiKey" => "apiKey generated after configuring the data source",
+            "version" => "1"
+        ]);
+        $featureConfigFeatures0 = new features([
+            "name" => "AFFILIATION_DIR",
+            "pcUrl" => "www.dingtalk.io",
+            "mobileUrl" => "www.dingtalk.io",
+            "runType" => "REDIRECT",
+            "callback" => $featureConfigFeatures0Callback,
+            "config" => "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}"
+        ]);
+        $featureConfig = new featureConfig([
+            "features" => [
+                $featureConfigFeatures0
+            ]
+        ]);
+        $notifiers0 = new notifiers([
+            "userid" => "manager001",
+            "position" => "start"
+        ]);
+        $formComponentValueList0 = new formComponentValueList([
+            "name" => "Text Box",
+            "value" => "abc",
+            "extValue" => "abc",
+            "id" => "TextField-abc",
+            "bizAlias" => "abc",
+            "componentType" => "TextField"
+        ]);
+        $saveIntegratedInstanceRequest = new SaveIntegratedInstanceRequest([
+            "processCode" => "proc",
+            "originatorUserId" => "manager1234",
+            "formComponentValueList" => [
+                $formComponentValueList0
+            ],
+            "title" => "Approval from xxx",
+            "url" => "https://www.dingtalk.io/",
+            "notifiers" => [
+                $notifiers0
+            ],
+            "featureConfig" => $featureConfig,
+            "bizData" => "\"{\"mykey\": \"myData\"}\""
+        ]);
+        try {
+            $client->saveIntegratedInstanceWithOptions($saveIntegratedInstanceRequest, $saveIntegratedInstanceHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err contains the code and message attributes, which help locate the issue
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Description:
+// 
+// Initialize the account Client with a Token
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  saveIntegratedInstanceHeaders := &dingtalkworkflow_1_0.SaveIntegratedInstanceHeaders{}
+  saveIntegratedInstanceHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  featureConfigFeatures0Callback := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback{
+    AppUuid: tea.String("corpId of the developer organization"),
+    ApiKey: tea.String("apiKey generated after configuring the data source"),
+    Version: tea.String("1"),
+  }
+  featureConfigFeatures0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures{
+    Name: tea.String("AFFILIATION_DIR"),
+    PcUrl: tea.String("www.dingtalk.io"),
+    MobileUrl: tea.String("www.dingtalk.io"),
+    RunType: tea.String("REDIRECT"),
+    Callback: featureConfigFeatures0Callback,
+    Config: tea.String("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}"),
+  }
+  featureConfig := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfig{
+    Features: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures{featureConfigFeatures0},
+  }
+  notifiers0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers{
+    Userid: tea.String("manager001"),
+    Position: tea.String("start"),
+  }
+  formComponentValueList0 := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList{
+    Name: tea.String("Text Box"),
+    Value: tea.String("abc"),
+    ExtValue: tea.String("abc"),
+    Id: tea.String("TextField-abc"),
+    BizAlias: tea.String("abc"),
+    ComponentType: tea.String("TextField"),
+  }
+  saveIntegratedInstanceRequest := &dingtalkworkflow_1_0.SaveIntegratedInstanceRequest{
+    ProcessCode: tea.String("proc"),
+    OriginatorUserId: tea.String("manager1234"),
+    FormComponentValueList: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList{formComponentValueList0},
+    Title: tea.String("Approval from xxx"),
+    Url: tea.String("https://www.dingtalk.io/"),
+    Notifiers: []*dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers{notifiers0},
+    FeatureConfig: featureConfig,
+    BizData: tea.String("\"{\"mykey\": \"myData\"}\""),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.SaveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err contains the code and message attributes, which help locate the issue
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```javascript
+'use strict';
+// This file is auto-generated, don't edit it
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Initialize the account Client with a Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let saveIntegratedInstanceHeaders = new dingtalkworkflow_1_0.SaveIntegratedInstanceHeaders({ });
+    saveIntegratedInstanceHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let featureConfigFeatures0Callback = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback({
+      appUuid: 'corpId of the developer organization',
+      apiKey: 'apiKey generated after configuring the data source',
+      version: '1',
+    });
+    let featureConfigFeatures0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfigFeatures({
+      name: 'AFFILIATION_DIR',
+      pcUrl: 'www.dingtalk.io',
+      mobileUrl: 'www.dingtalk.io',
+      runType: 'REDIRECT',
+      callback: featureConfigFeatures0Callback,
+      config: '{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'测试\',\'zh_HK\':\'测试\',\'zh_TW\':\'测试\'}}","refuseBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'测试\',\'zh_HK\':\'测试\',\'zh_TW\':\'测试\'}}"}}',
+    });
+    let featureConfig = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFeatureConfig({
+      features: [
+        featureConfigFeatures0
+      ],
+    });
+    let notifiers0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestNotifiers({
+      userid: 'manager001',
+      position: 'start',
+    });
+    let formComponentValueList0 = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequestFormComponentValueList({
+      name: 'Text Box',
+      value: 'abc',
+      extValue: 'abc',
+      id: 'TextField-abc',
+      bizAlias: 'abc',
+      componentType: 'TextField',
+    });
+    let saveIntegratedInstanceRequest = new dingtalkworkflow_1_0.SaveIntegratedInstanceRequest({
+      processCode: 'proc',
+      originatorUserId: 'manager1234',
+      formComponentValueList: [
+        formComponentValueList0
+      ],
+      title: 'Approval from xxx',
+      url: 'https://www.dingtalk.io/',
+      notifiers: [
+        notifiers0
+      ],
+      featureConfig: featureConfig,
+      bizData: '"{"mykey": "myData"}"',
+    });
+    try {
+      await client.saveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err contains the code and message attributes, which help locate the issue
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Description:</b></term>
+        /// <description>
+        /// <para>Initialize the account Client with a Token</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceHeaders saveIntegratedInstanceHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceHeaders();
+            saveIntegratedInstanceHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures.SaveIntegratedInstanceRequestFeatureConfigFeaturesCallback
+            {
+                AppUuid = "corpId of the developer organization",
+                ApiKey = "apiKey generated after configuring the data source",
+                Version = "1",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures featureConfigFeatures0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures
+            {
+                Name = "AFFILIATION_DIR",
+                PcUrl = "www.dingtalk.io",
+                MobileUrl = "www.dingtalk.io",
+                RunType = "REDIRECT",
+                Callback = featureConfigFeatures0Callback,
+                Config = "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'测试','zh_HK':'测试','zh_TW':'测试'}}\"}}",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig featureConfig = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig
+            {
+                Features = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFeatureConfig.SaveIntegratedInstanceRequestFeatureConfigFeatures>
+                {
+                    featureConfigFeatures0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers notifiers0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers
+            {
+                Userid = "manager001",
+                Position = "start",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList formComponentValueList0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList
+            {
+                Name = "Text Box",
+                Value = "abc",
+                ExtValue = "abc",
+                Id = "TextField-abc",
+                BizAlias = "abc",
+                ComponentType = "TextField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest saveIntegratedInstanceRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest
+            {
+                ProcessCode = "proc",
+                OriginatorUserId = "manager1234",
+                FormComponentValueList = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestFormComponentValueList>
+                {
+                    formComponentValueList0
+                },
+                Title = "Approval from xxx",
+                Url = "https://www.dingtalk.io/",
+                Notifiers = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.SaveIntegratedInstanceRequest.SaveIntegratedInstanceRequestNotifiers>
+                {
+                    notifiers0
+                },
+                FeatureConfig = featureConfig,
+                BizData = "\"{\"mykey\": \"myData\"}\"",
+            };
+            try
+            {
+                client.SaveIntegratedInstanceWithOptions(saveIntegratedInstanceRequest, saveIntegratedInstanceHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains the code and message attributes, which help locate the issue
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains the code and message attributes, which help locate the issue
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Response
+
+### Response Body
+
+| Name | Type | Description |
+| --- | --- | --- |
+| result | Object | Result. |
+| processInstanceId | String | Instance ID. |
+
+### Response Body Example
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "processInstanceId" : "1234"
+  }
+}
+```
+
+### Error Codes
+
+If the API call returns an error, find a solution in the [Global Error Codes](/open/development/server-api-error-codes-1) document based on the error message.
+
+| HttpCode | Error Code | Error Message | Description |
+| --- | --- | --- | --- |
+| 400 | aflowProcessFormContentInvalid | Invalid approval workflow form format | Invalid approval workflow form format |
+| 400 | process.error | The approval workflow does not exist | The approval workflow does not exist |
+| 400 | permission.error | No access permission | No access permission |
+| 400 | permission.error | No permission to operate the approval workflow | No permission to operate the approval workflow |
+| 400 | instance.error | Failed to initiate the approval instance | Failed to initiate the approval instance |
+| 400 | needAuth | No permission to initiate approvals | No permission to initiate approvals |
+| 400 | invalidAgentId | Invalid micro app ID | Invalid micro app ID |
+| 400 | invalidSuiteKey | Invalid suiteKey | Invalid suiteKey |
+| 400 | required.error | %s | Required field validation error |
+| 400 | internalError | %s | Internal system error |
+| 400 | userNotExist | The user does not exist | The user does not exist |
+| 400 | formConverterError | Failed to reverse-convert form data | Failed to reverse-convert form data |
+| 400 | parameter.invalid | Parameter error | Parameter error |
+| 400 | processCode.in.blackList | The current template code has been added to the blocklist. Unable to initiate the approval instance. | Check whether the template has issues such as an infinite loop that continuously initiates instances. |
+| 400 | isvOrgId.in.blackList | The current ISV organization ID has been added to the blocklist. Unable to initiate the approval instance. | Check whether the ISV organization has issues such as an infinite loop that continuously initiates instances. |
+| 400 | isvAppId.in.blackList | The current ISV app appId has been added to the blocklist. Unable to initiate the approval instance. | Check whether the ISV app has issues such as an infinite loop that continuously initiates instances. |
+| 500 | system.error | System error | System error |

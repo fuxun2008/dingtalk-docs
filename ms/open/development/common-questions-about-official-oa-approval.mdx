@@ -1,0 +1,203 @@
+---
+title: "Kelulusan OA rasmi"
+description: "Soalan lazim Kelulusan OA rasmi dan Kelulusan OA sendiri di DingTalk: dapatkan skema borang, urus lampiran kelulusan dan atasi ralat API templat serta instans."
+---
+
+# Soalan lazim
+
+## Kelulusan OA rasmi
+
+- **Mendapatkan skema borang daripada Aplikasi perusahaan pihak ketiga mengembalikan "code: 500, unknown error"**
+
+  J: Jika API [Dapatkan skema borang](/ms/open/development/obtain-the-form-schema) mengembalikan "code: 500, unknown error", puncanya mungkin isu kebenaran. Anda hanya boleh mendapatkan borang yang telah diberi kebenaran oleh pengguna. Borang tanpa kebenaran pengguna tidak akan dikembalikan. Untuk butiran tentang kebenaran bagi mendapatkan data instans kelulusan, rujuk Panggil tetingkap timbul Kebenaran.
+- **Bagaimanakah cara menambah lampiran pada kelulusan?**
+
+  J: Lampiran kelulusan memerlukan Server API dan API frontend. Untuk proses terperinci, rujuk kes penggunaan [Aliran kerja lampiran kelulusan](/ms/open/development/new-version-of-attachment-approval-process).
+
+### Nota
+
+  Penambahan lampiran kelulusan melalui Server API sahaja belum disokong.
+
+  1. Panggil API [Dapatkan maklumat ruang Drive kelulusan](/ms/open/development/obtains-the-information-about-approval-nail-disk) untuk mendapatkan spaceId ruang Drive kelulusan yang dikhaskan untuk lampiran kelulusan.
+  2. Panggil API untuk memilih sumber setempat dan muat naik sumber tersebut ke ruang Drive lampiran kelulusan. Dapatkan parameter spaceId, fileId, fileName, fileSize dan fileType.
+  3. Hantar parameter daripada langkah 2 kepada komponen lampiran dalam API yang memulakan kelulusan.
+- **Bagaimanakah cara mendapatkan lampiran dalam kelulusan?**
+
+  J: Lampiran kelulusan memerlukan Server API dan API frontend. Untuk proses terperinci, rujuk kes penggunaan [Aliran kerja lampiran kelulusan](/ms/open/development/new-version-of-attachment-approval-process).
+
+  1. Panggil API [Beri kebenaran pratonton lampiran kelulusan](/ms/open/development/official-authorized-preview-approval-attachment). API ini memberikan kebenaran. Hanya pengguna yang sepadan dengan userid yang dihantar boleh membuat pratonton lampiran.
+  2. Gunakan parameter space_id untuk memanggil Muat naik lampiran ke Drive / Pilih fail daripada Drive dan dapatkan maklumat lampiran Drive.
+- **Panggilan gagal bagi API Kelulusan**
+
+  J: Jika panggilan API Kelulusan mengembalikan ralat, semak perkara berikut:
+
+  1. Semasa membina templat kelulusan dalam aplikasi Kelulusan di Admin Console OA, pilih hanya jenis komponen yang disenaraikan dalam [Cipta instans kelulusan](/ms/open/development/create-an-approval-instance). Jika tidak, API yang memulakan kelulusan akan mengembalikan ralat.
+  2. Dalam templat kelulusan, komponen perincian hanya menyokong komponen kotak input dan gambar. Jenis komponen lain tidak disokong.
+  3. Satu templat kelulusan menyokong sehingga 20 komponen.
+- **Format kawalan manakah yang boleh dihantar dalam komponen perincian semasa memulakan instans Kelulusan OA?**
+
+  J: Komponen perincian dalam API [Cipta instans kelulusan](/ms/open/development/create-an-approval-instance) menerima format kawalan berikut: kotak input satu baris, kotak input berbilang baris, kotak input nombor dan kawalan gambar.
+
+## Kelulusan OA sendiri
+
+### API cipta atau kemas kini templat
+
+#### errcode=15
+
+- **Masalah**
+
+  Panggilan API cipta atau kemas kini templat mengembalikan ralat berikut.
+
+  ```json
+  {
+     " errcode":15,
+     " sub_msg":"Service unavailable",
+     " sub_code":isp.-1,
+     " errmsg":"Remote service error"[
+        subcode=isp.-1,
+        "submsg=Service unavailable"
+     ]
+  }
+  ```
+- **Punca**
+
+  Parameter componentName tidak menerima nilai tersuai. Hantar salah satu nilai tetap yang disenaraikan dalam dokumentasi.
+- **Penyelesaian**
+
+  Tukar nilai componentName. Untuk butiran, rujuk [Cipta atau kemas kini templat kelulusan](/ms/open/development/create-orupdate-the-approval-template-new).
+
+#### errcode=810002
+
+- **Masalah**
+
+  Panggilan API cipta atau kemas kini templat mengembalikan ralat berikut.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"The number of copied approval flows has exceeded the maximum",
+     "request_id":"xsr5qth2j075"
+  }
+  ```
+- **Punca**
+
+  Had 200 templat telah dicapai.
+- **Penyelesaian**
+
+  Padam templat yang tidak diperlukan lagi, kemudian cuba lagi.
+
+### API cipta instans
+
+- **Masalah**
+
+  Tiada kebenaran untuk mengendalikan aliran kelulusan. Semak sama ada instans kelulusan atau templat adalah betul.
+
+  ```json
+  {
+      "errcode": 810007,
+      "errmsg": "No permission to operate on the approval flow",
+      "request_id": "xxx"
+  }
+  ```
+- **Punca**
+
+  Parameter processCode tidak betul.
+- **Penyelesaian**
+
+  Gunakan processCode yang dikembalikan oleh API [Cipta atau kemas kini templat kelulusan](/ms/open/development/create-orupdate-the-approval-template-new), dan tetapkan **fake_mode** kepada **true**.
+
+### API kemas kini instans
+
+#### **errcode=810007** **Tiada kebenaran untuk mengendalikan aliran kelulusan**
+
+- **Masalah**
+
+  Panggilan API kemas kini instans (process/workrecord/update) mengembalikan ralat berikut.
+
+  ```text
+  No permission to operate on the approval flow. Check whether the approval instance or template is correct.
+  ```
+
+  ```json
+  {
+      "errcode": 810007,
+      "errmsg": "No permission to operate on the approval flow",
+      "request_id": "xxx"
+  }
+  ```
+- **Punca**
+
+  Parameter ID instans (process_instance_id) tidak betul.
+- **Penyelesaian**
+
+  ID instans (process_instance_id) mestilah nilai process_instance_id yang dikembalikan oleh API [Cipta instans](/ms/open/development/create-a-ticket-approval-instance). Nilai instans daripada aliran kelulusan rasmi tidak diterima.
+
+#### errorcode=820008
+
+- **Masalah**
+
+  Panggilan API kemas kini instans (process/workrecord/update) mengembalikan ralat berikut.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"Approval system error. Reason: [The approval form has been modified by the admin]",
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Punca**
+
+  Parameter result tidak dihantar.
+- **Penyelesaian**
+
+  Semasa mengemas kini instans borang kelulusan, hantar nilai result dan cuba lagi.
+
+### API cipta Tugasan
+
+#### errorcode=820008
+
+- **Masalah**
+
+  Panggilan API cipta Tugasan (process/workrecord/task/create) mengembalikan ralat berikut.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"Approval system error. Reason: [Known engine error:{0}",
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Punca**
+
+  Parameter URL terlalu panjang.
+- **Penyelesaian**
+
+  Pendekkan parameter URL dan cuba lagi.
+
+#### errorcode=820010
+
+- **Masalah**
+
+  Panggilan API cipta Tugasan (process/workrecord/task/create) mengembalikan ralat berikut.
+
+  ```json
+  {
+     "errcode":820010,
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Punca**
+
+  Bilangan Tugasan di bawah instans melebihi had.
+- **Penyelesaian**
+
+  Setiap instans menyokong sehingga 100 Tugasan. Padam Tugasan yang tidak diperlukan lagi dan cuba lagi, atau cipta instans baharu.
+
+### Lain-lain
+
+#### API Kelulusan OA sendiri mengembalikan "Tiada kebenaran untuk mengendalikan aliran kelulusan"
+
+Isu ini berlaku apabila senario "Kelulusan OA rasmi" dan "Kelulusan OA sendiri" bercampur.
+
+1. Semasa memanggil API cipta instans untuk Kelulusan OA sendiri, parameter process_code mesti diperoleh daripada API [Cipta atau kemas kini templat kelulusan](/ms/open/development/create-orupdate-the-approval-template-new). Jangan gunakan process_code yang disalin daripada bar alamat Admin Console Kelulusan.
+2. Semasa memanggil API kemas kini status instans untuk Kelulusan OA sendiri, parameter process_instance_id mesti diperoleh daripada API [Cipta instans](/ms/open/development/create-a-ticket-approval-instance). Jangan hantar process_instance_id yang dikembalikan oleh API cipta instans kelulusan bagi aliran kelulusan rasmi.

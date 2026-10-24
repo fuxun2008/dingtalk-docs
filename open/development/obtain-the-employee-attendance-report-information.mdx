@@ -1,0 +1,282 @@
+---
+title: "Get Daily Employee Attendance Report Data"
+description: "Call this API to retrieve daily employee attendance metrics like required attendance, late arrivals, and absences for local analysis."
+---
+
+# Generate Daily Attendance Reports: Daily Statistics and Multi-Dimensional Data Analysis
+
+## Overview
+
+This solution retrieves and aggregates employee attendance report data from end to end. It uses the attendance report APIs on the DingTalk Open Platform to collect metrics at a daily level and aggregate them locally.
+
+### Background
+
+Organizations need to track and analyze employee attendance data on a regular basis. Key metrics include required attendance days, actual attendance days, late arrivals, early leaves, and absences. The DingTalk Admin Console provides visual attendance reports. However, in-house systems such as HR systems, BI platforms, and OA dashboards must retrieve this data automatically through APIs for the following purposes:
+
+- **Automated report generation**: Export monthly, quarterly, or annual attendance summary reports on a schedule instead of doing it manually.
+- **Cross-system integration**: Sync attendance data to the organization's ERP and payroll systems to close the data loop.
+- **In-depth data analysis**: Correlate attendance data with business data, such as sales revenue and customer satisfaction, across multiple dimensions.
+- **Error monitoring and alerts**: Monitor attendance error trends by department or individual in real time and flag risks early.
+
+The attendance report APIs on the DingTalk Open Platform don't return monthly summary tables. Instead, they return basic metric values at a daily level, and developers must aggregate the data themselves. This creates several challenges:
+
+- **Steep learning curve**: Developers new to the APIs often misunderstand their capabilities and expect monthly summary results.
+- **High development cost**: Developers must write extra aggregation logic to iterate over date ranges, fill in empty values, and filter out errors.
+- **Performance challenges**: Large organizations with more than 1,000 employees may need thousands of API calls for a monthly query. This can trigger rate limits or timeouts.
+
+### Key Benefits
+
+This solution covers the full process of retrieving and aggregating employee attendance report data. It uses a standardized API call flow and Best practices to help organizations automate attendance data collection and analysis.
+
+- **Standardized Integration flow**: Defines a clear sequence of 4 core API calls (confirm smart statistics → get column definitions → query column values → aggregate data) to lower the learning curve.
+- **Flexible data granularity**: Supports queries by day, user, department, and attendance group to meet different business needs.
+- **High-performance batch processing**: Uses pagination, concurrency control, and caching to ensure stable retrieval of large data volumes.
+- **Complete data validation**: Includes built-in consistency checks that automatically detect missing dates, duplicate records, and abnormal values.
+
+### Use Cases
+
+This solution applies to the following common business scenarios:
+
+- **Automated HR monthly reports**: On the 1st of each month, automatically generate a company-wide attendance summary for the previous month and send it to management by Mail.
+- **Payroll system integration**: Sync attendance data, such as late arrival deductions and overtime duration, to the payroll system to calculate salaries automatically.
+- **Department performance dashboard**: Display department rankings for attendance rate and late arrival rate in real time to support management decisions.
+- **Personal attendance lookup app**: Let employees look up their attendance history on their own, reducing HR inquiries.
+
+## Typical Business Scenarios
+
+### Scenario 1: Automate HR Monthly Attendance Reports
+
+#### Pain Points
+
+Traditionally, HR staff sign in to the DingTalk Admin Console at the start of each month and manually export the previous month's company-wide attendance report. They then clean, aggregate, and format the data in Excel. This takes 2–3 hours and is error-prone. Once an organization grows beyond 1,000 employees, manual processing becomes almost impossible.
+
+#### Value
+
+- **Automated workflow**
+
+  The automated monthly report pipeline runs in five steps:
+
+  1. A scheduled task triggers in the early morning of the 1st of each month.
+  2. Call the DingTalk Open Platform API to batch-retrieve the column definitions and column values of the attendance data.
+  3. Clean and aggregate the data locally to calculate the monthly metrics.
+  4. Generate reports in multiple formats: Excel (with formulas), PDF (stamped version), and HTML (online preview).
+  5. Automatically send the report by Mail to management, with CC and permission control supported.
+- **Key advantages**
+
+  - **Fully automated generation**: A script runs automatically in the early morning of the 1st of each month, generates Excel and PDF reports, and sends them by Mail to designated recipients with no manual effort.
+  - **Multiple output formats**: Supports Excel (with formulas), PDF (stamped version), and HTML (online preview) to meet different distribution needs.
+  - **Custom metrics**: Select the metrics that fit your organization. For example, track only "late arrivals + absence days" and ignore other fields.
+  - **Historical comparison**: Automatically calculate year-over-year and month-over-month data and flag unusual changes, such as a department's late arrival rate rising 20% from the previous month.
+
+### Scenario 2: Sync Attendance Data to the Payroll System
+
+#### Pain Points
+
+Payroll calculation depends on accurate attendance data, such as late arrival deductions and the overtime pay base. However, DingTalk and payroll systems lack a standard data interface. Each month, HR must manually export attendance details, match Employee IDs with Excel VLOOKUP, and then import the data into the payroll system. This process is time-consuming, and inconsistent Employee IDs can cause data mismatches.
+
+#### Value
+
+- **Automated workflow**
+
+  The automated sync runs in five steps:
+
+  1. After an employee clocks in, the sync task is triggered on day T+1.
+  2. Call the DingTalk Open API to query attendance column values by calendar day and retrieve the raw clock-in records.
+  3. Map the DingTalk **userId** to the organization's **Employee ID** to establish a unified identity association.
+  4. Run error detection and generate a review ticket for HR to handle.
+  5. After the review passes, the data is automatically written to the payroll system database to complete the sync.
+- **Key advantages**
+
+  - **Timely sync**: Clock-in data syncs to the payroll system on day T+1, so monthly payroll is always based on the latest data.
+  - **Accurate matching**: A mapping table between DingTalk userIds and Employee IDs ensures 100% accurate data association and eliminates manual matching errors.
+  - **Error interception**: Automatically detect abnormal data, such as clock-ins spanning more than 24 hours in a single day or no clock-in records for 7 consecutive days. The system generates a review ticket, and the data syncs only after HR confirms it.
+  - **Audit trail**: Each sync records a complete log, including the timestamp, data volume, and failed records, to meet financial audit requirements.
+
+## Implementation Guide
+
+### Technical Architecture
+
+This solution is built on the Server APIs of the DingTalk Open Platform. The core technical components are:
+
+- **Authentication layer**: Get an `access_token` with the `Client ID` and `Client Secret` to secure API calls.
+- **Smart statistics confirmation layer**: Call an API to confirm whether smart statistics is enabled for the organization, so that later API calls don't fail.
+- **Column definition management layer**: Get the IDs and names of all available attendance report columns as base metadata for later queries.
+- **Column value query engine**: Query metric values day by day based on column IDs, user IDs, and date ranges. Supports pagination and batch processing.
+- **Data aggregation and validation layer**: Aggregate the raw daily data (sum, average, count) and run data consistency checks.
+
+**Data flow**: Get the access_token → Confirm that smart statistics is enabled → Get column definitions (list of column IDs) → Iterate over the date range and query column values day by day → Aggregate locally (monthly, quarterly, or annual) → Output the final report.
+
+### Prerequisites
+
+Make sure you meet the following requirements before you implement the solution:
+
+- **App preparation**: Create and configure an Internal app. For details, see App creation and configuration.
+- **Permissions**: You must have DingTalk Organization Admin or Sub Admin permissions.
+- **Development environment**: Install a Java development environment (JDK 1.6 or later) and the Maven build tool.
+- **SDK preparation**: Download the DingTalk Server-side SDK. For details, see Server-side SDK download. The SDK supports Java, Python, Go, and other languages.
+- **Smart statistics enabled**: Confirm that smart statistics is enabled for the organization's attendance app. Older UI versions may not have it enabled, so call the API to confirm.
+
+### Code Implementation
+
+1. Step 1: Get the App credential information, including the client ID and Client Secret.
+
+   Step 2: Get the App access credential. For details, see [Get the access_token of an Internal App](/open/development/obtain-orgapp-token). When you call the APIs, the access token authenticates the caller's identity.
+
+   Step 3: Call the attendance APIs:
+
+   1. Call the Server API [Check Whether the Smart Statistics Report Is Enabled](/open/development/determine-whether-to-enable-attendance-intelligent-report) to confirm that smart statistics is enabled.
+   2. Call the Server API [Get Attendance Report Column Definitions](/open/development/queries-the-enterprise-attendance-report-column) to get the attendance report column `ID`s.
+   3. Using the attendance report column `ID`s, call the Server API [Get Attendance Report Column Values](/open/development/queries-the-column-value-of-the-attendance-report) to get the values for each column definition.
+   4. Aggregate the raw daily data locally to generate monthly, quarterly, or annual reports.
+
+## Implementation Steps
+
+### **Step 1: Get the App Credential**
+
+1. Sign in to the [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Select the target app to open its details page.
+3. Click **Basic Information** > **Credentials and Basic Information**.
+4. Record the app's `Client ID` and `Client Secret`.
+
+### Note
+
+   Keep the `Client Secret` secure and don't share it with third parties. Store it in environment variables or a key management system instead of hardcoding it.
+
+### **Step 2**: Get the Access Credential (access_token)
+
+Use the Client ID and Client Secret from Step 1 to get the App access credential. For details, see [Get the access_token of an Internal App](/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Best practices**:
+
+- **Caching**: The `access_token` is valid for 2 hours. Cache it in memory or Redis and refresh it proactively 5 minutes before it expires.
+- **Concurrency control**: Prevent conflicts from multiple threads refreshing the token at the same time. Use a distributed lock.
+- **Retry on errors**: Retry automatically on network fluctuations, up to 3 times, with increasing intervals (1s → 2s → 4s).
+
+### Step 3: Call the Core APIs
+
+1. **Check whether the smart statistics report is enabled**: Call the Server API [Check Whether the Smart Statistics Report Is Enabled](/open/development/determine-whether-to-enable-attendance-intelligent-report) to confirm that smart statistics is enabled for the organization.
+
+### Note
+
+   Smart statistics is now enabled for the attendance app. However, older UI versions may not have it enabled. Call this API to prevent later API calls from failing because the feature is off.
+
+   ```java
+   public void checkIsopensmartreportEnabled() throws ApiException {
+     DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/isopensmartreport");
+     OapiAttendanceIsopensmartreportRequest req = new OapiAttendanceIsopensmartreportRequest();
+     OapiAttendanceIsopensmartreportResponse rsp = client.execute(req, access_token);
+     System.out.println(rsp.getBody());
+      // Parse the response and check whether the enabled field is true
+   }
+   ```
+2. **Get attendance report column definitions**: Call the Server API [Get Attendance Report Column Definitions](/open/development/queries-the-enterprise-attendance-report-column) to get the IDs and names of all available attendance report columns.
+
+### Note
+
+   Column definitions don't include leave request information. To get leave statistics in the report, call the [Get Leave Data from the Report](/open/development/obtains-the-holiday-data-from-the-smart-attendance-report) API.
+
+   ```java
+    public void attendanceColumns() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getattcolumns");
+       OapiAttendanceGetattcolumnsRequest req = new OapiAttendanceGetattcolumnsRequest();
+       OapiAttendanceGetattcolumnsResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+3. **Get attendance report column values (daily)**: Using the attendance report column IDs, user IDs, and dates, call the Server API [Get Attendance Report Column Values](/open/development/queries-the-column-value-of-the-attendance-report) to get the values for each column definition.
+
+   ```java
+    public void attendanceColumnsValue() throws ApiException {
+        DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getcolumnval");
+        OapiAttendanceGetcolumnvalRequest req = new OapiAttendanceGetcolumnvalRequest();
+        req.setUserid("01472825524039877041");
+        req.setColumnIdList("184678999,184727001");
+        req.setFromDate(StringUtils.parseDateTime("2022-10-24 00:00:00"));
+        req.setToDate(StringUtils.parseDateTime("2022-10-25 00:00:00"));
+        OapiAttendanceGetcolumnvalResponse rsp = client.execute(req, "access_token");
+        System.out.println(rsp.getBody());
+   }
+   ```
+4. **Aggregate and validate data**: Aggregate the raw daily data locally to generate monthly, quarterly, or annual reports.
+
+   ```text
+   public Map aggregateMonthlyData(String userId, List columnIds, String startDate, String endDate) {
+     Map result = new HashMap<>();
+
+     // Initialize the accumulator for each column
+     for (String columnId : columnIds) {
+       result.put(columnId, 0.0);
+     }
+
+     // Iterate over the date range
+     LocalDate start = LocalDate.parse(startDate);
+     LocalDate end = LocalDate.parse(endDate);
+     for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+       String workDate = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+       for (String columnId : columnIds) {
+         try {
+           double value = getColumnValue(userId, columnId, workDate);
+           result.merge(columnId, value, Double::sum);
+         } catch (Exception e) {
+           log.warn("Query failed: userId={}, columnId={}, date={}", userId, columnId, workDate, e);
+         }
+       }
+     }
+
+     return result;
+   }
+   ```
+
+**Implementation checklist**:
+
+- ✅ Smart statistics is confirmed as enabled.
+- ✅ The list of all available column IDs is retrieved successfully.
+- ✅ The daily column value API works and returns valid data.
+- ✅ The local aggregation logic passes testing, and the results match the DingTalk Admin Console.
+- ✅ Error data handling is complete (missing dates filled with 0, duplicate records removed).
+
+## FAQ
+
+- **Q1: Why can't I get a monthly summary table directly?**
+
+  A: The DingTalk Open Platform is designed to provide **atomic data capabilities** rather than predefined summary reports. The reasons include:
+
+  - Flexibility: Organizations define "monthly summary" differently. Some use calendar months, and others use attendance cycles. Open APIs let developers define their own aggregation logic.
+  - Performance: Returning a monthly summary for an organization with 1,000+ employees in one response could cause timeouts. Daily queries make pagination and caching easier.
+  - Data freshness: Daily queries return the latest data in real time, while monthly summary tables are usually updated on day T+1.
+
+    **Recommendation**: Build a local data warehouse, sync daily data on a schedule, and precompute common summary metrics to balance freshness and performance.
+- **Q2: How can I efficiently query monthly data for an organization with 1,000+ employees?**
+
+  A: Use the following optimization strategies:
+
+  1. **Parallel batches**: Split the employee list into 10–20 batches of 50–100 employees each, and query them in parallel with a thread pool.
+  2. **Narrower date ranges**: If you only need workday data, filter out weekends and holidays first. This cuts unnecessary queries by 30%–40%.
+  3. **Cache hits**: Cache query results for the same column IDs within the same date range to avoid repeat calls.
+  4. **Incremental sync**: After the first full sync, sync only new or changed data each day to greatly reduce routine maintenance costs.
+- **Q3: How do I handle incomplete dates when employees join or leave mid-period?**
+
+  A: The attendance report APIs automatically return data based on each employee's actual employment dates:
+
+  - **Dates before onboarding**: Returns empty values or 0. Skip these dates in your local logic.
+  - **Dates after departure**: Also returns empty values or 0.
+- **Q4: Do column IDs change? Do I need to get them again periodically?**
+
+  A: Column IDs are generally stable after the organization enables smart statistics, but they may change in the following cases:
+
+  - **DingTalk version upgrades**: New column IDs are added when new statistical metrics are introduced.
+  - **Organization custom fields**: If the organization configures custom attendance rules, dedicated column IDs may be generated.
+  - **Recommendation**: Call the "Get Attendance Report Column Definitions" API weekly or monthly and update your local column ID mapping table to ensure compatibility.

@@ -1,0 +1,710 @@
+---
+title: "Kueri formulir pengguna dan formulir persetujuan"
+description: "Kueri formulir persetujuan yang terlihat oleh pengguna dan jumlah persetujuan tertunda melalui API DingTalk untuk membangun workbench persetujuan yang personal."
+---
+
+# Integrasikan Persetujuan OA: kueri formulir yang terlihat dan jumlah persetujuan tertunda
+
+## Ikhtisar
+
+### Latar belakang
+
+Setelah masuk ke DingTalk, karyawan perlu melihat izin persetujuan mereka, formulir yang dapat mereka lihat, dan jumlah persetujuan yang menunggu tindakan mereka. Sistem Persetujuan OA yang ada belum memiliki workbench persetujuan pribadi yang terpadu. API untuk mengkueri formulir yang terlihat dan jumlah persetujuan tertunda memungkinkan Anda membangun Dasbor persetujuan yang personal di DingTalk. Dengan begitu, karyawan dapat memprioritaskan pekerjaan persetujuan secara lebih efektif.
+
+Organisasi sering menghadapi tantangan berikut dalam operasional sehari-hari:
+
+- **Izin persetujuan tidak jelas:** Karyawan tidak tahu jenis formulir apa yang dapat mereka lihat atau setujui. Dalam skenario bisnis baru, mereka harus berulang kali bertanya kepada Admin untuk memastikan cakupan izin mereka. Biaya komunikasi tinggi, dan respons lambat.
+- **Jumlah tugas tertunda tidak terlihat:** Pusat To-Do DingTalk hanya menampilkan daftar tugas. Pusat ini tidak dapat merangkum persetujuan tertunda berdasarkan jenis formulir. Karyawan tidak dapat melihat distribusi beban kerja mereka sehingga sulit merencanakan urutan pekerjaan.
+- **Persetujuan lintas sistem tersebar:** Persetujuan dari OA, kontrol biaya, HR, dan sistem lainnya berada di titik masuk yang terpisah. Karyawan harus masuk ke setiap sistem untuk memeriksa item tertunda, yang memakan waktu lebih dari 15 menit setiap hari.
+- **Beban kerja persetujuan tidak seimbang:** Manajer tidak dapat melihat jumlah persetujuan tertunda atau tumpukan pekerjaan anggota tim secara real time. Pembagian kerja bergantung pada penilaian subjektif sehingga sebagian karyawan terus kelebihan beban, sementara yang lain menganggur.
+
+### Manfaat utama
+
+Solusi ini memberikan nilai di tiga area:
+
+- **Daftar formulir dinamis:** Ambil semua formulir persetujuan yang dapat dikelola di organisasi Anda, atau formulir yang terlihat oleh pengguna tertentu, secara real time melalui API. Sistem bisnis Anda tidak memerlukan tabel konfigurasi formulir statis.
+- **Statistik tugas tertunda yang akurat:** Kueri jumlah persetujuan tertunda pengguna berdasarkan userId. Tampilkan pengingat tugas tertunda yang personal di halaman Beranda atau pusat pesan sistem bisnis.
+- **Isolasi izin yang terkendali:** Kueri daftar formulir secara otomatis mengikuti sistem izin Persetujuan OA DingTalk. Hanya formulir yang dapat diakses pemanggil yang dikembalikan sehingga data tetap aman.
+
+### Kasus penggunaan
+
+Solusi ini cocok untuk skenario saat sistem bisnis Anda harus menampilkan titik masuk formulir persetujuan secara dinamis dan menampilkan jumlah tugas tertunda pengguna secara real time. Kasus penggunaan umum meliputi:
+
+- **Workbench persetujuan terpadu:** Kumpulkan semua titik masuk formulir persetujuan yang terlihat oleh pengguna, beserta jumlah tugas tertunda, di halaman Beranda sistem bisnis untuk akses persetujuan satu pintu.
+- **Rekomendasi formulir cerdas:** Filter daftar formulir yang terlihat secara dinamis berdasarkan peran dan departemen pengguna. Tampilkan hanya jenis persetujuan yang terkait dengan tanggung jawab pengguna.
+- **Push notifikasi tugas tertunda:** Pantau perubahan jumlah persetujuan tertunda pengguna secara terjadwal. Picu pesan dalam aplikasi atau push notification seluler.
+
+## Skenario bisnis umum
+
+### Skenario 2: Portal kantor seluler untuk dosen dan staf universitas (pendidikan)
+
+#### Tantangan
+
+Sebuah universitas terkemuka menggunakan aplikasi kantor seluler yang dikembangkan sendiri untuk dosen dan staf. Dosen mengajukan banyak jenis persetujuan, seperti permintaan penjadwalan ulang kelas, penggantian dana riset, dan pembelian peralatan. Proses awal memiliki masalah berikut:
+
+- **Formulir sulit ditemukan:** Titik masuk persetujuan di aplikasi menggunakan struktur menu tetap. Setiap jenis persetujuan baru memerlukan rilis aplikasi untuk menambahkan titik masuknya sehingga respons menjadi lambat.
+- **Tugas tertunda terlewat di berbagai kampus:** Notifikasi persetujuan tertunda bagi dosen di kampus utama dan kampus cabang bergantung pada email. Aplikasi seluler tidak memiliki pengingat real time, dan dosen di kampus terpencil menangani persetujuan dengan keterlambatan rata-rata 2 hari.
+- **Personalisasi buruk:** Semua dosen melihat daftar formulir persetujuan yang sama. Staf administrasi terus melihat formulir pengajaran, dan profesor terus melihat formulir keuangan sehingga mereka terdistraksi dari tugas inti.
+
+#### Validasi nilai
+
+- **Alur Otomatisasi**
+
+  Alur menyeluruh:
+
+  1. Dosen membuat pengajuan di perangkat seluler melalui titik masuk berbasis peran.
+  2. Rekomendasi **Formulir** dinamis mengurutkan templat berdasarkan frekuensi penggunaan.
+  3. **Persetujuan** berlangsung di dalam DingTalk. Detail persetujuan menampilkan **Jenis Pengajuan**, **Pemohon**, **Departemen**, dan **Prioritas**, dengan tombol **Kirim untuk Persetujuan**.
+  4. Penyetuju mengetuk **Tolak** atau **Setujui**.
+  5. Hasilnya dikirim sebagai **notifikasi** lokal.
+
+  Bandingkan alur manual tradisional (titik masuk menu tetap > kirim permintaan via email > isi formulir secara manual > balasan email tertunda > arsipkan hasil) dengan alur **Otomatisasi** terintegrasi (aplikasi seluler > Pusat Persetujuan DingTalk > persetujuan selesai > **push** notifikasi lokal).
+- **Keunggulan utama**
+
+  - **Daftar formulir personal:** Setelah masuk, dosen hanya melihat formulir persetujuan yang terkait dengan jabatan mereka. Peran administrasi melihat alur dokumen terlebih dahulu, dan peran pengajar melihat permintaan penjadwalan ulang kelas terlebih dahulu sehingga waktu untuk menelusuri formulir yang tidak relevan berkurang.
+  - **Pengingat tugas tertunda instan:** Aplikasi memantau jumlah persetujuan tertunda secara diam-diam di latar belakang dan mengirim notifikasi lokal saat jumlahnya melebihi ambang batas. Kecepatan respons persetujuan dosen di seluruh kampus meningkat 60%.
+  - **Peluncuran formulir baru tanpa konfigurasi:** Setelah Admin membuat templat persetujuan di Admin Console DingTalk, aplikasi mengambil dan menampilkannya saat diluncurkan berikutnya. Rilis aplikasi tidak diperlukan.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Arsitektur teknis solusi ini mencakup komponen inti berikut:
+
+- **Lapisan autentikasi:** Mengelola kredensial aplikasi dan memperoleh access token untuk memverifikasi identitas di balik setiap panggilan API.
+- **Lapisan kueri formulir:** Memanggil API kueri untuk mendapatkan formulir organisasi yang dapat dikelola, formulir yang terlihat oleh pengguna, dan jumlah persetujuan tertunda, lalu mengembalikan metadata formulir yang terstruktur.
+- **Lapisan filter izin:** Menggunakan sistem izin Persetujuan OA DingTalk untuk menyaring formulir yang tidak dapat diakses pemanggil sehingga data tetap aman.
+- **Lapisan akselerasi cache:** Menyimpan cache daftar formulir dan jumlah tugas tertunda dalam waktu singkat untuk mengurangi frekuensi panggilan API dan meningkatkan performa rendering front-end.
+
+### Prasyarat
+
+- **Persiapan aplikasi:** Selesaikan proses [pembuatan dan konfigurasi Aplikasi](/id/open/dingstart/create-application), lalu dapatkan client ID dan Client Secret.
+- **Persyaratan izin:** Miliki izin Admin Organisasi atau Sub Admin DingTalk, lalu ajukan izin API berikut:
+
+  - `Workflow.Form.Write` (izin tulis templat alur kerja)
+  - `Workflow.Form.Read` (izin baca templat alur kerja)
+  - `Workflow.Instance.Write` (izin tulis instans alur kerja)
+  - `Workflow.Instance.Read` (izin baca instans alur kerja)
+- **Lingkungan pengembangan:** Instal lingkungan pengembangan Java (JDK 1.6 atau yang lebih baru) dan alat build Maven.
+- **Persiapan SDK:** Unduh SDK Sisi server DingTalk, yang mendukung Java, Python, Go, dan bahasa lainnya.
+
+### Implementasi kode
+
+Langkah 1: Dapatkan informasi kredensial aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Ajukan izin API yang terkait dengan Persetujuan OA.
+
+Langkah 3: Dapatkan kredensial akses Aplikasi. Lihat [Mendapatkan Access Token Aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app). Setiap panggilan API mengautentikasi pemanggil dengan access token.
+
+Langkah 4: Panggil API Persetujuan OA:
+
+1. Panggil Server API baru [Buat atau perbarui templat formulir persetujuan](/id/open/development/create-an-approval-form-template) untuk mendapatkan kode templat unik `processCode`.
+2. Setelah membuat beberapa templat formulir persetujuan, panggil Server API baru [Dapatkan semua formulir yang dapat dikelola di organisasi saat ini](/id/open/development/get-all-manageable-forms-for-the-current-enterprise) untuk mendapatkan semua formulir persetujuan yang dapat dikelola pengguna di organisasi saat ini. Pengguna yang ditentukan oleh userId harus memiliki izin Persetujuan OA untuk organisasi tersebut.
+3. Setelah membuat beberapa templat formulir persetujuan, panggil Server API baru [Dapatkan daftar formulir persetujuan yang terlihat oleh pengguna tertentu](/id/open/development/obtains-a-list-of-approval-forms-visible-to-the-specified) untuk mendapatkan formulir persetujuan yang terlihat oleh pengguna tersebut.
+4. Panggil Server API baru [Buat instans persetujuan](/id/open/development/create-an-approval-instance) dengan kode templat `processCode` untuk membuat instans persetujuan dan mendapatkan `instanceId`-nya.
+5. Setelah membuat beberapa instans persetujuan, panggil Server API baru [Dapatkan daftar ID instans persetujuan](/id/open/development/obtain-an-approval-list-of-instance-ids) dengan kode templat `processCode` untuk mendapatkan ID instans persetujuan dari departemen terkait dalam cakupan izin Anda.
+6. Setelah membuat beberapa instans persetujuan, Anda juga dapat memanggil Server API baru [Dapatkan jumlah persetujuan tertunda pengguna](/id/open/development/queries-the-number-of-requests-to-be-approved-by-users) dengan userId pengguna untuk mendapatkan jumlah persetujuan tertunda pengguna tersebut.
+
+## Langkah implementasi
+
+### **Langkah 1: Dapatkan kredensial aplikasi**
+
+1. Masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih Aplikasi target untuk membuka halaman detailnya.
+3. Klik **Basic Information** > **Credentials and Basic Information**.
+4. Rekam `Client ID` dan `Client Secret` Aplikasi.
+
+### Catatan
+
+   Jaga kerahasiaan `Client Secret` dan jangan pernah mengungkapkannya kepada pihak ketiga. Simpan di variabel lingkungan atau sistem manajemen kunci, bukan di-hard-code.
+
+### Langkah 2: Tambahkan izin API
+
+1. Di halaman detail Aplikasi, klik **Kelola izin**.
+2. Masukkan pengenal izin berikut di kotak pencarian izin, lalu ajukan izin tersebut:
+
+   - `Workflow.Form.Write` (izin tulis templat alur kerja): Membuat atau memperbarui templat formulir persetujuan.
+   - `Workflow.Form.Read` (izin baca templat alur kerja): Mendapatkan formulir organisasi yang dapat dikelola dan daftar formulir yang terlihat oleh pengguna.
+   - `Workflow.Instance.Write` (izin tulis instans alur kerja): Membuat instans persetujuan.
+   - `Workflow.Instance.Read` (izin baca instans alur kerja): Mendapatkan jumlah persetujuan tertunda pengguna.
+
+<Note>
+Skenario bisnis yang berbeda mungkin memerlukan kombinasi izin yang berbeda. Ajukan izin sesuai kebutuhan Anda yang sebenarnya.
+</Note>
+
+### Langkah 3: Dapatkan kredensial akses (Access Token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk mendapatkan kredensial akses Aplikasi. Lihat [Mendapatkan Access Token Aplikasi internal](/id/open/development/obtain-the-access-token-of-an-internal-app).
+
+```java
+public void getAccessToken() throws Exception {
+  Config config = new Config();
+  config.protocol = "https";
+  config.regionId = "central";
+  com.aliyun.dingtalkoauth2_1_0.Client client = new com.aliyun.dingtalkoauth2_1_0.Client(config);
+  GetAccessTokenRequest accessTokenRequest = new GetAccessTokenRequest()
+    .setAppKey("din*********hgn")
+    .setAppSecret("9G_O************mBkhgGIO");
+  GetAccessTokenResponse accessToken = client.getAccessToken(accessTokenRequest);
+  System.out.println(JSON.toJSONString(accessToken.getBody()));
+}
+```
+
+**Praktik terbaik**:
+
+- **Strategi caching:** `accessToken` berlaku selama 2 jam. Simpan dalam cache di memori atau Redis, dan muat ulang secara proaktif 5 menit sebelumnya kedaluwarsa.
+- **Kontrol konkurensi:** Cegah konflik akibat beberapa thread memuat ulang token secara bersamaan. Gunakan distributed lock.
+- **Percobaan ulang saat error:** Coba ulang secara otomatis saat jaringan tidak stabil, hingga 3 kali, dengan interval yang meningkat (1s → 2s → 4s).
+
+### Langkah 4: Panggil API inti
+
+1. Buat atau perbarui templat formulir persetujuan: Panggil Server API baru [Buat atau perbarui templat formulir persetujuan](/id/open/development/create-an-approval-form-template) untuk mendapatkan kode templat unik `processCode`.
+
+### Catatan
+
+   Jika Anda tidak menyimpan `processCode` yang dikembalikan oleh API, cari kode tersebut seperti yang dijelaskan di [processCode](/id/open/development/workflow-overview).
+
+   ```java
+     public void createProcessTemplate() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           FormCreateHeaders formCreateHeaders = new FormCreateHeaders();
+           formCreateHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           // 1. Kontrol teks satu baris
+           FormComponentProps formComponentProps1 = new FormComponentProps()
+                   .setComponentId("TextField-sys1001")
+                   .setPlaceholder("Masukkan")
+                   .setLabel("Nama Pelanggan")
+                   .setRequired(false);
+           FormComponent formComponent1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(formComponentProps1);
+           // 2. Kontrol teks multi-baris
+           FormComponentProps formComponentProps2 = new FormComponentProps()
+                   .setComponentId("TextareaField-sys1002")
+                   .setPlaceholder("Masukkan")
+                   .setLabel("Deskripsi Pelanggan")
+                   .setRequired(false);
+           FormComponent formComponent2 = new FormComponent()
+                   .setComponentType("TextareaField")
+                   .setProps(formComponentProps2);
+
+           //3. Kontrol Pilih Banyak
+           SelectOption option3 = new SelectOption();
+           option3.setKey("option1");
+           option3.setValue("Penting");
+           SelectOption option4 = new SelectOption();
+           option4.setKey("option2");
+           option4.setValue("Normal");
+           FormComponentProps formComponentProps3 = new FormComponentProps()
+                   .setComponentId("DDMultiSelectField-sys1003")
+                   .setLabel("Label Pelanggan")
+                   .setOptions(java.util.Arrays.asList(option3, option4));
+           FormComponent formComponent3 = new FormComponent()
+                   .setComponentType("DDMultiSelectField")
+                   .setProps(formComponentProps3);
+
+           //4. Kontrol rentang tanggal
+           FormComponentProps formComponentProps4 = new FormComponentProps()
+                   .setComponentId("DDDateRangeField-sys1004")
+                   .setLabel("[\"Waktu Mulai Minat Pelanggan\",\"Waktu Selesai Minat Pelanggan\"]")
+                   .setUnit("Jam")
+                   .setPlaceholder("Pilih waktu")
+                   .setFormat("yyyy-MM-dd HH:mm");
+           FormComponent formComponent4 = new FormComponent()
+                   .setComponentType("DDDateRangeField")
+                   .setProps(formComponentProps4);
+
+           //5. Kontrol rincian
+           // Statistik untuk kontrol turunan rincian
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField2 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("Input Angka");
+
+           FormComponentProps.FormComponentPropsStatField formComponentPropsStatField1 = new FormComponentProps.FormComponentPropsStatField()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("Jumlah (CNY)");
+
+           // Kontrol turunan rincian
+           //5.1 Field teks satu baris rincian
+           FormComponentProps childProp1 = new FormComponentProps()
+                   .setComponentId("TextField-sysC1005")
+                   .setLabel("Nama");
+           FormComponent child1 = new FormComponent()
+                   .setComponentType("TextField")
+                   .setProps(childProp1);
+
+           //5.2 Field nominal rincian
+           FormComponentProps childProp2 = new FormComponentProps()
+                   .setComponentId("MoneyField-sysC1005")
+                   .setLabel("Harga Satuan (CNY)");
+           FormComponent child2 = new FormComponent()
+                   .setComponentType("MoneyField")
+                   .setProps(childProp2);
+
+           //5.3 Field angka rincian
+           FormComponentProps childProp3 = new FormComponentProps()
+                   .setComponentId("NumberField-sysC1005")
+                   .setLabel("Kuantitas");
+           FormComponent child3 = new FormComponent()
+                   .setComponentType("NumberField")
+                   .setProps(childProp3);
+           //5.4 Komponen formula
+           JSONObject jsonObject1 = new JSONObject();
+           jsonObject1.put("id", "NumberField-sysC1005");
+           String s = "*";
+           JSONObject jsonObject2 = new JSONObject();
+           jsonObject2.put("id", "MoneyField-sysC1005");
+           Object objects[] = new Object[]{jsonObject1, s, jsonObject2};
+           FormComponentProps childProp4 = new FormComponentProps()
+                   .setComponentId("CalculateField-sysC1005")
+                   .setLabel("Total")
+                   .setPlaceholder("Dihitung otomatis")
+                   .setRequired(false)
+                   .setFormula(JSON.toJSONString(objects));
+           FormComponent child4 = new FormComponent()
+                   .setComponentType("CalculateField")
+                   .setProps(childProp4);
+
+           FormComponentProps formComponentProps5 = new FormComponentProps()
+                   .setComponentId("TableField-sys1005")
+                   .setTableViewMode("table")
+                   .setLabel("Rincian")
+                   .setVerticalPrint(true)
+                   .setStatField(Arrays.asList(formComponentPropsStatField1, formComponentPropsStatField2));
+           FormComponent formComponent5 = new FormComponent()
+                   .setComponentType("TableField")
+                   .setChildren(Arrays.asList(child1, child2, child3, child4))
+                   .setProps(formComponentProps5);
+
+           // 6. Kontrol kontak
+           FormComponentProps formComponentProps6 = new FormComponentProps()
+                   .setComponentId("InnerContactField-sys1006")
+                   .setLabel("Kontak")
+                   .setPlaceholder("Pilih kontak")
+                   .setChoice("1");
+           FormComponent formComponent6 = new FormComponent()
+                   .setComponentType("InnerContactField")
+                   .setProps(formComponentProps6);
+
+           // 7. Kontrol departemen
+           FormComponentProps formComponentProps7 = new FormComponentProps()
+                   .setComponentId("DepartmentField-sys1007")
+                   .setLabel("Departemen Kontak")
+                   .setPlaceholder("Pilih departemen")
+                   .setMultiple(false);
+           FormComponent formComponent7 = new FormComponent()
+                   .setComponentType("DepartmentField")
+                   .setProps(formComponentProps7);
+
+           // 8. Kontrol provinsi/kota/distrik
+           FormComponentProps formComponentProps8 = new FormComponentProps()
+                   .setComponentId("AddressField-sys1008")
+                   .setLabel("Alamat Pelanggan")
+                   .setPlaceholder("Pilih")
+                   .setAddressModel("city");
+           FormComponent formComponent8 = new FormComponent()
+                   .setComponentType("AddressField")
+                   .setProps(formComponentProps8);
+
+           //9. Kontrol pilihan tunggal
+           SelectOption selectOption1 = new SelectOption();
+           selectOption1.setKey("option1");
+           selectOption1.setValue("Mendesak");
+           SelectOption selectOption2 = new SelectOption();
+           selectOption2.setKey("option2");
+           selectOption2.setValue("Normal");
+           FormComponentProps formComponentProps9 = new FormComponentProps()
+                   .setComponentId("DDSelectField-sys1009")
+                   .setLabel("Status Permintaan Persetujuan")
+                   .setOptions(Arrays.asList(selectOption1, selectOption2));
+           FormComponent formComponent9 = new FormComponent()
+                   .setComponentType("DDSelectField")
+                   .setProps(formComponentProps9);
+
+           FormCreateRequest formCreateRequest = new FormCreateRequest()
+                   .setName("Formulir Pelanggan")
+                   .setDescription("Formulir Pelanggan")
+                   // Jika processCode diatur, templat akan diperbarui; jika tidak, templat baru akan dibuat. Contoh ini membuat templat.
+                   //.setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setFormComponents(java.util.Arrays.asList(
+                           formComponent1, formComponent2, formComponent3, formComponent4,
+                           formComponent5, formComponent6, formComponent7, formComponent8,
+                           formComponent9
+                   ));
+           try {
+               FormCreateResponse formCreateResponse = client.formCreateWithOptions(formCreateRequest, formCreateHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(formCreateResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `name`: Nama formulir persetujuan.
+   - `description`: Deskripsi formulir.
+
+### Field respons
+
+   - `processCode`: Kode unik templat formulir persetujuan.
+2. **Dapatkan semua formulir yang dapat dikelola di organisasi saat ini**: Setelah membuat beberapa templat formulir persetujuan, panggil Server API baru [Dapatkan semua formulir yang dapat dikelola di organisasi saat ini](/id/open/development/get-all-manageable-forms-for-the-current-enterprise) untuk mendapatkan semua formulir persetujuan yang dapat dikelola pengguna di organisasi saat ini.
+
+### Catatan
+
+   Untuk memanggil API ini, pengguna yang ditentukan oleh userId harus memiliki izin Persetujuan OA untuk organisasi tersebut.
+
+   ```java
+   public void processManagementTemplates() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetManageProcessByStaffIdHeaders getManageProcessByStaffIdHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetManageProcessByStaffIdHeaders();
+           getManageProcessByStaffIdHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetManageProcessByStaffIdRequest getManageProcessByStaffIdRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetManageProcessByStaffIdRequest()
+                   .setUserId("manager7078");
+           try {
+               GetManageProcessByStaffIdResponse getManageProcessByStaffIdResponse = client.getManageProcessByStaffIdWithOptions(getManageProcessByStaffIdRequest, getManageProcessByStaffIdHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+               System.out.println(JSON.toJSONString(getManageProcessByStaffIdResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `userId`: ID pengguna yang akan dikueri. Pengguna ini harus memiliki izin Persetujuan OA untuk organisasi tersebut.
+
+### Field respons
+
+   - `result`: Daftar formulir persetujuan yang dapat dikelola, termasuk field seperti processCode, iconName, iconUrl, dan flowTitle.
+3. **Dapatkan daftar formulir persetujuan yang terlihat oleh pengguna tertentu**: Panggil Server API baru [Dapatkan daftar formulir persetujuan yang terlihat oleh pengguna tertentu](/id/open/development/obtains-a-list-of-approval-forms-visible-to-the-specified) untuk mendapatkan formulir persetujuan yang terlihat oleh pengguna tersebut.
+
+   ```java
+   public void processUserVisibilitieTemplates() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.ListUserVisibleBpmsProcessesHeaders listUserVisibleBpmsProcessesHeaders = new com.aliyun.dingtalkworkflow_1_0.models.ListUserVisibleBpmsProcessesHeaders();
+           listUserVisibleBpmsProcessesHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.ListUserVisibleBpmsProcessesRequest listUserVisibleBpmsProcessesRequest = new com.aliyun.dingtalkworkflow_1_0.models.ListUserVisibleBpmsProcessesRequest()
+                   .setUserId("manager7078")
+                   .setMaxResults(10L)
+                   .setNextToken(0L);
+           try {
+               ListUserVisibleBpmsProcessesResponse listUserVisibleBpmsProcessesResponse = client.listUserVisibleBpmsProcessesWithOptions(listUserVisibleBpmsProcessesRequest, listUserVisibleBpmsProcessesHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+               System.out.println(JSON.toJSONString(listUserVisibleBpmsProcessesResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `userId`: ID pengguna dari pengguna target.
+
+### Field respons
+
+   - `processList`: Daftar formulir persetujuan yang terlihat oleh pengguna, termasuk field seperti processCode, name, dan iconUrl.
+4. **Buat instans persetujuan**: Panggil Server API baru [Buat instans persetujuan](/id/open/development/create-an-approval-instance) dengan kode templat `processCode` untuk membuat instans persetujuan dan mendapatkan `instanceId`-nya.
+
+   ```java
+   public void ProcessInstances() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           StartProcessInstanceHeaders startProcessInstanceHeaders = new StartProcessInstanceHeaders();
+           startProcessInstanceHeaders.xAcsDingtalkAccessToken = "accessToken";
+
+           //1. Komponen field teks satu baris
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Nama Pelanggan")
+                   .setValue("Budi");
+
+           //2. Komponen field teks multi-baris
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Deskripsi Pelanggan")
+                   .setValue("Calon pelanggan bernilai tinggi");
+
+           //3. Komponen Pilih Banyak
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues3;
+           formComponentValues3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Label Pelanggan")
+                   .setValue("[\"Penting\",\"Normal\"]")
+                   .setComponentType("DDMultiSelectField");
+
+           //4. Komponen rentang tanggal
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("[\"Waktu Mulai Minat Pelanggan\",\"Waktu Selesai Minat Pelanggan\"]")
+                   .setValue("[\"2022-08-14 15:00\",\"2022-08-15 15:00\"]");
+
+           //5. Komponen tabel detail
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details1 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Nama")
+                   .setValue("Perangkat Konferensi Video Pintar DingTalk F2");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details2 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Harga Satuan (CNY)")
+                   .setValue("29999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details3 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Kuantitas")
+                   .setValue("1");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details4 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Nama")
+                   .setValue("Perangkat Konferensi Video Pintar DingTalk F1");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Harga Satuan (CNY)")
+                   .setValue("4999");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                   .setName("Kuantitas")
+                   .setValue("5");
+
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues5 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Rincian")
+                   .setValue(JSON.toJSONString(Arrays.asList(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3), Arrays.asList(formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6))))
+                   .setDetails(Arrays.asList(formComponentValues0Details1, formComponentValues0Details2, formComponentValues0Details3, formComponentValues0Details4, formComponentValues0Details5, formComponentValues0Details6));
+
+           //6. Komponen kontak
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues6 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Kontak")
+                   .setValue(JSON.toJSONString(Arrays.asList("userId kontak")));
+
+           //7. Komponen departemen
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues7 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Departemen Kontak")
+                   .setValue("ID departemen");
+
+           //8. Komponen provinsi/kota/distrik
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues8 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Alamat Pelanggan")
+                   .setValue(JSON.toJSONString(Arrays.asList("Beijing,Beijing,Distrik Chaoyang,Subdistrik Donghu,Gedung A xxxxxxx")));
+
+           //9. Komponen pilihan tunggal
+           StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues9 = new StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                   .setName("Status Permintaan Persetujuan")
+                   .setValue("Mendesak");
+
+           // Atur penyetuju
+           // Persetujuan bersama (semua penyetuju harus menyetujui)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("AND")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           // Persetujuan salah satu (salah satu penyetuju dapat menyetujui)
+           StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers1 = new StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                   .setActionType("OR")
+                   .setUserIds(java.util.Arrays.asList(
+                           "014******77041", "0852*******284272"
+                   ));
+           StartProcessInstanceRequest startProcessInstanceRequest = new StartProcessInstanceRequest()
+                   .setOriginatorUserId("userId pengaju")
+                   .setProcessCode("PROC-ECED8693-****-****-****-A5EE2F7E9F46")
+                   .setDeptId(1L)
+                   .setMicroappAgentId(118*****5L)
+                   .setApprovers(java.util.Arrays.asList(
+                           approvers0, approvers1
+                   ))
+             			// Penerima CC
+                   .setCcList(java.util.Arrays.asList(
+                           "userId penerima CC"
+                   ))
+                   .setCcPosition("FINISH")
+                   .setFormComponentValues(java.util.Arrays.asList(
+                           formComponentValues1, formComponentValues2, formComponentValues3, formComponentValues4,
+                           formComponentValues5, formComponentValues6, formComponentValues7, formComponentValues8,
+                           formComponentValues9
+                   ));
+           try {
+               StartProcessInstanceResponse startProcessInstanceResponse = client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new RuntimeOptions());
+               System.out.println(JSON.toJSONString(startProcessInstanceResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processCode`: Kode unik templat formulir persetujuan.
+   - `originatorUserId`: ID pengguna dari pengaju.
+   - `deptId`: ID departemen pengaju.
+   - `microappAgentId`: Pengenal Aplikasi (Agent ID).
+
+### Field respons
+
+   - `instanceId`: ID unik instans persetujuan.
+5. **Dapatkan daftar ID instans persetujuan**: Setelah membuat beberapa instans persetujuan, panggil Server API baru [Dapatkan daftar ID instans persetujuan](/id/open/development/obtain-an-approval-list-of-instance-ids) dengan kode templat `processCode` untuk mendapatkan ID instans persetujuan dari departemen terkait dalam cakupan izin Anda.
+
+   ```java
+   public void processInstanceIdsQuery() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders listProcessInstanceIdsHeaders = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders();
+           listProcessInstanceIdsHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest listProcessInstanceIdsRequest = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest()
+                   .setProcessCode("PROC-FF6Y2xxxx")
+                   .setStartTime(1496678400000L)
+                   .setEndTime(1496678400000L)
+                   .setNextToken(0L)
+                   .setMaxResults(10L)
+                   .setUserIds(java.util.Arrays.asList(
+                       "userid pengaju"
+                   ));
+           try {
+               ListProcessInstanceIdsResponse listProcessInstanceIdsResponse = client.listProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+               System.out.println(JSON.toJSONString(listProcessInstanceIdsResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `processCode`: Kode unik templat formulir persetujuan.
+   - `startTime`: Stempel waktu mulai kueri, dalam milidetik.
+   - `endTime`: Stempel waktu akhir kueri, dalam milidetik.
+   - `userIds`: Daftar userId pengaju. Daftar dapat berisi hingga 10 item.
+
+### Field respons
+
+   - `list`: ID instans persetujuan.
+6. **Dapatkan jumlah persetujuan tertunda pengguna**: Setelah membuat beberapa instans persetujuan, Anda juga dapat memanggil Server API baru [Dapatkan jumlah persetujuan tertunda pengguna](/id/open/development/queries-the-number-of-requests-to-be-approved-by-users) dengan userId pengguna untuk mendapatkan jumlah persetujuan tertunda pengguna tersebut.
+
+   ```java
+   public void processTodoTasksNumbers() throws Exception {
+           Config config = new Config();
+           config.protocol = "https";
+           config.regionId = "central";
+           com.aliyun.dingtalkworkflow_1_0.Client client = new com.aliyun.dingtalkworkflow_1_0.Client(config);
+           com.aliyun.dingtalkworkflow_1_0.models.GetUserTodoTaskSumHeaders getUserTodoTaskSumHeaders = new com.aliyun.dingtalkworkflow_1_0.models.GetUserTodoTaskSumHeaders();
+           getUserTodoTaskSumHeaders.xAcsDingtalkAccessToken = "accessToken";
+           com.aliyun.dingtalkworkflow_1_0.models.GetUserTodoTaskSumRequest getUserTodoTaskSumRequest = new com.aliyun.dingtalkworkflow_1_0.models.GetUserTodoTaskSumRequest()
+                   .setUserId("manager123");
+           try {
+               GetUserTodoTaskSumResponse getUserTodoTaskSumResponse = client.getUserTodoTaskSumWithOptions(getUserTodoTaskSumRequest, getUserTodoTaskSumHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+               System.out.println(JSON.toJSONString(getUserTodoTaskSumResponse.getBody()));
+           } catch (TeaException err) {
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           } catch (Exception _err) {
+               TeaException err = new TeaException(_err.getMessage(), _err);
+               if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                   // err berisi atribut code dan message untuk membantu menemukan masalah
+                   System.out.println(err.code);
+                   System.out.println(err.message);
+               }
+           }
+       }
+   ```
+
+### Parameter permintaan
+
+   - `userid`: ID pengguna yang akan dikueri.
+
+### Field respons
+
+   - `result`: Jumlah persetujuan yang tertunda untuk pengguna.
+
+### Daftar periksa implementasi
+
+- ✅ Aplikasi telah dibuat, serta Client ID dan Client Secret telah diperoleh.
+- ✅ Izin `Workflow.Form.Write`, `Workflow.Form.Read`, `Workflow.Instance.Write`, dan `Workflow.Instance.Read` telah diberikan.
+- ✅ Access token telah diperoleh, dan strategi caching telah dikonfigurasi.
+- ✅ Panggilan API untuk mendapatkan formulir organisasi yang dapat dikelola berhasil.
+- ✅ Panggilan API untuk mendapatkan formulir yang terlihat oleh pengguna berhasil.
+- ✅ Panggilan API untuk mendapatkan jumlah persetujuan tertunda pengguna berhasil.
+- ✅ Front-end merender daftar formulir secara dinamis dan menampilkan badge jumlah tugas tertunda.
+- ✅ Filter izin berfungsi, dan pengguna dengan peran berbeda melihat daftar formulir yang berbeda.
+
+## FAQ
+
+- **T: Mengapa API daftar formulir mengembalikan hasil kosong?**
+
+  Periksa apakah pengguna yang ditentukan oleh userId memiliki izin manajemen Persetujuan OA untuk organisasi tersebut. Hanya pengguna dengan izin Persetujuan OA yang dapat mengkueri daftar formulir yang dapat dikelola.
+- **T: Apa perbedaan antara mendapatkan formulir yang terlihat oleh pengguna dan mendapatkan formulir organisasi yang dapat dikelola?**
+
+  Mendapatkan formulir organisasi yang dapat dikelola mengembalikan semua formulir yang dapat dikelola oleh pengguna userId, biasanya dari perspektif Admin. Mendapatkan formulir yang terlihat oleh pengguna mengembalikan formulir yang dapat diajukan pengguna sebagai pemohon, biasanya dari perspektif karyawan biasa. Keduanya mencakup cakupan izin yang berbeda.
+- **T: Status persetujuan apa saja yang termasuk dalam jumlah yang dikembalikan oleh API persetujuan tertunda?**
+
+  Jumlah tersebut hanya mencakup instans yang saat ini berstatus "Menunggu persetujuan". Instans persetujuan yang Diterima, Ditolak, dicabut, atau dihentikan tidak termasuk.
+- **T: Apakah saya perlu menyimpan hasil API daftar formulir dalam cache?**
+
+  Ya. Metadata formulir jarang berubah, jadi simpan dalam cache di sistem bisnis Anda selama 5–10 menit untuk mengurangi jumlah panggilan API. Jangan simpan jumlah persetujuan tertunda dalam cache terlalu lama. Pantau setiap 1–5 menit agar tetap mutakhir.
+- **T: Jika pengguna tergabung di beberapa departemen, apakah formulir yang terlihat dikembalikan lebih dari sekali?**
+
+  Tidak. API mengembalikan daftar formulir yang telah dideduplikasi. Meskipun formulir yang sama cocok beberapa kali melalui izin dari departemen yang berbeda, formulir tersebut hanya muncul sekali dalam hasil.

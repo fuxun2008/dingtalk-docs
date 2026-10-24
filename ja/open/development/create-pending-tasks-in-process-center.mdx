@@ -1,0 +1,716 @@
+---
+title: "プロセスセンターの未処理タスクの作成"
+description: "OA承認のワークフローインスタンスに未処理タスクを作成する API です。担当者、リダイレクトリンク、期限、ショートカット操作ボタンを設定できます。"
+---
+
+この API を呼び出して、OA承認のタスクを作成します。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processCentres/tasks |
+| HTTP メソッド | POST |
+| サポートされるアプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_aflow-承認フローデータ管理権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。次の方法で取得します。   - 社内アプリ：[社内アプリのアクセストークンを取得する](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリを承認した組織のアクセストークンを取得する API を呼び出します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| processInstanceId | String | はい | OA承認のワークフローインスタンス ID です。[インスタンスを作成する](/ja/open/development/create-a-ticket-approval-instance) API を呼び出して `processInstanceId` の値を取得します。 |
+| activityId | String | いいえ | カスタム承認ノードの ID です。カスタムパラメータで、最大長は 256 文字です。 |
+| tasks | Array | はい | タスクリストです。最大 20 要素まで指定できます。 |
+| userId | String | いいえ | ユーザー ID です。[部門内のユーザー ID リストを取得する](/ja/open/development/query-the-list-of-department-userids) API を呼び出して取得します。 |
+| url | String | いいえ | タスクのリダイレクト URL です。最大長は 1,024 文字です。  - 承認インスタンス作成 API の url は、DingTalk 承認アプリ内の承認フォームにリダイレクトします。 - この API の url は、DingTalk タスクページ上の対応するタスクカードからリダイレクトします。 - DingTalk タスクページはモバイルと PC の両方のクライアントに対応しています。この API に渡す url のページが、モバイルと PC の両方に対応していることを確認してください。 |
+| customData | String | いいえ | ユーザーのカスタムデータです。ページのリダイレクト時に URL パラメータとして返されます。最大長は 500 文字です。 |
+| dueTimestamp | Long | いいえ | タスクの期限です。ミリ秒単位の Unix タイムスタンプで指定します。設定すると、DingTalk タスクセンターに承認タスクの期限が表示され、期限による並べ替えや、「本日期限」「期限切れ」などのタグによる絞り込みが可能になります。 |
+| featureConfig | Object | いいえ | プロセスセンターの連携設定です。タスクおよびカード通知におけるショートカット操作ボタンのエントリをタスクごとに設定します。 |
+| features | Array | いいえ | 設定リストです。 |
+| name | String | いいえ | サードパーティがカスタマイズできる機能モジュールの名前です。現在サポートされている値は次のとおりです。   - **CUSTOM_SHORTCUT**：タスクおよびカード通知のショートカット操作ボタン |
+| pcUrl | String | いいえ | PC 向けのサードパーティカスタムリダイレクトリンクです。最大長は 1,024 文字です。 |
+| mobileUrl | String | いいえ | モバイル向けのサードパーティカスタムリダイレクトリンクです。最大長は 1,024 文字です。 |
+| runType | String | いいえ | 実行モードです。  features.name が `CUSTOM_SHORTCUT` の場合、次の値をサポートします。   - **ORIGIN**：ネイティブモード。タスクの詳細ページを開くと、公式の承認詳細ページにリダイレクトします。 - **REDIRECT**：外部リダイレクトモード。タスクの詳細ページを開くと、pcUrl または mobileUrl に設定したアドレスにリダイレクトします。 |
+| callback | Object | いいえ | ゲートウェイのコールバック設定です。ショートカット操作ボタンが必要な場合は必須です。ゲートウェイ経由でコールバックされる外部データ API は、「データソース管理」でゲートウェイとして登録する必要があります。詳細は「データソースを作成する」を参照してください。 |
+| appUuid | String | いいえ | ゲートウェイの appUuid です。ショートカット操作ボタンが必要な場合は必須です。  データソースを所有する組織の組織 ID を渡します。 |
+| apiKey | String | いいえ | ゲートウェイの apiKey です。ショートカット操作ボタンのエントリが必要な場合は必須です。作成したデータソースから `apiKey` を取得します。  - ゲートウェイが外部 API をコールバックする際、DingTalk はビジネスシナリオに応じて、業務処理に必要なパラメータを ISV に返します。コールバックリクエストの受信後にこれらのパラメータを解析するには、ISV がデータソースの作成時に対応するパラメータキーを設定する必要があります。   たとえば、TASK_EXECUTE タスク実行モジュール（詳細ページの「承認」ボタンと「却下」ボタン）にコールバックを設定した場合、DingTalk は次の固定パラメータを返します：`&#123;"outResult":"agree","processInstanceId":"xxx","activityId":"xxx","corpId":"dingxxx","data":[],"remark":"承認","title":"xxx が提出した備品申請","taskId":111,"operator":"manager0001"&#125;`。 - ISV はデータソースの作成時に、業務要件に応じて解析するキーを設定する必要があります：outResult,processInstanceId,activityId,corpId,remark,title,taskId,operator |
+| version | String | いいえ | ゲートウェイ API のバージョンです。  - ショートカット操作ボタンのエントリが必要な場合は必須です。 - デフォルト：1。 |
+| config | String | いいえ | サードパーティがカスタマイズした機能モジュールの設定です。最大長は 1,024 文字です。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/workflow/processCentres/tasks HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:xxxx
+Content-Type:application/json
+
+{
+  "processInstanceId" : "S3j8rbiNT1CsXXXXXV3Q1Q04431661334483",
+  "activityId" : "act_xxxxx",
+  "tasks" : [ {
+    "userId" : "manager001",
+    "url" : "https://www.dingtalk.io",
+    "customData" : "test***",
+    "dueTimestamp" : 1758729600000
+  } ],
+  "featureConfig" : {
+    "features" : [ {
+      "name" : "CUSTOM_SHORTCUT",
+      "pcUrl" : "www.dingtalk.io",
+      "mobileUrl" : "www.dingtalk.io",
+      "runType" : "REDIRECT",
+      "callback" : {
+        "appUuid" : "開発者組織の corpId",
+        "apiKey" : "データソース設定後に生成された apiKey",
+        "version" : "1"
+      },
+      "config" : "{\\\"shortcutStyle\\\":\\\"EXECUTE_ACTION\\\",       \\\"buttonConfig\\\":{\\\"agreeBtn\\\":\\\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\\\",\\\"refuseBtn\\\":\\\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\\\"}}"
+    } ]
+  }
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>説明</b> :
+     * <p>Token を使用してアカウント Client を初期化します</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskHeaders createIntegratedTaskHeaders = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskHeaders();
+        createIntegratedTaskHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback()
+                .setAppUuid("開発者組織の corpId")
+                .setApiKey("データソース設定後に生成された apiKey")
+                .setVersion("1");
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeatures featureConfigFeatures0 = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfigFeatures()
+                .setName("CUSTOM_SHORTCUT")
+                .setPcUrl("www.dingtalk.io")
+                .setMobileUrl("www.dingtalk.io")
+                .setRunType("REDIRECT")
+                .setCallback(featureConfigFeatures0Callback)
+                .setConfig("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}");
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig featureConfig = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig()
+                .setFeatures(java.util.Arrays.asList(
+                    featureConfigFeatures0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks tasks0 = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks()
+                .setUserId("manager001")
+                .setUrl("https://www.dingtalk.io")
+                .setCustomData("test***")
+                .setDueTimestamp(1758729600000L);
+        com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest createIntegratedTaskRequest = new com.aliyun.dingtalkworkflow_1_0.models.CreateIntegratedTaskRequest()
+                .setProcessInstanceId("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483")
+                .setActivityId("act_xxxxx")
+                .setTasks(java.util.Arrays.asList(
+                    tasks0
+                ))
+                .setFeatureConfig(featureConfig);
+        try {
+            client.createIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Token を使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_integrated_task_headers = dingtalkworkflow__1__0_models.CreateIntegratedTaskHeaders()
+        create_integrated_task_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback(
+            app_uuid='開発者組織の corpId',
+            api_key='データソース設定後に生成された apiKey',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeatures(
+            name='CUSTOM_SHORTCUT',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        tasks_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestTasks(
+            user_id='manager001',
+            url='https://www.dingtalk.io',
+            custom_data='test***',
+            due_timestamp=1758729600000
+        )
+        create_integrated_task_request = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequest(
+            process_instance_id='S3j8rbiNT1CsXXXXXV3Q1Q04431661334483',
+            activity_id='act_xxxxx',
+            tasks=[
+                tasks_0
+            ],
+            feature_config=feature_config
+        )
+        try:
+            client.create_integrated_task_with_options(create_integrated_task_request, create_integrated_task_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        create_integrated_task_headers = dingtalkworkflow__1__0_models.CreateIntegratedTaskHeaders()
+        create_integrated_task_headers.x_acs_dingtalk_access_token = '<your access token>'
+        feature_config_features_0callback = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback(
+            app_uuid='開発者組織の corpId',
+            api_key='データソース設定後に生成された apiKey',
+            version='1'
+        )
+        feature_config_features_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfigFeatures(
+            name='CUSTOM_SHORTCUT',
+            pc_url='www.dingtalk.io',
+            mobile_url='www.dingtalk.io',
+            run_type='REDIRECT',
+            callback=feature_config_features_0callback,
+            config='''{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}","refuseBtn":"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}"}}'''
+        )
+        feature_config = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestFeatureConfig(
+            features=[
+                feature_config_features_0
+            ]
+        )
+        tasks_0 = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequestTasks(
+            user_id='manager001',
+            url='https://www.dingtalk.io',
+            custom_data='test***',
+            due_timestamp=1758729600000
+        )
+        create_integrated_task_request = dingtalkworkflow__1__0_models.CreateIntegratedTaskRequest(
+            process_instance_id='S3j8rbiNT1CsXXXXXV3Q1Q04431661334483',
+            activity_id='act_xxxxx',
+            tasks=[
+                tasks_0
+            ],
+            feature_config=feature_config
+        )
+        try:
+            await client.create_integrated_task_with_options_async(create_integrated_task_request, create_integrated_task_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\featureConfig\features\callback;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\featureConfig\features;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\featureConfig;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest\tasks;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\CreateIntegratedTaskRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $createIntegratedTaskHeaders = new CreateIntegratedTaskHeaders([]);
+        $createIntegratedTaskHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $featureConfigFeatures0Callback = new callback([
+            "appUuid" => "開発者組織の corpId",
+            "apiKey" => "データソース設定後に生成された apiKey",
+            "version" => "1"
+        ]);
+        $featureConfigFeatures0 = new features([
+            "name" => "CUSTOM_SHORTCUT",
+            "pcUrl" => "www.dingtalk.io",
+            "mobileUrl" => "www.dingtalk.io",
+            "runType" => "REDIRECT",
+            "callback" => $featureConfigFeatures0Callback,
+            "config" => "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}"
+        ]);
+        $featureConfig = new featureConfig([
+            "features" => [
+                $featureConfigFeatures0
+            ]
+        ]);
+        $tasks0 = new tasks([
+            "userId" => "manager001",
+            "url" => "https://www.dingtalk.io",
+            "customData" => "test***",
+            "dueTimestamp" => 1758729600000
+        ]);
+        $createIntegratedTaskRequest = new CreateIntegratedTaskRequest([
+            "processInstanceId" => "S3j8rbiNT1CsXXXXXV3Q1Q04431661334483",
+            "activityId" => "act_xxxxx",
+            "tasks" => [
+                $tasks0
+            ],
+            "featureConfig" => $featureConfig
+        ]);
+        try {
+            $client->createIntegratedTaskWithOptions($createIntegratedTaskRequest, $createIntegratedTaskHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されています。編集しないでください。
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// 説明:
+// 
+// Token を使用してアカウント Client を初期化します
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  createIntegratedTaskHeaders := &dingtalkworkflow_1_0.CreateIntegratedTaskHeaders{}
+  createIntegratedTaskHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  featureConfigFeatures0Callback := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback{
+    AppUuid: tea.String("開発者組織の corpId"),
+    ApiKey: tea.String("データソース設定後に生成された apiKey"),
+    Version: tea.String("1"),
+  }
+  featureConfigFeatures0 := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeatures{
+    Name: tea.String("CUSTOM_SHORTCUT"),
+    PcUrl: tea.String("www.dingtalk.io"),
+    MobileUrl: tea.String("www.dingtalk.io"),
+    RunType: tea.String("REDIRECT"),
+    Callback: featureConfigFeatures0Callback,
+    Config: tea.String("{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}"),
+  }
+  featureConfig := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfig{
+    Features: []*dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeatures{featureConfigFeatures0},
+  }
+  tasks0 := &dingtalkworkflow_1_0.CreateIntegratedTaskRequestTasks{
+    UserId: tea.String("manager001"),
+    Url: tea.String("https://www.dingtalk.io"),
+    CustomData: tea.String("test***"),
+    DueTimestamp: tea.Int64(1758729600000),
+  }
+  createIntegratedTaskRequest := &dingtalkworkflow_1_0.CreateIntegratedTaskRequest{
+    ProcessInstanceId: tea.String("S3j8rbiNT1CsXXXXXV3Q1Q04431661334483"),
+    ActivityId: tea.String("act_xxxxx"),
+    Tasks: []*dingtalkworkflow_1_0.CreateIntegratedTaskRequestTasks{tasks0},
+    FeatureConfig: featureConfig,
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.CreateIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```javascript
+'use strict';
+// このファイルは自動生成されています。編集しないでください
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Token を使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let createIntegratedTaskHeaders = new dingtalkworkflow_1_0.CreateIntegratedTaskHeaders({ });
+    createIntegratedTaskHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let featureConfigFeatures0Callback = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback({
+      appUuid: '開発者組織の corpId',
+      apiKey: 'データソース設定後に生成された apiKey',
+      version: '1',
+    });
+    let featureConfigFeatures0 = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfigFeatures({
+      name: 'CUSTOM_SHORTCUT',
+      pcUrl: 'www.dingtalk.io',
+      mobileUrl: 'www.dingtalk.io',
+      runType: 'REDIRECT',
+      callback: featureConfigFeatures0Callback,
+      config: '{"shortcutStyle":"EXECUTE_ACTION",       "buttonConfig":{"agreeBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'test\',\'zh_HK\':\'test\',\'zh_TW\':\'test\'}}","refuseBtn":"{{\'en_US\':\'test\',\'ja_JP\':\'test\',\'vi_VN\':\'test\',\'zh_CN\':\'test\',\'zh_HK\':\'test\',\'zh_TW\':\'test\'}}"}}',
+    });
+    let featureConfig = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestFeatureConfig({
+      features: [
+        featureConfigFeatures0
+      ],
+    });
+    let tasks0 = new dingtalkworkflow_1_0.CreateIntegratedTaskRequestTasks({
+      userId: 'manager001',
+      url: 'https://www.dingtalk.io',
+      customData: 'test***',
+      dueTimestamp: 1758729600000,
+    });
+    let createIntegratedTaskRequest = new dingtalkworkflow_1_0.CreateIntegratedTaskRequest({
+      processInstanceId: 'S3j8rbiNT1CsXXXXXV3Q1Q04431661334483',
+      activityId: 'act_xxxxx',
+      tasks: [
+        tasks0
+      ],
+      featureConfig: featureConfig,
+    });
+    try {
+      await client.createIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// このファイルは自動生成されています。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>説明:</b></term>
+        /// <description>
+        /// <para>Token を使用してアカウント Client を初期化します</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>例外:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskHeaders createIntegratedTaskHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskHeaders();
+            createIntegratedTaskHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback featureConfigFeatures0Callback = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures.CreateIntegratedTaskRequestFeatureConfigFeaturesCallback
+            {
+                AppUuid = "開発者組織の corpId",
+                ApiKey = "データソース設定後に生成された apiKey",
+                Version = "1",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures featureConfigFeatures0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures
+            {
+                Name = "CUSTOM_SHORTCUT",
+                PcUrl = "www.dingtalk.io",
+                MobileUrl = "www.dingtalk.io",
+                RunType = "REDIRECT",
+                Callback = featureConfigFeatures0Callback,
+                Config = "{\"shortcutStyle\":\"EXECUTE_ACTION\",       \"buttonConfig\":{\"agreeBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\",\"refuseBtn\":\"{{'en_US':'test','ja_JP':'test','vi_VN':'test','zh_CN':'test','zh_HK':'test','zh_TW':'test'}}\"}}",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig featureConfig = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig
+            {
+                Features = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestFeatureConfig.CreateIntegratedTaskRequestFeatureConfigFeatures>
+                {
+                    featureConfigFeatures0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks tasks0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks
+            {
+                UserId = "manager001",
+                Url = "https://www.dingtalk.io",
+                CustomData = "test***",
+                DueTimestamp = 1758729600000,
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest createIntegratedTaskRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest
+            {
+                ProcessInstanceId = "S3j8rbiNT1CsXXXXXV3Q1Q04431661334483",
+                ActivityId = "act_xxxxx",
+                Tasks = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.CreateIntegratedTaskRequest.CreateIntegratedTaskRequestTasks>
+                {
+                    tasks0
+                },
+                FeatureConfig = featureConfig,
+            };
+            try
+            {
+                client.CreateIntegratedTaskWithOptions(createIntegratedTaskRequest, createIntegratedTaskHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には、問題の特定に役立つ code 属性と message 属性が含まれます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| result | Array | 返される結果のリストです。 |
+| taskId | Long | OA承認タスクの ID です。 |
+| userId | String | OA承認タスクの担当者のユーザー ID です。 |
+| success | Boolean | タスクが作成されたかどうかを示します。true は成功を示します。 |
+
+### レスポンスボディ例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : [ {
+    "taskId" : 1234567,
+    "userId" : "manager001"
+  } ],
+  "success" : true
+}
+```
+
+### エラーコード
+
+呼び出しに失敗した場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | integrated.concurrency.error | タスクとインスタンスの同時作成はサポートされていません。しばらくしてから再試行してください。 | タスクとインスタンスの同時作成はサポートされていません。しばらくしてから再試行してください。 |
+| 400 | integrated.state.invalid | ワークフローインスタンスは終了しています。これ以上タスクを作成できません。 | ワークフローインスタンスは終了しています。これ以上タスクを作成できません。 |
+| 400 | integrated.number.exceed | ワークフロータスクの数が上限に達しました。 | ワークフロータスクの数が上限に達しました。 |
+| 400 | integrated.qps.exceed | この API の呼び出し回数が本日の上限を超えました。明日再試行してください。 | この API の呼び出し回数が本日の上限を超えました。明日再試行してください。 |
+| 400 | integrated.state.invalid | ワークフローインスタンスが存在しません。 | ワークフローインスタンスが存在しません。 |
+| 400 | internalError | %s | 内部システムエラーです。 |
+| 400 | process.inst.notExist | 承認フォームが存在しないか、削除されています。 | 承認フォームが存在しないか、削除されています。 |
+| 400 | setup.no.permission | 承認フローを操作する権限がありません。承認インスタンスが正しいか確認してください。 | 承認フローを操作する権限がありません。承認インスタンスが正しいか確認してください。 |
+| 400 | tasks.is.null | パラメータエラー：タスクリスト tasks は空にできません。 | パラメータエラー：タスクリスト tasks は空にできません。 |
+| 400 | task.url.error | タスクリスト tasks 内の url は 1,024 文字以内で指定してください。 | タスクリスト tasks 内の url は 1,024 文字以内で指定してください。 |
+| 400 | task.dueTime.error | タスクリスト tasks 内の期限 dueTimestamp には、タスクの作成時刻より前の時刻を指定できません。 | タスクリスト tasks 内の期限 dueTimestamp には、タスクの作成時刻より前の時刻を指定できません。 |
+| 500 | system.error | システムエラー | システムエラー |

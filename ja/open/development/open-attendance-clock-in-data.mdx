@@ -1,0 +1,191 @@
+---
+title: "打刻結果の取得"
+description: "社員の userId リストと勤務日の範囲を指定し、実際の打刻結果を取得する API です。リクエストパラメータ、レスポンス項目、各言語のコード例も紹介。"
+---
+
+この API を呼び出して、社内の社員の実際の打刻結果を取得します。
+
+## API 呼び出し説明
+
+- この API では、6か月より前のデータは照会できません。
+- 打刻場所などの詳細な打刻データを取得するには、[打刻詳細の取得](/ja/open/development/attendance-clock-in-record-is-open) API を呼び出してください。
+- 勤怠データの同期には遅延が発生する場合があります。データが見つからない場合は、しばらくしてから再試行してください。
+- **当日にシフトが設定されているユーザーが打刻しなかった場合、この API は空の結果ではなく、その日のシフト上の打刻ポイントを返します**。
+
+たとえば、社内で社員に 9:00 と 18:00 の 1 回ずつ打刻するシフトを設定しているとします。この期間中に社員が複数回打刻した場合でも、この API が返すのは午前の打刻結果と午後の打刻結果の 2 件のみです。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/attendance/list |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | qyapi_attendance_isv_query_result（組織の勤怠データの読み取り権限）、qyapi_get_attendance_data（勤怠データの読み取り権限） |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 6d1bxxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリ：[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token) API を呼び出します。 - サードパーティ社内アプリ：サードパーティ社内アプリの access_token の取得 API を呼び出します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| workDateFrom | String | はい | 2020-11-07 08:00:00 | 勤怠打刻記録を照会する開始勤務日です。形式：yyyy-MM-dd HH:mm:ss。HH:mm:ss は 00:00:00 に設定できます。API はこの日付の 00:00〜24:00 の結果を返します。  たとえば「2021-12-01 10:00」を指定すると、12月1日終日の勤怠結果が返されます。  **重要**  workDateFrom と workDateTo の間隔は 7 日（当日を含む）を超えることはできません。 |
+| workDateTo | String | はい | 2020-11-11 08:00:00 | 勤怠打刻記録を照会する終了勤務日です。形式：「yyyy-MM-dd HH:mm:ss」。HH:mm:ss は 00:00:00 に設定できます。API はこの日付の 00:00〜24:00 の結果を返します。  たとえば「2021-12-01 19:00」を指定すると、12月1日終日の勤怠結果が返されます。  **重要**  workDateFrom と workDateTo の間隔は 7 日（当日を含む）を超えることはできません。 |
+| userIdList | String[] | はい | ["manager4220"] | 社内の社員の userId リストです。最大 50 件です。  **重要**  userId の値が正しいことを確認してください。正しくない場合、この API は空の結果を返します。 |
+| offset | Number | はい | 0 | 勤怠データの取得開始位置です。初回リクエストでは 0 を指定します。さらにデータがある場合は、次のリクエストの offset に前回の offset + limit を指定します。値は 0、1、2 のように順に増加します。 |
+| limit | Number | はい | 50 | 取得する勤怠記録の件数です。最大 50 件です。 |
+| isI18n | Boolean | いいえ | true | 海外の組織で API を使用するかどうかを指定します。   - **true**：国際版プラットフォームで使用 - **false**（デフォルト）：中国版プラットフォームで使用 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/attendance/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=713b06xxxxd4cbdf4' \
+-d 'isI18n=true' \
+-d 'limit=100' \
+-d 'offset=0' \
+-d 'userIdList=1' \
+-d 'workDateFrom=yyyy-MM-dd+hh%3Amm%3Ass' \
+-d 'workDateTo=yyyy-MM-dd+hh%3Amm%3Ass'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/attendance/list");
+OapiAttendanceListRequest req = new OapiAttendanceListRequest();
+req.setWorkDateFrom("2020-11-07 08:00:00");
+req.setWorkDateTo("2020-11-11 08:00:00");
+req.setUserIdList(Arrays.asList("manager"));
+req.setOffset(0L);
+req.setLimit(10L);
+req.setIsI18n(true);
+OapiAttendanceListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceListRequest("https://oapi.dingtalk.io/attendance/list")
+
+req.workDateFrom="yyyy-MM-dd hh:mm:ss"
+req.workDateTo="yyyy-MM-dd hh:mm:ss"
+req.userIdList="1"
+req.offset=0
+req.limit=100
+req.isI18n=true
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceListRequest;
+$req->setWorkDateFrom("yyyy-MM-dd hh:mm:ss");
+$req->setWorkDateTo("yyyy-MM-dd hh:mm:ss");
+$req->setUserIdList("1");
+$req->setOffset("0");
+$req->setLimit("100");
+$req->setIsI18n("true");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/attendance/list");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/attendance/list");
+OapiAttendanceListRequest req = new OapiAttendanceListRequest();
+req.WorkDateFrom = "yyyy-MM-dd hh:mm:ss";
+req.WorkDateTo = "yyyy-MM-dd hh:mm:ss";
+req.UserIdList = "1";
+req.Offset = 0L;
+req.Limit = 100L;
+req.IsI18n = true;
+OapiAttendanceListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| recordresult | Recordresult[] |  | 打刻記録です。 |
+| sourceType | String | USER | データソースです。   - **USER**：ユーザーによる打刻 - **BOSS**：管理者による修正 - **APPROVE**：承認システム - **SYSTEM**：勤怠システム - **AUTO_CHECK**：自動打刻 |
+| baseCheckTime | Date | 1599378660000 | 遅刻・早退の計算に使用する基準時刻です。 |
+| userCheckTime | Date | 1599378681000 | 実際の打刻時刻（ミリ秒）です。 |
+| procInstId | String | 59f77e82-6625-4a31-b434 | 関連する承認インスタンスの ID です。このフィールドが空でない場合、打刻記録は休暇申請や残業申請などの承認に関連しています。 |
+| approveId | Number | 2376620852 | 関連する承認の ID です。このフィールドが空でない場合、打刻記録は休暇申請や残業申請などの承認に関連しています。 |
+| locationResult | String | Normal | 位置の判定結果です。   - **Normal**：範囲内 - **Outside**：範囲外 - **NotSigned**：未打刻 |
+| timeResult | String | Normal | 打刻結果です。   - **Normal**：正常 - **Early**：早退 - **Late**：遅刻 - **SeriousLate**：重度の遅刻 - **Absenteeism**：欠勤扱いの遅刻 - **NotSigned**：未打刻 |
+| checkType | String | OnDuty | 勤怠タイプです。   - **OnDuty**：出勤打刻 - **OffDuty**：退勤打刻 |
+| userId | String | manager4220 | 打刻した社員の userId です。 |
+| workDate | Date | 1599321600000 | 勤務日です。 |
+| recordId | Number | 43002777448 | 打刻記録 ID です。 |
+| planId | Number | 145342017988 | シフト ID です。 |
+| groupId | Number | 685935028 | 勤怠グループ ID です。 |
+| id | Number | 101135139831 | 一意の ID です。 |
+| hasMore | Boolean | false | さらにデータがあるかどうかを示すページネーションパラメータです。   - **true**：あり - **false**：なし |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "recordresult": [
+    {
+      "checkType": "OnDuty",
+      "locationResult": "Normal",
+      "baseCheckTime": 1599372300000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "userId": "manager4220",
+      "recordId": 42833709096,
+      "workDate": 1599321600000,
+      "sourceType": "APPROVE",
+      "userCheckTime": 1599372300000,
+      "planId": 145583519353,
+      "id": 100068640553
+    },
+    {
+      "checkType": "OffDuty",   
+      "locationResult": "Normal",
+      "baseCheckTime": 1599373560000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "userId": "manager4220",
+      "recordId": 43003136655,
+      "workDate": 1599321600000,
+      "sourceType": "USER",
+      "userCheckTime": 1599373608000,
+      "planId": 144623724178,
+      "id": 100375228689
+    }
+  ],
+  "hasMore": false,
+  "errmsg": "ok"
+}
+```
+
+### エラーコード
+
+この API の呼び出しに失敗した場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

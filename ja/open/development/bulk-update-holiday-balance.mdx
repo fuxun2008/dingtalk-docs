@@ -1,0 +1,190 @@
+---
+title: "休暇残数の一括更新"
+description: "社員の休暇残数を休暇タイプ別に一括で加算・減算する API です。使用済みクォータに影響を与えず残数を調整できます。"
+---
+
+この API を呼び出して、休暇残数の合計を一括更新します。
+
+## API 呼び出し説明
+
+この API は、既存の残数に加算または減算する形で休暇残数を更新します。社員がすでに使用した休暇のクォータには影響しません。
+
+処理の流れを以下の例で説明します。
+
+1. [休暇ルールの追加](/ja/open/development/add-holiday-rules) API を呼び出して、標準の休暇タイプを作成します。次に [休暇残数の初期化](/ja/open/development/initialize-holiday-balance) API を呼び出して、初期残数を 8 日に設定します。
+2. この API を呼び出し、**quota_num_per_day** を 900 に設定して山田太郎さんの休暇残数を更新します。既存の残数に 1 日を加算するレコードが生成されます。
+3. 山田太郎さんが DingTalk で、この休暇タイプの休暇申請の承認フォームを 2 日分提出します。2 日を差し引くレコードが生成されます。
+4. この API を呼び出し、**quota_num_per_day** を 1000 に設定して山田太郎さんの休暇残数を更新します。1 日を加算するレコードが生成され、最終的な残数は 8 日になります。
+
+   **管理コンソール**では、勤怠アプリの休暇管理に **休暇ルール**、**社員の休暇残数**、**休暇承認設定**、**休暇記録のエクスポート** があります。**社員の休暇残数** ページでは、残数の **エクスポート** や **一括更新** を行えます。また、社員のレコードを開くと、休暇タイプ別の休暇使用履歴を確認できます。各使用エントリには、日時、変動内容（例：休暇ルールに基づきシステムが自動で +5.0 日を付与）、有効期間、理由が表示されます。
+
+休暇ルールの作成方法は、API を呼び出す方法と、DingTalk 公式の勤怠アプリを使用する方法の 2 種類です。
+
+| 休暇ルールの作成方法 | この API による休暇タイプの更新可否 |
+| --- | --- |
+| [休暇ルールの追加](/ja/open/development/add-holiday-rules) API を呼び出して作成した休暇タイプ。 | 対応 |
+| 組織の管理コンソールの勤怠アプリで作成した休暇タイプ。   - 勤怠アプリでデフォルトで作成されたもの。 - 勤怠アプリの管理設定で作成されたもの。 | 非対応 |
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/vacation/quota/update |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_holiday_manage-DingTalk 休暇管理権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報。   - 社内アプリの場合は、[社内アプリの access_token を取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_userid | String | はい | user01 | **OA承認** のアプリ権限を持つ、社内の管理者の userId。 |
+| leave_quotas | LeaveQuotas[] | はい |  | 更新する休暇残数レコード。 |
+| userid | String | はい | user1 | 社員の userId。 |
+| end_time | Number | いいえ | 1753851001000 | クォータ有効期間の終了日時（ミリ秒単位のタイムスタンプ）。 |
+| start_time | Number | いいえ | 1653851001000 | クォータ有効期間の開始日時（ミリ秒単位のタイムスタンプ）。 |
+| leave_code | String | はい | f84a2dxxxx | カスタム休暇タイプ。  **注意**  この休暇タイプは、[休暇ルールの追加](/ja/open/development/add-holiday-rules) API を呼び出して作成したものである必要があります。 |
+| reason | String | いいえ | 管理者によるインポート | 操作の理由。 |
+| quota_num_per_day | Number | いいえ | 100 | 日単位で計算されるクォータの合計。  **注意**  休暇タイプが日単位で計算される場合、この値は必須です。単位は 1/100 日です。  例：1000 = 10 日。 |
+| quota_num_per_hour | Number | いいえ | 100 | 時間単位で計算されるクォータの合計。  **注意**  休暇タイプが時間単位で計算される場合、この値は必須です。単位は 1/100 時間です。  例：1000 = 10 時間。 |
+| quota_cycle | String | いいえ | 2019 | クォータの周期。形式は「yyyy」である必要があります（例：「2021」）。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/vacation/quota/update" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9e10xxxx4ba535' \
+-d 'leave_quotas=null' \
+-d 'op_userid=zhangsan'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+OapiAttendanceVacationQuotaUpdateRequest req = new OapiAttendanceVacationQuotaUpdateRequest();
+List<LeaveQuotas> list = new ArrayList<LeaveQuotas>();
+LeaveQuotas leaveQuotas = new LeaveQuotas();
+list.add(leaveQuotas);
+leaveQuotas.setUserid("user1");
+leaveQuotas.setEndTime(1753851001000L);
+leaveQuotas.setStartTime(1653851001000L);
+leaveQuotas.setLeaveCode("f84a2dxxxx");
+leaveQuotas.setReason("管理者によるインポート");
+leaveQuotas.setQuotaNumPerDay(100L);
+leaveQuotas.setQuotaNumPerHour(100L);
+leaveQuotas.setQuotaCycle("2019");
+req.setLeaveQuotas(list.toString());
+req.setOpUserid("manager1");
+OapiAttendanceVacationQuotaUpdateResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceVacationQuotaUpdateRequest("https://api.dingtalk.io/topapi/attendance/vacation/quota/update")
+
+req.leave_quotas=""
+req.op_userid="zhangsan"
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceVacationQuotaUpdateRequest;
+$leave_quotas = new LeaveQuotas;
+$leave_quotas->userid="zhangsan";
+$leave_quotas->end_time="1753851001000";
+$leave_quotas->start_time="1653851001000";
+$leave_quotas->leave_code="f84a2829-d245-4312-9ff2-0653e5b3abb2";
+$leave_quotas->reason="管理者によるインポート";
+$leave_quotas->quota_num_per_day="100";
+$leave_quotas->quota_num_per_hour="100";
+$leave_quotas->quota_cycle="2019";
+$req->setLeaveQuotas(array($leave_quotas));
+$req->setOpUserid("zhangsan");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/update");
+OapiAttendanceVacationQuotaUpdateRequest req = new OapiAttendanceVacationQuotaUpdateRequest();
+List<OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain> list2 = new List<OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain>();
+OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain obj3 = new OapiAttendanceVacationQuotaUpdateRequest.LeaveQuotasDomain();
+list2.Add(obj3);
+obj3.Userid = "zhangsan";
+obj3.EndTime = 1753851001000L;
+obj3.StartTime = 1653851001000L;
+obj3.LeaveCode = "f84a2829-d245-4312-9ff2-0653e5b3abb2";
+obj3.Reason = "管理者によるインポート";
+obj3.QuotaNumPerDay = 100L;
+obj3.QuotaNumPerHour = 100L;
+obj3.QuotaCycle = "2019";
+req.LeaveQuotas_ = list2;
+req.OpUserid = "zhangsan";
+OapiAttendanceVacationQuotaUpdateResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | Result[] |  | 返された結果。 |
+| reason | String | 休暇タイプが存在しません | 失敗の理由。 |
+| quota | Quota |  | 失敗したレコード。 |
+| leave_code | String | f84a2dxxxx | 休暇タイプの一意の識別子。 |
+| userid | String | user1 | 社員の userId。 |
+| quota_cycle | String | 2019 | クォータの周期。 |
+| errcode | Number | 0 | 戻りコード。 |
+| errmsg | String | ok | 戻りコードの説明。 |
+| success | Boolean | true | リクエストが成功したかどうか。   - **true**：成功 - **false**：失敗 |
+| request_id | String | 6fnd2l2tnodd | リクエスト ID。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "quota": {
+        "leave_code": "f84a2dxxxx",
+        "quota_cycle": "2019",
+        "userid": "user1"
+      },
+      "reason": "休暇タイプが存在しません"
+    }
+  ],
+  "success": true,
+  "request_id": "6fnd2l2tnodd"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。

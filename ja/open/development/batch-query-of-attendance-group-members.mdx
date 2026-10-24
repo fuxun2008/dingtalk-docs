@@ -1,0 +1,146 @@
+---
+title: "勤怠対象者の取得"
+description: "勤怠グループIDを指定して、対象者の部門IDと社員userIdの一覧を取得するAPIです。リクエストパラメータやレスポンス構成、各言語のコード例を確認できます。"
+---
+
+この API を呼び出すと、勤怠グループ ID を指定して勤怠グループの勤怠対象者を取得できます。取得できる情報は、勤怠対象者の部門 ID と userId です。
+
+## API 呼び出し説明
+
+部門が勤怠対象者として設定されている場合、API は部門 ID を返します。その部門に所属するユーザーの一覧は返しません。
+
+たとえば、勤怠対象者に **テスト部門** と社員 **山田太郎** が含まれる場合、この API は次の情報を返します。
+
+- テスト部門の ID（部門内の社員の userId 一覧は含まれません）
+- 山田太郎の userId
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/group/member/list |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 権限 | permission-qyapi_attendance_group_read-勤怠グループ照会権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API の呼び出しに使用するアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| cursor | Number | いいえ | 0 | カーソル値です。初回のリクエストでは 0 を指定します。デフォルト：0。 |
+| op_user_id | String | はい | user123 | 操作者の userId です。 |
+| group_id | Number | はい | 98562 | 勤怠グループ ID です。  **注意**  旧形式の勤怠グループ識別子 group_key を使用している場合は、[groupKey を groupId に変換する](/ja/open/development/convert-groupkey-to-groupid) API を呼び出して、group_key を group_id に変換してください。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/member/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=51525xxxx4e1df6' \
+-d 'cursor=9828' \
+-d 'group_id=98562' \
+-d 'op_user_id=dd_dd'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/list");
+OapiAttendanceGroupMemberListRequest req = new OapiAttendanceGroupMemberListRequest();
+req.setCursor(0L);
+req.setOpUserId("user123");
+req.setGroupId(98562L);
+OapiAttendanceGroupMemberListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupMemberListRequest("https://api.dingtalk.io/topapi/attendance/group/member/list")
+
+req.cursor=9828
+req.op_user_id="dd_dd"
+req.group_id=98562
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupMemberListRequest;
+$req->setCursor("9828");
+$req->setOpUserId("dd_dd");
+$req->setGroupId("98562");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/member/list");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/list");
+OapiAttendanceGroupMemberListRequest req = new OapiAttendanceGroupMemberListRequest();
+req.Cursor = 9828L;
+req.OpUserId = "dd_dd";
+req.GroupId = 98562L;
+OapiAttendanceGroupMemberListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| request_id | String | zpdxhqyepfon | リクエスト ID です。 |
+| errcode | Number | 0 | 戻りコードです。 |
+| success | Boolean | true | 呼び出しに成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| result | PageResult |  | 照会結果のリストです。 |
+| has_more | Boolean | false | 取得可能なデータが他にあるかどうかを示します。   - **true**：あり - **false**：なし |
+| cursor | Number | 752095318 | カーソルです。 |
+| result | TopGroupMemberVo[] |  | ユーザーの userId のリストです。 |
+| atc_flag | String | 0 | 勤怠管理の対象かどうかを示します。   - **0**：勤怠管理の対象 - **1**：勤怠管理の対象外メンバー |
+| type | String | 0 | タイプです。   - **0**：社員 - **1**：部門 |
+| member_id | String | user123 | メンバー ID です。userId または deptId のいずれかです。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": {
+    "cursor": 794905780,
+    "has_more": false,
+    "result": [
+      {
+        "atc_flag": "0",
+        "member_id": "10203029011219896",
+        "type": "0"
+      }
+    ]
+  },
+  "success": true,
+  "request_id": "4hwa7nhm07cs"
+}
+```
+
+### エラーコード
+
+API の呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。

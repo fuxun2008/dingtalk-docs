@@ -1,0 +1,225 @@
+---
+title: "打刻詳細の取得"
+description: "社員の userId リストと期間を指定し、実際の打刻詳細を取得する API です。"
+---
+
+この API を呼び出して、社内の社員の実際の打刻詳細を取得します。
+
+## API 呼び出し説明
+
+- この API では、180 日より前のデータは照会できません。
+- 詳細データが不要で打刻結果のみが必要な場合は、[打刻結果の取得](/ja/open/development/open-attendance-clock-in-data) API を呼び出してください。
+- 勤怠データの同期には遅延が発生する場合があります。データが見つからない場合は、時間をおいて再試行してください。
+- **ユーザーにその日のシフトが設定されていても打刻していない場合、この API は空のデータを返します**。
+- この API はすべての打刻詳細を返します。これには、遅刻など二次確認が必要なシナリオの打刻データも含まれます。これらのレコードは無効な打刻です。取得後、業務シナリオに応じてフィルタリングしてください。出力パラメータ `invalidRecordType`、`isLegal`、`invalidRecordMsg` に注意してください。
+
+たとえば、組織が社員に 9:00 と 18:00 の打刻を設定しているとします。社員がその時間帯に複数回打刻した場合、この API はすべての打刻レコードを返します。
+
+同じ打刻の生データを勤怠管理画面で確認するには、**勤怠統計** > **レポート管理** > **元のレコード** に移動します。各レコードには、**名前**、**勤怠グループ**、**部門**、**社員番号**、**役職**、**勤怠日**、**勤怠時間**（シフトの予定時刻）、**打刻時間**、**打刻結果** の列が表示されます。*打刻修正承認済み* などの結果は、そのレコードが直接の打刻ではなく、承認された修正によるものであることを示します。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://oapi.dingtalk.io/attendance/listRecord |
+| HTTP メソッド | POST |
+| サポートされるアプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_get_attendance_data-勤怠データ読み取り権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API を呼び出すためのアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ社内アプリの access_token の取得 API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| userIds | List | はい | ["user456","user123"] | 社内の社員 ID のリストです。最大 50 件です。  **重要**  userId の値が正しいことを確認してください。正しくない場合、この API は空のデータを返します。 |
+| checkDateFrom | String | はい | 2020-09-07 00:00:00 | 勤怠打刻レコードを照会する開始勤務日です。形式：yyyy-MM-dd hh:mm:ss。  たとえば「2021-12-01 10:00:00」を指定した場合、社員の 09:00 の打刻は返されません。  **重要**  workDateFrom と workDateTo の間隔は最大 7 日間（両端を含む）です。 |
+| checkDateTo | String | はい | 2020-09-08 00:00:00 | 勤怠打刻レコードを照会する終了勤務日です。形式：yyyy-MM-dd hh:mm:ss。  たとえば「2021-12-01 18:00:00」を指定した場合、社員の 19:00 の打刻は返されません。  **重要**  workDateFrom と workDateTo の間隔は最大 7 日間（両端を含む）です。 |
+| isI18n | Boolean | いいえ | true | 組織が海外組織かどうかを指定します。   - **true**：海外プラットフォームで使用 - **false**（デフォルト）：中国プラットフォームで使用 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/attendance/listRecord" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=7258e1c9-af43-411c-b3f4-bcb069bfbb93' \
+-d 'checkDateFrom=2018-01-01' \
+-d 'checkDateTo=2018-01-01' \
+-d 'isI18n=true' \
+-d 'userIds=%221%22%2C%222%22'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/attendance/listRecord");
+OapiAttendanceListRecordRequest req = new OapiAttendanceListRecordRequest();
+req.setUserIds(Arrays.asList("user123","user456"));
+req.setCheckDateFrom("2020-11-07 08:00:00");
+req.setCheckDateTo("2020-11-12 08:00:00");
+req.setIsI18n(false);
+OapiAttendanceListRecordResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceListRecordRequest("https://oapi.dingtalk.io/attendance/listRecord")
+
+req.userIds="[\"1\",\"2\"]"
+req.checkDateFrom="2018-01-01"
+req.checkDateTo="2018-01-01"
+req.isI18n=true
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceListRecordRequest;
+$req->setUserIds("[\"1\",\"2\"]");
+$req->setCheckDateFrom("2018-01-01");
+$req->setCheckDateTo("2018-01-01");
+$req->setIsI18n("true");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/attendance/listRecord");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/attendance/listRecord");
+OapiAttendanceListRecordRequest req = new OapiAttendanceListRecordRequest();
+req.UserIds = "[\"1\",\"2\"]";
+req.CheckDateFrom = "2018-01-01";
+req.CheckDateTo = "2018-01-01";
+req.IsI18n = true;
+OapiAttendanceListRecordResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| errmsg | String | ok | 戻りコードの説明です。 |
+| errcode | String | 0 | 戻りコードです。 |
+| recordresult | Array of Object |  | 打刻詳細です。 |
+| userAccuracy | String | 65 | ユーザーの打刻時の位置精度です。 |
+| classId | Long | 677995086 | シフト ID です。 |
+| userLatitude | String | 30.285622 | ユーザーの打刻時の緯度です。 |
+| userLongitude | String | 120.017019 | ユーザーの打刻時の経度です。 |
+| userAddress | String | 浙江省杭州市 | ユーザーの打刻時の住所です。 |
+| deviceId | String | 67da0fxxxx | 打刻デバイスの ID です。  **注意**  ユーザーが DingTalk モバイルクライアントで打刻した場合に返されます。 |
+| locationMethod | String | MAP | 位置情報の取得方法です。 |
+| isLegal | String | N | レコードが有効かどうかを示します。   - **Y**：有効  **注意**  timeResult と locationResult がいずれも Normal の場合にこの値が返されます。 - **N**：無効 |
+| userCheckTime | String | 1599450909000 | 実際の打刻時間です。 |
+| procInstId | String | 59f77e82-xxxx | 関連する承認インスタンスの ID です。このフィールドが空でない場合、打刻レコードは休暇申請や残業などの承認に関連しています。 |
+| baseCheckTime | String | 1599442200000 | 遅刻と早退を計算するための基準時刻です。予定打刻時刻としても使用できます。 |
+| approveId | String | 2376620852 | 関連する承認の ID です。このフィールドが空でない場合、打刻レコードは休暇申請や残業などの承認に関連しています。 |
+| timeResult | String | Normal | 打刻結果です。   - **Normal**：正常 - **Early**：早退 - **Late**：遅刻 - **SeriousLate**：重大な遅刻 - **Absenteeism**：欠勤扱いの遅刻 - **NotSigned**：未打刻 |
+| locationResult | String | Normal | 位置の判定結果です。   - **Normal**：範囲内 - **Outside**：範囲外 - **NotSigned**：未打刻 |
+| checkType | String | OnDuty | 勤怠タイプです。   - **OnDuty**：出勤打刻 - **OffDuty**：退勤打刻 |
+| sourceType | String | USER | データソースです。   - **USER**：ユーザーによる打刻 - **BOSS**：管理者による変更 - **APPROVE**：承認システム - **SYSTEM**：勤怠システム - **AUTO_CHECK**：自動打刻 |
+| userId | String | manager4220 | 打刻した社員の userId です。 |
+| workDate | String | 1599321600000 | 勤務日です。 |
+| corpId | String | dinge8axxxx5384 | 組織 ID です。 |
+| planId | String | 145342017988 | シフト設定 ID です。 |
+| groupId | String | 685935028 | 勤怠グループ ID です。 |
+| id | String | 101135139831 | 勤怠 ID です。 |
+| invalidRecordType | String | Other | エラーメッセージのタイプです。   - **Security**：安全上の理由 - **Other**：その他の理由 |
+| userSsid | String | xxxx | ユーザーの打刻時の Wi-Fi SSID です。 |
+| userMacAddr | String | 192.168.xx.xx | ユーザーの打刻時の Wi-Fi MAC アドレスです。 |
+| planCheckTime | String | 1492568497000 | 予定打刻時刻です。 |
+| baseAddress | String | 杭州市 | 基準住所です。 |
+| baseLongitude | String | 12.109 | 基準経度です。 |
+| baseLatitude | String | 0.123 | 基準緯度です。 |
+| baseAccuracy | String | hazdgwrxxxx | 基準位置精度です。 |
+| baseSsid | String | 423dsddfxxxx | 基準 Wi-Fi SSID です。 |
+| baseMacAddr | String | 00:27:19:48:58:4c | 基準 MAC アドレスです。 |
+| gmtCreate | String | 1599441505000 | 打刻レコードの作成時間です。 |
+| invalidRecordMsg | String | 二次確認が必要です | **invalidRecordType** が示すエラーの詳細説明です。 |
+| gmtModified | String | 1599441505001 | 打刻レコードの編集時間です。 |
+| outsideRemark | String | 顧客訪問 | 打刻時の備考です。 |
+| deviceSN | String | gd53354xxxx | 打刻デバイスのシリアル番号です。 |
+| bizId | String | E171DCCExxxx | 関連する業務 ID です。 |
+| photoUrl | String | https://static.dingtalk.io/media/lQDPM369C6xxxxK6PiY | 打刻写真の URL です。  **注意**   - このパラメータを使用するには、HTTP でこの API を呼び出してください。SDK ではこのパラメータは返されません。 - 打刻詳細に写真が含まれる場合は photoUrl が返されます。含まれない場合、このフィールドは返されません。 |
+
+### レスポンスボディ例
+
+```json
+{
+  "errcode": 0,
+  "errmsg": "ok",
+  "recordresult": [
+    {
+      "gmtModified": 1599454972000,
+      "baseCheckTime": 1599442200000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "deviceId": "67da0fxxxx",
+      "approveId": 2376620852,
+      "userAccuracy": 65,
+      "classId": 677995086,
+      "workDate": 1599408000000,
+      "bizId": "E171DCCExxxx",
+      "planId": 144872188720,
+      "id": 43047156750,
+      "checkType": "OnDuty",
+      "planCheckTime": 1599442200000,
+      "corpId": "dinge8axxxx5384",
+      "locationResult": "Outside",
+      "userLongitude": 120.017139,
+      "isLegal": "N",
+      "procInstId": "59f77e82-xxxx",
+      "gmtCreate": 1599441505000,
+      "userId": "manager4220",
+      "outsideRemark": "顧客訪問",
+      "userAddress": "浙江省杭州市",
+      "userLatitude": 30.285413,
+      "sourceType": "USER",
+      "userCheckTime": 1599441505000,
+      "locationMethod": "MAP"
+    },
+    {
+      "gmtModified": 1599450909000,
+      "deviceId": "67da0fxxxx",
+      "userAccuracy": 65,
+      "workDate": 1599408000000,
+      "bizId": "E171DCCExxxx",
+      "id": 43055377426,
+      "invalidRecordType": "Other",
+      "corpId": "dinge8axxxx5384",
+      "userLongitude": 120.017019,
+      "gmtCreate": 1599450909000,
+      "invalidRecordMsg": "二次確認が必要です",
+      "userId": "manager4220",
+      "userAddress": "浙江省杭州市",
+      "userLatitude": 30.285622,
+      "sourceType": "USER",
+      "userCheckTime": 1599450909000,
+      "locationMethod": "MAP"
+    }
+  ]
+}
+```
+
+### エラーコード
+
+この API の呼び出しに失敗した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。

@@ -137,15 +137,29 @@ def emit(urlset: ET.Element, lang: str, base_parts: list,
     pr.text = "1.0" if is_home else "0.7"
 
 
+HIDDEN_PAGES_FILE = DOCS_ROOT / "scripts" / "sitemap_hidden.txt"
+
+
+def load_hidden_pages() -> set:
+    """暂不开放的页（已入库但未注册导航），按去语言前缀的 base path 排除，# 开头为注释。"""
+    if not HIDDEN_PAGES_FILE.exists():
+        return set()
+    lines = HIDDEN_PAGES_FILE.read_text(encoding="utf-8").splitlines()
+    return {s.strip() for s in lines if s.strip() and not s.lstrip().startswith("#")}
+
+
 def build_urlset():
     """Build the legacy combined urlset and per-language urlsets."""
     mdx_paths = collect_mdx_paths()
 
     # base_key -> {lang: True}
     base_lang_map: dict = {}
+    hidden = load_hidden_pages()
     for rel in mdx_paths:
         lang, base_parts = classify(rel)
         base_key = "/".join(base_parts)
+        if base_key in hidden:
+            continue
         base_lang_map.setdefault(base_key, {})[lang] = True
 
     # Combined sitemap (legacy)
@@ -178,6 +192,8 @@ def build_urlset():
         base_key = "/".join(base_parts)
         if base_key == "":
             continue  # homepages already emitted
+        if base_key in hidden:
+            continue
         emit(combined, lang, base_parts, base_lang_map[base_key], is_home=False)
         emit(per_lang[lang], lang, base_parts, base_lang_map[base_key], is_home=False)
 

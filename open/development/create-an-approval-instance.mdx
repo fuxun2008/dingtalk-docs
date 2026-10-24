@@ -1,0 +1,1103 @@
+---
+title: "Start an Approval Instance"
+description: "Call this API to start an OA approval instance using a configured process or the approvers parameter; it cannot be changed once started."
+---
+
+Call this API to start an OA Approval instance. Suites such as Attendance & Leave, HR, Finance & Tax, Legal, and Business Travel do not support starting approval instances through this API.
+
+## API Call Description
+
+### Important Notice
+
+To prevent invalid data from being passed to Open APIs, this API will apply stricter validation to incoming data.
+
+- For single-select and multiselect controls, every option value passed in must exist in the configured option list.
+- For internal contact controls, every userID passed in must belong to an active user of the current organization.
+- For department controls, every department ID must be a valid department ID in the current organization.
+- For related approval form controls, every instance ID passed in must be an existing approval instance ID in the current organization.
+
+Approval forms started in violation of these rules may fail to start later once stricter form data validation takes effect.
+
+### Use Cases
+
+<Note>
+After you start an approval instance, you cannot modify its information through the API.
+</Note>
+
+You can start an approval instance in 2 ways, depending on whether you specify approvers. Either set a new approval process or reuse the approval process configured in the approval admin console.
+
+- Do not specify approvers, and reuse the approval process configured in the approval admin console. Note the following:
+
+  - Both approvers and CC recipients reuse the users configured in the approval admin console.
+  - All workflow designs supported in the approval admin console are supported, such as or-sign, countersign, conditional approval, and initiator-selected approvers.
+
+    The approval template editor has four configuration steps: **Basic Settings** > **Form Design** > **Workflow Design** > **Advanced Settings**. In **Workflow Design**, build the flow from these node types: **initiator**, **approver** (for example, initiator-selected, countersign, or or-sign), conditional branches that route by field value (for example, amount ≥ 100 vs. < 100), and **CC recipient**.
+- Specify approvers, and do not reuse the approval process configured in the OA admin console.
+
+  - Advanced settings of the approval template are not supported. For example, Signature and form operation permissions are unavailable. An approval template's **Advanced Settings** (step 4) include the following process options, none of which apply when you assign approvers through this API: **Auto Deduplicate** (if an approver appears more than once in the flow, they approve only once and the rest pass automatically), **Auto Approve** (when the approver and initiator are the same person, the Approval passes automatically), **Allow Adding Approvers** (add temporary approvers to the form), **Approval Withdrawal** (the initiator can withdraw the form), **Time-Limited Approval**, **Signature**, **Approval Comments**, and **Allow Submitting on Behalf of Others**.
+  - When you specify approvers, you cannot use this API to set approvers as initiator-selected.
+
+### Instructions
+
+Scenario 1: Do not specify approvers, and reuse the approval process configured in the approval admin console.
+
+### Note
+
+- Leave the approvers parameter empty. The approval process configured in the approval admin console is reused by default.
+- The ccList and ccPosition parameters set through the API do not take effect. The CC recipients configured in the approval admin console are reused.
+
+- Whether the approval process contains initiator-selected nodes leads to 2 cases.
+
+  - With initiator-selected nodes: call the [Get Node Information in an Approval Form Process](/open/development/approval-process-prediction) API. The isTargetSelect value of every returned node is true.
+
+### Note
+
+  When calling this API to start the approval instance, leave both approvers and targetSelectActioners empty.
+
+  - Without initiator-selected nodes: call the [Get Node Information in an Approval Form Process](/open/development/approval-process-prediction) API. Some returned nodes have an isTargetSelect value of false.
+
+### Note
+
+  When calling this API to start the approval instance, leave approvers empty and pass targetSelectActioners to specify the information for the initiator-selected nodes.
+
+Scenario 2: Specify approvers, and do not reuse the approval process configured in the OA admin console. Use the approvers parameter to specify new approvers.
+
+## Request
+
+### Basic Information
+
+| Field | Value |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processInstances |
+| HTTP Method | POST |
+| Supported app types | appType-Internal app　appType-Third-party enterprise app |
+| Permissions required | permission-Workflow.Instance.Write-Workflow instance write permission |
+
+### Request Header
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Yes | The access credential for calling this API. Obtain it as follows:   - Internal app: call the [Get the Access Token of an Internal App](/open/development/obtain-the-access-token-of-an-internal-app) API. - Third-party enterprise app: call the API for getting the access token of an organization authorized by a third-party app. |
+
+### Request Body
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| originatorUserId | String | Yes | The userId of the approval initiator. Obtain it by calling the [Get the List of User IDs in a Department](/open/development/query-the-list-of-department-userids) API. |
+| processCode | String | Yes | The unique code of the approval process. Obtain process_code from the URL of the approval template edit page. |
+| deptId | Long | No | The ID of the department the approval initiator belongs to.     - If approvers is specified (approvers are assigned directly), leave deptId empty. - If approvers is not specified, deptId is required. Obtain the department ID from the [Query User Details](/open/development/query-user-details) API. For the root department, pass -1. |
+| microappAgentId | Long | No | The app identifier Agent ID. For details, see Basic Concepts. |
+| approvers | Array | No | The list of approvers specified directly when no approval process template is used. Maximum list length: 20.    This specifies the execution flow of the approval form and overrides the default process configured in the OA admin console. |
+| actionType | String | No | The approval type. Valid values:   - **AND**: countersign - **OR**: or-sign - **NONE**: single approver |
+| userIds | Array of String | No | The userIds of the approvers. Example: ["user001","user002"]. |
+| ccList | Array of String | No | The userIds of the CC recipients.    Maximum list length: 50. |
+| ccPosition | String | No | When to send the CC. Valid values:   - **START**: CC at start time - **FINISH**: CC at finish time - **START_FINISH**: CC at both start and finish time |
+| targetSelectActioners | Array | No | When an approval process template is used, the list of selected actioners required by node rules in the process prediction result. Maximum list length: 20.    Required when the default process configured in the OA admin console is used and it contains approver-selected nodes. |
+| actionerKey | String | No | The rule key of the selected node. Obtain the actorKey value by calling the [Get Node Information in an Approval Form Process](/open/development/approval-process-prediction) API. |
+| actionerUserIds | Array of String | No | The userIds of the actioners. Obtain them by calling the [Get the List of User IDs in a Department](/open/development/query-the-list-of-department-userids) API. |
+| formComponentValues | Array | Yes | The list of form controls. For details, see [FormComponentValues Parameter Description](/open/development/oa-formcomponent-message). Maximum list length: 150. |
+| id | String | No | The control ID. |
+| bizAlias | String | No | The control alias. |
+| name | String | Yes | The control name. It must match the `label` field value of the Component in the [Create or Update an Approval Form Template](/open/development/create-an-approval-form-template) API. |
+| value | String | Yes | The control value. Maximum length: 65,535 characters. |
+| extValue | String | No | The extended control value. Maximum length: 65,535 characters. |
+| componentType | String | No | The control type. Valid values:   - **TextField**: single-line input - **TextareaField**: multi-line input - **NumberField**: number input - **DDSelectField**: single select    The option value must exist in the option list. - **DDMultiSelectField**: multiselect    All option values must exist in the option list. - **DDDateField**: date control - **DDDateRangeField**: time range control - **TextNote**: text description control (configured on the approval template and cannot be modified when starting an approval instance) - **PhoneField**: phone control - **DDPhotoField**: image control - **MoneyField**: amount control - **TableField**: detail control - **DDAttachment**: attachment - **InnerContactField**: contact control    The userID in the contact control must belong to an active user of the current organization. - **RelateField**: related approval form    The approval instance IDs passed in must exist in the current organization. - **AddressField**: province/city/district control - **StarRatingField**: rating control - **DepartmentField**: department control    Pass department IDs that exist in the current organization. |
+| details | Array | No | The list of child controls. Maximum number of elements: 150. Maximum total length of a detail control: 65,535 characters. |
+| id | String | No | The control ID. |
+| bizAlias | String | No | The control alias. |
+| name | String | No | The control name. |
+| value | String | No | The control value. |
+| extValue | String | No | The extended control value. |
+| details | Array | No | The list of child controls. Maximum list length: 150. |
+| id | String | No | The control ID. |
+| bizAlias | String | No | The control alias. |
+| name | String | No | The control name. |
+| value | String | No | The control value. |
+| extValue | String | No | The extended control value. |
+| componentType | String | No | The control type. Valid values:   - **TextField**: single-line input - **TextareaField**: multi-line input - **NumberField**: number input - **DDSelectField**: single select    The option value must exist in the option list. - **DDMultiSelectField**: multiselect    All option values must exist in the option list. - **DDDateField**: date control - **DDDateRangeField**: time range control - **TextNote**: text description control (configured on the approval template and cannot be modified when starting an approval instance) - **PhoneField**: phone control - **DDPhotoField**: image control - **MoneyField**: amount control - **TableField**: detail control - **DDAttachment**: attachment - **InnerContactField**: contact control    Pass userIDs of active users in the current organization. - **RelateField**: related approval form    Pass approval instance IDs that exist in the current organization. - **AddressField**: province/city/district control - **StarRatingField**: rating control - **DepartmentField**: department control    The department IDs passed in must exist in the current organization. |
+
+### Request Example
+
+HTTP
+
+```http
+POST /v1.0/workflow/processInstances HTTP/1.1
+Host:api.dingtalk.io
+Content-Type:application/json
+
+{
+    /*
+      This API does not yet support all controls in the Approval app. Only the controls in the examples below are supported.
+      For basic controls, pass only the name and value attributes, both as strings.
+      If the data is in JSON format, escape it to a string first.
+    */ 
+    "processCode": "PROC-17428B8C-6C60-xxxx-924C-64F1037AE067",
+    "originatorUserId": "26652461xxxx5992",
+    "deptId": 1,
+    "microappAgentId": 1234,
+    "formComponentValues":[
+        {
+            "name": "[\"Current Time\",\"Current Location\"]",
+            "value": "[\"2025-01-03 14:27:20\",120.021195,30.281506,\"Alibaba Group Xixi Campus Zone C, No. 960-1 Wenyi West Road, Yuhang District, Hangzhou, Zhejiang\",100]"
+        },
+        {
+            "name": "Single-line Input",
+            "value": "Single-line input example"
+        },
+        {
+            "name": "Multi-line Input",
+            "value": "Enter multi-line text. To insert a line break, enter \r\n"
+        },
+        {
+            "name": "Number Input",
+            "value": "100"
+        },
+        {
+            /*
+                value can be the actual option value
+                The option value, such as "Option 1", must exist in the configured option list
+                Invalid option values may cause the request to fail later
+            */
+            "name": "Single Select",
+            "value": "Option 1"
+        },
+        {
+            /*
+                value must be an array of the actual option values escaped to a string.
+                Use an array even if there is only one option
+                Option values, such as "Option 1" and "Option 2", must exist in the configured option list
+                Invalid option values may cause the request to fail later
+            */
+            "name": "Multiselect",
+            "value": "[\"Option 1\",\"Option 2\"]"
+        }, 
+        {
+            /*
+                value supports only the yyyy-MM-dd format
+            */
+            "name": "Date",
+            "value": "2021-08-17"
+        },
+        {
+            /*
+                value is a date array in string form, also supporting only the yyyy-MM-dd format
+            */
+            "name": "[\"Start Time\",\"End Time\"]",
+            "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+            /*
+                value must be an array of the actual URLs escaped to a string.
+                Use an array even if there is only one item
+            */
+            "name": "Image",
+            "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+            /*
+                The value of a table control is a 2D array of JSON objects. Each row of the array represents a row of data in the table,
+                and each JSON object in a row represents one control in the table.
+            */
+            "name": "Table",
+            "value": "[[{\"name\":\"Single-line Input\",\"value\":\"Detail single-line input\"},{\"name\":\"Number Input\",\"value\":\"100\"}]]"
+        },
+        {
+            "name": "Amount (CNY)",
+            "value": "100"
+        },
+        {
+            /*
+                The value of an attachment control is a JSON array escaped to a string. Each JSON object in the array is one attachment file.
+                Each file must contain the spaceId, fileName, fileSize, fileType, and fileId fields. Obtain these fields
+                by calling the Drive Upload Attachment API.
+            */
+            "name": "Attachment",
+            "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+    "\"643xxxx140\"}]"
+        },
+        {
+            /*
+                Pass userIds for the contact
+                If a userId does not belong to an active user of the current organization, the request may fail later
+            */
+            "name": "Contact",
+            "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+            /*
+                value must be an array of the actual approval forms escaped to a string.
+                Use an array even if there is only one item
+                Passing a nonexistent approval instance ID may cause the request to fail later
+            */
+            "name": "Related Approval Form",
+            "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        },
+        {
+            /*
+                For mainland China mobile numbers, the +86 prefix is optional. For international mobile numbers, include the country code, or the number may not be parsed;
+                for landlines, the area code is optional
+            */
+            "name": "Phone",
+              "value": "157xxxx4545"
+        },
+        {
+            /*
+                The province/city/district value must follow the address control format to be recognized, and must be separated by English commas
+            */
+              "name": "Province/City/District",
+              "value": "Beijing,Beijing,Hedong District"
+        },
+        {
+              "name": "Rating",
+              "value": "5"
+        },
+        {
+            /*
+                value is a department ID in DingTalk Contacts. When multiple departments are selected, separate them with English commas
+                Passing an invalid department ID may cause the approval request to fail later
+            */
+              "name": "Department",
+              "value": "ID of DingTalk Contacts department 1,ID of DingTalk Contacts department 2"
+        }
+    ],
+    "targetSelectActioners":[
+        {
+            "actionerKey": "manual_f953_8c70_xxxx_7ffa",
+            "actionerUserIds": ["26652461xxxx5992", "011220460xxxx8765"]
+        }
+    ],
+    "approvers": [
+        {
+            "actionType": "AND",
+            "userIds": ["26652461xxxx5992", "011220460xxxx8765"]
+        }
+    ],
+    "ccList": ["25054456xxxx0123"],
+    "ccPosition": "START",
+    "RequestId" : "4F73A5B6-81E5-1556-BC35-C2912C84993D"
+}
+```
+
+Java
+
+```java
+// This file is auto-generated, don't edit it. Thanks.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * <b>description</b> :
+     * <p>Initialize the account Client with a Token</p>
+     * @return Client
+     * 
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceHeaders startProcessInstanceHeaders = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceHeaders();
+        startProcessInstanceHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetailsDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Total count:1")
+                .setComponentType("PhoneField");
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValuesDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Total count:1")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0Details0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("myPhoneNumber")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Total count:1")
+                .setComponentType("PhoneField")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners targetSelectActioners0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners()
+                .setActionerKey("manual_1918_5cd3_xxxx_6a98")
+                .setActionerUserIds(java.util.Arrays.asList(
+                    "26652461xxxx5992"
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers()
+                .setActionType("AND")
+                .setUserIds(java.util.Arrays.asList(
+                    "26652461xxxx5992"
+                ));
+        com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest startProcessInstanceRequest = new com.aliyun.dingtalkworkflow_1_0.models.StartProcessInstanceRequest()
+                .setOriginatorUserId("manager432")
+                .setProcessCode("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1")
+                .setDeptId(1L)
+                .setMicroappAgentId(41605932L)
+                .setApprovers(java.util.Arrays.asList(
+                    approvers0
+                ))
+                .setCcList(java.util.Arrays.asList(
+                    "26652461xxxx5992"
+                ))
+                .setCcPosition("START")
+                .setTargetSelectActioners(java.util.Arrays.asList(
+                    targetSelectActioners0
+                ))
+                .setFormComponentValues(java.util.Arrays.asList(
+                    formComponentValues0
+                ));
+        try {
+            client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains the code and message attributes, which help developers locate the issue
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err contains the code and message attributes, which help developers locate the issue
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# This file is auto-generated, don't edit it. Thanks.
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Initialize the account Client with a Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        start_process_instance_headers = dingtalkworkflow__1__0_models.StartProcessInstanceHeaders()
+        start_process_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Total count:1',
+            component_type='PhoneField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Total count:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='myPhoneNumber',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Total count:1',
+            component_type='PhoneField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        target_select_actioners_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestTargetSelectActioners(
+            actioner_key='manual_1918_5cd3_xxxx_6a98',
+            actioner_user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        approvers_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestApprovers(
+            action_type='AND',
+            user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        start_process_instance_request = dingtalkworkflow__1__0_models.StartProcessInstanceRequest(
+            biz_detail_page_url='https://www.dingtalk.io',
+            originator_user_id='manager432',
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            microapp_agent_id=41605932,
+            approvers=[
+                approvers_0
+            ],
+            cc_list=[
+                '26652461xxxx5992'
+            ],
+            cc_position='START',
+            target_select_actioners=[
+                target_select_actioners_0
+            ],
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            client.start_process_instance_with_options(start_process_instance_request, start_process_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains the code and message attributes, which help developers locate the issue
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        start_process_instance_headers = dingtalkworkflow__1__0_models.StartProcessInstanceHeaders()
+        start_process_instance_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Total count:1',
+            component_type='PhoneField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Total count:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='myPhoneNumber',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Total count:1',
+            component_type='PhoneField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        target_select_actioners_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestTargetSelectActioners(
+            actioner_key='manual_1918_5cd3_xxxx_6a98',
+            actioner_user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        approvers_0 = dingtalkworkflow__1__0_models.StartProcessInstanceRequestApprovers(
+            action_type='AND',
+            user_ids=[
+                '26652461xxxx5992'
+            ]
+        )
+        start_process_instance_request = dingtalkworkflow__1__0_models.StartProcessInstanceRequest(
+            biz_detail_page_url='https://www.dingtalk.io',
+            originator_user_id='manager432',
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            microapp_agent_id=41605932,
+            approvers=[
+                approvers_0
+            ],
+            cc_list=[
+                '26652461xxxx5992'
+            ],
+            cc_position='START',
+            target_select_actioners=[
+                target_select_actioners_0
+            ],
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            await client.start_process_instance_with_options_async(start_process_instance_request, start_process_instance_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err contains the code and message attributes, which help developers locate the issue
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// This file is auto-generated, don't edit it. Thanks.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\formComponentValues\details\details;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\formComponentValues;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\targetSelectActioners;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\approvers;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Initialize the account Client with a Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $startProcessInstanceHeaders = new StartProcessInstanceHeaders([]);
+        $startProcessInstanceHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $formComponentValues0Details0Details0 = new details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Total count:1",
+            "componentType" => "PhoneField"
+        ]);
+        $formComponentValues0Details0 = new \AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\StartProcessInstanceRequest\formComponentValues\details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Total count:1",
+            "details" => [
+                $formComponentValues0Details0Details0
+            ]
+        ]);
+        $formComponentValues0 = new formComponentValues([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "myPhoneNumber",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Total count:1",
+            "componentType" => "PhoneField",
+            "details" => [
+                $formComponentValues0Details0
+            ]
+        ]);
+        $targetSelectActioners0 = new targetSelectActioners([
+            "actionerKey" => "manual_1918_5cd3_xxxx_6a98",
+            "actionerUserIds" => [
+                "26652461xxxx5992"
+            ]
+        ]);
+        $approvers0 = new approvers([
+            "actionType" => "AND",
+            "userIds" => [
+                "26652461xxxx5992"
+            ]
+        ]);
+        $startProcessInstanceRequest = new StartProcessInstanceRequest([
+            "originatorUserId" => "manager432",
+            "processCode" => "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+            "deptId" => 1,
+            "microappAgentId" => 41605932,
+            "approvers" => [
+                $approvers0
+            ],
+            "ccList" => [
+                "26652461xxxx5992"
+            ],
+            "ccPosition" => "START",
+            "targetSelectActioners" => [
+                $targetSelectActioners0
+            ],
+            "formComponentValues" => [
+                $formComponentValues0
+            ]
+        ]);
+        try {
+            $client->startProcessInstanceWithOptions($startProcessInstanceRequest, $startProcessInstanceHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err contains the code and message attributes, which help developers locate the issue
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// This file is auto-generated, don't edit it. Thanks.
+package main
+
+import (
+  "encoding/json"
+  "strings"
+  "fmt"
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+// Description:
+// 
+// Initialize the account Client with a Token
+// 
+// @return Client
+// 
+// @throws Exception
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  startProcessInstanceHeaders := &dingtalkworkflow_1_0.StartProcessInstanceHeaders{}
+  startProcessInstanceHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  formComponentValues0Details0Details0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetailsDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Total count:1"),
+    ComponentType: tea.String("PhoneField"),
+  }
+  formComponentValues0Details0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Total count:1"),
+    Details: []*dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetailsDetails{formComponentValues0Details0Details0},
+  }
+  formComponentValues0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValues{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("myPhoneNumber"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Total count:1"),
+    ComponentType: tea.String("PhoneField"),
+    Details: []*dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetails{formComponentValues0Details0},
+  }
+  targetSelectActioners0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestTargetSelectActioners{
+    ActionerKey: tea.String("manual_1918_5cd3_xxxx_6a98"),
+    ActionerUserIds: []*string{tea.String("26652461xxxx5992")},
+  }
+  approvers0 := &dingtalkworkflow_1_0.StartProcessInstanceRequestApprovers{
+    ActionType: tea.String("AND"),
+    UserIds: []*string{tea.String("26652461xxxx5992")},
+  }
+  startProcessInstanceRequest := &dingtalkworkflow_1_0.StartProcessInstanceRequest{
+    OriginatorUserId: tea.String("manager432"),
+    ProcessCode: tea.String("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1"),
+    DeptId: tea.Int64(1),
+    MicroappAgentId: tea.Int64(41605932),
+    Approvers: []*dingtalkworkflow_1_0.StartProcessInstanceRequestApprovers{approvers0},
+    CcList: []*string{tea.String("26652461xxxx5992")},
+    CcPosition: tea.String("START"),
+    TargetSelectActioners: []*dingtalkworkflow_1_0.StartProcessInstanceRequestTargetSelectActioners{targetSelectActioners0},
+    FormComponentValues: []*dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValues{formComponentValues0},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.StartProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err contains the code and message attributes, which help developers locate the issue
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```javascript
+'use strict';
+// This file is auto-generated, don't edit it
+const Util = require('@alicloud/tea-util');
+const dingtalkworkflow_1_0 = require('@alicloud/dingtalk/workflow_1_0');
+const OpenApi = require('@alicloud/openapi-client');
+const Tea = require('@alicloud/tea-typescript');
+
+class Client {
+
+  /**
+   * Initialize the account Client with a Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient() {
+    let config = new OpenApi.Config({ });
+    config.protocol = 'https';
+    config.regionId = 'central';
+    return new dingtalkworkflow_1_0.default(config);
+  }
+
+  static async main(args) {
+    let client = Client.createClient();
+    let startProcessInstanceHeaders = new dingtalkworkflow_1_0.StartProcessInstanceHeaders({ });
+    startProcessInstanceHeaders.xAcsDingtalkAccessToken = '<your access token>';
+    let formComponentValues0Details0Details0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetailsDetails({
+      id: 'PhoneField_IZI2LP8QF6O0',
+      bizAlias: 'Phone',
+      name: 'PhoneField',
+      value: '123xxxxxxxx',
+      extValue: 'Total count:1',
+      componentType: 'PhoneField',
+    });
+    let formComponentValues0Details0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValuesDetails({
+      id: 'PhoneField_IZI2LP8QF6O0',
+      bizAlias: 'Phone',
+      name: 'PhoneField',
+      value: '123xxxxxxxx',
+      extValue: 'Total count:1',
+      details: [
+        formComponentValues0Details0Details0
+      ],
+    });
+    let formComponentValues0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestFormComponentValues({
+      id: 'PhoneField_IZI2LP8QF6O0',
+      bizAlias: 'myPhoneNumber',
+      name: 'PhoneField',
+      value: '123xxxxxxxx',
+      extValue: 'Total count:1',
+      componentType: 'PhoneField',
+      details: [
+        formComponentValues0Details0
+      ],
+    });
+    let targetSelectActioners0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestTargetSelectActioners({
+      actionerKey: 'manual_1918_5cd3_xxxx_6a98',
+      actionerUserIds: [
+        '26652461xxxx5992'
+      ],
+    });
+    let approvers0 = new dingtalkworkflow_1_0.StartProcessInstanceRequestApprovers({
+      actionType: 'AND',
+      userIds: [
+        '26652461xxxx5992'
+      ],
+    });
+    let startProcessInstanceRequest = new dingtalkworkflow_1_0.StartProcessInstanceRequest({
+      originatorUserId: 'manager432',
+      processCode: 'PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+      deptId: 1,
+      microappAgentId: 41605932,
+      approvers: [
+        approvers0
+      ],
+      ccList: [
+        '26652461xxxx5992'
+      ],
+      ccPosition: 'START',
+      targetSelectActioners: [
+        targetSelectActioners0
+      ],
+      formComponentValues: [
+        formComponentValues0
+      ],
+    });
+    try {
+      await client.startProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.default.empty(err.code) && !Util.default.empty(err.message)) {
+        // err contains the code and message attributes, which help developers locate the issue
+      }
+
+    }    
+  }
+
+}
+
+exports.Client = Client;
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// This file is auto-generated, don't edit it. Thanks.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /// <term><b>Description:</b></term>
+        /// <description>
+        /// <para>Initialize the account Client with a Token</para>
+        /// </description>
+        /// 
+        /// <returns>
+        /// Client
+        /// </returns>
+        /// 
+        /// <term><b>Exception:</b></term>
+        /// Exception
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceHeaders startProcessInstanceHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceHeaders();
+            startProcessInstanceHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails.StartProcessInstanceRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails.StartProcessInstanceRequestFormComponentValuesDetailsDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Total count:1",
+                ComponentType = "PhoneField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails formComponentValues0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Total count:1",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails.StartProcessInstanceRequestFormComponentValuesDetailsDetails>
+                {
+                    formComponentValues0Details0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues formComponentValues0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "myPhoneNumber",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Total count:1",
+                ComponentType = "PhoneField",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues.StartProcessInstanceRequestFormComponentValuesDetails>
+                {
+                    formComponentValues0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners targetSelectActioners0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners
+            {
+                ActionerKey = "manual_1918_5cd3_xxxx_6a98",
+                ActionerUserIds = new List<string>
+                {
+                    "26652461xxxx5992"
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers approvers0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers
+            {
+                ActionType = "AND",
+                UserIds = new List<string>
+                {
+                    "26652461xxxx5992"
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest startProcessInstanceRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest
+            {
+                OriginatorUserId = "manager432",
+                ProcessCode = "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+                DeptId = 1,
+                MicroappAgentId = 41605932,
+                Approvers = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestApprovers>
+                {
+                    approvers0
+                },
+                CcList = new List<string>
+                {
+                    "26652461xxxx5992"
+                },
+                CcPosition = "START",
+                TargetSelectActioners = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestTargetSelectActioners>
+                {
+                    targetSelectActioners0
+                },
+                FormComponentValues = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.StartProcessInstanceRequest.StartProcessInstanceRequestFormComponentValues>
+                {
+                    formComponentValues0
+                },
+            };
+            try
+            {
+                client.StartProcessInstanceWithOptions(startProcessInstanceRequest, startProcessInstanceHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains the code and message attributes, which help developers locate the issue
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err contains the code and message attributes, which help developers locate the issue
+                }
+            }
+        }
+
+    }
+}
+```
+
+## Response
+
+### Response Body
+
+| Name | Type | Description |
+| --- | --- | --- |
+| instanceId | String | The approval instance ID. |
+
+### Response Body Example
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "instanceId" : "91ef1076-c3ed-4a78-xxxx-fa29ef2d6252"
+}
+```
+
+### Error Codes
+
+If a call to this API returns an error, find the solution in the [Global Error Codes](/open/development/server-api-error-codes-1) document based on the error message.
+
+| HttpCode | Error code | Error message | Description |
+| --- | --- | --- | --- |
+| 400 | targetSelectApproverScopeError | The selected approver is outside the allowed scope. | The selected approver is outside the allowed scope. |
+| 400 | targetSelectApproverMissing | The selected approver is missing. | The selected approver is missing. |
+| 400 | invalidParameter | Approval request parameter error. Possible causes: invalid parameters such as the Organization ID or approval template code, or the initiator has left the organization. | Approval request parameter error. Possible causes: invalid parameters such as the Organization ID or approval template code, or the initiator has left the organization. |
+| 400 | processInstanceInvalidParameter | Approval instance parameter error. Possible causes: invalid userid of the initiator, approver, or CC recipient; invalid initiating department ID; or the initiator does not belong to the initiating department. | Approval instance parameter error. Possible causes: invalid userid of the initiator, approver, or CC recipient; invalid initiating department ID; or the initiator does not belong to the initiating department. |
+| 400 | processInstanceStartFailed | Failed to create the approval instance. | Failed to create the approval instance. |
+| 400 | needAuth | No permission to start an approval. | No permission to start an approval. |
+| 400 | invalidAgentId | Invalid micro app ID. | Invalid micro app ID. |
+| 400 | processGroupGetFailed | Failed to get the approval process group. | Failed to get the approval process group. |
+| 400 | processCodeError | Failed to get the approval template, or the template has been deleted. | Failed to get the approval template, or the template has been deleted. |
+| 400 | processSetupNoPermission | No permission to operate on the approval process. | No permission to operate on the approval process. |
+| 400 | processGetFailed | Failed to get the approval process, or the approval form is not enabled. | Failed to get the approval process, or the approval form is not enabled. |
+| 400 | formConverterError | Form data validation failed. Failed control: %s | Form data validation failed. |
+| 400 | illegalComponent | Invalid form component input parameter. | Invalid form component input parameter. |
+| 400 | sysErrror | System error while creating the approval instance. | System error while creating the approval instance. |
+| 400 | internalError | %s | Internal system error. |
+| 400 | autoflowLikeTriggerRateLimited | This operation involves Automation (business rules) and triggered throttling. Reduce the call rate or cancel the related Automation configuration. | This operation involves Automation (business rules) and triggered throttling. Reduce the call rate or cancel the related Automation configuration. |
+| 500 | systemError | System error. | System error. |

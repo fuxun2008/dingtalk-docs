@@ -1,0 +1,1014 @@
+---
+title: "Dapatkan maklumat nod dalam proses borang kelulusan"
+description: "Panggil API DingTalk ini untuk meramal nod dalam proses kelulusan, dan dapatkan nama nod, jenis kelulusan serta penyokong. Semak juga sama ada nod pilih sendiri wujud."
+---
+
+Panggil API ini untuk mendapatkan maklumat nod dalam proses borang kelulusan.
+
+## Penerangan panggilan API
+
+### Nota penggunaan
+
+Panggil API ini untuk mendapatkan maklumat nod yang berikut:
+
+- Untuk nod pilih sendiri: nama nod, jenis kelulusan, tetapan penyokong, skop pilihan, kaedah kelulusan bagi berbilang penyokong, jenis pengaktifan nod dan lain-lain.
+- Untuk nod bukan pilih sendiri: nama nod, jenis kelulusan, tetapan penyokong, kaedah kelulusan bagi berbilang penyokong, jenis pengaktifan nod dan lain-lain.
+
+Nod kelulusan mempunyai pilihan konfigurasi yang berikut:
+
+**Jenis**: **Kelulusan Manual**, **Lulus Automatik** atau **Tolak Automatik**.
+
+**Tetapan** untuk **penyokong**: **Ahli Ditetapkan**, **Pemohon Pilih Sendiri**, **Pengurus Berbilang Peringkat Berturutan**, **Ketua Jabatan**, **Penyelia Terus**, **Peranan** atau **Pemohon Sendiri**. Untuk pilih sendiri, tetapkan **Skop** yang boleh dipilih (contohnya, **Ahli Ditetapkan**) dan mod seorang atau berbilang orang.
+
+**Kaedah kelulusan bagi berbilang penyokong**:
+
+| Kaedah | Tingkah laku |
+| --- | --- |
+| Berturutan | Penyokong bertindak seorang demi seorang |
+| Tandatangan bersama | Semua penyokong mesti bersetuju |
+| Tandatangan atau | Kelulusan atau penolakan seorang penyokong menjadi keputusan |
+
+### Kes penggunaan
+
+1. Tentukan sama ada nod pilih sendiri wujud. Gunakan API ini bersama API [Mulakan instans kelulusan](/ms/open/development/create-an-approval-instance).
+
+   **Nota**: API ini hanya terpakai apabila anda memanggil API **Mulakan instans kelulusan** tanpa menetapkan proses kelulusan, dan menggunakan semula proses kelulusan yang dikonfigurasi dalam konsol pentadbir kelulusan.
+
+   Editor templat kelulusan menyusun konfigurasi kepada empat langkah: **Tetapan Asas**, **Reka Bentuk Borang**, **Reka Bentuk Proses** dan **Tetapan Lanjutan**. Kanvas Reka Bentuk Proses memaparkan proses kelulusan sebagai jujukan nod dari atas ke bawah:
+
+   1. Nod **Pemohon**: orang yang memulakan instans kelulusan.
+   2. **Nod pilih sendiri** (nod tempat pemohon memilih pelaksana): dipaparkan sebagai **Pemohon pilih sendiri**.
+   3. Nod **Penyokong**: penyokong yang ditetapkan.
+
+   Nod pilih sendiri membolehkan pemohon memilih pelaksana bagi langkah tersebut semasa menghantar permintaan.
+2. Dapatkan maklumat nod yang dikonfigurasi dalam templat kelulusan, seperti jenis nod dan nama nod.
+
+### Semak nod pilih sendiri
+
+#### Dengan nod pilih sendiri
+
+Panggil API ini. Maklumat yang dikembalikan mengandungi nod yang nilai medan `activityType` ialah `target_select`.
+
+Apabila anda menggunakan API ini bersama API **Mulakan instans kelulusan**, ambil perhatian perkara berikut:
+
+- Gunakan nilai medan `actorKey` bagi nod semasa sebagai parameter actionerKey untuk API Mulakan instans kelulusan.
+- Gunakan nilai medan `workNo` dalam `actorSelectionRange` sebagai parameter `actionerUserIds` untuk API Mulakan instans kelulusan.
+
+  Dalam pereka bentuk Proses kelulusan, konfigurasikan nod pilih sendiri dalam langkah **Reka Bentuk Proses** (**Tetapan Asas** > **Reka Bentuk Borang** > **Reka Bentuk Proses** > **Tetapan Lanjutan**). Aliran contoh disusun seperti berikut: **Pemohon** > **Nod pilih sendiri** (jenis **Pemohon memilih**) > **Penyokong**.
+
+#### Tanpa nod pilih sendiri
+
+Panggil API ini. Maklumat yang dikembalikan tidak mengandungi nod yang nilai medan `activityType` ialah `target_approval`.
+
+## Permintaan
+
+### Maklumat asas
+
+| Medan | Nilai |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/v1.0/workflow/processes/forecast |
+| Kaedah HTTP | POST |
+| Jenis aplikasi yang disokong | appType-Aplikasi dalaman　appType-Aplikasi perusahaan pihak ketiga |
+| Kebenaran yang diperlukan | permission-Workflow.Instance.Write-Kebenaran tulis instans aliran kerja |
+
+### Pengepala permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | Ya | Kredensial akses untuk memanggil API ini. Dapatkannya seperti berikut:   - Aplikasi dalaman: panggil API [Dapatkan access token aplikasi dalaman](/ms/open/development/obtain-the-access-token-of-an-internal-app). - Aplikasi perusahaan pihak ketiga: panggil API Dapatkan access token organisasi yang diberi kuasa oleh aplikasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Jenis | Wajib | Penerangan |
+| --- | --- | --- | --- |
+| processCode | String | Ya | Kod unik proses kelulusan. Dapatkannya dengan memanggil API [Cipta atau kemas kini templat borang kelulusan](/ms/open/development/create-an-approval-form-template), atau rujuk [Gambaran keseluruhan Kelulusan OA - Glosari](/ms/open/development/workflow-overview). |
+| deptId | Integer | Ya | ID jabatan pekerja yang akan menghantar borang kelulusan. Dapatkannya dengan memanggil API [Dapatkan senarai jabatan](/ms/open/development/user-management-acquires-the-list-departments). |
+| userId | String | Ya | userId pekerja yang akan menghantar borang kelulusan. Dapatkannya dengan memanggil API [Dapatkan senarai ID pengguna dalam jabatan](/ms/open/development/query-the-list-of-department-userids). |
+| formComponentValues | Array | Ya | Senarai data kawalan borang. Panjang maksimum: 150. |
+| id | String | Tidak | ID kawalan. |
+| bizAlias | String | Tidak | Alias kawalan. |
+| name | String | Ya | Nama kawalan. |
+| value | String | Ya | Nilai kawalan. |
+| extValue | String | Tidak | Nilai lanjutan kawalan. |
+| componentType | String | Tidak | Jenis kawalan. Nilai yang sah:   - **TextField**: medan teks satu baris - **TextareaField**: medan teks pelbagai baris - **NumberField**: medan nombor - **DDSelectField**: medan pilih tunggal - **DDMultiSelectField**: medan pilih banyak - **DDDateField**: kawalan tarikh - **DDDateRangeField**: kawalan julat masa - **TextNote**: kawalan penerangan teks - **PhoneField**: kawalan telefon - **DDPhotoField**: kawalan imej - **MoneyField**: kawalan amaun - **TableField**: kawalan butiran - **DDAttachment**: lampiran - **InnerContactField**: kawalan kenalan - **RelateField**: borang kelulusan berkaitan - **FormRelateField**: kawalan perkaitan |
+| details | Array | Tidak | Senarai kawalan anak. Panjang maksimum: 150. |
+| id | String | Tidak | ID kawalan. |
+| bizAlias | String | Tidak | Alias kawalan. |
+| name | String | Tidak | Nama kawalan. |
+| value | String | Tidak | Nilai kawalan. |
+| extValue | String | Tidak | Nilai lanjutan kawalan. |
+| details | Array | Tidak | Senarai kawalan anak. Panjang maksimum: 150. |
+| id | String | Tidak | ID kawalan. |
+| bizAlias | String | Tidak | Alias kawalan. |
+| name | String | Tidak | Nama kawalan. |
+| value | String | Tidak | Nilai kawalan. |
+| extValue | String | Tidak | Nilai lanjutan kawalan. |
+| componentType | String | Tidak | Jenis kawalan. Nilai yang sah:   - **TextField**: medan teks satu baris - **TextareaField**: medan teks pelbagai baris - **NumberField**: medan nombor - **DDSelectField**: medan pilih tunggal - **DDMultiSelectField**: medan pilih banyak - **DDDateField**: kawalan tarikh - **DDDateRangeField**: kawalan julat masa - **TextNote**: kawalan penerangan teks - **PhoneField**: kawalan telefon - **DDPhotoField**: kawalan imej - **MoneyField**: kawalan amaun - **TableField**: kawalan butiran - **DDAttachment**: lampiran - **InnerContactField**: kawalan kenalan - **RelateField**: borang kelulusan berkaitan - **FormRelateField**: kawalan perkaitan |
+
+### Contoh permintaan
+
+HTTP
+
+```http
+POST /v1.0/workflow/processes/forecast HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:ea96fed0eda0325e8b30f182805f5f4e
+Content-Type:application/json
+
+{ 
+    /*
+      API ini belum menyokong semua kawalan dalam aplikasi Kelulusan. Rujuk kawalan yang disenaraikan dalam contoh di bawah.
+      Untuk kawalan asas, hanya atribut name dan value diperlukan. Kedua-duanya ialah string.
+      Jika data dalam format JSON, escape data tersebut kepada string terlebih dahulu.
+    */ 
+    "userId": "26652461xxxx5992",
+    "deptId": 1,
+    "processCode": "PROC-17428B8C-6C60-xxxx-924C-64F1037AE067",
+    "formComponentValues": [
+        {
+          "name": "Medan teks satu baris",
+          "value": "Contoh teks satu baris"
+        },
+        {
+          "name": "Medan teks pelbagai baris",
+          "value": "Contoh teks pelbagai baris"
+        },
+        {
+          "name": "Medan nombor",
+          "value": "100"
+        },
+        {
+          /*
+            value boleh menjadi nilai pilihan sebenar
+          */
+          "name": "Medan pilih tunggal",
+          "value": "Pilihan 1"
+        },
+        {
+          /*
+            value mestilah tatasusunan nilai pilihan sebenar yang di-escape kepada string.
+            Gunakan format tatasusunan walaupun hanya terdapat satu pilihan.
+          */
+          "name": "Medan pilih banyak",
+          "value": "[\"Pilihan 1\",\"Pilihan 2\"]"
+        }, 
+        {
+          /*
+            value hanya menyokong format yyyy-MM-dd
+          */
+          "name": "Tarikh",
+          "value": "2021-08-17"
+        },
+        {
+          /*
+            value ialah tatasusunan masa dalam bentuk string. Hanya format yyyy-MM-dd disokong.
+          */
+          "name": "[\"Masa mula\",\"Masa tamat\"]",
+          "value": "[\"2019-02-19\",\"2019-02-25\"]"
+        },
+        {
+          "name": "Kad pengenalan",
+          "value": "xxxx"
+        },
+        {
+          /*
+            value mestilah tatasusunan URL sebenar yang di-escape kepada string.
+            Gunakan format tatasusunan walaupun hanya terdapat satu item.
+          */
+          "name": "Imej",
+          "value": "[\"http://url1\",\"http://url2\",\"http://url3\"]"
+        },
+        {
+          /*
+            Nilai kawalan jadual ialah tatasusunan dua dimensi objek JSON. Setiap baris dalam tatasusunan mewakili satu baris data dalam jadual,
+            dan setiap objek JSON dalam satu baris mewakili satu kawalan dalam jadual.
+          */
+          "name": "Jadual",
+          "value": "[[{\"id\":\"TextField_CM2IN2SOB600\", \"value\":\"helo\"}, {\"id\":\"TextField_QQOAK1OA2G00\", \"value\":\"dunia\"}]]"
+        },
+        {
+          "name": "Amaun (CNY)",
+          "value": "100"
+        },
+        {
+          /*
+            Nilai kawalan lampiran ialah tatasusunan JSON yang di-escape kepada string. Setiap objek JSON dalam tatasusunan ialah satu fail lampiran.
+            Setiap fail mesti mengandungi medan spaceId, fileName, fileSize, fileType dan fileId. Dapatkan medan ini
+            dengan memanggil API muat naik lampiran Drive.
+          */
+          "name": "Lampiran",
+          "value": "[{\"spaceId\": \"163xxxx658\", \"fileName\": \"2644.JPG\", \"fileSize\": \"333\", \"fileType\": \"jpg\", \"fileId\": " +
+          "\"643xxxx140\"}]"
+        },
+        {
+          "name": "Kenalan",
+          "value": "[\"4525xxxxxxxx77041\"]"
+        },
+        {
+          /*
+            value mestilah tatasusunan borang kelulusan sebenar yang di-escape kepada string.
+            Gunakan format tatasusunan walaupun hanya terdapat satu item.
+          */
+          "name": "Borang kelulusan berkaitan",
+          "value": "[\"fa2aa864-xxxx-xxxx-xxxx-75572c0e2cdf\", \"7125778e-xxxx-xxxx-xxxx-faa987478a9b\"]"
+        }
+    ]
+}
+```
+
+Java
+
+```java
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+import com.aliyun.teautil.*;
+import com.aliyun.teautil.models.*;
+import com.aliyun.dingtalkworkflow_1_0.*;
+import com.aliyun.dingtalkworkflow_1_0.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+
+public class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        Config config = new Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        ProcessForecastHeaders processForecastHeaders = new ProcessForecastHeaders();
+        processForecastHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetailsDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Jumlah kiraan:1")
+                .setComponentType("TextField");
+        ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetails formComponentValues0Details0 = new ProcessForecastRequest.ProcessForecastRequestFormComponentValuesDetails()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Jumlah kiraan:1")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0Details0
+                ));
+        ProcessForecastRequest.ProcessForecastRequestFormComponentValues formComponentValues0 = new ProcessForecastRequest.ProcessForecastRequestFormComponentValues()
+                .setId("PhoneField_IZI2LP8QF6O0")
+                .setBizAlias("Phone")
+                .setName("PhoneField")
+                .setValue("123xxxxxxxx")
+                .setExtValue("Jumlah kiraan:1")
+                .setComponentType("TextField")
+                .setDetails(java.util.Arrays.asList(
+                    formComponentValues0Details0
+                ));
+        ProcessForecastRequest processForecastRequest = new ProcessForecastRequest()
+                .setProcessCode("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1")
+                .setDeptId(1)
+                .setUserId("manager432")
+                .setFormComponentValues(java.util.Arrays.asList(
+                    formComponentValues0
+                ));
+        try {
+            client.processForecastWithOptions(processForecastRequest, processForecastHeaders, new RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Mulakan Client akaun menggunakan Token
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_forecast_headers = dingtalkworkflow__1__0_models.ProcessForecastHeaders()
+        process_forecast_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah kiraan:1',
+            component_type='TextField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah kiraan:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah kiraan:1',
+            component_type='TextField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        process_forecast_request = dingtalkworkflow__1__0_models.ProcessForecastRequest(
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            user_id='manager432',
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            client.process_forecast_with_options(process_forecast_request, process_forecast_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu anda mengesan masalah
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        process_forecast_headers = dingtalkworkflow__1__0_models.ProcessForecastHeaders()
+        process_forecast_headers.x_acs_dingtalk_access_token = '<your access token>'
+        form_component_values_0details_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetailsDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah kiraan:1',
+            component_type='TextField'
+        )
+        form_component_values_0details_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValuesDetails(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah kiraan:1',
+            details=[
+                form_component_values_0details_0details_0
+            ]
+        )
+        form_component_values_0 = dingtalkworkflow__1__0_models.ProcessForecastRequestFormComponentValues(
+            id='PhoneField_IZI2LP8QF6O0',
+            biz_alias='Phone',
+            name='PhoneField',
+            value='123xxxxxxxx',
+            ext_value='Jumlah kiraan:1',
+            component_type='TextField',
+            details=[
+                form_component_values_0details_0
+            ]
+        )
+        process_forecast_request = dingtalkworkflow__1__0_models.ProcessForecastRequest(
+            process_code='PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1',
+            dept_id=1,
+            user_id='manager432',
+            form_component_values=[
+                form_component_values_0
+            ]
+        )
+        try:
+            await client.process_forecast_with_options_async(process_forecast_request, process_forecast_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err mengandungi atribut code dan message yang membantu anda mengesan masalah
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest\formComponentValues\details\details;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest\formComponentValues;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Mulakan Client akaun menggunakan Token
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $processForecastHeaders = new ProcessForecastHeaders([]);
+        $processForecastHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $formComponentValues0Details0Details0 = new details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Jumlah kiraan:1",
+            "componentType" => "TextField"
+        ]);
+        $formComponentValues0Details0 = new \AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ProcessForecastRequest\formComponentValues\details([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Jumlah kiraan:1",
+            "details" => [
+                $formComponentValues0Details0Details0
+            ]
+        ]);
+        $formComponentValues0 = new formComponentValues([
+            "id" => "PhoneField_IZI2LP8QF6O0",
+            "bizAlias" => "Phone",
+            "name" => "PhoneField",
+            "value" => "123xxxxxxxx",
+            "extValue" => "Jumlah kiraan:1",
+            "componentType" => "TextField",
+            "details" => [
+                $formComponentValues0Details0
+            ]
+        ]);
+        $processForecastRequest = new ProcessForecastRequest([
+            "processCode" => "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+            "deptId" => 1,
+            "userId" => "manager432",
+            "formComponentValues" => [
+                $formComponentValues0
+            ]
+        ]);
+        try {
+            $client->processForecastWithOptions($processForecastRequest, $processForecastHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Mulakan Client akaun menggunakan Token
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  processForecastHeaders := &dingtalkworkflow_1_0.ProcessForecastHeaders{}
+  processForecastHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  formComponentValues0Details0Details0 := &dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetailsDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Jumlah kiraan:1"),
+    ComponentType: tea.String("TextField"),
+  }
+  formComponentValues0Details0 := &dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetails{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Jumlah kiraan:1"),
+    Details: []*dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetailsDetails{formComponentValues0Details0Details0},
+  }
+  formComponentValues0 := &dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValues{
+    Id: tea.String("PhoneField_IZI2LP8QF6O0"),
+    BizAlias: tea.String("Phone"),
+    Name: tea.String("PhoneField"),
+    Value: tea.String("123xxxxxxxx"),
+    ExtValue: tea.String("Jumlah kiraan:1"),
+    ComponentType: tea.String("TextField"),
+    Details: []*dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetails{formComponentValues0Details0},
+  }
+  processForecastRequest := &dingtalkworkflow_1_0.ProcessForecastRequest{
+    ProcessCode: tea.String("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1"),
+    DeptId: tea.Int32(1),
+    UserId: tea.String("manager432"),
+    FormComponentValues: []*dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValues{formComponentValues0},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ProcessForecastWithOptions(processForecastRequest, processForecastHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```typescript
+// Fail ini dijana secara automatik, jangan suntingnya
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Mulakan Client akaun menggunakan Token
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let processForecastHeaders = new $dingtalkworkflow_1_0.ProcessForecastHeaders({ });
+    processForecastHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let formComponentValues0Details0Details0 = new $dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetailsDetails({
+      id: "PhoneField_IZI2LP8QF6O0",
+      bizAlias: "Phone",
+      name: "PhoneField",
+      value: "123xxxxxxxx",
+      extValue: "Jumlah kiraan:1",
+      componentType: "TextField",
+    });
+    let formComponentValues0Details0 = new $dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValuesDetails({
+      id: "PhoneField_IZI2LP8QF6O0",
+      bizAlias: "Phone",
+      name: "PhoneField",
+      value: "123xxxxxxxx",
+      extValue: "Jumlah kiraan:1",
+      details: [
+        formComponentValues0Details0Details0
+      ],
+    });
+    let formComponentValues0 = new $dingtalkworkflow_1_0.ProcessForecastRequestFormComponentValues({
+      id: "PhoneField_IZI2LP8QF6O0",
+      bizAlias: "Phone",
+      name: "PhoneField",
+      value: "123xxxxxxxx",
+      extValue: "Jumlah kiraan:1",
+      componentType: "TextField",
+      details: [
+        formComponentValues0Details0
+      ],
+    });
+    let processForecastRequest = new $dingtalkworkflow_1_0.ProcessForecastRequest({
+      processCode: "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+      deptId: 1,
+      userId: "manager432",
+      formComponentValues: [
+        formComponentValues0
+      ],
+    });
+    try {
+      await client.processForecastWithOptions(processForecastRequest, processForecastHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Mulakan Client akaun menggunakan Token
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastHeaders processForecastHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastHeaders();
+            processForecastHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails.ProcessForecastRequestFormComponentValuesDetailsDetails formComponentValues0Details0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails.ProcessForecastRequestFormComponentValuesDetailsDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Jumlah kiraan:1",
+                ComponentType = "TextField",
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails formComponentValues0Details0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Jumlah kiraan:1",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails.ProcessForecastRequestFormComponentValuesDetailsDetails>
+                {
+                    formComponentValues0Details0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues formComponentValues0 = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues
+            {
+                Id = "PhoneField_IZI2LP8QF6O0",
+                BizAlias = "Phone",
+                Name = "PhoneField",
+                Value = "123xxxxxxxx",
+                ExtValue = "Jumlah kiraan:1",
+                ComponentType = "TextField",
+                Details = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues.ProcessForecastRequestFormComponentValuesDetails>
+                {
+                    formComponentValues0Details0
+                },
+            };
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest processForecastRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest
+            {
+                ProcessCode = "PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1",
+                DeptId = 1,
+                UserId = "manager432",
+                FormComponentValues = new List<AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ProcessForecastRequest.ProcessForecastRequestFormComponentValues>
+                {
+                    formComponentValues0
+                },
+            };
+            try
+            {
+                client.ProcessForecastWithOptions(processForecastRequest, processForecastHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+                }
+            }
+        }
+
+    }
+}
+```
+
+C++
+
+```cpp
+// Fail ini dijana secara automatik, jangan suntingnya. Terima kasih.
+
+#include <alibabacloud/dingtalkworkflow__1__0.hpp>
+#include <alibabacloud/open_api.hpp>
+#include <boost/any.hpp>
+#include <darabonba/core.hpp>
+#include <darabonba/util.hpp>
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+Alibabacloud_Dingtalkworkflow_1_0::Client createClient() {
+  shared_ptr<Alibabacloud_OpenApi::Config> config = make_shared<Alibabacloud_OpenApi::Config>();
+  config->protocol = make_shared<string>("https");
+  config->regionId = make_shared<string>("central");
+  return Alibabacloud_Dingtalkworkflow_1_0::Client(config);
+}
+
+int main(int argc, char *args[]) {
+  args++;
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::Client> client = make_shared<Alibabacloud_Dingtalkworkflow_1_0::Client>(createClient());
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastHeaders> processForecastHeaders = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastHeaders>();
+  processForecastHeaders->xAcsDingtalkAccessToken = make_shared<string>("<your access token>");
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetailsDetails> formComponentValues0Details0Details0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetailsDetails>(map<string, boost::any>({
+    {"id", boost::any(string("PhoneField_IZI2LP8QF6O0"))},
+    {"bizAlias", boost::any(string("Phone"))},
+    {"name", boost::any(string("PhoneField"))},
+    {"value", boost::any(string("123xxxxxxxx"))},
+    {"extValue", boost::any(string("Jumlah kiraan:1"))},
+    {"componentType", boost::any(string("TextField"))}
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetails> formComponentValues0Details0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetails>(map<string, boost::any>({
+    {"id", boost::any(string("PhoneField_IZI2LP8QF6O0"))},
+    {"bizAlias", boost::any(string("Phone"))},
+    {"name", boost::any(string("PhoneField"))},
+    {"value", boost::any(string("123xxxxxxxx"))},
+    {"extValue", boost::any(string("Jumlah kiraan:1"))},
+    {"details", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetailsDetails>({
+      formComponentValues0Details0Details0
+    }))}
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValues> formComponentValues0 = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValues>(map<string, boost::any>({
+    {"id", boost::any(string("PhoneField_IZI2LP8QF6O0"))},
+    {"bizAlias", boost::any(string("Phone"))},
+    {"name", boost::any(string("PhoneField"))},
+    {"value", boost::any(string("123xxxxxxxx"))},
+    {"extValue", boost::any(string("Jumlah kiraan:1"))},
+    {"componentType", boost::any(string("TextField"))},
+    {"details", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValuesDetails>({
+      formComponentValues0Details0
+    }))}
+  }));
+  shared_ptr<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequest> processForecastRequest = make_shared<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequest>(map<string, boost::any>({
+    {"processCode", boost::any(string("PROC-EF6YJL35P2-SCKICSB7P750S0YISYKV3-xxxx-1"))},
+    {"deptId", boost::any(1)},
+    {"userId", boost::any(string("manager432"))},
+    {"formComponentValues", boost::any(vector<Alibabacloud_Dingtalkworkflow_1_0::ProcessForecastRequestFormComponentValues>({
+      formComponentValues0
+    }))}
+  }));
+  try {
+    client->processForecastWithOptions(processForecastRequest, processForecastHeaders, make_shared<Darabonba_Util::RuntimeOptions>(Darabonba_Util::RuntimeOptions()));
+  }
+  catch (std::exception &err) {
+    if (!Darabonba_Util::Client::empty(err.code) && !Darabonba_Util::Client::empty(err.message)) {
+      // err mengandungi atribut code dan message yang membantu anda mengesan masalah
+    }
+  }
+}
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Jenis | Penerangan |
+| --- | --- | --- |
+| result | Object | Butiran keputusan. |
+| isForecastSuccess | Boolean | Sama ada ramalan berjaya. Mengembalikan true jika berjaya. |
+| processCode | String | Kod unik borang. |
+| userId | String | ID pengguna. |
+| processId | Long | ID proses. Tidak digunakan buat masa ini. |
+| isStaticWorkflow | Boolean | Sama ada proses adalah statik.   - **true**: - **false**: |
+| workflowActivityRules | Array | Peraturan nod aliran kerja. |
+| activityId | String | ID nod. Tidak digunakan buat masa ini. |
+| prevActivityId | String | ID nod sebelumnya dalam proses. |
+| activityName | String | Nama nod. |
+| activityType | String | Jenis peraturan. Nilai yang sah:   - **target_select**: nod penyokong pilih sendiri - **target_approval**: nod penyokong yang ditetapkan |
+| isTargetSelect | Boolean | Sama ada nod ialah nod kelulusan pilih sendiri.  Apabila activityType ialah target_select, medan ini bernilai true. |
+| workflowActor | Object | Maklumat pelaku nod. |
+| actorKey | String | Kunci pelaku nod. |
+| actorType | String | Jenis pelaku nod. Nilai yang sah:   - **approver**: penyokong - **notifier**: penerima CC - **audit**: pelaksana |
+| actorSelectionType | String | Jenis skop pilihan pelaku nod. Nilai yang sah:   - **allStaff**: seluruh syarikat - **approvals**: ahli yang ditetapkan - **labels**: peranan |
+| actorSelectionRange | Object | Skop pilihan pelaku nod. |
+| approvals | Array | Ahli kelulusan yang ditetapkan. Dikembalikan apabila nod ditetapkan kepada ahli yang ditetapkan. |
+| workNo | String | userId pekerja. |
+| userName | String | Nama pekerja. |
+| labels | Array | Peranan kelulusan yang ditetapkan. Dikembalikan apabila nod ditetapkan kepada peranan. |
+| labels | String | ID peranan. |
+| labelNames | String | Nama peranan. |
+| allowedMulti | Boolean | Sama ada pilihan berbilang dibenarkan, atau hanya seorang boleh dipilih. |
+| approvalType | String | Jenis kelulusan nod. Nilai yang sah:   - MANUAL: kelulusan manual - AUTO_AGREE: kelulusan automatik - AUTO_REFUSE: penolakan automatik |
+| approvalMethod | String | Kaedah kelulusan nod. Nilai yang sah:   - ONE_BY_ONE: kelulusan berturutan - AND: kelulusan tandatangan bersama - OR: kelulusan tandatangan atau |
+| actorActivateType | String | Jenis pengaktifan nod. Nilai yang sah:   - ALL: selari - ONE_BY_ONE: bersiri |
+| required | Boolean | Sama ada nod penyokong ini wajib semasa menghantar kelulusan. |
+| activityActioners | Array | Senarai penyokong nod. |
+| userId | String | userId penyokong. |
+| name | String | Nama penyokong. |
+| avatar | String | Gambar profil penyokong. |
+| workflowForecastNodes | Array | Aliran nod aliran kerja. |
+| activityId | String | ID nod. |
+| outId | String | ID garisan keluar nod. |
+
+### Contoh isi respons
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "isForecastSuccess" : true,
+    "processCode" : "PROC-2B60E506-D6CB-43F3-B661-359B27F90947",
+    "userId" : "2665246100805992",
+    "processId" : 63657309999,
+    "isStaticWorkflow" : true,
+    "workflowActivityRules" : [ {
+      "activityId" : "1918_5cd3",
+      "prevActivityId" : "1918_5cd3",
+      "activityName" : "Penyokong",
+      "activityType" : "target_select",
+      "isTargetSelect" : true,
+      "workflowActor" : {
+        "actorKey" : "manual_e203_14a3_895a_45ad",
+        "actorType" : "approver: penyokong, notifier: penerima CC, audit: pelaksana",
+        "actorSelectionType" : "allStaff",
+        "actorSelectionRange" : {
+          "approvals" : [ {
+            "workNo" : "26652461xxxx5992",
+            "userName" : "Ahmad"
+          } ],
+          "labels" : [ {
+            "labels" : "200649095",
+            "labelNames" : "Kewangan"
+          } ]
+        },
+        "allowedMulti" : true,
+        "approvalType" : "MANUAL",
+        "approvalMethod" : "ONE_BY_ONE",
+        "actorActivateType" : "ALL",
+        "required" : true
+      },
+      "activityActioners" : [ {
+        "userId" : "2665246100805992",
+        "name" : "Siti",
+        "avatar" : "https://url1"
+      } ]
+    } ],
+    "workflowForecastNodes" : [ {
+      "activityId" : "1cc3_959a",
+      "outId" : "line-random-1cc3_959a-831a_607b"
+    } ]
+  }
+}
+```
+
+### Kod ralat
+
+Jika panggilan API mengembalikan ralat, cari penyelesaian dalam dokumen [Kod ralat global](/ms/open/development/server-api-error-codes-1) berdasarkan mesej ralat.
+
+| HttpCode | Kod ralat | Mesej ralat | Penerangan |
+| --- | --- | --- | --- |
+| 400 | forecastError | Ramalan proses gagal | Ramalan proses gagal |
+| 400 | invalidParameter | Ralat parameter | Ralat parameter |
+| 400 | componentIsNull | Data borang kosong | Data borang kosong |
+| 400 | processCodeError | Gagal mendapatkan templat kelulusan, atau templat telah dipadam | Gagal mendapatkan templat kelulusan, atau templat telah dipadam |
+| 400 | formNotExist | Borang tidak wujud | Borang tidak wujud |
+| 400 | internalError | %s | Ralat sistem dalaman |
+| 400 | invalidUserId | userId pengguna kosong | userId pengguna kosong |
+| 400 | userNotExist | Pengguna tidak wujud | Pengguna tidak wujud |
+| 500 | systemError | Ralat sistem | Ralat sistem |

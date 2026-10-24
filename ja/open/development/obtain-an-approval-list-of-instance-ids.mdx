@@ -1,0 +1,546 @@
+---
+title: "承認インスタンス ID リストの取得"
+description: "承認プロセスコードや期間、申請者、ステータスで絞り込み、権限スコープ内の承認インスタンス ID リストをページングで取得する API です。"
+---
+
+この API を呼び出して、権限スコープ内の関連部門の承認インスタンス ID リストを取得します。
+
+## API 呼び出し説明
+
+### API 呼び出しフロー
+
+1. この API を呼び出して、承認作業フローの承認インスタンス ID を取得します。
+2. [単一の承認インスタンスの詳細を取得](/ja/open/development/obtains-the-details-of-a-single-approval-instance-pop) API を呼び出して、各承認インスタンスの詳細を取得します。
+
+### 使用上の注意
+
+- **startTime** のみを指定する場合、現在時刻から 120 日以内の値を指定してください。**endTime** を省略した場合、デフォルトで現在時刻が使用されます。
+- **startTime** と **endTime** の両方を指定する場合、期間は 120 日以内とし、**startTime** には現在時刻から 365 日以内の値を指定してください。
+- 繰り返し呼び出しによって分割取得するインスタンス ID の合計数は、10,000 件以内に制限されます。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/workflow/processes/instanceIds/query |
+| HTTP メソッド | POST |
+| 対応するアプリタイプ | appType-社内アプリ |
+| 必要な権限 | permission-Workflow.Instance.Read-ワークフローインスタンスの読み取り権限 |
+
+### リクエストヘッダー
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。[社内アプリのアクセストークンを取得](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 説明 |
+| --- | --- | --- | --- |
+| processCode | String | はい | 承認作業フローの固有コードです。   - [承認フォームテンプレートの作成または更新](/ja/open/development/create-an-approval-form-template) API を呼び出して `processCode` の値を取得します。 - [用語集 - processCode](/ja/open/development/workflow-overview) を参照してください。 |
+| startTime | Long | はい | 承認インスタンスの開始時刻です。ミリ秒単位の Unix タイムスタンプで指定します。    例：2020年4月10日から2020年4月14日までに提出された承認フォームを取得する場合は、2020年4月10日 00:00:00 のタイムスタンプである 1586448000000 を指定します。 |
+| endTime | Long | いいえ | 承認インスタンスの終了時刻です。ミリ秒単位の Unix タイムスタンプで指定します。    例：2020年4月10日から2020年4月14日までに提出された承認フォームを取得する場合は、2020年4月14日 23:59:59 のタイムスタンプである 1586879999000 を指定します。 |
+| nextToken | Long | はい | ページングカーソルです。   - 初回の呼び出しでは 0 を指定します。 - 2 回目以降の呼び出しでは、前回の呼び出しで返された nextToken を指定します。 |
+| maxResults | Long | はい | 1 ページあたりの件数を指定するページングパラメータです。最大値：20。 |
+| userIds | Array of String | いいえ | 申請者のユーザー ID リストです。リストの最大長：10。[部門のユーザー ID リストを取得](/ja/open/development/query-the-list-of-department-userids) API を呼び出して取得します。 |
+| statuses | Array of String | いいえ | ワークフローインスタンスのステータスです。   - **RUNNING**：承認中 - **TERMINATED**：取り消し済み - **COMPLETED**：承認完了     省略した場合、すべてのステータスのインスタンス ID が返されます。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/workflow/processes/instanceIds/query HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:6d1bxxxx
+Content-Type:application/json
+
+{
+  "processCode" : "PROC-FF6Y2xxxx",
+  "startTime" : 1496678400000,
+  "endTime" : 1496678400000,
+  "nextToken" : 0,
+  "maxResults" : 10,
+  "userIds" : [ "initiatorUserId" ],
+  "statuses" : [ "RUNNING" ]
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkworkflow_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkworkflow_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkworkflow_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders listProcessInstanceIdsHeaders = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsHeaders();
+        listProcessInstanceIdsHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest listProcessInstanceIdsRequest = new com.aliyun.dingtalkworkflow_1_0.models.ListProcessInstanceIdsRequest()
+                .setProcessCode("PROC-FF6Y2xxxx")
+                .setStartTime(1496678400000L)
+                .setEndTime(1496678400000L)
+                .setNextToken(0L)
+                .setMaxResults(10L)
+                .setUserIds(java.util.Arrays.asList(
+                    "initiatorUserId"
+                ))
+                .setStatuses(java.util.Arrays.asList(
+                    "RUNNING"
+                ));
+        try {
+            client.listProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.workflow_1_0.client import Client as dingtalkworkflow_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.workflow_1_0 import models as dingtalkworkflow__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkworkflow_1_0Client:
+        """
+        Token を使用してアカウント Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkworkflow_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        list_process_instance_ids_headers = dingtalkworkflow__1__0_models.ListProcessInstanceIdsHeaders()
+        list_process_instance_ids_headers.x_acs_dingtalk_access_token = '<your access token>'
+        list_process_instance_ids_request = dingtalkworkflow__1__0_models.ListProcessInstanceIdsRequest(
+            process_code='PROC-FF6Y2xxxx',
+            start_time=1496678400000,
+            end_time=1496678400000,
+            next_token=0,
+            max_results=10,
+            user_ids=[
+                'initiatorUserId'
+            ],
+            statuses=[
+                'RUNNING'
+            ]
+        )
+        try:
+            client.list_process_instance_ids_with_options(list_process_instance_ids_request, list_process_instance_ids_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には問題の特定に役立つ code 属性と message 属性が含まれます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        list_process_instance_ids_headers = dingtalkworkflow__1__0_models.ListProcessInstanceIdsHeaders()
+        list_process_instance_ids_headers.x_acs_dingtalk_access_token = '<your access token>'
+        list_process_instance_ids_request = dingtalkworkflow__1__0_models.ListProcessInstanceIdsRequest(
+            process_code='PROC-FF6Y2xxxx',
+            start_time=1496678400000,
+            end_time=1496678400000,
+            next_token=0,
+            max_results=10,
+            user_ids=[
+                'initiatorUserId'
+            ],
+            statuses=[
+                'RUNNING'
+            ]
+        )
+        try:
+            await client.list_process_instance_ids_with_options_async(list_process_instance_ids_request, list_process_instance_ids_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には問題の特定に役立つ code 属性と message 属性が含まれます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ListProcessInstanceIdsHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vworkflow_1_0\Models\ListProcessInstanceIdsRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウント Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $listProcessInstanceIdsHeaders = new ListProcessInstanceIdsHeaders([]);
+        $listProcessInstanceIdsHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $listProcessInstanceIdsRequest = new ListProcessInstanceIdsRequest([
+            "processCode" => "PROC-FF6Y2xxxx",
+            "startTime" => 1496678400000,
+            "endTime" => 1496678400000,
+            "nextToken" => 0,
+            "maxResults" => 10,
+            "userIds" => [
+                "initiatorUserId"
+            ],
+            "statuses" => [
+                "RUNNING"
+            ]
+        ]);
+        try {
+            $client->listProcessInstanceIdsWithOptions($listProcessInstanceIdsRequest, $listProcessInstanceIdsHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には問題の特定に役立つ code 属性と message 属性が含まれます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されています。編集しないでください。
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkworkflow_1_0  "github.com/alibabacloud-go/dingtalk/workflow_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Token を使用してアカウント Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkworkflow_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkworkflow_1_0.Client{}
+  _result, _err = dingtalkworkflow_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  listProcessInstanceIdsHeaders := &dingtalkworkflow_1_0.ListProcessInstanceIdsHeaders{}
+  listProcessInstanceIdsHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  listProcessInstanceIdsRequest := &dingtalkworkflow_1_0.ListProcessInstanceIdsRequest{
+    ProcessCode: tea.String("PROC-FF6Y2xxxx"),
+    StartTime: tea.Int64(1496678400000),
+    EndTime: tea.Int64(1496678400000),
+    NextToken: tea.Int64(0),
+    MaxResults: tea.Int64(10),
+    UserIds: []*string{tea.String("initiatorUserId")},
+    Statuses: []*string{tea.String("RUNNING")},
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.ListProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には問題の特定に役立つ code 属性と message 属性が含まれます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```typescript
+// このファイルは自動生成されています。編集しないでください。
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkworkflow_1_0, * as $dingtalkworkflow_1_0 from '@alicloud/dingtalk/workflow_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Token を使用してアカウント Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkworkflow_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkworkflow_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let listProcessInstanceIdsHeaders = new $dingtalkworkflow_1_0.ListProcessInstanceIdsHeaders({ });
+    listProcessInstanceIdsHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let listProcessInstanceIdsRequest = new $dingtalkworkflow_1_0.ListProcessInstanceIdsRequest({
+      processCode: "PROC-FF6Y2xxxx",
+      startTime: 1496678400000,
+      endTime: 1496678400000,
+      nextToken: 0,
+      maxResults: 10,
+      userIds: [
+        "initiatorUserId"
+      ],
+      statuses: [
+        "RUNNING"
+      ],
+    });
+    try {
+      await client.listProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には問題の特定に役立つ code 属性と message 属性が含まれます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// このファイルは自動生成されています。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Token を使用してアカウント Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsHeaders listProcessInstanceIdsHeaders = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsHeaders();
+            listProcessInstanceIdsHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsRequest listProcessInstanceIdsRequest = new AlibabaCloud.SDK.Dingtalkworkflow_1_0.Models.ListProcessInstanceIdsRequest
+            {
+                ProcessCode = "PROC-FF6Y2xxxx",
+                StartTime = 1496678400000,
+                EndTime = 1496678400000,
+                NextToken = 0,
+                MaxResults = 10,
+                UserIds = new List<string>
+                {
+                    "initiatorUserId"
+                },
+                Statuses = new List<string>
+                {
+                    "RUNNING"
+                },
+            };
+            try
+            {
+                client.ListProcessInstanceIdsWithOptions(listProcessInstanceIdsRequest, listProcessInstanceIdsHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には問題の特定に役立つ code 属性と message 属性が含まれます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 説明 |
+| --- | --- | --- |
+| result | Object | 返された結果です。 |
+| list | Array of String | 承認インスタンス ID です。 |
+| nextToken | String | ページングカーソルです。    値が空でない場合は、取得可能なデータがさらに存在することを示します。 |
+| success | Boolean | API リクエストが成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+
+### レスポンスボディの例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "list" : [ "123" ],
+    "nextToken" : "10"
+  },
+  "success" : true
+}
+```
+
+### エラーコード
+
+API 呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | invalidProcessCode | 承認テンプレートの processCode を空にすることはできません | 承認テンプレートの processCode を空にすることはできません |
+| 400 | invalidInstanceListIdsStartTime | 承認インスタンス ID リストの取得：承認インスタンスの開始時刻を空にすることはできません | 承認インスタンス ID リストの取得：承認インスタンスの開始時刻を空にすることはできません |
+| 400 | invalidNextToken | 承認インスタンス ID リストの取得：ページングカーソルを空にすることはできません | 承認インスタンス ID リストの取得：ページングカーソルを空にすることはできません |
+| 400 | invalidMaxResults | 承認インスタンス ID リストの取得：ページングパラメータが無効です。1 ページあたりの件数は 20 以下にしてください。 | 承認インスタンス ID リストの取得：ページングパラメータが無効です。1 ページあたりの件数は 20 以下にしてください。 |
+| 400 | invalidEndTime | 承認インスタンス ID リストの取得：承認インスタンスの終了時刻を開始時刻より前にすることはできません。また、照会期間は 120 日以内にしてください。 | 承認インスタンス ID リストの取得：承認インスタンスの終了時刻を開始時刻より前にすることはできません。また、照会期間は 120 日以内にしてください。 |
+| 400 | invalidUserIds | 承認インスタンス ID リストの取得：申請者のユーザー ID リストのパラメータが無効です。リストの最大長は 10 です。 | 承認インスタンス ID リストの取得：申請者のユーザー ID リストのパラメータが無効です。リストの最大長は 10 です。 |
+| 400 | internalError | %s | 内部システムエラー |
+| 500 | systemError | システムエラー | システムエラー |

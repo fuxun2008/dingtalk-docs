@@ -1,0 +1,285 @@
+---
+title: "Dapatkan status kehadiran karyawan dengan API dan peristiwa absensi"
+description: "Pantau kehadiran karyawan secara real-time dengan API dan peristiwa absen DingTalk. Deteksi keterlambatan otomatis dan tampilkan hasilnya di dasbor perusahaan."
+---
+
+# Visualisasi data absensi: Pemantauan kehadiran real-time dan peringatan anomali
+
+## Ikhtisar
+
+Solusi ini menampilkan data absensi karyawan di dasbor perusahaan secara menyeluruh. Solusi ini memakai mekanisme push Stream dan API absensi DingTalk Open Platform untuk mengumpulkan data secara real-time, menentukan status secara otomatis, dan menghasilkan data terstandardisasi.
+
+### Latar belakang
+
+Organisasi perlu melihat kehadiran karyawan secara real-time. Kebutuhan ini sangat terasa di bengkel manufaktur, pusat layanan pelanggan, dan toko ritel. Di tempat-tempat tersebut, manajer mengandalkan dasbor untuk melihat metrik utama, seperti jumlah karyawan yang sedang bertugas, keterlambatan, dan ketidakhadiran. Namun, data absensi bawaan DingTalk tersimpan di Admin Console dan tidak dapat terhubung langsung ke sistem dasbor milik organisasi. Akibatnya, muncul masalah berikut:
+
+- **Akses data tertunda**: HR harus mengekspor laporan absensi secara manual, sehingga data tidak dapat diperbarui dalam hitungan detik.
+- **Integrasi sistem sulit**: Tanpa API terstandardisasi, data absensi sulit disematkan ke sistem BI atau dasbor internal.
+- **Penentuan status rumit**: Waktu absen saja tidak cukup untuk menentukan status "Normal/Terlambat/Tidak hadir". Staf harus membandingkannya secara manual dengan aturan penjadwalan shift.
+- **Titik buta pemantauan**: Absen yang tidak wajar, seperti absen dari lokasi yang tidak semestinya atau titip absen, tidak dapat memicu peringatan real-time.
+
+### Manfaat utama
+
+Solusi ini mengumpulkan dan menganalisis data absensi secara real-time. Data offline yang diekspor manual digantikan oleh aliran data real-time berbasis API. Hasilnya, efisiensi pengambilan keputusan dan transparansi data meningkat secara signifikan.
+
+- **Pengumpulan data real-time**: Mekanisme push Stream mengirim callback ke server Anda dalam hitungan milidetik setelah setiap absen. Data tetap sinkron tanpa latensi yang terasa.
+- **Penentuan status otomatis**: Waktu absen otomatis dibandingkan dengan aturan penjadwalan shift untuk mengidentifikasi status secara akurat, seperti "Normal/Terlambat/Pulang lebih awal/Tidak hadir".
+- **Output API terstandardisasi**: RESTful API terpadu terintegrasi dengan lancar ke dasbor, sistem BI, dan papan Kanban OA.
+- **Pelacakan riwayat lengkap**: Kueri batch atas riwayat catatan absensi mendukung statistik bulanan, analisis tren, dan kebutuhan analisis mendalam lainnya.
+
+### Kasus penggunaan
+
+Solusi ini dapat diterapkan pada skenario bisnis berikut:
+
+- **Dasbor bengkel manufaktur**: Tampilkan jumlah karyawan yang bertugas, tingkat ketidakhadiran, dan peringatan keterlambatan untuk setiap lini produksi secara real-time guna mendukung penjadwalan produksi.
+- **Pemantauan pusat layanan pelanggan**: Pantau kehadiran agen untuk memastikan jumlah staf mencukupi dan mengalokasikan ulang sumber daya dengan cepat.
+- **Manajemen toko ritel**: Pantau status absen karyawan di seluruh toko agar penjadwalan shift selaras dengan jumlah pengunjung.
+- **Pusat komando kantor pusat**: Gabungkan data absensi seluruh grup perusahaan untuk mendukung perbandingan antarwilayah dan peringatan anomali.
+
+## Skenario bisnis umum
+
+### Skenario 1: Pemantauan kehadiran real-time di bengkel manufaktur
+
+#### Masalah
+
+Secara tradisional, supervisor bengkel menghitung jumlah karyawan yang bertugas di setiap lini produksi secara manual setiap 2 jam. Setiap penghitungan memakan waktu 30 menit, dan datanya sudah usang saat selesai dihitung. Saat terjadi ketidakhadiran mendadak, rencana produksi tidak dapat disesuaikan tepat waktu sehingga kapasitas produksi berkurang.
+
+#### Nilai
+
+- **Alur otomatis**
+
+  Alur menyeluruh:
+
+  1. Karyawan melakukan absen masuk atau absen pulang di Aplikasi DingTalk.
+  2. Data absen dikirim secara real-time melalui saluran **Stream** (callback).
+  3. Server perusahaan menerima data lalu menentukan status secara otomatis berdasarkan aturan **penjadwalan shift**.
+  4. Hasilnya ditulis ke database dan di-cache di **Redis** untuk menjaga performa.
+  5. Data dikembalikan melalui **API**, lalu dasbor menampilkan status kehadiran terbaru secara real-time.
+- **Keunggulan utama**
+
+  - **Pembaruan dalam hitungan detik**: Dasbor dimuat ulang dalam 1 detik setelah absen, sehingga manajer dapat melihat sebaran tenaga kerja secara real-time.
+  - **Peringatan otomatis**: Jika tingkat ketidakhadiran melampaui ambang batas (misalnya 10%), SMS atau notifikasi DingTalk terkirim otomatis agar tindakan dapat diambil dengan cepat.
+  - **Perbandingan historis**: Analisis tahun ke tahun dan periode ke periode menunjukkan pola ketidakhadiran musiman dan membantu mengoptimalkan penjadwalan shift.
+  - **Filter multidimensi**: Filter berdasarkan lini produksi, tim, atau jenis pekerjaan untuk menemukan area bermasalah secara tepat.
+
+### Skenario 2: Optimalisasi penjadwalan tenaga kerja di pusat layanan pelanggan
+
+#### Masalah
+
+Supervisor layanan pelanggan tidak dapat melihat jumlah staf yang benar-benar bertugas di setiap slot waktu secara real-time. Akibatnya, tim sering kekurangan staf pada jam sibuk dan kelebihan staf pada jam sepi. Kondisi ini menurunkan kepuasan pelanggan dan menaikkan biaya operasional.
+
+#### Nilai
+
+- **Alur otomatis**
+
+  Alur otomatis terdiri atas lima tahap:
+
+  1. Agen layanan pelanggan melakukan absen di **DingTalk**, yang mencatat waktu dan lokasi absen.
+  2. **Stream** mengirim peristiwa absen ke server secara real-time (callback dalam hitungan milidetik).
+  3. AI menentukan status kehadiran dan menyimpan data absensi untuk kueri dan analisis historis.
+  4. Mesin heatmap menghitung sebaran tenaga kerja di setiap slot waktu serta mengidentifikasi jam sibuk, jam sepi, dan risiko kekurangan staf.
+  5. Dasbor layar besar menampilkan kurva prakiraan dan saran penjadwalan shift untuk mendukung keputusan manajer dan peringatan dini.
+- **Keunggulan utama**
+
+  - **Tampilan heatmap**: Visualisasikan titik padat tenaga kerja berdasarkan lini masa dan jumlah agen.
+  - **Penjadwalan prediktif**: Perkirakan kebutuhan tenaga kerja untuk 2 jam ke depan dari data historis, lalu sesuaikan jadwal lebih awal.
+  - **Deteksi anomali**: Identifikasi pola secara otomatis, seperti keterlambatan berulang dan pulang lebih awal yang sering, lalu buat daftar pantauan.
+  - **Korelasi kinerja**: Hubungkan data absensi dengan KPI, seperti tingkat jawaban dan kepuasan pelanggan, untuk mengukur imbal hasil investasi tenaga kerja.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Solusi ini memakai Server API dan mekanisme push Stream DingTalk Open Platform. Komponen teknis utamanya meliputi:
+
+- **Lapisan autentikasi**: Gunakan `Client ID` dan `Client Secret` untuk mendapatkan `access_token` dan mengamankan panggilan API.
+- **Lapisan penerimaan data real-time**: Konfigurasikan push Stream untuk berlangganan peristiwa absen dan menerima Callback di server Anda dalam hitungan milidetik.
+- **Mesin penentuan status**: Algoritma lokal membandingkan waktu absen dengan aturan penjadwalan shift dan mengidentifikasi status "Normal/Terlambat/Sangat terlambat/Tidak hadir" secara otomatis.
+- **Penyimpanan dan cache data**: Aturan penjadwalan shift grup absensi disinkronkan penuh setiap jam. Catatan absen ditulis ke database dan di-cache secara real-time.
+- **Lapisan output API terstandardisasi**: RESTful API melayani dasbor dan sistem BI, serta mendukung filter multidimensi dan kueri agregat.
+
+Alur data: Karyawan melakukan absen di Aplikasi DingTalk → Stream mengirim Callback real-time → Server perusahaan menerima data dan menentukan status → Data ditulis ke database dan di-cache → API dasbor mengembalikan data.
+
+### Prasyarat
+
+Sebelum menerapkan solusi ini, pastikan persyaratan berikut terpenuhi:
+
+- **Persiapan Aplikasi**: Buat dan konfigurasikan Aplikasi internal. Untuk detailnya, lihat [Membuat dan mengonfigurasi Aplikasi](/id/open/dingstart/create-application).
+- **Persyaratan izin**: Anda memiliki izin Admin Organisasi atau Sub Admin DingTalk.
+- **Lingkungan pengembangan**: Lingkungan pengembangan Java (JDK 1.6 atau yang lebih baru) dan alat build Maven sudah terpasang.
+- **Persiapan SDK**: Unduh SDK Sisi server DingTalk. Untuk detailnya, lihat Unduh SDK Sisi server. Java, Python, Go, dan bahasa lainnya didukung.
+- **Persyaratan server**: Organisasi Anda memiliki server yang dapat diakses publik untuk menerima Callback push Stream.
+- **Sistem dasbor**: Sistem dasbor Anda mendukung penerimaan data melalui HTTP API (seperti ECharts, DataV, atau Tableau).
+
+### Implementasi kode
+
+Langkah 1: Dapatkan kredensial Aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Contoh ini tidak memerlukan izin API.
+
+Langkah 3: Dapatkan kredensial akses Aplikasi. Untuk detailnya, lihat [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). Saat Anda memanggil API, access token digunakan untuk mengautentikasi pemanggil.
+
+Langkah 4: Ikuti alur panggilan berikut:
+
+1. Panggil Server API absensi [Mendapatkan detail grup absensi secara batch](/id/open/development/batch-obtain-attendance-group-details) untuk mendapatkan jadwal waktu masuk dan pulang grup absensi di organisasi Anda.
+2. Untuk mendapatkan data absen karyawan, daftarkan Callback peristiwa absensi. Konfigurasikan push Stream (disarankan) sesuai dokumentasi, lalu berlangganan peristiwa absensi.
+3. Terapkan logika penentuan status: Bandingkan informasi absen yang dikirim secara real-time (userId, groupId, checkTime) dengan jadwal grup absensi yang di-cache, lalu tentukan status absen (Normal/Late/SeriousLate/Absent).
+4. Sediakan API terstandardisasi agar sistem dasbor dapat mengkueri data kehadiran real-time berdasarkan departemen, grup absensi, rentang waktu, dan dimensi lainnya.
+
+## Langkah implementasi
+
+### **Langkah 1: Dapatkan kredensial Aplikasi**
+
+1. Masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih Aplikasi target untuk membuka halaman detailnya.
+3. Klik **Informasi Dasar** > **Kredensial dan Informasi Dasar**.
+4. Catat `Client ID` dan `Client Secret` Aplikasi.
+
+### Catatan
+
+   Jaga kerahasiaan `Client Secret` Anda dan jangan pernah membagikannya kepada pihak ketiga. Simpan di variabel lingkungan atau sistem manajemen kunci, jangan menuliskannya langsung (hard-code) di kode.
+
+### **Langkah 2**: Dapatkan kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk mendapatkan kredensial akses Aplikasi. Untuk detailnya, lihat [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Praktik terbaik**:
+
+- **Strategi cache**: `access_token` berlaku selama 2 jam. Simpan di cache memori atau Redis, lalu perbarui 5 menit sebelumnya masa berlakunya habis.
+- **Kontrol konkurensi**: Cegah konflik akibat beberapa thread memperbarui token secara bersamaan. Gunakan distributed lock.
+- **Coba ulang saat terjadi error**: Lakukan percobaan ulang otomatis saat jaringan tidak stabil, maksimal 3 kali, dengan interval yang makin panjang (1 dtk → 2 dtk → 4 dtk).
+
+### Langkah 3: Panggil API inti
+
+1. **Dapatkan detail grup absensi secara batch**: Panggil Server API absensi [Mendapatkan detail grup absensi secara batch](/id/open/development/batch-obtain-attendance-group-details) untuk mendapatkan jadwal waktu masuk dan pulang grup absensi di organisasi Anda.
+
+   ```java
+   public void batchGetAttendanceGroups() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getsimplegroups");
+       OapiAttendanceGetsimplegroupsRequest req = new OapiAttendanceGetsimplegroupsRequest();
+       // Atur parameter permintaan
+       OapiAttendanceGetsimplegroupsResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+2. **Konfigurasikan push Stream dan berlangganan peristiwa absensi**: Ikuti dokumentasi Konfigurasikan Push Stream (Disarankan) untuk mendaftarkan Callback peristiwa absensi, lalu berlangganan peristiwa absensi.
+
+   **Struktur data Callback**:
+
+   ```json
+   {
+     "DataList":[
+       {
+         // userId karyawan yang melakukan absen
+         "userId":"0126xxxx",
+         // Waktu absen, dalam milidetik
+         "checkTime":1570791880000,
+         // Alamat saat melakukan absen
+         "address":"Gedung 7 Timur, Taman Inovasi Talenta Tingkat Tinggi Luar Negeri Zhejiang, Institut Termofisika Teknik, Akademi Ilmu Pengetahuan Tiongkok",
+         // ID Organisasi (corpId)
+         "corpId":"dingxxxx",
+         // ID grup absensi karyawan
+         "groupId":"4C63xxxx",
+         // Garis lintang alamat absen
+         "latitude":30.285230848524307,
+         // Garis bujur alamat absen
+         "longitude":120.01713514539931,
+         // ID bisnis absen
+         "bizId":"FF62xxxx",
+         // Metode penentuan lokasi
+         "locationMethod":"MAP",
+       }
+     ],
+     "EventType":"attendance_check_record"
+   }
+   ```
+3. **Logika penentuan status**:
+
+   **Algoritma inti**: Bandingkan informasi absen yang dikirim secara real-time (userId, groupId, checkTime) dengan jadwal grup absensi yang di-cache untuk menentukan status absen.
+
+   ```text
+   public String determineAttendanceStatus(String userId, String groupId, String checkTime) {
+       // 1. Ambil aturan penjadwalan shift grup absensi ini dari cache
+       ScheduleRule rule = cache.getScheduleRule(groupId);
+
+       // 2. Uraikan waktu absen
+       LocalDateTime punchTime = LocalDateTime.parse(checkTime, formatter);
+
+       // 3. Bandingkan dengan waktu terjadwal
+       if (punchTime.isBefore(rule.getStartTime().plusMinutes(rule.getLateThreshold()))) {
+           return "Normal";  // Absen tepat waktu
+       } else if (punchTime.isBefore(rule.getStartTime().plusMinutes(rule.getSeriousLateThreshold()))) {
+           return "Late";    // Keterlambatan
+       } else {
+           return "SeriousLate";  // Sangat terlambat
+       }
+   }
+   ```
+
+   **Pemetaan status**:
+
+   | **Kondisi** | **Status yang dikembalikan** | **Warna di dasbor** |
+   | --- | --- | --- |
+   | Waktu absen ≤ Waktu masuk terjadwal + Ambang batas terlambat | Normal | 🟢 Hijau |
+   | Waktu masuk terjadwal + Ambang batas terlambat &lt; Waktu absen ≤ Ambang batas sangat terlambat | Late | 🟡 Kuning |
+   | Waktu absen > Ambang batas sangat terlambat | SeriousLate (Sangat terlambat) | 🔴 Merah |
+
+**Daftar periksa implementasi**:
+
+- ✅ Push Stream sudah terkonfigurasi dan menerima Callback absen.
+- ✅ Aturan penjadwalan shift grup absensi di-cache dengan benar dan dimuat ulang otomatis setiap jam.
+- ✅ Logika penentuan status lulus pengujian dengan akurasi 100%.
+- ✅ Waktu respons API dasbor &lt;200 md.
+- ✅ Absen yang tidak wajar (seperti absen dari lokasi yang tidak semestinya) ditandai dengan benar dan memicu peringatan.
+
+## FAQ
+
+- **Q1: Apa perbedaan antara push Stream dan polling?**
+
+  A: Kedua metode ini mengambil data dengan cara yang sepenuhnya berbeda:
+
+  - **Polling**: Server Anda memanggil API secara terjadwal untuk mengkueri catatan absen. Cara ini menimbulkan latensi (biasanya 5–15 menit), dan panggilan yang terlalu sering mudah memicu batas laju (rate limit).
+  - **Push Stream**: DingTalk mengirim data ke URL yang Anda tentukan segera setelah karyawan melakukan absen. Latensinya &lt;1 detik dan tidak perlu kueri aktif. Metode ini cocok untuk dasbor real-time.
+
+  **Perbedaan utama**: Push Stream berbasis peristiwa dan hanya mengirim data saat diperlukan. Polling berbasis jadwal dan tetap memanggil API meskipun tidak ada data baru. Gunakan push Stream jika memungkinkan.
+- **Q2: Bagaimana cara menentukan apakah karyawan "terlambat" atau "tidak hadir"?**
+
+  A: Terapkan logika berikut:
+
+  - **Keterlambatan**: Karyawan memiliki catatan absen, tetapi waktu absennya melewati waktu masuk terjadwal ditambah ambang batas terlambat (biasanya 10–30 menit, dapat dikonfigurasi di pengaturan grup absensi).
+  - **Tidak hadir**: Hingga waktu saat ini (misalnya pukul 15.00), karyawan tidak memiliki catatan absen untuk hari tersebut, sementara aturan penjadwalan shift mewajibkan karyawan bekerja hari ini.
+
+  **Catatan**: Selalu periksa aturan penjadwalan shift. Jika karyawan dijadwalkan libur, tidak adanya absen tidak dihitung sebagai ketidakhadiran.
+- **Q3: Bagaimana cara menangani absen dari lokasi yang tidak semestinya atau titip absen?**
+
+  A: Callback peristiwa absensi DingTalk menyertakan bidang `LocationResult` yang menunjukkan apakah lokasi absen valid:
+
+  - `Normal`: Lokasi absen berada dalam jangkauan yang diizinkan grup absensi.
+  - `Outside`: Lokasi absen berada di luar jangkauan yang diizinkan, yang mengindikasikan absen dari lokasi yang tidak semestinya.
+
+  **Strategi penanganan**:
+
+  - Tandai catatan dengan `LocationResult=Abnormal` sebagai peringatan oranye di dasbor.
+  - Buat laporan harian absen yang tidak wajar, lalu kirim ke Admin HR untuk ditinjau.
+  - Gabungkan verifikasi multifaktor, seperti Wi-Fi dan lokasi, untuk mengurangi risiko titip absen.
+- **Q4: Seberapa sering dasbor perlu dimuat ulang?**
+
+  A: Tergantung pada skenario bisnisnya:
+
+  - **Bengkel manufaktur/pusat layanan pelanggan**: Muat ulang setiap 1–5 detik untuk memastikan visibilitas real-time.
+  - **Toko ritel**: Muat ulang setiap 30 detik hingga 1 menit untuk menyeimbangkan performa dan ketepatan waktu.
+  - **Pusat komando kantor pusat**: Muat ulang setiap 5–10 menit, dengan fokus pada analisis tren, bukan pemantauan per detik.
+
+  **Optimalisasi performa**: Gunakan pembaruan inkremental yang hanya mengirim data yang berubah (seperti catatan absen baru), bukan memuat ulang seluruh data. Cara ini dapat mengurangi beban jaringan hingga lebih dari 90%.

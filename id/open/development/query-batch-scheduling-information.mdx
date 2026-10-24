@@ -1,0 +1,162 @@
+---
+title: "Kueri massal informasi penjadwalan shift pengguna"
+description: "Panggil API DingTalk ini untuk mengueri informasi penjadwalan shift banyak karyawan sekaligus berdasarkan daftar ID pengguna dan rentang tanggal tertentu."
+---
+
+Panggil API ini untuk mengueri informasi penjadwalan shift karyawan pada hari tertentu secara massal.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://api.dingtalk.io/topapi/attendance/schedule/listbyusers |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | qyapi_attendance_group_read: Izin kueri grup absensi |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | bE74xxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini. <br/>- Untuk Aplikasi internal, dapatkan dengan memanggil [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). <br/>- Untuk Aplikasi perusahaan pihak ketiga, dapatkan dengan memanggil API untuk mendapatkan access_token organisasi pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| op_user_id | String | Ya | user456 | ID pengguna operator. |
+| userids | String | Ya | user123 | Daftar ID pengguna yang akan dikueri. Pisahkan beberapa ID pengguna dengan koma. Kirim maksimal 50 ID pengguna sekaligus. |
+| from_date_time | Number | Ya | 1565591096000 | Tanggal mulai, dalam format Unix timestamp milidetik. <br/>**Catatan** <br/>- Selisih antara waktu mulai dan waktu selesai tidak boleh lebih dari 7 hari. <br/>- Waktu kueri harus berada dalam 180 hari terakhir. |
+| to_date_time | Number | Ya | 1565591096000 | Tanggal selesai, dalam format Unix timestamp milidetik. <br/>**Catatan** <br/>- Selisih antara waktu mulai dan waktu selesai tidak boleh lebih dari 7 hari. <br/>- Waktu kueri harus berada dalam 180 hari terakhir. |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/schedule/listbyusers" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=9ad3xxxx82a10' \
+-d 'from_date_time=1565591096000' \
+-d 'op_user_id=dd_dd' \
+-d 'to_date_time=1565591096000' \
+-d 'userids=dd_dd%2Cduogui'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/listbyusers");
+OapiAttendanceScheduleListbyusersRequest req = new OapiAttendanceScheduleListbyusersRequest();
+req.setOpUserId("user456");
+req.setUserids("user123,user456");
+req.setFromDateTime(1565591096000L);
+req.setToDateTime(1565591096000L);
+OapiAttendanceScheduleListbyusersResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceScheduleListbyusersRequest("https://api.dingtalk.io/topapi/attendance/schedule/listbyusers")
+
+req.op_user_id="dd_dd"
+req.userids="dd_dd,duogui"
+req.from_date_time=1565591096000
+req.to_date_time=1565591096000
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceScheduleListbyusersRequest;
+$req->setOpUserId("dd_dd");
+$req->setUserids("dd_dd,duogui");
+$req->setFromDateTime("1565591096000");
+$req->setToDateTime("1565591096000");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/schedule/listbyusers");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/schedule/listbyusers");
+OapiAttendanceScheduleListbyusersRequest req = new OapiAttendanceScheduleListbyusersRequest();
+req.OpUserId = "dd_dd";
+req.Userids = "dd_dd,duogui";
+req.FromDateTime = 1565591096000L;
+req.ToDateTime = 1565591096000L;
+OapiAttendanceScheduleListbyusersResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| result | TopScheduleVo[] | demo | Hasil kueri. |
+| check_type | String | OnDuty | Tipe absensi: <br/>- **Onduty**: Absen masuk saat mulai kerja <br/>- **OffDuty**: Absen pulang saat selesai kerja |
+| plan_check_time | Date | 2021-01-14 09:00:00 | Waktu absen yang dijadwalkan. |
+| group_id | Number | 394775001 | ID grup absensi. |
+| userid | String | user456 | ID pengguna. |
+| approve_id | Number | 1234 | ID formulir persetujuan yang terikat pada jadwal. <br/>**Catatan** <br/>Bidang ini tidak dikembalikan jika tidak ada formulir persetujuan pada hari tersebut. |
+| work_date | Date | 2021-01-14 00:00:00 | Hari kerja, yang menunjukkan hari spesifik dari jadwal. |
+| id | Number | 56676915454 | ID jadwal. |
+| shift_version | Number | 588655171 | Versi shift. |
+| shift_id | Number | 677995086 | ID shift. Nilai 0 menunjukkan hari libur. |
+| is_rest | String | N | Menunjukkan apakah hari tersebut merupakan hari libur: <br/>- **Y**: Hari tersebut dijadwalkan sebagai hari libur <br/>- **N**: Hari tersebut bukan hari libur |
+| success | Boolean | true | Menunjukkan apakah permintaan berhasil. <br/>- **true**: Berhasil <br/>- **false**: Gagal |
+| errcode | Number | 0 | Kode pengembalian. |
+| errmsg | String | ok | Pesan pengembalian. |
+| request_id | String | qkqbwcw3bq2 | ID permintaan. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "errmsg":"ok",
+  "result": [
+    {
+      "check_type": "OnDuty",
+      "group_id": 394775001,
+      "id": 56676915454,
+      "is_rest": "N",
+      "plan_check_time": "2021-01-14 09:00:00",
+      "shift_id": 709595172,
+      "shift_version": 617320362,
+      "userid": "user456",
+      "work_date": "2021-01-14 00:00:00"
+    },
+    {
+      "check_type": "OffDuty",
+      "group_id": 394775001,
+      "id": 56676915454,
+      "is_rest": "N",
+      "plan_check_time": "2021-01-14 18:00:00",
+      "shift_id": 709595172,
+      "shift_version": 617320362,
+      "userid": "user456",
+      "work_date": "2021-01-14 00:00:00"
+    }
+  ],
+  "success": true,
+  "request_id": "4cmy9twx4atn"
+}
+```
+
+### Kode error
+
+Jika panggilan API ini mengembalikan error, cari solusinya berdasarkan pesan error di dokumen [Kode error global](/id/open/development/server-api-error-codes-1).

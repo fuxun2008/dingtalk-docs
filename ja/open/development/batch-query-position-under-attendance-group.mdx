@@ -1,0 +1,149 @@
+---
+title: "位置情報の一括照会"
+description: "勤怠グループ ID を指定して、打刻位置の一覧をページング形式で一括取得する API です。リクエストパラメータやレスポンス構造、各言語のコード例も紹介します。"
+---
+
+この API を呼び出して、指定した勤怠グループの位置情報の一覧を一括で照会します。
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/group/positions/query |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ |
+| 権限 | permission-qyapi_attendance_group_read-勤怠グループ照会権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | 4c9ebd2b15xxxx | この API の呼び出しに使用するアプリ認証情報です。[社内アプリの access_token を取得する](/ja/open/development/obtain-orgapp-token) API を呼び出して取得してください。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| cursor | String | いいえ | 0151Exxxx | 初回のリクエストでは空のままにします。has_more が true の場合、以降のリクエストでは前回のリクエスト結果に含まれる最後の position_key の値を cursor に設定してください。 |
+| size | Number | はい | 50 | 1 ページあたりの件数です。 |
+| op_userid | String | いいえ | user01 | 操作者のユーザー ID です。 |
+| group_key | String | はい | CEDDFxxxx | 勤怠グループ ID です。 **注意** 勤怠グループの識別子が group_id の場合は、[groupId から groupKey への変換](/ja/open/development/groupid-to-groupkey) API を呼び出して、group_id を group_key に変換してください。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/group/positions/query" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=80645xxxx3164b3' \
+-d 'cursor=0151E02xxxx7E876' \
+-d 'group_key=0151ExxxxA1A917E876' \
+-d 'op_userid=123456' \
+-d 'size=50'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/positions/query");
+OapiAttendanceGroupPositionsQueryRequest req = new OapiAttendanceGroupPositionsQueryRequest();
+req.setCursor("0151Exxxx");
+req.setSize(50L);
+req.setOpUserid("user01");
+req.setGroupKey("CEDDFxxxx");
+OapiAttendanceGroupPositionsQueryResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceGroupPositionsQueryRequest("https://api.dingtalk.io/topapi/attendance/group/positions/query")
+
+req.cursor="0151E0xxxx917E876"
+req.size=50
+req.op_userid="123456"
+req.group_key="0151E0xxxxA917E876"
+try:
+	resp= req.getResponse(access_token)
+	print(resp)
+except Exception,e:
+	print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceGroupPositionsQueryRequest;
+$req->setCursor("0151E0xxxx17E876");
+$req->setSize("50");
+$req->setOpUserid("123456");
+$req->setGroupKey("0151E0xxxx917E876");
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/group/positions/query");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/positions/query");
+OapiAttendanceGroupPositionsQueryRequest req = new OapiAttendanceGroupPositionsQueryRequest();
+req.Cursor = "0151E0xxxx917E876";
+req.Size = 50L;
+req.OpUserid = "123456";
+req.GroupKey = "0151E02xxxx917E876";
+OapiAttendanceGroupPositionsQueryResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | DingOpenResult |  | 返却結果です。 |
+| result | Result |  | 照会結果です。 |
+| position_list | Position[] |  | 位置情報の一覧です。 |
+| offset | Number | 100 | 打刻位置として許容される誤差範囲です。 |
+| address | String | Alibaba Group 西渓キャンパス | 住所の説明です。 |
+| latitude | String | 30.123 | 緯度です（小数点以下最大 6 桁）。 |
+| longitude | String | 120.123 | 経度です（小数点以下最大 6 桁）。 |
+| position_key | String | 9E459Fxxxx | 位置情報の一意の識別子です。 |
+| has_more | Boolean | false | 追加のデータがあるかどうかを示します。   - **true**：あり - **false**：なし |
+| errcode | Number | 0 | リターンコードです。 |
+| errmsg | String | ok | リターンコードの説明です。 |
+| success | Boolean | true | リクエストが成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| request_id | String | rss38gia1egs | リクエスト ID です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "result": {
+    "errcode": 0,
+    "errmsg":"ok",
+    "result": {
+      "has_more": false,
+      "position_list": [
+        {
+          "offset":100,
+          "address": "Alibaba Group 西渓キャンパス",
+          "latitude": "30.280232",
+          "longitude": "120.171377",
+          "position_key": "9E459Fxxxx"
+        }            ]
+    },
+    "success": true
+  },
+  "request_id": "rss38gia1egs"
+}
+```
+
+### エラーコード
+
+この API の呼び出しでエラーが返された場合は、エラーメッセージをもとに[グローバルエラーコード](/ja/open/development/server-api-error-codes-1)ドキュメントで解決方法を検索してください。

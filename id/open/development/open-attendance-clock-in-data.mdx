@@ -1,0 +1,191 @@
+---
+title: "Mendapatkan hasil absen"
+description: "Panggil API DingTalk ini untuk mendapatkan hasil absen aktual karyawan berdasarkan daftar userId dan rentang hari kerja, termasuk status keterlambatan dan lokasi."
+---
+
+Panggil API ini untuk mendapatkan hasil absen aktual karyawan di organisasi Anda.
+
+## Deskripsi panggilan API
+
+- API ini tidak mendukung kueri data yang lebih lama dari enam bulan.
+- Untuk mendapatkan data absen yang terperinci, seperti lokasi absen, panggil API [Dapatkan detail absen](/id/open/development/attendance-clock-in-record-is-open).
+- Sinkronisasi data absensi dapat mengalami penundaan. Jika data tidak ditemukan, coba lagi nanti.
+- **Jika pengguna memiliki jadwal pada hari tersebut tetapi tidak melakukan absen, API ini mengembalikan titik absen terjadwal untuk hari tersebut, bukan hasil kosong**.
+
+Misalnya, organisasi Anda menjadwalkan karyawan untuk absen satu kali pada pukul 09.00 dan satu kali pada pukul 18.00. Meskipun karyawan tersebut absen beberapa kali dalam periode ini, API ini hanya mengembalikan dua rekaman: hasil absen pagi dan hasil absen sore.
+
+## Permintaan
+
+| **Informasi dasar** | |
+| --- | --- |
+| URL HTTP | https://oapi.dingtalk.io/attendance/list |
+| Metode HTTP | POST |
+| Tipe aplikasi yang didukung | appType-Aplikasi internal　appType-Aplikasi perusahaan pihak ketiga |
+| Izin yang diperlukan | qyapi_attendance_isv_query_result (Izin baca data absensi organisasi); qyapi_get_attendance_data (Izin baca data absensi) |
+
+### Parameter kueri
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| access_token | String | Ya | 6d1bxxxx | Kredensial aplikasi yang digunakan untuk memanggil API ini.   - Aplikasi internal: Panggil API [Mendapatkan access_token aplikasi internal](/id/open/development/obtain-orgapp-token). - Aplikasi perusahaan pihak ketiga: Panggil API Mendapatkan access_token aplikasi perusahaan pihak ketiga. |
+
+### Isi permintaan
+
+| Nama | Tipe | Wajib | Contoh | Deskripsi |
+| --- | --- | --- | --- | --- |
+| workDateFrom | String | Ya | 2020-11-07 08:00:00 | Hari kerja awal untuk kueri rekaman absen. Format: yyyy-MM-dd HH:mm:ss. Anda dapat mengatur HH:mm:ss ke 00:00:00. API mengembalikan hasil untuk tanggal tersebut dari pukul 00.00 hingga 24.00.  Misalnya, jika Anda mengirimkan "2021-12-01 10:00", API mengembalikan hasil absensi untuk seluruh hari 1 Desember.  **Penting**  Interval antara workDateFrom dan workDateTo  tidak boleh melebihi 7 hari (inklusif). |
+| workDateTo | String | Ya | 2020-11-11 08:00:00 | Hari kerja akhir untuk kueri rekaman absen. Format: "yyyy-MM-dd HH:mm:ss". Anda dapat mengatur HH:mm:ss ke 00:00:00. API mengembalikan hasil untuk tanggal tersebut dari pukul 00.00 hingga 24.00.  Misalnya, jika Anda mengirimkan "2021-12-01 19:00", API mengembalikan hasil absensi untuk seluruh hari 1 Desember.  **Penting**  Interval antara workDateFrom dan workDateTo  tidak boleh melebihi 7 hari (inklusif). |
+| userIdList | String[] | Ya | ["manager4220"] | Daftar userId karyawan di organisasi Anda. Maksimum: 50.  **Penting**  Pastikan nilai userId sudah benar. Jika tidak, API ini mengembalikan hasil kosong. |
+| offset | Number | Ya | 0 | Titik awal pengambilan data absensi. Kirimkan 0 untuk permintaan pertama. Jika masih ada data lain, atur offset pada permintaan berikutnya ke offset sebelumnya + limit. Nilai bertambah secara berurutan: 0, 1, 2, dan seterusnya. |
+| limit | Number | Ya | 50 | Jumlah rekaman absensi yang diambil. Maksimum: 50. |
+| isI18n | Boolean | Tidak | true | Menentukan apakah API digunakan oleh organisasi di luar Tiongkok:   - **true**: Digunakan di platform internasional - **false** (default): Digunakan di platform Tiongkok |
+
+### Contoh permintaan
+
+```curl
+curl -X POST "https://oapi.dingtalk.io/attendance/list" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=713b06xxxxd4cbdf4' \
+-d 'isI18n=true' \
+-d 'limit=100' \
+-d 'offset=0' \
+-d 'userIdList=1' \
+-d 'workDateFrom=yyyy-MM-dd+hh%3Amm%3Ass' \
+-d 'workDateTo=yyyy-MM-dd+hh%3Amm%3Ass'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/attendance/list");
+OapiAttendanceListRequest req = new OapiAttendanceListRequest();
+req.setWorkDateFrom("2020-11-07 08:00:00");
+req.setWorkDateTo("2020-11-11 08:00:00");
+req.setUserIdList(Arrays.asList("manager"));
+req.setOffset(0L);
+req.setLimit(10L);
+req.setIsI18n(true);
+OapiAttendanceListResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceListRequest("https://oapi.dingtalk.io/attendance/list")
+
+req.workDateFrom="yyyy-MM-dd hh:mm:ss"
+req.workDateTo="yyyy-MM-dd hh:mm:ss"
+req.userIdList="1"
+req.offset=0
+req.limit=100
+req.isI18n=true
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceListRequest;
+$req->setWorkDateFrom("yyyy-MM-dd hh:mm:ss");
+$req->setWorkDateTo("yyyy-MM-dd hh:mm:ss");
+$req->setUserIdList("1");
+$req->setOffset("0");
+$req->setLimit("100");
+$req->setIsI18n("true");
+$resp = $c->execute($req, $access_token, "https://oapi.dingtalk.io/attendance/list");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/attendance/list");
+OapiAttendanceListRequest req = new OapiAttendanceListRequest();
+req.WorkDateFrom = "yyyy-MM-dd hh:mm:ss";
+req.WorkDateTo = "yyyy-MM-dd hh:mm:ss";
+req.UserIdList = "1";
+req.Offset = 0L;
+req.Limit = 100L;
+req.IsI18n = true;
+OapiAttendanceListResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## Respons
+
+### Isi respons
+
+| Nama | Tipe | Contoh | Deskripsi |
+| --- | --- | --- | --- |
+| recordresult | Recordresult[] |  | Rekaman absen. |
+| sourceType | String | USER | Sumber data:   - **USER**: Absen oleh pengguna - **BOSS**: Dikoreksi oleh manajer - **APPROVE**: Sistem persetujuan - **SYSTEM**: Sistem absensi - **AUTO_CHECK**: Absen otomatis |
+| baseCheckTime | Date | 1599378660000 | Waktu acuan yang digunakan untuk menghitung keterlambatan dan pulang lebih awal. |
+| userCheckTime | Date | 1599378681000 | Waktu absen aktual, dalam milidetik. |
+| procInstId | String | 59f77e82-6625-4a31-b434 | ID instans persetujuan terkait. Jika bidang ini tidak kosong, rekaman absen terkait dengan persetujuan seperti pengajuan cuti atau pengajuan lembur. |
+| approveId | Number | 2376620852 | ID persetujuan terkait. Jika bidang ini tidak kosong, rekaman absen terkait dengan persetujuan seperti pengajuan cuti atau pengajuan lembur. |
+| locationResult | String | Normal | Hasil lokasi:   - **Normal**: Dalam jangkauan - **Outside**: Di luar jangkauan - **NotSigned**: Belum absen |
+| timeResult | String | Normal | Hasil absen:   - **Normal**: Normal - **Early**: Pulang lebih awal - **Late**: Keterlambatan - **SeriousLate**: Keterlambatan serius - **Absenteeism**: Keterlambatan yang dihitung sebagai mangkir - **NotSigned**: Belum absen |
+| checkType | String | OnDuty | Tipe absensi:   - **OnDuty**: Absen masuk - **OffDuty**: Absen pulang |
+| userId | String | manager4220 | userId karyawan yang melakukan absen. |
+| workDate | Date | 1599321600000 | Hari kerja. |
+| recordId | Number | 43002777448 | ID rekaman absen. |
+| planId | Number | 145342017988 | ID jadwal. |
+| groupId | Number | 685935028 | ID grup absensi. |
+| id | Number | 101135139831 | ID unik. |
+| hasMore | Boolean | false | Parameter paginasi yang menunjukkan apakah masih ada data lain.   - **true**: Ya - **false**: Tidak |
+| errmsg | String | ok | Deskripsi kode respons. |
+| errcode | Number | 0 | Kode respons. |
+
+### Contoh isi respons
+
+```json
+{
+  "errcode": 0,
+  "recordresult": [
+    {
+      "checkType": "OnDuty",
+      "locationResult": "Normal",
+      "baseCheckTime": 1599372300000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "userId": "manager4220",
+      "recordId": 42833709096,
+      "workDate": 1599321600000,
+      "sourceType": "APPROVE",
+      "userCheckTime": 1599372300000,
+      "planId": 145583519353,
+      "id": 100068640553
+    },
+    {
+      "checkType": "OffDuty",   
+      "locationResult": "Normal",
+      "baseCheckTime": 1599373560000,
+      "groupId": 685935028,
+      "timeResult": "Normal",
+      "userId": "manager4220",
+      "recordId": 43003136655,
+      "workDate": 1599321600000,
+      "sourceType": "USER",
+      "userCheckTime": 1599373608000,
+      "planId": 144623724178,
+      "id": 100375228689
+    }
+  ],
+  "hasMore": false,
+  "errmsg": "ok"
+}
+```
+
+### Kode error
+
+Jika panggilan API ini gagal, gunakan pesan error untuk menemukan solusi di dokumen [Kode error global](/id/open/development/server-api-error-codes-1).

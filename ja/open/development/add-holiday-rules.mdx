@@ -1,0 +1,837 @@
+---
+title: "休暇ルールの追加"
+description: "勤怠 API で休暇ルールを追加する API です。一般休暇ルールや残業の代休振替ルールを作成し、休暇単位・計算方法・適用範囲を設定できます。"
+---
+
+この API を呼び出して、休暇ルールを作成します。
+
+## API 呼び出し説明
+
+この API では、次の 2 種類の休暇ルールを作成できます。
+
+- 私用休暇や結婚休暇などの一般休暇ルール。これらのルールの残数は変更できます。この API で一般休暇ルールを作成すると、残数はデフォルトで 0 になります。[休暇残数の初期化](/ja/open/development/initialize-holiday-balance) API を呼び出して、休暇残数を初期化してください。
+- 代休ルール。この API で追加した代休のデフォルトの残数ルールは **残業時間を自動的に代休残数に加算** です。残数初期化 API を呼び出す必要はありません。
+
+DingTalk 管理コンソールでの同等の設定は、**休暇管理** > **休暇ルール** にあります。**休暇を追加** をクリックすると **新規休暇** ダイアログが開きます。このダイアログには次のフィールドがあります。
+
+| フィールド | 説明 / オプション |
+|---|---|
+| **休暇名** | 休暇名を入力します |
+| **新入社員の休暇** | 例：**入社時から休暇取得可能** |
+| **適用範囲** | 例：**企業全体**（編集可能） |
+| **有給** | **有給** または **無給**。有給休暇は統計上出勤として扱われます |
+| **最小休暇単位** | 例：**日単位** |
+| **休暇時間の計算方法** | 例：**勤務日設定に基づいて計算**（シフト設定のない週末や法定休日など、社員の休日を除外します） |
+
+**休暇時間の計算ルール** セクションには、**最小休暇単位** と **休暇時間の計算方法** の設定がまとめられています。**保存** をクリックすると、ルールが作成されます。
+
+## リクエスト
+
+### 基本情報
+
+| フィールド | 値 |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/v1.0/attendance/leaves/types |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_holiday_manage-DingTalk 休暇管理権限 |
+
+### リクエストヘッダー
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| x-acs-dingtalk-access-token | String | はい | この API を呼び出すためのアクセス認証情報です。次の方法で取得します。   - 社内アプリ：[社内アプリのアクセストークンを取得](/ja/open/development/obtain-the-access-token-of-an-internal-app) API を呼び出します。 - サードパーティ社内アプリ：サードパーティアプリを承認した組織のアクセストークンを取得する API を呼び出します。 |
+
+### クエリパラメータ
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| opUserId | String | はい | 管理者の userId です。この管理者は OA承認 アプリの管理権限も持っている必要があります。  この条件を満たさない場合、API は部門管理者が存在しないことを示すエラーを返します。 |
+
+### リクエストボディ
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| leaveName | String | はい | 休暇ルールの名前です。 |
+| leaveViewUnit | String | はい | 休暇時間の単位です。   - **day**：日 - **halfDay**：半日 - **hour**：時間 |
+| bizType | String | はい | 休暇タイプです。   - **general_leave**：一般休暇 - **lieu_leave**：残業の代休振替   1 つの組織に設定できる残業の代休振替ルールは 1 つのみです。 |
+| naturalDayLeave | Boolean | はい | 休暇時間を暦日で計算するかどうかを指定します。   - **true**：はい - **false**：いいえ   例えば、社員の山田さんが、開始時刻を 2022年4月11日 09:30、終了時刻を 2022年4月18日 18:30 とする休暇申請の承認フォームを提出したとします。4月16日と4月17日は週末（休日）です。   - このパラメータが true の場合、休暇申請は 8 日として計算されます。社員のシフト設定のない休日と法定休日を含みます。 - このパラメータが false の場合、休暇申請は 6 日として計算されます。社員のシフト設定のない休日と法定休日を除外します。 |
+| hoursInPerDay | Long | はい | 換算に使用する 1 日あたりの労働時間です。実際の値は、パラメータ値を 100 で割った値です。  例えば、社員のシフトの労働時間が 8 時間の場合、このパラメータを 8\*100=800 に設定します。 |
+| extras | String | いいえ | 代休の有効期間ルールです。   - **validity_type**：有効期間タイプ    - **absolute_time**：絶対時間   - **relative_time**：相対時間 - **validity_value**：延長日    - validity_type が **absolute_time** の場合、この値は空にできず、"yy-mm" 形式で指定する必要があります。   - validity_type が **relative_time** の場合、この値は 1 より大きい整数である必要があります。   休暇タイプ biz_type が **lieu_leave** の場合、このパラメータは必須です。 |
+| paidLeave | Boolean | いいえ | 有給休暇かどうかを指定します。 |
+| paidLeave | Boolean | いいえ | 有給休暇かどうかを指定します。 |
+| visibilityRules | Array | いいえ | 適用範囲ルールのリストです。指定しない場合、ルールは企業全体に適用されます。 |
+| visible | Array of String | いいえ | 適用範囲内のデータのリストです。   - type=staff の場合、社員の userId のリストを渡します。 - type=dept の場合、部門 ID のリストを渡します。 - type=label の場合、ロール ID のリストを渡します。 |
+| type | String | いいえ | 適用範囲ルールのタイプです。   - **dept**：部門 - **staff**：社員 - **label**：ロール |
+| whenCanLeave | String | いいえ | 休暇を取得できるタイミングです。  このフィールドはサードパーティ社内アプリ専用です。   - **entry**：入社時から取得可能。 - **formal**：試用期間終了後に取得可能。 |
+| leaveTimeCeilMinUnit | String | いいえ | 休暇時間を切り上げる際の最小単位です。  このフィールドはサードパーティ社内アプリ専用です。   - **hour**：時間。1 時間未満は 1 時間として計算します。 - **halfHour**：30 分。30 分未満は 30 分として計算します。 |
+| leaveTimeCeil | Boolean | いいえ | 休暇時間を切り上げるかどうかを指定します。  このフィールドはサードパーティ社内アプリ専用です。 |
+| minLeaveHour | double | いいえ | 最小休暇時間です（休暇単位が時間の場合に適用）。休暇時間がこの値を下回る場合は、この値が使用されます。  このフィールドはサードパーティ社内アプリ専用です。 |
+| submitTimeRule | Object | いいえ | 提出時間の制限ルールです。 |
+| timeValue | Long | いいえ | 制限値です。   - timeUnit が day の場合、有効範囲は 0〜30 日です。 - timeUnit が hour の場合、有効範囲は 0〜24 時間です。 |
+| timeUnit | String | いいえ | 時間単位です。   - **day**：日 - **hour**：時間 |
+| timeType | String | いいえ | 制限タイプです。   - **before**：事前に提出 - **after**：事後に提出 |
+| enableTimeLimit | Boolean | いいえ | 提出時間の制限を有効にするかどうかを指定します。   - **true**：オン - **false**：オフ |
+| leaveCertificate | Object | いいえ | 休暇証明書です。 |
+| unit | String | いいえ | 休暇証明書の提出が必要となる時間の単位です。   - **hour**：時間 - **day**：日 |
+| duration | double | いいえ | 休暇証明書の提出が必要となる休暇時間のしきい値です。   - unit が day の場合、1 日を超える休暇には休暇証明書が必要です。 - unit が hour の場合、1 時間を超える休暇には休暇証明書が必要です。   提出された休暇申請が設定した時間を超えると、承認フォームに休暇証明書フィールドが自動的に表示されます。 |
+| enable | Boolean | いいえ | 休暇証明書を有効にするかどうかを指定します。   - **true**：オン - **false**：オフ |
+| promptInformation | String | いいえ | 休暇のプロンプト文です。 |
+| maxLeaveTime | Long | いいえ | 最大休暇時間です（休暇単位が時間または日の場合に適用）。  このフィールドはサードパーティ社内アプリ専用です。 |
+| leaveHourCeil | String | いいえ | 休暇時間の端数処理方法です。  このフィールドはサードパーティ社内アプリ専用です。   - **up**：切り上げ - **down**：切り捨て - **none**：端数処理なし |
+| freedomLeave | Boolean | いいえ | 残数管理が不要な休暇タイプ（私用休暇など）かどうかを指定します。  このフィールドはサードパーティ社内アプリ専用です。 |
+
+### リクエスト例
+
+HTTP
+
+```http
+POST /v1.0/attendance/leaves/types?opUserId=user01 HTTP/1.1
+Host:api.dingtalk.io
+x-acs-dingtalk-access-token:1d97cxxx
+Content-Type:application/json
+
+{
+  "leaveName" : "年次有給休暇",
+  "leaveViewUnit" : "day",
+  "bizType" : "general_leave",
+  "naturalDayLeave" : true,
+  "hoursInPerDay" : 1000,
+  "extras" : "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+  "paidLeave" : true,
+  "visibilityRules" : [ {
+    "visible" : [ "user01" ],
+    "type" : "staff"
+  } ],
+  "whenCanLeave" : "entry",
+  "leaveTimeCeilMinUnit" : "hour",
+  "leaveTimeCeil" : false,
+  "minLeaveHour" : 1.0,
+  "submitTimeRule" : {
+    "timeValue" : 2,
+    "timeUnit" : "day",
+    "timeType" : "before",
+    "enableTimeLimit" : true
+  },
+  "leaveCertificate" : {
+    "unit" : "hour",
+    "duration" : 1.0,
+    "enable" : false,
+    "promptInformation" : "休暇のプロンプト文"
+  },
+  "maxLeaveTime" : 3,
+  "leaveHourCeil" : "up",
+  "freedomLeave" : true
+}
+```
+
+Java
+
+```java
+// このファイルは自動生成されています。編集しないでください。
+package com.aliyun.sample;
+
+import com.aliyun.tea.*;
+
+public class Sample {
+
+    /**
+     * Token を使用してアカウントの Client を初期化します
+     * @return Client
+     * @throws Exception
+     */
+    public static com.aliyun.dingtalkattendance_1_0.Client createClient() throws Exception {
+        com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+        config.protocol = "https";
+        config.regionId = "central";
+        return new com.aliyun.dingtalkattendance_1_0.Client(config);
+    }
+
+    public static void main(String[] args_) throws Exception {
+        java.util.List<String> args = java.util.Arrays.asList(args_);
+        com.aliyun.dingtalkattendance_1_0.Client client = Sample.createClient();
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeHeaders addLeaveTypeHeaders = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeHeaders();
+        addLeaveTypeHeaders.xAcsDingtalkAccessToken = "<your access token>";
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate leaveCertificate = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate()
+                .setUnit("hour")
+                .setDuration(1D)
+                .setEnable(false)
+                .setPromptInformation("休暇のプロンプト文");
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule submitTimeRule = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule()
+                .setTimeValue(2L)
+                .setTimeUnit("day")
+                .setTimeType("before")
+                .setEnableTimeLimit(true);
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules visibilityRules0 = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules()
+                .setVisible(java.util.Arrays.asList(
+                    "user01"
+                ))
+                .setType("staff");
+        com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest addLeaveTypeRequest = new com.aliyun.dingtalkattendance_1_0.models.AddLeaveTypeRequest()
+                .setOpUserId("user01")
+                .setLeaveName("年次有給休暇")
+                .setLeaveViewUnit("day")
+                .setBizType("general_leave")
+                .setNaturalDayLeave(true)
+                .setHoursInPerDay(1000L)
+                .setExtras("{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}")
+                .setPaidLeave(true)
+                .setVisibilityRules(java.util.Arrays.asList(
+                    visibilityRules0
+                ))
+                .setWhenCanLeave("entry")
+                .setLeaveTimeCeilMinUnit("hour")
+                .setLeaveTimeCeil(false)
+                .setMinLeaveHour(1D)
+                .setSubmitTimeRule(submitTimeRule)
+                .setLeaveCertificate(leaveCertificate)
+                .setMaxLeaveTime(3L)
+                .setLeaveHourCeil("up")
+                .setFreedomLeave(true);
+        try {
+            client.addLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+        } catch (TeaException err) {
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+
+        } catch (Exception _err) {
+            TeaException err = new TeaException(_err.getMessage(), _err);
+            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+
+        }        
+    }
+}
+```
+
+Python
+
+```python
+# -*- coding: utf-8 -*-
+# このファイルは自動生成されています。編集しないでください。
+import os
+import sys
+
+from typing import List
+
+from alibabacloud_dingtalk.attendance_1_0.client import Client as dingtalkattendance_1_0Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_dingtalk.attendance_1_0 import models as dingtalkattendance__1__0_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_util.client import Client as UtilClient
+
+class Sample:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_client() -> dingtalkattendance_1_0Client:
+        """
+        Token を使用してアカウントの Client を初期化します
+        @return: Client
+        @throws Exception
+        """
+        config = open_api_models.Config()
+        config.protocol = 'https'
+        config.region_id = 'central'
+        return dingtalkattendance_1_0Client(config)
+
+    @staticmethod
+    def main(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        add_leave_type_headers = dingtalkattendance__1__0_models.AddLeaveTypeHeaders()
+        add_leave_type_headers.x_acs_dingtalk_access_token = '<your access token>'
+        leave_certificate = dingtalkattendance__1__0_models.AddLeaveTypeRequestLeaveCertificate(
+            unit='hour',
+            duration=1,
+            enable=False,
+            prompt_information='休暇のプロンプト文'
+        )
+        submit_time_rule = dingtalkattendance__1__0_models.AddLeaveTypeRequestSubmitTimeRule(
+            time_value=2,
+            time_unit='day',
+            time_type='before',
+            enable_time_limit=True
+        )
+        visibility_rules_0 = dingtalkattendance__1__0_models.AddLeaveTypeRequestVisibilityRules(
+            visible=[
+                'user01'
+            ],
+            type='staff'
+        )
+        add_leave_type_request = dingtalkattendance__1__0_models.AddLeaveTypeRequest(
+            op_user_id='user01',
+            leave_name='年次有給休暇',
+            leave_view_unit='day',
+            biz_type='general_leave',
+            natural_day_leave=True,
+            hours_in_per_day=1000,
+            extras='{"validity_type":"absolute_time","validity_value":"12-31"}',
+            paid_leave=True,
+            visibility_rules=[
+                visibility_rules_0
+            ],
+            when_can_leave='entry',
+            leave_time_ceil_min_unit='hour',
+            leave_time_ceil=False,
+            min_leave_hour=1,
+            submit_time_rule=submit_time_rule,
+            leave_certificate=leave_certificate,
+            max_leave_time=3,
+            leave_hour_ceil='up',
+            freedom_leave=True
+        )
+        try:
+            client.add_leave_type_with_options(add_leave_type_request, add_leave_type_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                pass
+
+    @staticmethod
+    async def main_async(
+        args: List[str],
+    ) -> None:
+        client = Sample.create_client()
+        add_leave_type_headers = dingtalkattendance__1__0_models.AddLeaveTypeHeaders()
+        add_leave_type_headers.x_acs_dingtalk_access_token = '<your access token>'
+        leave_certificate = dingtalkattendance__1__0_models.AddLeaveTypeRequestLeaveCertificate(
+            unit='hour',
+            duration=1,
+            enable=False,
+            prompt_information='休暇のプロンプト文'
+        )
+        submit_time_rule = dingtalkattendance__1__0_models.AddLeaveTypeRequestSubmitTimeRule(
+            time_value=2,
+            time_unit='day',
+            time_type='before',
+            enable_time_limit=True
+        )
+        visibility_rules_0 = dingtalkattendance__1__0_models.AddLeaveTypeRequestVisibilityRules(
+            visible=[
+                'user01'
+            ],
+            type='staff'
+        )
+        add_leave_type_request = dingtalkattendance__1__0_models.AddLeaveTypeRequest(
+            op_user_id='user01',
+            leave_name='年次有給休暇',
+            leave_view_unit='day',
+            biz_type='general_leave',
+            natural_day_leave=True,
+            hours_in_per_day=1000,
+            extras='{"validity_type":"absolute_time","validity_value":"12-31"}',
+            paid_leave=True,
+            visibility_rules=[
+                visibility_rules_0
+            ],
+            when_can_leave='entry',
+            leave_time_ceil_min_unit='hour',
+            leave_time_ceil=False,
+            min_leave_hour=1,
+            submit_time_rule=submit_time_rule,
+            leave_certificate=leave_certificate,
+            max_leave_time=3,
+            leave_hour_ceil='up',
+            freedom_leave=True
+        )
+        try:
+            await client.add_leave_type_with_options_async(add_leave_type_request, add_leave_type_headers, util_models.RuntimeOptions())
+        except Exception as err:
+            if not UtilClient.empty(err.code) and not UtilClient.empty(err.message):
+                # err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                pass
+
+if __name__ == '__main__':
+    Sample.main(sys.argv[1:])
+```
+
+PHP
+
+```php
+<?php
+
+// このファイルは自動生成されています。編集しないでください。
+namespace AlibabaCloud\SDK\Sample;
+
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Dingtalk;
+use \Exception;
+use AlibabaCloud\Tea\Exception\TeaError;
+use AlibabaCloud\Tea\Utils\Utils;
+
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeHeaders;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\leaveCertificate;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\submitTimeRule;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest\visibilityRules;
+use AlibabaCloud\SDK\Dingtalk\Vattendance_1_0\Models\AddLeaveTypeRequest;
+use AlibabaCloud\Tea\Utils\Utils\RuntimeOptions;
+
+class Sample {
+
+    /**
+     * Token を使用してアカウントの Client を初期化します
+     * @return Dingtalk Client
+     */
+    public static function createClient(){
+        $config = new Config([]);
+        $config->protocol = "https";
+        $config->regionId = "central";
+        return new Dingtalk($config);
+    }
+
+    /**
+     * @param string[] $args
+     * @return void
+     */
+    public static function main($args){
+        $client = self::createClient();
+        $addLeaveTypeHeaders = new AddLeaveTypeHeaders([]);
+        $addLeaveTypeHeaders->xAcsDingtalkAccessToken = "<your access token>";
+        $leaveCertificate = new leaveCertificate([
+            "unit" => "hour",
+            "duration" => 1,
+            "enable" => false,
+            "promptInformation" => "休暇のプロンプト文"
+        ]);
+        $submitTimeRule = new submitTimeRule([
+            "timeValue" => 2,
+            "timeUnit" => "day",
+            "timeType" => "before",
+            "enableTimeLimit" => true
+        ]);
+        $visibilityRules0 = new visibilityRules([
+            "visible" => [
+                "user01"
+            ],
+            "type" => "staff"
+        ]);
+        $addLeaveTypeRequest = new AddLeaveTypeRequest([
+            "opUserId" => "user01",
+            "leaveName" => "年次有給休暇",
+            "leaveViewUnit" => "day",
+            "bizType" => "general_leave",
+            "naturalDayLeave" => true,
+            "hoursInPerDay" => 1000,
+            "extras" => "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+            "paidLeave" => true,
+            "visibilityRules" => [
+                $visibilityRules0
+            ],
+            "whenCanLeave" => "entry",
+            "leaveTimeCeilMinUnit" => "hour",
+            "leaveTimeCeil" => false,
+            "minLeaveHour" => 1,
+            "submitTimeRule" => $submitTimeRule,
+            "leaveCertificate" => $leaveCertificate,
+            "maxLeaveTime" => 3,
+            "leaveHourCeil" => "up",
+            "freedomLeave" => true
+        ]);
+        try {
+            $client->addLeaveTypeWithOptions($addLeaveTypeRequest, $addLeaveTypeHeaders, new RuntimeOptions([]));
+        }
+        catch (Exception $err) {
+            if (!($err instanceof TeaError)) {
+                $err = new TeaError([], $err->getMessage(), $err->getCode(), $err);
+            }
+            if (!Utils::empty_($err->code) && !Utils::empty_($err->message)) {
+                // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+            }
+        }
+    }
+}
+$path = __DIR__ . \DIRECTORY_SEPARATOR . '..' . \DIRECTORY_SEPARATOR . 'vendor' . \DIRECTORY_SEPARATOR . 'autoload.php';
+if (file_exists($path)) {
+    require_once $path;
+}
+Sample::main(array_slice($argv, 1));
+```
+
+Go
+
+```go
+// このファイルは自動生成されています。編集しないでください。
+package main
+
+import (
+  "os"
+  util  "github.com/alibabacloud-go/tea-utils/v2/service"
+  dingtalkattendance_1_0  "github.com/alibabacloud-go/dingtalk/attendance_1_0"
+  openapi  "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+  "github.com/alibabacloud-go/tea/tea"
+)
+
+/**
+ * Token を使用してアカウントの Client を初期化します
+ * @return Client
+ * @throws Exception
+ */
+func CreateClient () (_result *dingtalkattendance_1_0.Client, _err error) {
+  config := &openapi.Config{}
+  config.Protocol = tea.String("https")
+  config.RegionId = tea.String("central")
+  _result = &dingtalkattendance_1_0.Client{}
+  _result, _err = dingtalkattendance_1_0.NewClient(config)
+  return _result, _err
+}
+
+func _main (args []*string) (_err error) {
+  client, _err := CreateClient()
+  if _err != nil {
+    return _err
+  }
+
+  addLeaveTypeHeaders := &dingtalkattendance_1_0.AddLeaveTypeHeaders{}
+  addLeaveTypeHeaders.XAcsDingtalkAccessToken = tea.String("<your access token>")
+  leaveCertificate := &dingtalkattendance_1_0.AddLeaveTypeRequestLeaveCertificate{
+    Unit: tea.String("hour"),
+    Duration: tea.Float64(1),
+    Enable: tea.Bool(false),
+    PromptInformation: tea.String("休暇のプロンプト文"),
+  }
+  submitTimeRule := &dingtalkattendance_1_0.AddLeaveTypeRequestSubmitTimeRule{
+    TimeValue: tea.Int64(2),
+    TimeUnit: tea.String("day"),
+    TimeType: tea.String("before"),
+    EnableTimeLimit: tea.Bool(true),
+  }
+  visibilityRules0 := &dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules{
+    Visible: []*string{tea.String("user01")},
+    Type: tea.String("staff"),
+  }
+  addLeaveTypeRequest := &dingtalkattendance_1_0.AddLeaveTypeRequest{
+    OpUserId: tea.String("user01"),
+    LeaveName: tea.String("年次有給休暇"),
+    LeaveViewUnit: tea.String("day"),
+    BizType: tea.String("general_leave"),
+    NaturalDayLeave: tea.Bool(true),
+    HoursInPerDay: tea.Int64(1000),
+    Extras: tea.String("{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}"),
+    PaidLeave: tea.Bool(true),
+    VisibilityRules: []*dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules{visibilityRules0},
+    WhenCanLeave: tea.String("entry"),
+    LeaveTimeCeilMinUnit: tea.String("hour"),
+    LeaveTimeCeil: tea.Bool(false),
+    MinLeaveHour: tea.Float64(1),
+    SubmitTimeRule: submitTimeRule,
+    LeaveCertificate: leaveCertificate,
+    MaxLeaveTime: tea.Int64(3),
+    LeaveHourCeil: tea.String("up"),
+    FreedomLeave: tea.Bool(true),
+  }
+  tryErr := func()(_e error) {
+    defer func() {
+      if r := tea.Recover(recover()); r != nil {
+        _e = r
+      }
+    }()
+    _, _err = client.AddLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, &util.RuntimeOptions{})
+    if _err != nil {
+      return _err
+    }
+
+    return nil
+  }()
+
+  if tryErr != nil {
+    var err = &tea.SDKError{}
+    if _t, ok := tryErr.(*tea.SDKError); ok {
+      err = _t
+    } else {
+      err.Message = tea.String(tryErr.Error())
+    }
+    if !tea.BoolValue(util.Empty(err.Code)) && !tea.BoolValue(util.Empty(err.Message)) {
+      // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+    }
+
+  }
+  return _err
+}
+
+func main() {
+  err := _main(tea.StringSlice(os.Args[1:]))
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+Node.js
+
+```typescript
+// このファイルは自動生成されています。編集しないでください
+import Util, * as $Util from '@alicloud/tea-util';
+import dingtalkattendance_1_0, * as $dingtalkattendance_1_0 from '@alicloud/dingtalk/attendance_1_0';
+import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $tea from '@alicloud/tea-typescript';
+
+export default class Client {
+
+  /**
+   * Token を使用してアカウントの Client を初期化します
+   * @return Client
+   * @throws Exception
+   */
+  static createClient(): dingtalkattendance_1_0 {
+    let config = new $OpenApi.Config({ });
+    config.protocol = "https";
+    config.regionId = "central";
+    return new dingtalkattendance_1_0(config);
+  }
+
+  static async main(args: string[]): Promise<void> {
+    let client = Client.createClient();
+    let addLeaveTypeHeaders = new $dingtalkattendance_1_0.AddLeaveTypeHeaders({ });
+    addLeaveTypeHeaders.xAcsDingtalkAccessToken = "<your access token>";
+    let leaveCertificate = new $dingtalkattendance_1_0.AddLeaveTypeRequestLeaveCertificate({
+      unit: "hour",
+      duration: 1,
+      enable: false,
+      promptInformation: "休暇のプロンプト文",
+    });
+    let submitTimeRule = new $dingtalkattendance_1_0.AddLeaveTypeRequestSubmitTimeRule({
+      timeValue: 2,
+      timeUnit: "day",
+      timeType: "before",
+      enableTimeLimit: true,
+    });
+    let visibilityRules0 = new $dingtalkattendance_1_0.AddLeaveTypeRequestVisibilityRules({
+      visible: [
+        "user01"
+      ],
+      type: "staff",
+    });
+    let addLeaveTypeRequest = new $dingtalkattendance_1_0.AddLeaveTypeRequest({
+      opUserId: "user01",
+      leaveName: "年次有給休暇",
+      leaveViewUnit: "day",
+      bizType: "general_leave",
+      naturalDayLeave: true,
+      hoursInPerDay: 1000,
+      extras: "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+      paidLeave: true,
+      visibilityRules: [
+        visibilityRules0
+      ],
+      whenCanLeave: "entry",
+      leaveTimeCeilMinUnit: "hour",
+      leaveTimeCeil: false,
+      minLeaveHour: 1,
+      submitTimeRule: submitTimeRule,
+      leaveCertificate: leaveCertificate,
+      maxLeaveTime: 3,
+      leaveHourCeil: "up",
+      freedomLeave: true,
+    });
+    try {
+      await client.addLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new $Util.RuntimeOptions({ }));
+    } catch (err) {
+      if (!Util.empty(err.code) && !Util.empty(err.message)) {
+        // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+      }
+
+    }    
+  }
+
+}
+
+Client.main(process.argv.slice(2));
+```
+
+C#
+
+```csharp
+// このファイルは自動生成されています。編集しないでください。
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+
+using Tea;
+using Tea.Utils;
+
+namespace AlibabaCloud.SDK.Sample
+{
+    public class Sample 
+    {
+
+        /**
+         * Token を使用してアカウントの Client を初期化します
+         * @return Client
+         * @throws Exception
+         */
+        public static AlibabaCloud.SDK.Dingtalkattendance_1_0.Client CreateClient()
+        {
+            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config();
+            config.Protocol = "https";
+            config.RegionId = "central";
+            return new AlibabaCloud.SDK.Dingtalkattendance_1_0.Client(config);
+        }
+
+        public static void Main(string[] args)
+        {
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Client client = CreateClient();
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeHeaders addLeaveTypeHeaders = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeHeaders();
+            addLeaveTypeHeaders.XAcsDingtalkAccessToken = "<your access token>";
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate leaveCertificate = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestLeaveCertificate
+            {
+                Unit = "hour",
+                Duration = 1,
+                Enable = false,
+                PromptInformation = "休暇のプロンプト文",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule submitTimeRule = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestSubmitTimeRule
+            {
+                TimeValue = 2,
+                TimeUnit = "day",
+                TimeType = "before",
+                EnableTimeLimit = true,
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules visibilityRules0 = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules
+            {
+                Visible = new List<string>
+                {
+                    "user01"
+                },
+                Type = "staff",
+            };
+            AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest addLeaveTypeRequest = new AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest
+            {
+                OpUserId = "user01",
+                LeaveName = "年次有給休暇",
+                LeaveViewUnit = "day",
+                BizType = "general_leave",
+                NaturalDayLeave = true,
+                HoursInPerDay = 1000,
+                Extras = "{\"validity_type\":\"absolute_time\",\"validity_value\":\"12-31\"}",
+                PaidLeave = true,
+                VisibilityRules = new List<AlibabaCloud.SDK.Dingtalkattendance_1_0.Models.AddLeaveTypeRequest.AddLeaveTypeRequestVisibilityRules>
+                {
+                    visibilityRules0
+                },
+                WhenCanLeave = "entry",
+                LeaveTimeCeilMinUnit = "hour",
+                LeaveTimeCeil = false,
+                MinLeaveHour = 1,
+                SubmitTimeRule = submitTimeRule,
+                LeaveCertificate = leaveCertificate,
+                MaxLeaveTime = 3,
+                LeaveHourCeil = "up",
+                FreedomLeave = true,
+            };
+            try
+            {
+                client.AddLeaveTypeWithOptions(addLeaveTypeRequest, addLeaveTypeHeaders, new AlibabaCloud.TeaUtil.Models.RuntimeOptions());
+            }
+            catch (TeaException err)
+            {
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                }
+            }
+            catch (Exception _err)
+            {
+                TeaException err = new TeaException(new Dictionary<string, object>
+                {
+                    { "message", _err.Message }
+                });
+                if (!AlibabaCloud.TeaUtil.Common.Empty(err.Code) && !AlibabaCloud.TeaUtil.Common.Empty(err.Message))
+                {
+                    // err には code 属性と message 属性が含まれており、問題の特定に役立ちます
+                }
+            }
+        }
+
+    }
+}
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| result | Object | 返される情報です。 |
+| leaveName | String | 休暇名です。 |
+| leaveCode | String | 休暇ルールの一意の識別子です。 |
+| leaveViewUnit | String | 休暇単位です。   - **day**：日 - **halfDay**：半日 - **hour**：時間 |
+| bizType | String | 休暇タイプです。   - **general_leave**：一般休暇 - **lieu_leave**：残業の代休振替 |
+| naturalDayLeave | Boolean | 休暇時間を暦日で計算するかどうかを示します。   - **true**：はい - **false**：いいえ   false の場合、ユーザーが休暇申請を提出した際に、休暇期間内のユーザーのシフト設定に基づいて休暇時間が計算されます。 |
+| hoursInPerDay | Long | 換算に使用する 1 日あたりの労働時間です。実際の値は、パラメータ値を 100 で割った値です。  例えば、組織で 1 日あたりの労働時間を 10 時間に設定している場合、このパラメータの値は 10\*100=1000 です。 |
+| visibilityRules | Array | 適用範囲ルールのリストです。指定しない場合、ルールは企業全体に適用されます。 |
+| visible | Array of String | 適用範囲内のデータのリストです。   - type=staff の場合、社員の userId のリストです。 - type=dept の場合、部門 ID のリストです。 - type=label の場合、ロール ID のリストです。 |
+| type | String | 適用範囲ルールのタイプです。   - **dept**：部門 - **staff**：社員 - **label**：ロール |
+| submitTimeRule | Object | 提出時間の制限ルールです。 |
+| timeValue | Long | 制限値です。   - timeUnit が day の場合、有効範囲は 0〜30 日です。 - timeUnit が hour の場合、有効範囲は 0〜24 時間です。 |
+| timeUnit | String | 時間単位です。   - **day**：日 - **hour**：時間 |
+| timeType | String | 制限タイプです。   - **before**：事前に提出 - **after**：事後に提出 |
+| enableTimeLimit | Boolean | 提出時間の制限が有効かどうかを示します。   - **true**：オン - **false**：オフ |
+| leaveCertificate | Object | 休暇証明書です。 |
+| unit | String | 休暇証明書の時間単位です。   - **hour**：時間 - **day**：日 |
+| duration | double | 休暇証明書の提出が必要となる休暇時間のしきい値です。 |
+| enable | Boolean | 休暇証明書が有効かどうかを示します。   - **true**：オン - **false**：オフ |
+| promptInformation | String | 休暇のプロンプト文です。 |
+
+### レスポンスボディの例
+
+```text
+HTTP/1.1 200 OK
+Content-Type:application/json
+
+{
+  "result" : {
+    "leaveName" : "年次有給休暇",
+    "leaveCode" : "037477ae-1009-4632-b8e9-e919ae5e7973",
+    "leaveViewUnit" : "day",
+    "bizType" : "general_leave",
+    "naturalDayLeave" : true,
+    "hoursInPerDay" : 1000,
+    "visibilityRules" : [ {
+      "visible" : [ "user01" ],
+      "type" : "staff"
+    } ],
+    "submitTimeRule" : {
+      "timeValue" : 1,
+      "timeUnit" : "day",
+      "timeType" : "before",
+      "enableTimeLimit" : false
+    },
+    "leaveCertificate" : {
+      "unit" : "hour",
+      "duration" : 1,
+      "enable" : false,
+      "promptInformation" : "休暇のプロンプト文"
+    }
+  }
+}
+```
+
+### エラーコード
+
+この API の呼び出しに失敗した場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。
+
+| HttpCode | エラーコード | エラーメッセージ | 説明 |
+| --- | --- | --- | --- |
+| 400 | lieuLeaveValidityIncorrect | 代休の有効期間が無効です | 代休の有効期間が無効です |
+| 400 | lieuLeaveOnlyOne | 残業の代休振替ルールは 1 つのみ設定できます | 残業の代休振替ルールは 1 つのみ設定できます |
+| 400 | bizTypeIncorrect | 休暇の業務タイプが無効です | 休暇の業務タイプが無効です |
+| 400 | unitIncorrect | 休暇単位が無効です | 休暇単位が無効です |
+| 400 | nameTooLong | 休暇名が長すぎます | 休暇名が長すぎます |
+| 400 | nameAlreadyExists | 同じ名前の休暇タイプがすでに存在します | 同じ名前の休暇タイプがすでに存在します |
+| 400 | leaveOrgIsUsed | この API にアクセスできるのは組織のみです | この API にアクセスできるのは組織のみです |
+| 400 | notPermission | アクセス権限がありません | アクセス権限がありません |
+| 400 | notManage | 部門管理者が存在しません | 部門管理者が存在しません |
+| 400 | notFound | 休暇タイプが見つかりません | 休暇タイプが見つかりません |
+| 400 | tryAgainLater | 更新に失敗しました。しばらくしてから再試行してください。 | 更新に失敗しました。しばらくしてから再試行してください。 |
+| 400 | updateSpeedfast | 操作の頻度が高すぎます。5 分後に再試行してください。 | 操作の頻度が高すぎます。5 分後に再試行してください。 |
+| 400 | systemError | システムエラー | システムエラー |
+| 400 | invalidParam | パラメータエラー | パラメータエラー |

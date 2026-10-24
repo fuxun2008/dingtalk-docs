@@ -1,0 +1,296 @@
+---
+title: "Sync Self-Built Leave and Attendance Approvals to DingTalk"
+description: "Sync self-built OA approval records for overtime, business trips, and leave into DingTalk's OA Approval and Attendance modules."
+---
+
+# Clock-in Data Sync: Automatically Upload Hardware Clock-in Records to DingTalk
+
+## Overview
+
+This solution syncs leave and attendance approval data end to end. It uses the leave and attendance approval APIs on the DingTalk Open Platform to automatically sync approval data from your organization's own system to DingTalk.
+
+### Background
+
+Many organizations run in-house leave and attendance management systems to process employee overtime, business trip, and leave requests. However, these systems lack a standard data interface with the DingTalk Attendance module. This causes the following problems:
+
+- **Severe data silos**: After a leave request is submitted and approved in the self-built system, employees must still clock in or submit a makeup clock-in manually in DingTalk. This leads to repeated work and inconsistent data.
+- **Complex duration calculation**: Scheduled hours vary by date (for example, 8 hours on weekdays and 4 hours on weekends). Manual calculation of available leave duration is error-prone and cannot adapt to schedule changes.
+- **Out-of-sync status**: DingTalk Attendance cannot detect approvals completed in the self-built system. HR must manually reconcile data across both systems, which is time-consuming and prone to omissions.
+
+### Key Benefits
+
+This solution integrates your self-built leave and attendance approval system with DingTalk Attendance. It provides a standardized API call flow and best practices to help your organization automate approval data sync and manage it centrally.
+
+- **Lightweight integration**: No front-end changes to your business system are required. Call just 3 core APIs to complete the integration at low development cost.
+- **Smart schedule-based calculation**: Pre-calculate overtime, business trip, and leave durations based on schedules in the attendance system to eliminate manual calculation errors.
+- **Real-time status sync**: Automatically notify DingTalk attendance sync when a request is approved, and sync the revocation when an approval is revoked, to keep data consistent.
+- **Flexible scenario support**: Support complex scenarios such as cross-day leave and multi-date scheduling. Scheduled hours for each day are summed automatically for a better user experience.
+
+### Use Cases
+
+This solution applies to the following typical business scenarios:
+
+- **Self-built leave and attendance system integration**: Connect your in-house overtime, business trip, and leave approval systems with the DingTalk Attendance module to sync approval results automatically.
+- **Schedule-based duration pre-calculation**: Calculate the maximum submittable leave duration based on employee schedules to prevent over-limit requests and wasted resources.
+- **Approval result sync**: Automatically sync approvals from the self-built system to DingTalk Attendance, so HR no longer needs to reconcile data across both systems.
+- **Cross-day leave management**: When leave spans multiple workdays with different scheduled hours, scheduled hours for each day are summed automatically to simplify the process.
+
+## Typical Business Scenarios
+
+### Scenario 1: Sync Self-Built Leave and Attendance Approvals with DingTalk Attendance
+
+#### Pain Points
+
+Your organization runs an in-house leave and attendance management system, but its data is isolated from DingTalk Attendance. After submitting a leave request in the self-built system, employees must still clock in or submit a makeup clock-in manually in DingTalk. Once the organization grows beyond 1,000 employees, manual operations become nearly impossible and human error easily leads to inconsistent data.
+
+In addition, scheduled hours vary by date (for example, 8 hours on weekdays and 4 hours on weekends). HR must manually calculate the available leave duration for each employee, which is time-consuming and error-prone. DingTalk Attendance cannot detect completed approvals, so manual intervention is required to sync them, further increasing management costs.
+
+#### Value Delivered
+
+- **Automated workflow**
+
+  The integration follows five steps:
+
+  1. Create an app on the DingTalk Open Platform to obtain the App credentials (**Client ID** / **Client Secret**).
+  2. Apply for attendance permissions on the DingTalk Open Platform: **qyapi_attendance_group_manage** and **qyapi_attendance_group_read**.
+  3. Obtain an **access_token** through the API for subsequent API calls.
+  4. Pre-calculate the maximum allowed leave duration based on the employee's scheduling and requested leave time.
+  5. After the request is approved, automatically sync it to DingTalk and save the returned **approve_id**.
+- **Key advantages**
+
+  - **Smart duration pre-calculation**: Automatically calculate the maximum leave duration based on schedules to prevent over-limit requests and reduce HR review workload.
+  - **Automatic approval sync**: Automatically notify DingTalk Attendance after approval with no extra steps, saving HR 80% of reconciliation time.
+  - **Real-time revocation**: Automatically sync revoked approvals to DingTalk to keep data consistent and prevent errors in attendance statistics.
+  - **Low-cost integration**: Call just 3 core APIs to shorten the development cycle by 70% and go live quickly.
+
+### Scenario 2: Smart Calculation of Cross-Day Leave Duration
+
+#### Pain Points
+
+An employee's leave spans multiple workdays with different scheduled hours each day (for example, Xiao Ming is scheduled for 8 hours on October 15 and 4 hours on October 16). The traditional approach requires manually summing the scheduled hours for each day, which is error-prone and inefficient. When the leave period is long (for example, a full week), HR must check the scheduling rules for each day one by one, which is time-consuming and prone to omissions.
+
+In addition, if compensatory leave or a temporary schedule change occurs during the leave period, manually calculated durations may be inaccurate. This can cause the leave request to be rejected or result in attendance data errors.
+
+#### Value Delivered
+
+- **Automated workflow**
+
+  The automated flow has 5 steps:
+
+  1. The **Employee** selects the date range for a cross-day leave request (example: October 15 – October 16).
+  2. The system calls the scheduling pre-calculation API to fetch data: `GET /api/leave/precalc`.
+  3. The system automatically sums the scheduled hours for each day in the selected range (example: 8 hours scheduled on October 15 + 4 hours scheduled on October 16 = a maximum leave request of 12 hours).
+  4. The API returns the calculated result as the upper limit of the submittable leave duration (example: maximum leave duration of **12.0 hours**).
+  5. The **Employee** confirms and submits the leave request, which then enters the approval flow.
+- **Key advantages**
+
+  - **Automatic schedule summing**: Call the pre-calculation API to automatically return the maximum submittable duration for cross-day leave, eliminating manual calculation errors.
+  - **Precise control**: Dynamically adjust the maximum leave duration based on actual schedules to prevent wasted resources or over-limit requests.
+  - **Better user experience**: Employees no longer calculate durations manually. The system displays the available leave duration automatically, lowering the barrier to use.
+  - **Dynamic adaptation**: If a schedule changes, call the pre-calculation API again to get the latest duration and ensure data accuracy.
+
+## Implementation Guide
+
+### Technical Architecture
+
+This solution is built on the attendance-related OpenAPIs of the DingTalk Open Platform. The core technical components include:
+
+- **Authentication layer**: Use the `Client ID` / `Client Secret` to obtain the `access_token` and secure API calls.
+- **Permission management layer**: Apply for attendance-related API permissions (`qyapi_attendance_group_manage` and `qyapi_attendance_group_read`).
+- **Duration pre-calculation engine**: Call the Server API to pre-calculate duration, which pre-calculates overtime, business trip, and leave durations based on schedules in the attendance system.
+- **Approval sync layer**: After approval, call the API that notifies approval completion to sync DingTalk Attendance. When an approval is revoked, call the API that notifies approval revocation to sync the revocation.
+
+### Prerequisites
+
+Before you implement the solution, make sure the following conditions are met:
+
+- **App preparation**: Create and configure an Internal app. For details, see [Create and Configure an App](/open/dingstart/create-application).
+- **Permission requirements**: Hold DingTalk Organization Admin or Sub Admin permissions, and apply for attendance-related API permissions.
+
+  - `qyapi_attendance_group_manage` (attendance group management permission)
+  - `qyapi_attendance_group_read` (attendance group query permission)
+- **Development environment**: Install a Java development environment (JDK 1.6 or later) and the Maven build tool.
+- **SDK preparation**: Download the DingTalk Server-side SDK. For details, see Server-side SDK Download. The SDK supports multiple languages, including Java, Python, and Go.
+
+### Code Implementation
+
+Step 1: Obtain the App credential information, including the client ID and Client Secret.
+
+Step 2: Apply for API permissions, including attendance-related API permissions.
+
+Step 3: Obtain the App's Access credential. See [Obtain the access_token of an Internal App](/open/development/obtain-orgapp-token). When you call the API, the access token authenticates the caller's identity.
+
+Step 4: Call the attendance-related APIs:
+
+<Note>
+This feature syncs overtime, business trip, and leave information from in-house systems to DingTalk.
+</Note>
+
+1. Call the Server API [Pre-calculate Duration](/open/development/api-calculateduration) to pre-calculate overtime, business trip, and leave durations based on schedules in the attendance system.
+2. After a leave or attendance request is submitted and approved in your self-built approval system, notify DingTalk Attendance by calling the Server API [Notify Approval Completion](/open/development/api-processapprovefinish) to sync the approval to DingTalk Attendance. Save the custom Approval form ID `approve_id`.
+3. When a revocation of a leave or attendance request is submitted in your self-built approval system, call the Server API [Notify Approval Revocation](/open/development/notify-the-attendance-to-modify-the-punch-result-when-the) with the custom Approval form ID `approve_id` to sync the revocation to DingTalk Attendance.
+
+## Implementation Steps
+
+### **Step 1: Obtain the App Credentials**
+
+1. Sign in to the [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Select the target app to open its details page.
+3. Click **Basic Information** > **Credentials and Basic Information**.
+4. Record the app's `Client ID` and `Client Secret`.
+
+### Note
+
+   Keep the `Client Secret` secure and never share it with third parties. Store it in environment variables or a key management system instead of hardcoding it.
+
+### Step 2: Add API Permissions
+
+1. On the app details page, click **Manage permissions**.
+2. Enter the following permission identifiers in the permission search box and apply for them:
+
+   - `qyapi_attendance_group_manage` (attendance group management permission)
+   - `qyapi_attendance_group_read` (attendance group query permission)
+
+<Note>
+Different business scenarios may require different permission combinations. Apply for permissions based on your actual needs. For example, batch import scenarios also require permissions for batch user operations.
+</Note>
+
+### Step 3: Obtain the Access Credential (access_token)
+
+Use the Client ID and Client Secret from Step 1 to obtain the App's Access credential. See [Obtain the access_token of an Internal App](/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Best practices**:
+
+- **Caching strategy**: The `access_token` is valid for 2 hours. Cache it in memory or Redis and refresh it proactively 5 minutes before it expires.
+- **Concurrency control**: Prevent conflicts caused by multiple threads refreshing the token at the same time. Use a distributed lock if needed.
+- **Error retry**: Retry automatically during network fluctuations, up to 3 times, with increasing intervals (1s → 2s → 4s).
+
+### **Step 4:** Call the Core APIs
+
+1. **Pre-calculate duration**: Call the Server API [Pre-calculate Duration](/open/development/api-calculateduration) to pre-calculate overtime, business trip, and leave durations based on schedules in the attendance system.
+
+### Note
+
+   Do not skip this step. It ensures the Approval form information in your self-built system syncs to DingTalk correctly. For example, Xiao Ming is scheduled for 8 hours on October 15 and 4 hours on October 16. On a normal schedule, he works 12 hours across these 2 days. When Xiao Ming submits a leave Approval form in the self-built system, the submittable leave duration differs in each of the following cases:
+
+   - Case 1: The leave starts on October 15 and ends on October 15. Call the pre-calculate duration API. The maximum submittable leave duration is 8 hours.
+   - Case 2: The leave starts on October 15 and ends on October 16. Call the pre-calculate duration API. The maximum submittable leave duration is 12 hours.
+
+   ```text
+   public CalculateDurationResponseBody durationCalculate(){
+     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     try {
+       com.aliyun.dingtalkattendance_1_0.Client client = new  com.aliyun.dingtalkattendance_1_0.Client(config);
+       CalculateDurationHeaders calculateDurationHeaders = new CalculateDurationHeaders();
+       calculateDurationHeaders.xAcsDingtalkAccessToken = "<your access token>";
+       CalculateDurationRequest calculateDurationRequest = new CalculateDurationRequest()
+         .setUserId("01472825524039877041")
+         .setBizType(3L)
+         .setFromTime("2022-10-13 09:00")
+         .setToTime("2022-10-13 18:00")
+         .setDurationUnit("day")
+         .setCalculateModel(1L)
+         .setLeaveCode("e2dsad-34dfa-2vas23da");
+       CalculateDurationResponse calculateDurationResponse = client.calculateDurationWithOptions(calculateDurationRequest, calculateDurationHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+       System.out.println(calculateDurationResponse.getBody());
+       return calculateDurationResponse.getBody();
+     } catch (Exception e) {
+       throw new RuntimeException(e);
+     }
+   }
+   ```
+2. **Notify approval completion**: After a leave or attendance request is submitted and approved in your self-built approval system, notify DingTalk Attendance by calling the Server API [Notify Approval Completion](/open/development/api-processapprovefinish) to sync the approval to DingTalk Attendance.
+
+   **Note** 
+   - This step does not create an OA Approval form in DingTalk.
+   - Save the custom Approval form ID `approve_id`. You need this ID to revoke the approval later.
+
+   ```text
+   public ProcessApproveFinishResponseBody approveFinish(){
+     com.aliyun.teaopenapi.models.Config config = new com.aliyun.teaopenapi.models.Config();
+     config.protocol = "https";
+     config.regionId = "central";
+     try {
+       com.aliyun.dingtalkattendance_1_0.Client client = new  com.aliyun.dingtalkattendance_1_0.Client(config);
+       ProcessApproveFinishHeaders processApproveFinishHeaders = new ProcessApproveFinishHeaders();
+       processApproveFinishHeaders.xAcsDingtalkAccessToken = "<your access token>";
+       ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam topCalculateApproveDurationParam = new ProcessApproveFinishRequest.ProcessApproveFinishRequestTopCalculateApproveDurationParam()
+         .setBizType(2L)
+         .setFromTime("2022-10-13 09:00")
+         .setToTime("2022-10-13 19:00")
+         .setDurationUnit("hour")
+         .setCalculateModel(1L);
+       com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest processApproveFinishRequest = new com.aliyun.dingtalkattendance_1_0.models.ProcessApproveFinishRequest()
+         .setUserId("manager123")
+         .setTopCalculateApproveDurationParam(topCalculateApproveDurationParam)
+         .setTagName("外出")  // Out of office
+         .setApproveId("dingTalk")
+         .setJumpUrl("https://open.dingtalk.io/");
+       ProcessApproveFinishResponse processApproveFinishResponse = client.processApproveFinishWithOptions(processApproveFinishRequest, processApproveFinishHeaders, new com.aliyun.teautil.models.RuntimeOptions());
+       System.out.println(processApproveFinishResponse.getBody());
+       return processApproveFinishResponse.getBody();
+     } catch (Exception e) {
+       throw new RuntimeException(e);
+     }
+   }
+   ```
+3. **Notify approval revocation**: When a revocation of a leave or attendance request is submitted in your self-built approval system, call the Server API [Notify Approval Revocation](/open/development/notify-the-attendance-to-modify-the-punch-result-when-the) with the custom Approval form ID `approve_id` to sync the revocation to DingTalk Attendance.
+
+   ```java
+   public void approveCancel() throws ApiException {
+       DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/approve/cancel");
+
+       OapiAttendanceApproveCancelRequest req = new OapiAttendanceApproveCancelRequest();
+       req.setUserid("01472825524039877041");
+       req.setApproveId("dingTalk");
+
+       OapiAttendanceApproveCancelResponse rsp = client.execute(req, "access_token");
+       System.out.println(rsp.getBody());
+   }
+   ```
+
+**Implementation checklist**:
+
+- App credentials obtained (Client ID / Client Secret).
+- Attendance permissions granted (qyapi_attendance_group_manage / qyapi_attendance_group_read).
+- access_token obtained.
+- Pre-calculate duration API called successfully and returns the correct available leave duration.
+- Notify approval completion API called after approval, and DingTalk Attendance synced successfully.
+- Notify approval revocation API called upon revocation, and the revocation synced to DingTalk Attendance successfully.
+
+## FAQ
+
+- **Q1: Why must I call the pre-calculate duration API first?**
+
+  A: The pre-calculate duration API calculates the maximum submittable leave duration based on the employee's schedule. For example, if an employee is scheduled for 4 hours on a given day, the employee can request at most 4 hours of leave for that day. Skipping this step may cause the leave duration to mismatch the actual schedule and reduce the accuracy of attendance statistics.
+- **Q2: What is approve_id used for?**
+
+  A: `approve_id` is the unique identifier of the custom Approval form. Your business system generates and stores it. To revoke an approval, call the notify approval revocation API with this ID so DingTalk can locate and revoke the corresponding attendance record.
+- **Q3: Does this solution create OA Approval forms in DingTalk?**
+
+  A: No. This solution only syncs approval results from your self-built system to DingTalk Attendance. It does not create an approval instance in the DingTalk OA Approval Center. The Approval process is still completed in your self-built system, and DingTalk only receives the attendance data.
+- **Q4: How does the pre-calculate duration API handle cross-day leave?**
+
+  A: The API automatically sums the scheduled hours of all workdays in the leave period. For example, Xiao Ming is scheduled for 8 hours on October 15 and 4 hours on October 16. If he requests leave from October 15 to October 16, the API returns a maximum leave duration of 12 hours (8 + 4).
+- **Q5: What should I do if a permission request fails?**
+
+  A: Check the following:
+
+  - The App type is "Internal app".
+  - The account has Organization Admin or Sub Admin permissions.
+  - The permission identifiers are entered correctly (`qyapi_attendance_group_manage` and `qyapi_attendance_group_read`).
+  - If the request still fails, contact DingTalk technical support and provide your app ID and error logs.

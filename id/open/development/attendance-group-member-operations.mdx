@@ -1,0 +1,342 @@
+---
+title: "Menambahkan, mendapatkan, memperbarui, dan menghapus anggota absensi"
+description: "Kelola anggota absensi DingTalk otomatis lewat API: tambah massal, kueri, perbarui, dan hapus anggota grup absensi untuk sinkronisasi sistem HR dan OA."
+---
+
+# Menetapkan anggota absensi: penambahan massal dan pengelolaan presisi
+
+## Ikhtisar
+
+### Latar belakang
+
+Organisasi terus berubah. Karyawan bergabung, keluar, berganti peran, atau pindah departemen. Setiap perubahan mengharuskan HR atau Admin memperbarui anggota grup absensi satu per satu di Admin Console DingTalk. Karyawan baru harus ditambahkan ke grup absensi, karyawan yang keluar harus dihapus, dan karyawan yang dimutasi harus dipindahkan ke grup absensi lain. Organisasi dengan 1.000 karyawan atau lebih dapat mengalami puluhan hingga ratusan perubahan setiap bulan. Pembaruan manual memakan banyak waktu dan tenaga. Selain itu, proses manual rentan terlewat dan salah, sehingga menimbulkan kesalahan absen dan data absensi yang tidak akurat.
+
+### Manfaat utama
+
+Solusi ini mengotomatiskan seluruh siklus hidup anggota grup absensi. Penambahan massal, kueri, pembaruan, dan penghapusan yang semula manual diubah menjadi operasi standar berbasis API. Hasilnya, operasional sistem HR menjadi lebih efisien dan data tetap konsisten.
+
+- **Pengelolaan anggota massal secara otomatis**: Tambahkan, kueri, perbarui, dan hapus anggota melalui API tanpa intervensi manual.
+- **Pemilihan API yang tepat**: Pilih API kueri terbaik untuk anggota individu, departemen, atau campuran guna mendapatkan data yang lengkap dan akurat.
+- **Verifikasi real-time**: Periksa apakah pengguna termasuk dalam grup absensi tertentu, lalu verifikasi hasil segera setelah setiap pembaruan agar data tetap konsisten.
+- **Data lintas sistem yang terpadu**: Sinkronkan data anggota grup absensi secara real-time antara sistem HR, sistem OA, dan DingTalk untuk menghilangkan silo data.
+
+### Kasus penggunaan
+
+Solusi ini cocok untuk skenario bisnis umum berikut:
+
+- **Orientasi karyawan baru**: Setelah HR memasukkan data karyawan baru ke sistem HR, tambahkan karyawan tersebut ke grup absensi departemen terkait secara otomatis.
+- **Karyawan keluar**: Setelah persetujuan pengunduran diri di OA disetujui, hapus karyawan dari semua grup absensi secara otomatis.
+- **Mutasi peran**: Saat karyawan dimutasi, hapus karyawan dari grup absensi asal dan tambahkan ke grup absensi departemen baru secara otomatis.
+- **Penyesuaian anggota secara massal**: Setelah Struktur Organisasi berubah, perbarui daftar anggota beberapa grup absensi secara massal.
+
+## Skenario bisnis umum
+
+### Skenario 1: Menambahkan karyawan baru ke grup absensi secara otomatis
+
+#### Kendala
+
+Dalam proses tradisional, HR harus masuk ke Admin Console DingTalk pada hari pertama setiap karyawan baru, mencari grup absensi departemen terkait, lalu menambahkan setiap karyawan baru secara manual. Jika 5 hingga 10 karyawan bergabung setiap hari, HR harus mengulang tugas ini berkali-kali. Karyawan sering terlewat atau dimasukkan ke grup yang salah, sehingga karyawan baru tidak dapat absen sebagaimana mestinya.
+
+#### Nilai
+
+- **Alur otomatis**
+
+  Alur otomatis berjalan dalam lima langkah:
+
+  1. HR memasukkan data **Karyawan** baru (nama, **Departemen**, jabatan).
+  2. Cocokkan **grup absensi** target berdasarkan ID departemen karyawan, lalu cari **groupKey**-nya.
+  3. Panggil API **batch-add-employees** untuk menambahkan **userId** karyawan baru ke **grup absensi**.
+  4. Panggil API **query-members-by-id** untuk memverifikasi bahwa karyawan berhasil ditambahkan.
+  5. Izin **absen** berlaku pada hari yang sama dan pencatatan absensi dimulai.
+- **Keunggulan utama**
+
+  - **Pemicu sepenuhnya otomatis**: Setelah HR memasukkan data karyawan baru, sistem HR memanggil API untuk menambahkan karyawan ke grup absensi. Tidak perlu tindakan manual.
+  - **Pencocokan presisi**: Sistem mencocokkan grup absensi dengan departemen karyawan secara otomatis sehingga mencegah kesalahan pemilihan.
+  - **Langsung berlaku**: Sistem memverifikasi hasil segera setelah penambahan sehingga karyawan baru dapat absen pada hari pertama.
+  - **Jejak audit**: Setiap tindakan mencatat operator, stempel waktu, dan ID grup absensi untuk memenuhi persyaratan kepatuhan.
+
+### Skenario 2: Menghapus karyawan yang keluar dari grup absensi secara otomatis
+
+#### Kendala
+
+Saat karyawan keluar, HR harus menghapus karyawan tersebut secara manual dari setiap grup absensi terkait. Jika karyawan termasuk dalam beberapa grup absensi (misalnya, departemen utama dan tim proyek), penghapusan manual mudah terlewat. Karyawan yang sudah keluar mungkin masih dapat absen, data absensi menjadi tidak akurat, dan perhitungan penggajian bisa keliru.
+
+#### Nilai
+
+- **Alur otomatis**
+
+  Alur otomatis berjalan dalam lima langkah:
+
+  1. Permintaan pengunduran diri di **Persetujuan OA** disetujui, lalu sistem menangkap peristiwa tersebut untuk memicu Otomatisasi.
+  2. Panggil API **queries-a-user-attendance-group** untuk mendapatkan ID semua grup absensi tempat Karyawan terdaftar.
+  3. Lakukan iterasi pada grup-grup tersebut dan panggil API **batch-delete-employees** untuk menghapus Karyawan secara massal.
+  4. Panggil API **query-members-by-id** untuk memverifikasi satu per satu bahwa Karyawan telah dihapus dari setiap grup absensi.
+  5. Izin absen Karyawan dicabut dan pencatatan absensi dihentikan.
+- **Keunggulan utama**
+
+  - **Pemicu sepenuhnya otomatis**: Setelah persetujuan pengunduran diri di OA disetujui, penghapusan berjalan otomatis tanpa intervensi manual.
+  - **Cakupan menyeluruh**: Kueri dan hapus karyawan dari semua grup absensi dalam satu kali proses untuk menghindari kelalaian.
+  - **Langsung berlaku**: Sistem memverifikasi hasil segera setelah penghapusan sehingga karyawan yang keluar tidak dapat lagi absen.
+  - **Log audit lengkap**: Setiap penghapusan mencatat informasi terperinci untuk memenuhi persyaratan audit kepatuhan dan keterlacakan.
+
+## Panduan implementasi
+
+### Arsitektur teknis
+
+Solusi ini dibangun di atas Server API DingTalk Open Platform. Komponen teknis utamanya meliputi:
+
+- **Lapisan autentikasi**: Dapatkan `access_token` menggunakan `Client ID` dan `Client Secret` untuk mengamankan panggilan API.
+- **Lapisan pengelolaan anggota**: Menyediakan kemampuan API lengkap untuk menambahkan, mengueri, memperbarui, dan menghapus anggota grup absensi secara massal.
+- **Lapisan perutean cerdas**: Memilih API kueri terbaik berdasarkan tipe anggota (individu, departemen, atau campuran) untuk mendapatkan data lengkap.
+- **Lapisan penanganan error**: Sistem kode error yang lengkap dan mekanisme coba-lagi membantu Anda menemukan dan menyelesaikan masalah dengan cepat.
+
+**Catatan versi API**: Server API memiliki versi baru dan versi lama. Prioritaskan versi baru untuk performa dan dukungan fitur yang lebih baik.
+
+### Prasyarat
+
+Sebelum memulai, pastikan kondisi berikut terpenuhi:
+
+- **Penyiapan aplikasi**: Buat dan konfigurasikan Aplikasi internal. Untuk detailnya, lihat [Membuat dan mengonfigurasi aplikasi](/id/open/dingstart/create-application).
+- **Izin**: Anda memiliki izin Admin Organisasi atau Sub Admin DingTalk, dan telah mengajukan izin API berikut:
+
+  - `qyapi_attendance_group_manage` (izin pengelolaan grup absensi)
+  - `qyapi_attendance_group_read` (izin baca grup absensi)
+- **Lingkungan pengembangan**: Lingkungan pengembangan Java (JDK 1.6 atau lebih baru) dan alat build Maven sudah terpasang.
+- **SDK**: Unduh SDK Sisi server DingTalk. Untuk detailnya, lihat Unduh SDK Sisi server. SDK mendukung berbagai bahasa, termasuk Java, Python, dan Go.
+
+### Implementasi kode
+
+Langkah 1: Dapatkan Kredensial aplikasi, termasuk client ID dan Client Secret.
+
+Langkah 2: Ajukan izin API `qyapi_attendance_group_manage` dan `qyapi_attendance_group_read`.
+
+Langkah 3: Dapatkan Kredensial akses. Untuk detailnya, lihat [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token). Saat Anda memanggil API, access token digunakan untuk mengautentikasi identitas pemanggil.
+
+Langkah 4: Panggil API absensi:
+
+1. Panggil Server API [Menambahkan anggota absensi secara massal](/id/open/development/batch-add-employees-under-the-attendance-group) untuk menambahkan anggota absensi ke grup absensi.
+2. Panggil Server API [Mendapatkan grup absensi pengguna](/id/open/development/queries-a-user-attendance-group) untuk mendapatkan informasi grup absensi tempat pengguna terdaftar.
+3. Dapatkan informasi anggota absensi untuk grup absensi:
+
+   - Panggil Server API [Mendapatkan ID pengguna anggota absensi](/id/open/development/query-attendance-group-personnel-information-in-batches) untuk mendapatkan ID pengguna anggota absensi.
+   - Panggil Server API [Mendapatkan anggota absensi](/id/open/development/batch-query-of-attendance-group-members) untuk mendapatkan informasi anggota absensi.
+   - Panggil Server API [Mengueri daftar anggota absensi](/id/open/development/batch-query-of-employees-in-the-attendance-group) untuk mendapatkan daftar anggota absensi.
+4. Panggil Server API [Memeriksa apakah pengguna ada di grup absensi](/id/open/development/query-members-by-id) untuk memeriksa apakah departemen atau karyawan termasuk dalam grup absensi.
+5. Panggil Server API [Memperbarui anggota absensi](/id/open/development/attendance-group-member-update) untuk memperbarui anggota absensi suatu grup absensi.
+6. Panggil Server API [Menghapus anggota absensi secara massal](/id/open/development/batch-delete-employees-under-the-attendance-group) untuk menghapus anggota absensi.
+
+## Langkah implementasi
+
+### **Langkah 1: Dapatkan kredensial aplikasi**
+
+1. Masuk ke [DingTalk Developer Console](https://open-dev.dingtalk.io/).
+2. Pilih aplikasi target untuk membuka halaman detailnya.
+3. Klik **Informasi Dasar** > **Kredensial dan Informasi Dasar**.
+4. Catat `Client ID` dan `Client Secret` aplikasi.
+
+### Catatan
+
+   Jaga kerahasiaan `Client Secret` dan jangan pernah membagikannya kepada pihak ketiga. Simpan di variabel lingkungan atau sistem manajemen kunci, bukan di-hardcode.
+
+### Langkah 2: Tambahkan izin API
+
+1. Di halaman detail aplikasi, klik **Kelola izin**.
+2. Masukkan pengenal izin berikut di kotak pencarian izin, lalu ajukan izin tersebut:
+
+   - `qyapi_attendance_group_manage` (izin pengelolaan grup absensi): Membuat, memperbarui, dan menghapus grup absensi.
+   - `qyapi_attendance_group_read` (izin kueri grup absensi): Mengueri ringkasan dan detail grup absensi.
+
+<Note>
+Skenario bisnis yang berbeda mungkin memerlukan kombinasi izin yang berbeda. Ajukan izin sesuai kebutuhan aktual Anda. Misalnya, skenario impor massal juga memerlukan izin untuk operasi pengguna secara massal.
+</Note>
+
+### Langkah 3: Dapatkan kredensial akses (access_token)
+
+Gunakan Client ID dan Client Secret dari Langkah 1 untuk mendapatkan Kredensial akses. Untuk detailnya, lihat [Mendapatkan access_token Aplikasi internal](/id/open/development/obtain-orgapp-token).
+
+```java
+public void getAccessToken() throws ApiException {
+  DingTalkClient client = new DefaultDingTalkClient("https://oapi.dingtalk.io/gettoken");
+  OapiGettokenRequest req = new OapiGettokenRequest();
+  req.setAppkey("dingxxxxxxxxxhgn");
+  req.setAppsecret("9G_xxxxxxxxxxxxxxx1JDf0Qq3nexxxxxxxxGIO");
+  req.setHttpMethod("GET");
+  OapiGettokenResponse rsp = client.execute(req);
+  System.out.println(rsp.getBody());
+}
+```
+
+**Praktik terbaik**:
+
+- **Caching**: `access_token` berlaku selama 2 jam. Simpan di memori atau Redis, lalu muat ulang 5 menit sebelumnya masa berlakunya habis.
+- **Kontrol konkurensi**: Cegah konflik akibat beberapa thread memuat ulang token secara bersamaan. Gunakan distributed lock.
+- **Coba lagi saat error**: Coba lagi secara otomatis saat jaringan tidak stabil, maksimal 3 kali, dengan interval yang meningkat (1s → 2s → 4s).
+
+### **Langkah 4:** Panggil API inti
+
+<Note>
+Untuk alur kerja pengelolaan grup absensi, lihat [Mengonfigurasi aturan absensi: membuat grup absensi secara massal dan menyesuaikannya secara dinamis](/id/open/development/operation-related-to-attendance-group).
+</Note>
+
+1. **Tambahkan anggota absensi secara massal**: Panggil Server API [Menambahkan anggota absensi secara massal](/id/open/development/batch-add-employees-under-the-attendance-group) untuk menambahkan anggota absensi ke grup absensi.
+
+   ```java
+   public void  addAttendanceMembers() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/users/add");
+           OapiAttendanceGroupUsersAddRequest req = new OapiAttendanceGroupUsersAddRequest();
+           req.setOpUserid("manager7675");
+     			//Dapatkan groupKey: konversikan groupId menjadi groupKey. Lihat alur kerja pengelolaan grup absensi
+           req.setGroupKey("2A5**********24");
+           req.setUserIdList("085218*********9877041");
+           OapiAttendanceGroupUsersAddResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+2. **Dapatkan grup absensi pengguna**: Panggil Server API [Mendapatkan grup absensi pengguna](/id/open/development/queries-a-user-attendance-group) untuk mendapatkan informasi grup absensi tempat pengguna terdaftar.
+
+   ```java
+    public void attendanceUserGroup() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/getusergroup");
+           OapiAttendanceGetusergroupRequest req = new OapiAttendanceGetusergroupRequest();
+           req.setUserid("0852**********72");
+           OapiAttendanceGetusergroupResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+3. **Dapatkan informasi anggota absensi untuk grup absensi**
+
+   Perbedaan utama ketiga API kueri anggota berikut terlihat saat grup absensi menyertakan departemen sebagai anggota absensi.
+
+   Di Admin Console, buka **Absensi** > **Pengelolaan Grup Absensi**, lalu edit grup absensi. Bidang **anggota absensi** dapat berisi seluruh **Departemen** sekaligus **Pengguna** individu secara bersamaan. Tersedia juga bidang terpisah untuk **anggota non-absensi**.
+
+   | API | ID pengguna Budi | ID departemen Uji | ID pengguna karyawan departemen Uji |
+   | --- | --- | --- | --- |
+   | [Mendapatkan ID pengguna anggota absensi](/id/open/development/query-attendance-group-personnel-information-in-batches) | ✅ | ❎ | ✅ |
+   | [Mendapatkan anggota absensi](/id/open/development/batch-query-of-attendance-group-members) | ✅ | ✅ | ❎ |
+   | [Mengueri daftar anggota absensi](/id/open/development/batch-query-of-employees-in-the-attendance-group) | ✅ | ❎ | ❎ |
+
+   **Catatan**: ✅ berarti data dapat diperoleh. ❎ berarti data tidak dapat diperoleh.
+
+   - **Dapatkan ID pengguna anggota absensi**: Panggil Server API [Mendapatkan ID pengguna anggota absensi](/id/open/development/query-attendance-group-personnel-information-in-batches) untuk mendapatkan ID pengguna anggota absensi.
+
+     ```java
+      public void attendanceGroupMemberUsers() throws ApiException {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/memberusers/list");
+             OapiAttendanceGroupMemberusersListRequest req = new OapiAttendanceGroupMemberusersListRequest();
+             req.setCursor(0L);
+             req.setOpUserId("ma********75");
+             req.setGroupId(1001290520L);
+             OapiAttendanceGroupMemberusersListResponse rsp = client.execute(req, "access_token");
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - **Dapatkan informasi anggota absensi**: Panggil Server API [Mendapatkan anggota absensi](/id/open/development/batch-query-of-attendance-group-members) untuk mendapatkan informasi anggota absensi.
+
+     ```java
+      public void groupMemberList() throws ApiException {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/list");
+             OapiAttendanceGroupMemberListRequest req = new OapiAttendanceGroupMemberListRequest();
+             req.setCursor(0L);
+             req.setOpUserId("ma*******5");
+             req.setGroupId(1001290520L);
+             OapiAttendanceGroupMemberListResponse rsp = client.execute(req, "access_token");
+             System.out.println(rsp.getBody());
+         }
+     ```
+   - **Kueri daftar anggota absensi (dengan paginasi):** Panggil Server API [Mengueri daftar anggota absensi](/id/open/development/batch-query-of-employees-in-the-attendance-group) untuk mendapatkan daftar anggota absensi.
+
+     ```java
+       public void groupUsersQuery() throws ApiException {
+             DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/users/query");
+             OapiAttendanceGroupUsersQueryRequest req = new OapiAttendanceGroupUsersQueryRequest();
+             req.setSize(50L);
+             req.setCursor("");
+             req.setOpUserid("m*******75");
+             req.setGroupKey("2A5B6**********EF24");
+             OapiAttendanceGroupUsersQueryResponse rsp = client.execute(req, "access_token");
+             System.out.println(rsp.getBody());
+         }
+     ```
+4. **Periksa apakah pengguna ada di grup absensi**: Panggil Server API [Memeriksa apakah pengguna ada di grup absensi](/id/open/development/query-members-by-id) untuk memastikan apakah karyawan termasuk dalam grup absensi tertentu.
+
+   ```java
+   public void checkGroupMember() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/listbyids");
+           OapiAttendanceGroupMemberListbyidsRequest req = new OapiAttendanceGroupMemberListbyidsRequest();
+           req.setOpUserId("m*******75");
+           req.setMemberIds("085**********272");
+           req.setMemberType(0L);
+           req.setGroupId(1001290520L);
+           OapiAttendanceGroupMemberListbyidsResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+5. **Perbarui anggota absensi**: Panggil Server API [Memperbarui anggota absensi](/id/open/development/attendance-group-member-update) untuk menyesuaikan daftar anggota grup absensi (menambahkan atau menghapus karyawan atau departemen).
+
+   ```java
+    public void updateGroupMember() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/member/update");
+           OapiAttendanceGroupMemberUpdateRequest req = new OapiAttendanceGroupMemberUpdateRequest();
+           req.setOpUserId("man*****75");
+           req.setGroupId(1001290520L);
+           req.setScheduleFlag(0L);
+           OapiAttendanceGroupMemberUpdateRequest.TopGroupMemberUpdateParam updateParam = new OapiAttendanceGroupMemberUpdateRequest.TopGroupMemberUpdateParam();
+   //        updateParam.setAddDepts(Arrays.asList("123"));
+   //        updateParam.setRemoveDepts(Arrays.asList("456"));
+           updateParam.setAddUsers(Arrays.asList("012**********197"));
+   //        updateParam.setAddExtraUsers(Arrays.asList("user456"));
+   //        updateParam.setRemoveExtraUsers(Arrays.asList("user789"));
+   //        updateParam.setRemoveUsers(Arrays.asList("user121"));
+           req.setUpdateParam(updateParam);
+           OapiAttendanceGroupMemberUpdateResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+6. **Hapus anggota absensi secara massal**: Panggil Server API [Menghapus anggota absensi secara massal](/id/open/development/batch-delete-employees-under-the-attendance-group) untuk menghapus karyawan yang keluar atau dimutasi dari grup absensi.
+
+   ```java
+    public void deleteGroupMember() throws ApiException {
+           DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/group/users/remove");
+           OapiAttendanceGroupUsersRemoveRequest req = new OapiAttendanceGroupUsersRemoveRequest();
+           req.setOpUserid("ma******75");
+           req.setGroupKey("2A5************F24");
+           req.setUserIdList("012*********3197");
+           OapiAttendanceGroupUsersRemoveResponse rsp = client.execute(req, "access_token");
+           System.out.println(rsp.getBody());
+       }
+   ```
+
+**Daftar periksa implementasi**:
+
+- ✅ Semua panggilan API mengembalikan kode status berhasil (errcode=0).
+- ✅ Setelah setiap tindakan penambahan atau penghapusan, panggil API verifikasi untuk mengonfirmasi hasilnya.
+- ✅ Log error lengkap untuk penelusuran masalah.
+- ✅ Data anggota grup absensi di sistem HR dan DingTalk dibandingkan secara berkala dan tetap konsisten.
+
+## FAQ
+
+- **T1: Apa perbedaan ketiga API kueri anggota?**
+
+  J: Setiap API sesuai untuk skenario tipe anggota yang berbeda:
+
+  - [Mendapatkan ID pengguna anggota absensi](/id/open/development/query-attendance-group-personnel-information-in-batches): Hanya mengembalikan daftar ID pengguna. Gunakan API ini jika Anda hanya perlu memeriksa keberadaan anggota di grup absensi.
+  - [Mendapatkan anggota absensi](/id/open/development/batch-query-of-attendance-group-members): Mengembalikan informasi anggota terperinci (nama, departemen, dan lainnya). Gunakan API ini jika Anda perlu menampilkan detail anggota.
+  - [Mengueri daftar anggota absensi](/id/open/development/batch-query-of-employees-in-the-attendance-group): Mendukung kueri dengan paginasi. Gunakan API ini untuk mengambil anggota secara bertahap jika grup absensi memiliki banyak anggota.
+
+  Jika grup absensi menyertakan anggota departemen, perhatikan hal berikut: kueri berdasarkan ID pengguna individu mengembalikan informasi karyawan tersebut. Kueri berdasarkan ID departemen tidak langsung mengembalikan detail karyawan di departemen tersebut. Panggil API kueri anggota departemen secara terpisah.
+- **T2: Bagaimana cara menangani kegagalan sebagian saat menambahkan anggota secara massal?**
+
+  J: API penambahan massal menggunakan strategi "best effort" dan mengembalikan anggota yang berhasil dan gagal secara terpisah. Ikuti langkah berikut:
+
+  1. Uraikan respons untuk mengambil ID pengguna anggota yang gagal beserta alasan error-nya.
+  2. Catat kegagalan dan analisis penyebabnya (misalnya, pengguna tidak ada atau sudah terdaftar di grup absensi).
+  3. Coba lagi untuk error yang dapat dipulihkan (misalnya, pengguna yang baru dibuat belum tersinkronisasi).
+  4. Lewati dan catat error yang tidak dapat dipulihkan (misalnya, pengguna sudah keluar dari organisasi).
+- **T3: Bagaimana cara memastikan karyawan yang keluar terhapus sepenuhnya?**
+
+  J: Ikuti langkah berikut untuk memastikan penghapusan tuntas:
+
+  1. Setelah persetujuan pengunduran diri di OA disetujui, panggil API [Mendapatkan grup absensi pengguna](/id/open/development/queries-a-user-attendance-group) untuk mendapatkan ID semua grup absensi tempat karyawan terdaftar.
+  2. Lakukan iterasi pada semua grup absensi dan panggil API [Menghapus anggota absensi secara massal](/id/open/development/batch-delete-employees-under-the-attendance-group) untuk menghapus karyawan.
+  3. Panggil API [Memeriksa apakah pengguna ada di grup absensi](/id/open/development/query-members-by-id) untuk memastikan karyawan telah dihapus dari semua grup absensi.
+  4. Catat tindakan tersebut, termasuk daftar ID grup absensi, waktu tindakan, dan operatornya.

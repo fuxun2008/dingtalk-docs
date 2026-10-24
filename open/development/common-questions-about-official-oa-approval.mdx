@@ -1,0 +1,203 @@
+---
+title: "Official OA Approval"
+description: "Find answers to OA Approval questions: getting the form schema, handling approval attachments, and fixing template and instance API errors."
+---
+
+# FAQ
+
+## Official OA Approval
+
+- **Getting the form schema from a Third-party enterprise app returns "code: 500, unknown error"**
+
+  A: If the [Get Form Schema](/open/development/obtain-the-form-schema) API returns "code: 500, unknown error," the cause may be a permissions issue. You can get only the forms that the user has authorized. Forms without user authorization are not returned. For details on authorization to get approval instance data, see Invoke the Authorization Pop-up.
+- **How do I add attachments to an approval?**
+
+  A: Approval attachments require both the Server API and the frontend API. For the detailed process, see the use case [Approval Attachment Workflow](/open/development/new-version-of-attachment-approval-process).
+
+### Note
+
+  Adding approval attachments through the Server API alone is not supported yet.
+
+  1. Call the [Get Approval Drive Space Information](/open/development/obtains-the-information-about-approval-nail-disk) API to get the spaceId of the approval Drive space dedicated to approval attachments.
+  2. Call the API to select local resources and upload them to the approval attachment Drive space. Get the spaceId, fileId, fileName, fileSize, and fileType parameters.
+  3. Pass the parameters from step 2 to the attachment component in the API that initiates the approval.
+- **How do I get the attachments in an approval?**
+
+  A: Approval attachments require both the Server API and the frontend API. For the detailed process, see the use case [Approval Attachment Workflow](/open/development/new-version-of-attachment-approval-process).
+
+  1. Call the [Authorize Preview of Approval Attachments](/open/development/official-authorized-preview-approval-attachment) API. This API grants authorization. Only the user that corresponds to the userid passed in can preview the attachment.
+  2. Use the space_id parameter to call Upload Attachment to Drive / Select File from Drive and get the Drive attachment information.
+- **The call failed for an Approval API**
+
+  A: If an Approval API call returns an error, check the following:
+
+  1. When you build an approval template in the Approval app of the OA admin console, select only the component types listed in [Create an Approval Instance](/open/development/create-an-approval-instance). Otherwise, the API that initiates the approval returns an error.
+  2. In the approval template, the detail component supports only input box and image components. Other component types are not supported.
+  3. An approval template supports up to 20 components.
+- **Which control formats can I pass in the detail component when I initiate an OA Approval instance?**
+
+  A: The detail component in the [Create an Approval Instance](/open/development/create-an-approval-instance) API accepts the following control formats: single-line input box, multi-line input box, number input box, and image control.
+
+## Self-Built OA Approval
+
+### Create or Update Template API
+
+#### errcode=15
+
+- **Problem**
+
+  Calling the Create or Update Template API returns the following error.
+
+  ```json
+  {
+     " errcode":15,
+     " sub_msg":"Service unavailable",
+     " sub_code":isp.-1,
+     " errmsg":"Remote service error"[
+        subcode=isp.-1,
+        "submsg=Service unavailable"
+     ]
+  }
+  ```
+- **Cause**
+
+  The componentName parameter does not accept Custom values. Pass one of the fixed values listed in the documentation.
+- **Solution**
+
+  Change the componentName value. For details, see [Create or Update an Approval Template](/open/development/create-orupdate-the-approval-template-new).
+
+#### errcode=810002
+
+- **Problem**
+
+  Calling the Create or Update Template API returns the following error.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"The number of copied approval flows has exceeded the maximum",
+     "request_id":"xsr5qth2j075"
+  }
+  ```
+- **Cause**
+
+  The limit of 200 templates has been reached.
+- **Solution**
+
+  Delete the templates you no longer need, and then try again.
+
+### Create Instance API
+
+- **Problem**
+
+  No permission to operate on the approval flow. Check whether the approval instance or template is correct.
+
+  ```json
+  {
+      "errcode": 810007,
+      "errmsg": "No permission to operate on the approval flow",
+      "request_id": "xxx"
+  }
+  ```
+- **Cause**
+
+  The processCode parameter is incorrect.
+- **Solution**
+
+  Use the processCode returned by the [Create or Update an Approval Template](/open/development/create-orupdate-the-approval-template-new) API, and set **fake_mode** to **true**.
+
+### Update Instance API
+
+#### **errcode=810007** **No Permission to Operate on the Approval Flow**
+
+- **Problem**
+
+  Calling the Update Instance API (process/workrecord/update) returns the following error.
+
+  ```text
+  No permission to operate on the approval flow. Check whether the approval instance or template is correct.
+  ```
+
+  ```json
+  {
+      "errcode": 810007,
+      "errmsg": "No permission to operate on the approval flow",
+      "request_id": "xxx"
+  }
+  ```
+- **Cause**
+
+  The instance ID (process_instance_id) parameter is incorrect.
+- **Solution**
+
+  The instance ID (process_instance_id) must be the process_instance_id value returned by the [Create Instance](/open/development/create-a-ticket-approval-instance) API. Instance values from official approval flows are not accepted.
+
+#### errorcode=820008
+
+- **Problem**
+
+  Calling the Update Instance API (process/workrecord/update) returns the following error.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"Approval system error. Reason: [The approval form has been modified by the admin]",
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Cause**
+
+  The result parameter was not passed.
+- **Solution**
+
+  When you update an Approval form instance, pass the result value and try again.
+
+### Create To-Do API
+
+#### errorcode=820008
+
+- **Problem**
+
+  Calling the Create To-Do API (process/workrecord/task/create) returns the following error.
+
+  ```json
+  {
+     "errcode":810002,
+     "errmsg":"Approval system error. Reason: [Known engine error:{0}",
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Cause**
+
+  The URL parameter is too long.
+- **Solution**
+
+  Shorten the URL parameter and try again.
+
+#### errorcode=820010
+
+- **Problem**
+
+  Calling the Create To-Do API (process/workrecord/task/create) returns the following error.
+
+  ```json
+  {
+     "errcode":820010,
+     "request_id":"6pz3le495848"
+  }
+  ```
+- **Cause**
+
+  The number of To-Do tasks under the instance exceeds the limit.
+- **Solution**
+
+  Each instance supports up to 100 To-Do tasks. Delete the To-Do tasks you no longer need and try again, or create a new instance.
+
+### Others
+
+#### Self-Built OA Approval API Returns "No Permission to Operate on the Approval Flow"
+
+This issue occurs when the "official OA Approval" and "self-built OA Approval" scenarios are mixed.
+
+1. When you call the Create Instance API for self-built OA Approval, the process_code parameter must come from the [Create or Update an Approval Template](/open/development/create-orupdate-the-approval-template-new) API. Do not use a process_code copied from the address bar of the Approval admin console.
+2. When you call the Update Instance Status API for self-built OA Approval, the process_instance_id parameter must come from the [Create Instance](/open/development/create-a-ticket-approval-instance) API. Do not pass a process_instance_id returned by the Create Approval Instance API of the official approval flow.

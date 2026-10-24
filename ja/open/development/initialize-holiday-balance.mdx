@@ -1,0 +1,177 @@
+---
+title: "休暇残数の初期化"
+description: "指定した社員の通常休暇の休暇残数を一括で初期化する API です。休暇タイプ、クォータ、有効期間を指定して休暇管理の初期設定を行えます。"
+---
+
+この API を呼び出して、社員の複数の通常休暇の休暇残数を初期化します。
+
+## API 呼び出し説明
+
+代休の休暇タイプは、この API で初期化する必要はありません。残業時間は自動的に代休の休暇時間に換算されます。休暇ルールは、API の呼び出しまたは DingTalk 公式の勤怠アプリのいずれかの方法で作成します。
+
+| 休暇ルールの作成方法 | 本 API による休暇タイプの更新可否 |
+| --- | --- |
+| [休暇ルールの追加](/ja/open/development/add-holiday-rules) API を呼び出して作成した休暇タイプ。 | 対応 |
+| 管理コンソールの勤怠アプリで作成した休暇タイプ。   - 勤怠アプリのシステムによりデフォルトで作成されたもの。 - 勤怠アプリの管理画面から作成したもの。 | 非対応 |
+
+## リクエスト
+
+| **基本情報** | |
+| --- | --- |
+| HTTP URL | https://api.dingtalk.io/topapi/attendance/vacation/quota/init |
+| HTTP メソッド | POST |
+| 対応アプリタイプ | appType-社内アプリ　appType-サードパーティ社内アプリ |
+| 必要な権限 | permission-qyapi_holiday_manage-DingTalk 休暇管理権限 |
+
+### クエリパラメータ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| access_token | String | はい | bE74xxxx | この API を呼び出すためのアプリ認証情報です。   - 社内アプリの場合は、[社内アプリの access_token の取得](/ja/open/development/obtain-orgapp-token) API を呼び出して取得します。 - サードパーティ社内アプリの場合は、サードパーティ組織の access_token を取得する API を呼び出して取得します。 |
+
+### リクエストボディ
+
+| 名前 | タイプ | 必須 | 例 | 説明 |
+| --- | --- | --- | --- | --- |
+| op_userid | String | はい | manager1 | **OA承認** のアプリ権限を持つ社内の管理者のユーザー ID です。 |
+| leave_quotas | LeaveQuotas | はい |  | 初期化する休暇残数のレコードです。 |
+| userid | String | はい | zhangsan | 社員のユーザー ID です。 |
+| end_time | Number | はい | 1653851001000 | クォータの有効期間の終了時刻です（ミリ秒単位のタイムスタンプ）。 |
+| start_time | Number | はい | 1553851001000 | クォータの有効期間の開始時刻です（ミリ秒単位のタイムスタンプ）。 |
+| leave_code | String | はい | f84a282xxxx | 休暇タイプの一意の識別子です。  **注意**   - [休暇ルールの追加](/ja/open/development/add-holiday-rules) API を呼び出して追加した休暇タイプは初期化できます。 - 組織に組み込まれている休暇タイプは初期化できません。 |
+| reason | String | いいえ | 管理者によるインポート | 操作の理由です。 |
+| quota_num_per_day | Number | いいえ | 100 | 日単位で計算したクォータの合計です。  **注意**  休暇タイプが日単位で計算される場合、この値は空にできません。単位は 1/100 日です。  例：1000 = 10 日。 |
+| quota_num_per_hour | Number | いいえ | 100 | 時間単位で計算したクォータの合計です。  **注意**  休暇タイプが時間単位で計算される場合、この値は空にできません。単位は 1/100 時間です。  例：1000 = 10 時間。 |
+| quota_cycle | String | いいえ | 2019 | クォータが適用される期間です。  **注意**  形式は「yyyy」である必要があります。 |
+
+### リクエスト例
+
+```curl
+curl -X POST "https://api.dingtalk.io/topapi/attendance/vacation/quota/init" \
+-H 'Content-Type:application/x-www-form-urlencoded;charset=utf-8' \
+-d 'access_token=d82be2bxxxx023' \
+-d 'leave_quotas=null' \
+-d 'op_userid=zhangsan'
+```
+
+Java
+
+```java
+DingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/init");
+OapiAttendanceVacationQuotaInitRequest req = new OapiAttendanceVacationQuotaInitRequest();
+req.setOpUserid("zhangsan");
+List<LeaveQuotas> list = new ArrayList<LeaveQuotas>();
+LeaveQuotas leaveQuotas = new LeaveQuotas();
+list.add(leaveQuotas);
+leaveQuotas.setUserid("user1");
+leaveQuotas.setEndTime(1653851001000L);
+leaveQuotas.setStartTime(1553851001000L);
+leaveQuotas.setLeaveCode("f84a2829-xxxx0653");
+leaveQuotas.setReason("管理者によるインポート");
+leaveQuotas.setQuotaNumPerDay(100L);
+leaveQuotas.setQuotaNumPerHour(100L);
+leaveQuotas.setQuotaCycle("2019");
+req.setLeaveQuotas(list);
+OapiAttendanceVacationQuotaInitResponse rsp = client.execute(req, access_token);
+System.out.println(rsp.getBody());
+```
+
+Python
+
+```python
+import dingtalk.api
+
+req=dingtalk.api.OapiAttendanceVacationQuotaInitRequest("https://api.dingtalk.io/topapi/attendance/vacation/quota/init")
+
+req.op_userid="zhangsan"
+req.leave_quotas=""
+try:
+  resp= req.getResponse(access_token)
+  print(resp)
+except Exception,e:
+  print(e)
+```
+
+PHP
+
+```php
+include "TopSdk.php";
+date_default_timezone_set('Asia/Shanghai');
+
+$c = new DingTalkClient(DingTalkConstant::$CALL_TYPE_OAPI, DingTalkConstant::$METHOD_POST , DingTalkConstant::$FORMAT_JSON);
+$req = new OapiAttendanceVacationQuotaInitRequest;
+$req->setOpUserid("zhangsan");
+$leave_quotas = new LeaveQuotas;
+$leave_quotas->userid="zhangsan";
+$leave_quotas->end_time="1653851001000";
+$leave_quotas->start_time="1553851001000";
+$leave_quotas->leave_code="f84a2829-d245-4312-9ff2-0653e5b3abb2";
+$leave_quotas->reason="管理者によるインポート";
+$leave_quotas->quota_num_per_day="100";
+$leave_quotas->quota_num_per_hour="100";
+$leave_quotas->quota_cycle="2019";
+$req->setLeaveQuotas(array($leave_quotas));
+$resp = $c->execute($req, $access_token, "https://api.dingtalk.io/topapi/attendance/vacation/quota/init");
+```
+
+C#
+
+```csharp
+IDingTalkClient client = new DefaultDingTalkClient("https://api.dingtalk.io/topapi/attendance/vacation/quota/init");
+OapiAttendanceVacationQuotaInitRequest req = new OapiAttendanceVacationQuotaInitRequest();
+req.OpUserid = "zhangsan";
+List<OapiAttendanceVacationQuotaInitRequest.LeaveQuotasDomain> list2 = new List<OapiAttendanceVacationQuotaInitRequest.LeaveQuotasDomain>();
+OapiAttendanceVacationQuotaInitRequest.LeaveQuotasDomain obj3 = new OapiAttendanceVacationQuotaInitRequest.LeaveQuotasDomain();
+list2.Add(obj3);
+obj3.Userid = "zhangsan";
+obj3.EndTime = 1653851001000L;
+obj3.StartTime = 1553851001000L;
+obj3.LeaveCode = "f84a2829-d245-4312-9ff2-0653e5b3abb2";
+obj3.Reason = "管理者によるインポート";
+obj3.QuotaNumPerDay = 100L;
+obj3.QuotaNumPerHour = 100L;
+obj3.QuotaCycle = "2019";
+req.LeaveQuotas_ = list2;
+OapiAttendanceVacationQuotaInitResponse rsp = client.Execute(req, access_token);
+Console.WriteLine(rsp.Body);
+```
+
+## レスポンス
+
+### レスポンスボディ
+
+| 名前 | タイプ | 例 | 説明 |
+| --- | --- | --- | --- |
+| result | Result[] |  | 返却される結果です。 |
+| reason | String | 日単位のクォータは空にできません | 失敗の理由です。 |
+| quota | Quota |  | 失敗したレコードです。 |
+| leave_code | String | f84a2829-xxxx0653 | 休暇タイプの一意の識別子です。 |
+| userid | String | user1 | 社員のユーザー ID です。 |
+| quota_cycle | String | 2019 | クォータが適用される期間です。 |
+| errcode | Number | 0 | リターンコードです。 |
+| errmsg | String | ok | 呼び出しに失敗した場合に返されるエラーメッセージです。 |
+| success | Boolean | true | リクエストが成功したかどうかを示します。   - **true**：成功 - **false**：失敗 |
+| request_id | String | zq4aec1jton8 | リクエスト ID です。 |
+
+### レスポンスボディの例
+
+```json
+{
+  "errcode": 0,
+  "result": [
+    {
+      "quota": {
+        "leave_code": "f84a2829-xxxx0653",
+        "userid": "10203029011219896"
+      },
+      "reason": "日単位のクォータは空にできません"
+    }
+  ],
+  "success": true,
+  "request_id": "zq4aec1jton8"
+}
+```
+
+### エラーコード
+
+呼び出しでエラーが返された場合は、エラーメッセージをもとに [グローバルエラーコード](/ja/open/development/server-api-error-codes-1) ドキュメントで解決方法を確認してください。

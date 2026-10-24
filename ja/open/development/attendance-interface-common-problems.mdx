@@ -1,0 +1,134 @@
+---
+title: "FAQ"
+description: "DingTalk の勤怠関連サーバーサイド API でよくあるエラーの原因と対処法、空のレスポンスが返る場合の確認ポイントを解説します。"
+---
+
+このトピックでは、DingTalk のサーバーサイド勤怠 API を呼び出す際によく発生するエラーについて説明します。
+
+## 勤怠打刻
+
+### 打刻漏れ、無効な打刻（シフト外）、欠勤の記録はいつ生成されますか？
+
+A：各記録は次のタイミングで生成されます。
+
+- 無効な打刻：リアルタイムで生成されます。
+
+  - 欠勤の記録：欠勤は計算によって決まるステータスです。1 日のすべての打刻が漏れているユーザーは欠勤と判定されます。
+  - 打刻漏れの例：ある組織の通常勤務日のシフトが 09:00〜18:00 であるとします。
+- 打刻時間帯が設定されていない場合：
+
+  - 出勤打刻の結果：2 つの打刻時刻の中間時点で打刻漏れが生成されます。(9 + 18) / 2 = 13.5、つまり 13:30 です。
+  - 退勤打刻の結果：
+
+    - 翌日が勤務日の場合：2 つの打刻時刻の中間時点で結果が計算されます［「前 8 時間・後 12 時間」のルールに従います］。(18 + 9) / 2 = 13.5、つまり翌日の 01:30 です。
+    - 翌日が休日の場合：最も遅い打刻時刻を延長し［「前 8 時間・後 12 時間」のルールに従います］、12 時間後に勤怠結果が生成されます。
+- 打刻時間帯が設定されている場合：設定済みの最も遅い打刻時刻に基づいて勤怠結果が生成されます。
+
+### 打刻結果の取得 API が空のレスポンスを返す
+
+A：[打刻結果の取得](/ja/open/development/open-attendance-clock-in-data) API を呼び出して空のレスポンスが返る場合、主に次の原因が考えられます（これらに限りません）。
+
+- userId パラメータの値が正しくありません。現在の組織にそのユーザー ID が存在することを確認してください。
+- isI18n パラメータ（海外組織かどうかを示す）の値が正しくありません。中国本土の組織の場合は、isI18n を false に設定してください。
+- checkDateFrom を確認してください。たとえば、ユーザーが 09:00 に打刻しているのにリクエストで 10:00 を渡すと、データは返されません。
+- userIdList パラメータの形式が正しくありません。複数のユーザー ID はカンマ（,）で区切ってください。
+
+### 打刻記録のアップロード API は成功を返すが、OA 管理コンソールに記録が表示されない
+
+A：[打刻記録のアップロード](/ja/open/development/upload-punch-records) API が成功を返したにもかかわらず、組織の OA 管理コンソールの勤怠統計に記録が表示されない場合は、user_check_time パラメータがミリ秒単位の 13 桁のタイムスタンプになっているかを確認してください。
+
+### 打刻結果の取得 API が空のレスポンス `{"errcode":0,"hasMore":false,"errmsg":"ok","recordresult":[]}` を返す
+
+A：[打刻結果の取得](/ja/open/development/open-attendance-clock-in-data) API が空のレスポンスを返す場合は、次の項目を順に確認してください。
+
+- userId パラメータの値が正しいかを確認します。打刻 API で使用したものと同じアクセストークンを使って [ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出してください。「userId does not exist」が返る場合は、userId の値が正しくありません。
+- isI18n パラメータを確認します。中国本土の組織の場合は、isI18n を false に設定してください。true を渡すと勤怠データは返されません。
+- userIdList パラメータの形式が正しいかを確認します。
+
+### 打刻詳細の取得 API が空のレスポンス `{"errcode":0,"errmsg":"ok","recordresult":[]}` を返す
+
+A：[打刻詳細の取得](/ja/open/development/attendance-clock-in-record-is-open) API が空のレスポンスを返す場合は、次の項目を順に確認してください。
+
+- userId パラメータの値が正しいかを確認します。打刻 API で使用したものと同じアクセストークンを使って [ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出してください。「userId does not exist」が返る場合は、userId の値が正しくありません。
+- checkDateFrom パラメータを確認します。たとえば、ユーザーが 09:00 に打刻しているのにリクエストで 10:00 を渡すと、データは返されません。
+- isI18n パラメータを確認します。中国本土の組織の場合は、isI18n を false に設定してください。true を渡すと勤怠データは返されません。
+- userIdList パラメータの形式が正しいかを確認します。
+
+## 勤怠統計
+
+### 勤怠レポート列の値の取得 API で出勤必須日数が 0 になる
+
+A：出勤必須日数フィールドは現在、直近 15 日間の値のみをサポートしています。
+
+### 勤怠レポート列の値の取得 API がエラー `{errcode:850015,errmsg:System error, please try again later}` を返す
+
+A：[勤怠レポート列の値の取得](/ja/open/development/queries-the-column-value-of-the-attendance-report) API が上記のエラーを返す場合は、次の項目を順に確認してください。
+
+- column_id_list パラメータの形式を確認します。このパラメータは String 型です。複数の ID はカンマで区切ってください（例："id1,id2,id3"）。
+- column_id_list の値が、[勤怠レポート列定義の取得](/ja/open/development/queries-the-enterprise-attendance-report-column) API が返すレポート列の ID であり、expression_id フィールドではないことを確認します。
+
+### 勤怠レポート列の値の取得 API がシステムエラー `{errcode:850015,errmsg:System error, please try again later,request_id:woae9xpid4xi}` を返す
+
+A：[勤怠レポート列の値の取得](/ja/open/development/queries-the-column-value-of-the-attendance-report) API がシステムエラーを返す場合は、次の項目を順に確認してください。
+
+- column_id_list パラメータの形式を確認します。このパラメータは String 型です。複数の ID はカンマで区切ってください。例："id1,ide2,id3"
+- column_id_list の値が、[勤怠レポート列定義の取得](/ja/open/development/queries-the-enterprise-attendance-report-column) API が返す id の値であり、expression_id フィールドではないことを確認します。
+
+### 勤怠レポート列の値の取得 API で出勤必須日数フィールドの値が 0 になる
+
+A：[勤怠レポート列の値の取得](/ja/open/development/queries-the-column-value-of-the-attendance-report) API を呼び出すと、次のようにレスポンス内の**出勤必須日数**の値が 0 になる場合があります。
+
+```json
+ {
+      "date":"2021-12-27 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-28 00:00:00",
+      "value":"1.0"
+     },
+     {
+      "date":"2021-12-29 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-30 00:00:00",
+       
+"value":"0.0" 
+
+     },
+     {
+      "date":"2021-12-31 00:00:00",
+       
+"value":"0.0" 
+
+     }
+```
+
+解決方法：出勤必須日数フィールドは現在、直近 15 日間の値のみをサポートしています。
+
+## 勤怠統計
+
+### ユーザー勤怠データの取得 API が空のレスポンスを返す
+
+A：[ユーザー勤怠データの取得](/ja/open/development/obtain-the-attendance-update-data) API を呼び出すと、次のように空のレスポンスが返る場合があります。
+
+```json
+{
+    "errcode":0,
+    "result":{
+        "approve_list":[],
+        "attendance_result_list":[],
+        "check_record_list":[],
+        "corpId":"ding027f45xxxxxxxxx",
+        "userid":"002",
+        "work_date":"2021-12-13 14:00:00"
+        },
+        "success":true,
+        "request_id":"h21upm1yem14"
+}
+```
+
+解決方法：userId パラメータの値が正しいかを確認してください。打刻 API で使用したものと同じアクセストークンを使って [ユーザー詳細の照会](/ja/open/development/query-user-details) API を呼び出します。「userId does not exist」が返る場合は、userId の値が正しくありません。
