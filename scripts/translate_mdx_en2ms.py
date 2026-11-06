@@ -28,13 +28,18 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import sys
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
+from mdx_postprocess import apply_attr_translations, find_untranslated_attrs, localize_internal_links
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+TARGET_LANG = "ms"
+TARGET_LANG_NAME = "Bahasa Melayu (Malaysia)"
 GLOSSARY_DIR = REPO_ROOT / "scripts" / "glossary"
 OUTPUT_DIR = REPO_ROOT / "scripts" / "output" / "translate_docs"
 
@@ -50,7 +55,7 @@ SYSTEM_RULES = """你是钉钉国际版帮助中心的资深马来语技术文�
 
 铁律（违反则译文无效）：
 1. 仅翻译自然语言段落、frontmatter 的 title 与 description、列表项、表格单元格文本、heading 文本。
-2. 保留所有 MDX 组件标签 (<Note> <Tip> <Warning> <Info> <Check> <Card> <CardGroup> <Steps> <Step> <Tabs> <Tab> <Accordion> <AccordionGroup> <CodeGroup> <Update> <Frame> <Icon>) 及其全部 props (title / icon / href / cols / caption / ...) 完全不动，只译子节点可见文本。
+2. 保留所有 MDX 组件标签 (<Note> <Tip> <Warning> <Info> <Check> <Card> <CardGroup> <Steps> <Step> <Tabs> <Tab> <Accordion> <AccordionGroup> <CodeGroup> <Update> <Frame> <Icon>) 保持原样；props 分两类：可见文本 props（Step / Tab / Card / Accordion 的 title、img 的 alt、Frame 的 caption）**必须翻译**；结构 props（icon / href / cols / id / src / style 等）完全不动。子节点可见文本照常翻译。
 3. 代码块 ``` 内部按 4 类区分处理（严禁一刀切「全部不动」）：
    3a. API 契约（保留原样）：JSON 字段名 / HTTP 方法 / 状态码 / Header 名 / URL 与占位符 / 函数名 / 方法名 / SDK 调用 / 变量名 / 错误码字符串 / 已是英文或数字的 enum 值。
    3b. 示例字面量（**必须译为马来语**）：示例 JSON 中 user-facing 字段（title/content/text/key/value/description/desc/name 等）的字符串值；表格 example 列的示例值。
@@ -293,6 +298,27 @@ async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout
     return result, data.get("usage", {}) | {"cost_usd": data.get("total_cost_usd", 0.0)}
 
 
+async def postprocess_translation(cleaned: str, source_text: str, model: str, timeout_s: int) -> str:
+    """内链补语言前缀 + 补译 LLM 漏掉的可见文本 props（Step/Tab/Card 标题、img alt）。"""
+    cleaned = localize_internal_links(cleaned, TARGET_LANG)
+    leftovers = find_untranslated_attrs(source_text, cleaned)
+    if not leftovers:
+        return cleaned
+    prompt = (
+        f"Translate each English UI label below into {TARGET_LANG_NAME}, using the same terminology as this translated page:\n"
+        f"---\n{cleaned[:3000]}\n---\n"
+        "Return ONLY a JSON object mapping each English string to its translation.\n"
+        + json.dumps(leftovers, ensure_ascii=False)
+    )
+    try:
+        text, _ = await call_claude_cli("You translate UI labels precisely.", prompt, model, timeout_s)
+        mapping = json.loads(text[text.find("{"): text.rfind("}") + 1])
+    except Exception as e:  # 补译失败不阻断主译文，打印出来人工跟进
+        print(f"  ! 补译 {len(leftovers)} 个标题失败：{type(e).__name__}: {e}", file=sys.stderr)
+        return cleaned
+    return apply_attr_translations(cleaned, mapping)
+
+
 async def translate_one(
     task: FileTask,
     glossary: dict[str, str],
@@ -330,6 +356,7 @@ async def translate_one(
                 result_text, usage = await call_claude_cli(system_prompt, user_msg, model, timeout_s)
                 elapsed = time.time() - t0
                 cleaned = strip_code_fence_wrapper(result_text).strip() + "\n"
+                cleaned = await postprocess_translation(cleaned, source_text, model, timeout_s)
                 task.target.parent.mkdir(parents=True, exist_ok=True)
                 task.target.write_text(cleaned, encoding="utf-8")
                 return FileResult(
@@ -445,6 +472,10 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+    cli_bin = os.environ.get("CLAUDE_CLI_BIN") or "claude"
+    if not args.dry_run and not shutil.which(cli_bin):
+        print(f"[err] 找不到 claude CLI：{cli_bin}（本机 claude 是 shell 函数，子进程不可见；请设置 CLAUDE_CLI_BIN 为真实二进制路径）", file=sys.stderr)
+        return 2
     glossary = load_en2ms_glossary()
     system_prompt = build_system_prompt(args.root)
     sem = asyncio.Semaphore(args.concurrency)
