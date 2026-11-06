@@ -24,13 +24,18 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import sys
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
+from mdx_postprocess import apply_attr_translations, find_untranslated_attrs, localize_internal_links
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+TARGET_LANG = "ja"
+TARGET_LANG_NAME = "日本語"
 GLOSSARY_DIR = REPO_ROOT / "scripts" / "glossary"
 OUTPUT_DIR = REPO_ROOT / "scripts" / "output" / "translate_docs"
 
@@ -43,7 +48,7 @@ SYSTEM_RULES = """あなたはDingTalk国際版ヘルプセンターのシニア
 
 鉄則（違反した訳文は無効）：
 1. 翻訳対象は自然言語のみ：本文・frontmatter の title と description・リスト項目・表のセル内テキスト・見出しテキスト。
-2. すべての MDX コンポーネントタグ (<Note> <Tip> <Warning> <Info> <Check> <Card> <CardGroup> <Steps> <Step> <Tabs> <Tab> <Accordion> <AccordionGroup> <CodeGroup> <Update> <Frame> <Icon>) と全 props (title / icon / href / cols / caption / ...) は一切変更せず、子ノードの可視テキストのみ翻訳する。
+2. すべての MDX コンポーネントタグ (<Note> <Tip> <Warning> <Info> <Check> <Card> <CardGroup> <Steps> <Step> <Tabs> <Tab> <Accordion> <AccordionGroup> <CodeGroup> <Update> <Frame> <Icon>) はそのまま保持する。props は 2 種類：表示テキスト系 props（Step / Tab / Card / Accordion の title、img の alt、Frame の caption）は**必ず翻訳**する；構造系 props（icon / href / cols / id / src / style 等）は一切変更しない。子ノードの可視テキストも通常どおり翻訳する。
 3. コードブロック ``` 内は 4 分類で処理（一律「保持」は禁止）：
    3a. API 契約（原様保持）：JSON フィールド名 / HTTP メソッド / ステータスコード / Header 名 / URL とプレースホルダ / 関数名 / メソッド名 / SDK 呼び出し / 変数名 / エラーコード文字列 / 既に英数字の enum 値。
    3b. サンプルリテラル（**日本語に書き換え必須**）：サンプル JSON 内の user-facing フィールド（title/content/text/key/value/description/desc/name/author/unit 等）の文字列値；表の example 列のサンプル値。
@@ -288,6 +293,27 @@ async def call_claude_cli(system_prompt: str, user_msg: str, model: str, timeout
     return result, data.get("usage", {}) | {"cost_usd": data.get("total_cost_usd", 0.0)}
 
 
+async def postprocess_translation(cleaned: str, source_text: str, model: str, timeout_s: int) -> str:
+    """内链补语言前缀 + 补译 LLM 漏掉的可见文本 props（Step/Tab/Card 标题、img alt）。"""
+    cleaned = localize_internal_links(cleaned, TARGET_LANG)
+    leftovers = find_untranslated_attrs(source_text, cleaned)
+    if not leftovers:
+        return cleaned
+    prompt = (
+        f"Translate each English UI label below into {TARGET_LANG_NAME}, using the same terminology as this translated page:\n"
+        f"---\n{cleaned[:3000]}\n---\n"
+        "Return ONLY a JSON object mapping each English string to its translation.\n"
+        + json.dumps(leftovers, ensure_ascii=False)
+    )
+    try:
+        text, _ = await call_claude_cli("You translate UI labels precisely.", prompt, model, timeout_s)
+        mapping = json.loads(text[text.find("{"): text.rfind("}") + 1])
+    except Exception as e:  # 补译失败不阻断主译文，打印出来人工跟进
+        print(f"  ! 补译 {len(leftovers)} 个标题失败：{type(e).__name__}: {e}", file=sys.stderr)
+        return cleaned
+    return apply_attr_translations(cleaned, mapping)
+
+
 async def translate_one(
     task: FileTask,
     glossary: dict[str, str],
@@ -325,6 +351,7 @@ async def translate_one(
                 result_text, usage = await call_claude_cli(system_prompt, user_msg, model, timeout_s)
                 elapsed = time.time() - t0
                 cleaned = strip_code_fence_wrapper(result_text).strip() + "\n"
+                cleaned = await postprocess_translation(cleaned, source_text, model, timeout_s)
                 task.target.parent.mkdir(parents=True, exist_ok=True)
                 task.target.write_text(cleaned, encoding="utf-8")
                 return FileResult(
@@ -410,6 +437,10 @@ def write_report(results: list[FileResult], out_dir: Path, started: float, ended
 
 async def main_async(args: argparse.Namespace) -> int:
     model = args.model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
+    cli_bin = os.environ.get("CLAUDE_CLI_BIN") or "claude"
+    if not args.dry_run and not shutil.which(cli_bin):
+        print(f"[err] 找不到 claude CLI：{cli_bin}（本机 claude 是 shell 函数，子进程不可见；请设置 CLAUDE_CLI_BIN 为真实二进制路径）", file=sys.stderr)
+        return 2
     glossary = load_en2ja_glossary()
     system_prompt = build_system_prompt(args.root)
     sem = asyncio.Semaphore(args.concurrency)
