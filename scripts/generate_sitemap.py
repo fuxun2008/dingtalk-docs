@@ -34,7 +34,7 @@ IGNORE_DIRS = {
 }
 VALID_TOP_DIRS = {
     "ai-minutes", "aitable", "announcements", "approval", "attendance", "calendar", "contacts",
-    "docs", "drive", "im", "mail", "meetings", "oa", "open", "yida",
+    "docs", "drive", "im", "mail", "meetings", "oa", "open", "other", "yida",
     "zh", "ja", "id", "ms",
 }
 
