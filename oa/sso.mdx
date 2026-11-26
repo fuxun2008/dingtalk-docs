@@ -1,20 +1,102 @@
 ---
-title: "SSO"
-description: "Manage accounts through your organization's identity system and connect them to DingTalk with protocols like OIDC, including preset integrations for supported IDaaS providers."
+title: "Set up DingTalk single sign-on (SSO) with OIDC"
+description: "After setup, users enter their organization code and sign in to DingTalk with their enterprise credentials."
 ---
 
-Accounts are created and managed within the organization's own identity system, and are created via identity authentication protocols (such as OIDC) through API calls. Preset configurations are currently available for Jiuzhou Yunteng IDaaS, Zhucloud IDaaS, GTS ECUS, and Shuxi Cloud Identity Connector.
+<div id="sso" />
 
----
+This guide applies to **DingTalk Standard (including trials) and higher plans**. You need an administrator who can manage sign-in for the target organization, an administrator who can configure the enterprise identity provider (IdP), and a test user who already belongs to the organization.
 
-## II. Operation Flow
+## 1. Register the DingTalk application with your IdP
 
-| Interface | Instructions |
+For **Microsoft Entra ID**, go to **Entra ID → App registrations → New registration** and select **Accounts in this organizational directory only**. If you already have an application dedicated to this DingTalk organization, open it. <a href="https://entra.microsoft.com/" target="_blank" rel="noopener noreferrer">Microsoft Entra admin center</a>
+
+| Setting | Microsoft Entra ID | Other OIDC providers |
+| --- | --- | --- |
+| Web redirect URI | Under **Authentication**, add the **Web** platform and register the URI below. | Add the same URI to the application's redirect URI list. |
+| Sign-in response | Under **Implicit grant and hybrid flows**, select **ID tokens** and save. | Support `response_type=id_token` and `scope=openid`. Sign ID tokens with RS256. |
+| Application identifiers | Under **Overview**, copy the **Directory (tenant) ID** and **Application (client) ID**. Use them for `{TENANT_ID}` and `{CLIENT_ID}` respectively. | Obtain the client ID and OIDC discovery document URL. The document lists the issuer and authorization endpoint. |
+| Test user | If assignment is required, assign the user under **Enterprise applications → Users and groups** for this app. | Give the test user access to the application. |
+
+**Production Web redirect URI** — register it exactly as shown, including capitalization.
+
+```text
+https://login.dingtalk.io/oauth2/oidcCallBack.htm
+```
+
+### Match the test user to a DingTalk account
+
+| Organization's mapping | What to check |
 | --- | --- |
-| Query User Details API:<br />[https://open.dingtalk.com/document/orgapp/query-user-details](https://open.dingtalk.com/document/orgapp/query-user-details)<br />Create SSO Account API:<br />[https://open.dingtalk.com/document/orgapp/create-an-sso-account](https://open.dingtalk.com/document/orgapp/create-an-sso-account) | Account synchronization integration:<br />1. Use the **Query User Details API** to obtain the userid of employees in the organization.<br />2. In your own account system, establish the mapping between your accounts and DingTalk accounts. **Unique matching value: userid**.<br />3. Use the **Create SSO Account API** to synchronize your accounts to DingTalk. |
+| Default (`sub`) | The subject identifier issued in the ID token must match the member's `userId` in the target DingTalk organization. Entra issues an application-specific `sub`, so check the value for this app. |
+| Custom (`customSub`) | Confirm with the administrator responsible for account synchronization that the organization uses this mapping. The token must contain the case-sensitive claim `customSub`, with a value matching the agreed member `userId` or enterprise account sign-in name (`loginId`). |
 
-In the Admin Console, go to **Organization settings > SSO** to configure the sign-in method.
+For example, if your organization matches Entra user object IDs, add a claim named `customSub` under **Enterprise applications → Single sign-on → Attributes & Claims** and select `user.objectid` as its source. Its value will match the user's tenant object ID (`oid`). Compare it with the synchronized DingTalk member record. <a href="https://learn.microsoft.com/en-us/entra/identity-platform/jwt-claims-customization" target="_blank" rel="noopener noreferrer">Customize Microsoft token claims</a>
+
+If the test user has no DingTalk enterprise account, check the member's `userId`, link the identities, and create the SSO account before testing. [Get user details](/open/development/query-user-details) · [Create an SSO enterprise account](/open/development/create-an-sso-account) · [Get enterprise account user details](/open/development/queries-the-details-of-a-dedicated-account)
+
+## 2. Enter the OIDC settings in DingTalk
+
+Open the admin console, check the organization, and go to **Security → Single Sign-On**. Note the **Organization code**, then select **SSO Login** to expand **Configuration**. <a href="https://oa.dingtalk.io/oa_admin_exclusive.htm#/ssoConfig" target="_blank" rel="noopener noreferrer">Open the DingTalk admin console</a>
 
 <Frame>
-  <img src="https://img.alicdn.com/imgextra/i4/O1CN01G9qd818i3BE4WieU_!!6000000006948-2-tps-2230-1256.png" alt="SSO sign-in configuration in the Admin Console" />
+  <img src="https://gw.alicdn.com/imgextra/i3/O1CN01aeIqCeSUGBE2vGpZ_!!6000000005948-2-tps-1440-629.png" alt="SSO Login selected in the admin console" />
+</Frame>
+
+Select **OIDC Authentication** and fill in the four fields below. Use this option for manual Entra configuration too.
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i2/O1CN018yMhhXeoC3L2Zs1Y_!!6000000002031-2-tps-1270-554.png" alt="OIDC Authentication selected and all four required fields visible" />
+</Frame>
+
+| Console field | Value from the IdP | Single-tenant Entra example |
+| --- | --- | --- |
+| **Issuer** | The discovery document's `issuer`. It must exactly match the token's `iss`. | `https://login.microsoftonline.com/{TENANT_ID}/v2.0` |
+| **Client ID** | The application's client ID, which must match the token audience (`aud`). | `{CLIENT_ID}` (Application ID) |
+| **Authorization URL** | Start with the discovery document's `authorization_endpoint`. Add the client ID, response type, scope and URL-encoded redirect URI to form a complete sign-in request. | Copy the line below and replace both placeholders. |
+| **OpenID Config URL** | The URL of the IdP's **OIDC discovery document**. | `https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration?appid={CLIENT_ID}` |
+
+For a new in-house IdP, you can choose lowercase issuer and client identifiers at registration. For an existing app, copy the issued values with their original capitalization.
+
+**Entra Authorization URL** (the redirect URI is already encoded)
+
+```text
+https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?client_id={CLIENT_ID}&response_type=id_token&response_mode=form_post&scope=openid%20profile%20email&redirect_uri=https%3A%2F%2Flogin.dingtalk.io%2Foauth2%2FoidcCallBack.htm
+```
+
+DingTalk adds `state` and `nonce` for each sign-in. The IdP returns `state` unchanged and includes that request's `nonce` in the ID token. <a href="https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc" target="_blank" rel="noopener noreferrer">Microsoft OIDC sign-in parameters</a>
+
+**Before saving**, open the OpenID Config URL from the public internet. The JSON must contain `jwks_uri`. Open that URI and verify its `keys` array contains the public signing keys. Both HTTPS endpoints must support TLS 1.2 and be reachable by DingTalk servers.
+
+## 3. Save the configuration and choose when to enable SSO
+
+If enterprise account sign-in is active, click **Save** at the bottom of the page. After saving, DingTalk asks whether to switch the organization's sign-in method.
+
+| Goal | In the switch confirmation dialog | Check the result |
+| --- | --- | --- |
+| Configure now, enable later | Cancel the switch. | Refresh the page. Enterprise account sign-in should still be active. Reopen the OIDC settings to check the saved values. |
+| Enable SSO now | Keep your admin session open and confirm the switch. | **Current sign-in method** should show SSO. Proceed to step 4. |
+
+## 4. Test with one account
+
+1. **Browser.** Open DingTalk Docs in a private window. Select enterprise account sign-in and enter the organization code from step 2. You should reach your IdP's sign-in page. <a href="https://docs.dingtalk.io/i/desktop" target="_blank" rel="noopener noreferrer">Sign in to DingTalk Docs</a>
+2. **Identity.** Sign in with the test account. After returning to DingTalk, check both the organization and the member identity.
+3. **Client.** Sign in to the DingTalk client with the same organization code and test account. Verify that you reach the same organization.
+
+To restore the previous method, use the admin session you kept open. Select **Log in with DingTalk Enterprise Account**, click **Save** and confirm the switch.
+
+### Troubleshooting
+
+| Symptom | First check |
+| --- | --- |
+| Single Sign-On is missing. | Verify the organization, plan and administrator's sign-in management permissions. |
+| The organization code does not take you to the IdP. | Check the code and the active sign-in method. Saving the settings alone keeps the previous method active. |
+| Redirect URI mismatch or unsupported `id_token`. | Decode `redirect_uri` once and compare it character for character with the Web URI registered in step 1. In Entra, check **Authentication → ID tokens**. |
+| Signature or token validation fails on return. | Check `alg=RS256`. Match the token header's `kid` to a key in the public key set. Check `iss`, `aud`, the request's `nonce` and the token expiry (`exp`). |
+| Enterprise authentication succeeds but the member cannot be found. | Compare the actual `sub` or `customSub` issued for this app with the member record in the target organization (step 1). |
+
+**Sign-in sequence for the Entra form-post example**
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i3/O1CN01cCkKVIUevaE37rM5_!!6000000001848-2-tps-1540-865.png" alt="OIDC sign-in between the user's browser, DingTalk and the IdP" />
 </Frame>

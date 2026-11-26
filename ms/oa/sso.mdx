@@ -1,20 +1,102 @@
 ---
-title: "SSO"
-description: "Ketahui cara urus akaun melalui sistem identiti organisasi Anda dan sambungkannya ke DingTalk menggunakan protokol seperti OIDC, termasuk integrasi pratetap untuk penyedia IDaaS yang disokong."
+title: "Menyediakan daftar masuk tunggal (SSO) DingTalk dengan OIDC"
+description: "Setelah SSO diaktifkan, pengguna boleh memasukkan kod organisasi dan mendaftar masuk ke DingTalk dengan akaun syarikat."
 ---
 
-Akaun dicipta dan diurus dalam sistem identiti organisasi sendiri, dan dicipta melalui protokol pengesahan identiti (seperti OIDC) menerusi panggilan API. Konfigurasi pratetap kini tersedia untuk Jiuzhou Yunteng IDaaS, Zhucloud IDaaS, GTS ECUS, dan Shuxi Cloud Identity Connector.
+<div id="sso" />
 
----
+Panduan ini terpakai kepada **pelan DingTalk Standard (termasuk percubaan) dan ke atas**. Sediakan pentadbir yang boleh mengurus kaedah daftar masuk organisasi, pentadbir yang boleh mengkonfigurasi penyedia identiti syarikat (IdP), serta seorang pengguna ujian yang sudah menjadi ahli organisasi.
 
-## II. Aliran Operasi
+## 1. Daftarkan aplikasi DingTalk dengan penyedia identiti
 
-| Antara Muka | Arahan |
+Jika menggunakan **Microsoft Entra ID**, buka **Entra ID → App registrations → New registration** dan pilih **Accounts in this organizational directory only**. Jika organisasi DingTalk ini sudah mempunyai aplikasi khusus, buka aplikasi tersebut. <a href="https://entra.microsoft.com/" target="_blank" rel="noopener noreferrer">Pusat pentadbiran Microsoft Entra</a>
+
+| Tetapan | Microsoft Entra ID | Penyedia OIDC lain |
+| --- | --- | --- |
+| URI ubah hala Web | Di bawah **Authentication**, tambah platform **Web** dan daftarkan URI di bawah. | Tambahkan URI yang sama pada senarai URI ubah hala aplikasi. |
+| Respons daftar masuk | Di bawah **Implicit grant and hybrid flows**, pilih **ID tokens** dan simpan. | Benarkan `response_type=id_token` dan `scope=openid`. Tandatangani token ID menggunakan RS256. |
+| Pengecam aplikasi | Dari **Overview**, salin **Directory (tenant) ID** untuk `{TENANT_ID}` dan **Application (client) ID** untuk `{CLIENT_ID}`. | Dapatkan ID klien dan URL dokumen penemuan OIDC. Dokumen itu menyenaraikan pengecam pengeluar dan titik akhir pemberian kuasa. |
+| Pengguna ujian | Jika aplikasi memerlukan penugasan pengguna, tetapkan pengguna ujian di **Enterprise applications → Users and groups**. | Beri pengguna ujian akses kepada aplikasi. |
+
+**URI ubah hala Web untuk persekitaran produksi**. Daftarkan alamat tepat seperti yang ditunjukkan, termasuk huruf besar dan kecil.
+
+```text
+https://login.dingtalk.io/oauth2/oidcCallBack.htm
+```
+
+### Padankan pengguna ujian dengan akaun DingTalk
+
+| Kaedah padanan organisasi | Nilai yang perlu disemak |
 | --- | --- |
-| API Pertanyaan Butiran Pengguna:<br />[https://open.dingtalk.com/document/orgapp/query-user-details](https://open.dingtalk.com/document/orgapp/query-user-details)<br />API Cipta Akaun SSO:<br />[https://open.dingtalk.com/document/orgapp/create-an-sso-account](https://open.dingtalk.com/document/orgapp/create-an-sso-account) | Integrasi penyegerakan akaun:<br />1. Gunakan **API Pertanyaan Butiran Pengguna** untuk mendapatkan userid pekerja dalam organisasi.<br />2. Dalam sistem akaun anda sendiri, wujudkan pemetaan antara akaun anda dengan akaun DingTalk. **Nilai padanan unik: userid**.<br />3. Gunakan **API Cipta Akaun SSO** untuk menyegerakkan akaun anda ke DingTalk. |
+| Lalai, menggunakan `sub` | `sub` ialah pengecam pengguna yang dikeluarkan oleh IdP dalam token ID. Nilainya mesti sepadan dengan `userId` ahli dalam organisasi DingTalk berkenaan. Nilai `sub` Entra bergantung pada aplikasi, jadi semak nilai untuk aplikasi ini. |
+| Pemetaan tersuai dengan `customSub` | Semak dengan pentadbir penyegerakan akaun bahawa organisasi telah mengaktifkan pemetaan ini. Token mesti mengandungi tuntutan `customSub` dengan ejaan dan penggunaan huruf besar dan kecil yang tepat. Nilainya mesti sepadan dengan `userId` atau nama daftar masuk akaun syarikat (`loginId`) yang ditetapkan oleh organisasi. |
 
-Dalam Admin Console, pergi ke **Tetapan organisasi > SSO** untuk konfigurasikan kaedah log masuk.
+Contohnya, jika organisasi menggunakan ID objek pengguna Entra, tambahkan tuntutan `customSub` di **Enterprise applications → Single sign-on → Attributes & Claims**. Pilih `user.objectid` sebagai atribut sumber. Nilainya akan sepadan dengan ID objek pengguna (`oid`) dalam penyewa tersebut. Bandingkan nilai itu dengan rekod ahli yang telah disegerakkan ke DingTalk. <a href="https://learn.microsoft.com/ms-my/entra/identity-platform/jwt-claims-customization" target="_blank" rel="noopener noreferrer">Konfigurasi tuntutan Microsoft</a>
+
+Jika pengguna ujian belum mempunyai akaun syarikat DingTalk, semak `userId` ahli organisasi, pautkan identiti tersebut dan cipta akaun SSO sebelum menguji daftar masuk. [Dapatkan butiran pengguna](/ms/open/development/query-user-details) · [Cipta akaun syarikat SSO](/ms/open/development/create-an-sso-account) · [Dapatkan butiran pengguna akaun syarikat](/ms/open/development/queries-the-details-of-a-dedicated-account)
+
+## 2. Masukkan tetapan OIDC dalam konsol pentadbir DingTalk
+
+Pastikan organisasi yang dipaparkan betul dan buka **Keselamatan → SSO Single Sign-On**. Catat kod organisasi (**Organization code**), kemudian pilih **SSO Login** untuk membuka bahagian **Configuration**. Dalam antara muka bahasa Melayu, borang SSO memaparkan label bahasa Inggeris. <a href="https://oa.dingtalk.io/oa_admin_exclusive.htm#/ssoConfig" target="_blank" rel="noopener noreferrer">Buka konsol pentadbir DingTalk</a>
 
 <Frame>
-  <img src="https://img.alicdn.com/imgextra/i4/O1CN01G9qd818i3BE4WieU_!!6000000006948-2-tps-2230-1256.png" alt="Konfigurasi log masuk SSO dalam Admin Console" />
+  <img src="https://gw.alicdn.com/imgextra/i4/O1CN01t9v8AA5ktyF2vGpZ_!!6000000008004-2-tps-1440-629.png" alt="Menu Keselamatan dengan SSO Login dipilih" />
+</Frame>
+
+Pilih **OIDC Authentication**, kemudian isi keempat-empat medan berikut. Gunakan pilihan ini juga untuk konfigurasi Entra secara manual.
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i1/O1CN01xOys53SRMKH2Zs1Y_!!6000000004537-2-tps-1270-554.png" alt="Pilihan OIDC Authentication dan empat medan wajib" />
+</Frame>
+
+| Medan konsol | Nilai daripada IdP | Contoh Entra penyewa tunggal |
+| --- | --- | --- |
+| **Issuer** | Nilai `issuer` daripada dokumen penemuan. Nilai ini mesti sepadan tepat dengan `iss` dalam token. | `https://login.microsoftonline.com/{TENANT_ID}/v2.0` |
+| **Client ID** | ID klien aplikasi yang sepadan dengan `aud` dalam token. | `{CLIENT_ID}` (Application ID) |
+| **Authorization URL** | Ambil `authorization_endpoint` daripada dokumen penemuan. Tambah ID klien, jenis respons, skop dan URI ubah hala yang telah dikodkan untuk URL bagi membentuk permintaan daftar masuk yang lengkap. | Salin seluruh baris di bawah dan gantikan kedua-dua ruang letak ID. |
+| **OpenID Config URL** | URL **dokumen penemuan OIDC** yang diterbitkan oleh IdP. | `https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration?appid={CLIENT_ID}` |
+
+Jika anda mengendalikan IdP sendiri, anda boleh memilih pengecam pengeluar dan ID klien berhuruf kecil semasa pendaftaran. Untuk aplikasi sedia ada, salin nilai yang dikeluarkan oleh IdP dengan mengekalkan huruf besar dan kecil asal.
+
+**Authorization URL untuk Entra** (URI ubah hala telah dikodkan)
+
+```text
+https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?client_id={CLIENT_ID}&response_type=id_token&response_mode=form_post&scope=openid%20profile%20email&redirect_uri=https%3A%2F%2Flogin.dingtalk.io%2Foauth2%2FoidcCallBack.htm
+```
+
+DingTalk menambah `state` dan `nonce` bagi setiap permintaan daftar masuk. IdP mengembalikan `state` tanpa perubahan dan menyertakan `nonce` daripada permintaan yang sama dalam token ID. <a href="https://learn.microsoft.com/ms-my/entra/identity-platform/v2-protocols-oidc" target="_blank" rel="noopener noreferrer">Parameter daftar masuk OIDC Microsoft</a>
+
+**Sebelum menyimpan**, buka OpenID Config URL melalui internet awam. Respons JSON mesti mengandungi `jwks_uri`. Buka URI tersebut dan pastikan senarai `keys` mengandungi kunci awam untuk pengesahan tandatangan. Kedua-dua titik akhir HTTPS mesti menyokong TLS 1.2 dan boleh dicapai oleh pelayan DingTalk.
+
+## 3. Simpan konfigurasi dan pilih masa untuk mengaktifkan SSO
+
+Jika kaedah daftar masuk akaun syarikat sedang digunakan, klik **Save** di bahagian bawah halaman. Selepas tetapan disimpan, DingTalk meminta pengesahan untuk menukar kaedah daftar masuk organisasi.
+
+| Tujuan | Tindakan dalam dialog pengesahan | Semak hasilnya |
+| --- | --- | --- |
+| Simpan sekarang, aktifkan kemudian | Batalkan pertukaran kaedah. | Muat semula halaman. Daftar masuk akaun syarikat masih aktif. Buka semula tetapan OIDC untuk menyemak nilai yang disimpan. |
+| Aktifkan SSO sekarang | Pastikan sesi pentadbir kekal terbuka dan sahkan pertukaran. | **Current sign-in method** memaparkan SSO. Teruskan ke langkah 4. |
+
+## 4. Uji dengan satu akaun
+
+1. **Pelayar.** Buka DingTalk Docs dalam tetingkap peribadi. Pilih daftar masuk dengan akaun syarikat dan masukkan kod organisasi daripada langkah 2. Halaman daftar masuk IdP syarikat sepatutnya dibuka. <a href="https://docs.dingtalk.io/i/desktop" target="_blank" rel="noopener noreferrer">Daftar masuk ke DingTalk Docs</a>
+2. **Identiti.** Lengkapkan pengesahan dengan akaun ujian. Selepas kembali ke DingTalk, pastikan nama organisasi dan identiti ahli sepadan dengan akaun ujian.
+3. **Aplikasi DingTalk.** Daftar masuk menggunakan kod organisasi dan akaun ujian yang sama. Pastikan anda memasuki organisasi yang sama.
+
+Untuk memulihkan kaedah sebelumnya, gunakan sesi pentadbir yang masih terbuka. Pilih **Log in with DingTalk Enterprise Account**, klik **Save** dan sahkan pertukaran.
+
+### Jika daftar masuk gagal
+
+| Gejala | Semakan pertama |
+| --- | --- |
+| Menu SSO tidak kelihatan | Semak organisasi, pelan langganan dan kebenaran pentadbir untuk mengurus kaedah daftar masuk. |
+| Kod organisasi tidak membawa pengguna ke halaman IdP | Semak kod organisasi dan kaedah daftar masuk yang aktif. Jika anda hanya menyimpan tetapan, kaedah sebelumnya masih berkuat kuasa. |
+| URI ubah hala tidak sepadan atau `id_token` tidak disokong | Nyahkod `redirect_uri` sekali dan bandingkan setiap aksara dengan URI Web yang didaftarkan dalam langkah 1. Di Entra, semak **Authentication → ID tokens**. |
+| Tandatangan atau token tidak sah selepas pengesahan | Semak `alg=RS256`. Padankan `kid` dalam pengepala token dengan kunci awam dalam senarai. Semak `iss`, `aud`, `nonce` permintaan ini dan masa tamat tempoh token (`exp`). |
+| Pengesahan syarikat berjaya tetapi ahli tidak ditemui | Bandingkan `sub` atau `customSub` yang dikeluarkan untuk aplikasi ini dengan rekod ahli dalam organisasi sasaran (langkah 1). |
+
+**Urutan daftar masuk bagi contoh Entra yang menggunakan panggilan balik melalui borang POST**
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i2/O1CN01oyPhXsCehiK37rM5_!!6000000003599-2-tps-1540-865.png" alt="Aliran daftar masuk OIDC antara pelayar pengguna, DingTalk dan IdP" />
 </Frame>

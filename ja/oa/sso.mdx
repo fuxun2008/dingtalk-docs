@@ -1,20 +1,102 @@
 ---
-title: "SSO"
-description: "組織独自の ID システムでアカウントを管理し、OIDC などのプロトコルで DingTalk と連携します。対応する IDaaS プロバイダー向けのプリセット統合も含まれます。"
+title: "OIDC を使って DingTalk のシングルサインオン（SSO）を設定する"
+description: "設定後、ユーザーは組織コードを入力し、自社のアカウントで DingTalk にログインできます。"
 ---
 
-アカウントは組織独自の ID システム内で作成・管理され、ID 認証プロトコル（OIDC など）を用いて API 呼び出しによって作成されます。現在、Jiuzhou Yunteng IDaaS、Zhucloud IDaaS、GTS ECUS、Shuxi Cloud Identity Connector 向けのプリセット設定が利用できます。
+<div id="sso" />
 
----
+対象は **DingTalk Standard（試用版を含む）以上のプラン** です。対象組織のログイン方法を管理できる管理者、自社の ID プロバイダー（IdP）を設定できる管理者、対象組織に所属するテストユーザーを用意してください。
 
-## II. 操作フロー
+## 1. IdP に DingTalk 用のアプリを登録する
 
-| インターフェース | 説明 |
+**Microsoft Entra ID** を使用する場合は、**Entra ID → アプリの登録 → 新規登録** を開き、対象を「この組織ディレクトリのみに含まれるアカウント」にします。対象の DingTalk 組織専用のアプリがすでにある場合は、そのアプリを開きます。<a href="https://entra.microsoft.com/" target="_blank" rel="noopener noreferrer">Microsoft Entra 管理センター</a>
+
+| 設定項目 | Microsoft Entra ID | その他の OIDC 対応 IdP |
+| --- | --- | --- |
+| Web リダイレクト URI | 「認証」で **Web** プラットフォームを追加し、下記の URI を登録します。 | アプリのリダイレクト URI 一覧に同じ URI を登録します。 |
+| ログイン応答 | 「暗黙的な許可およびハイブリッド フロー」で **ID トークン** を選択し、保存します。 | `response_type=id_token` と `scope=openid` を許可し、ID トークンに RS256 で署名します。 |
+| アプリ情報 | 「概要」の **ディレクトリ（テナント）ID** と **アプリケーション（クライアント）ID** を控えます。以降の `{TENANT_ID}` と `{CLIENT_ID}` にそれぞれ使用します。 | クライアント ID と OIDC ディスカバリードキュメントの URL を取得します。ドキュメントには発行者と認可エンドポイントが記載されています。 |
+| テストユーザー | 割り当てが必要なアプリでは、「エンタープライズ アプリケーション → ユーザーとグループ」でテストユーザーを割り当てます。 | テストユーザーにアプリへのアクセスを許可します。 |
+
+**本番環境の Web リダイレクト URI**（大文字・小文字を含めてそのまま登録）
+
+```text
+https://login.dingtalk.io/oauth2/oidcCallBack.htm
+```
+
+### テストユーザーと DingTalk アカウントの対応を確認する
+
+| 組織の照合方法 | 確認する値 |
 | --- | --- |
-| ユーザー詳細照会 API：<br />[https://open.dingtalk.com/document/orgapp/query-user-details](https://open.dingtalk.com/document/orgapp/query-user-details)<br />SSO アカウント作成 API：<br />[https://open.dingtalk.com/document/orgapp/create-an-sso-account](https://open.dingtalk.com/document/orgapp/create-an-sso-account) | アカウント同期の統合：<br />1. **ユーザー詳細照会 API** を使用して、組織内の従業員の userid を取得します。<br />2. 自社のアカウントシステムで、自社アカウントと DingTalk アカウントのマッピングを確立します。**一意の照合値：userid**。<br />3. **SSO アカウント作成 API** を使用して、自社アカウントを DingTalk に同期します。 |
+| 既定の `sub` | ID トークンの `sub` は、IdP が発行したユーザー識別子です。対象の DingTalk 組織にあるメンバーの `userId` と一致することを確認します。Entra の `sub` はアプリごとに異なるため、今回のアプリで確認してください。 |
+| カスタムの `customSub` | アカウント同期の担当者に、この照合方法が対象組織で有効か確認します。ID トークンに `customSub` がこの綴りで含まれ、その値が組織で指定した `userId` または企業アカウントのログイン名 `loginId` と一致する必要があります。 |
 
-管理コンソールで **組織設定 > SSO** に移動し、サインイン方法を設定します。
+たとえば Entra のユーザーオブジェクト ID で照合する場合は、「エンタープライズ アプリケーション → シングル サインオン → 属性とクレーム」で `customSub` を追加し、ソース属性に `user.objectid` を指定します。この値は同じテナント内のユーザーの `oid` と一致します。同期済みの DingTalk メンバー情報と照合してください。<a href="https://learn.microsoft.com/ja-jp/entra/identity-platform/jwt-claims-customization" target="_blank" rel="noopener noreferrer">Microsoft のクレーム設定</a>
+
+テストユーザーに DingTalk 企業アカウントがない場合は、組織内の `userId` を確認し、アカウントを関連付けて SSO 企業アカウントを作成してからログインを試します。[ユーザー詳細の照会](/ja/open/development/query-user-details) · [SSO 企業アカウントの作成](/ja/open/development/create-an-sso-account) · [企業アカウントユーザーの詳細取得](/ja/open/development/queries-the-details-of-a-dedicated-account)
+
+## 2. DingTalk 管理コンソールに OIDC の設定値を入力する
+
+対象組織を確認し、**安全 → SSOシングルサインオン** を開きます。画面の **組織コード** を控え、**SSOログイン** を選択すると設定欄が開きます。<a href="https://oa.dingtalk.io/oa_admin_exclusive.htm#/ssoConfig" target="_blank" rel="noopener noreferrer">DingTalk 管理コンソールを開く</a>
 
 <Frame>
-  <img src="https://img.alicdn.com/imgextra/i4/O1CN01G9qd818i3BE4WieU_!!6000000006948-2-tps-2230-1256.png" alt="管理コンソールでの SSO サインイン設定" />
+  <img src="https://gw.alicdn.com/imgextra/i2/O1CN01OoZ5VvW5zmL2vGpM_!!6000000000731-2-tps-1440-616.png" alt="SSOログインを選択した管理コンソール" />
+</Frame>
+
+**OIDCプロトコル認証** を選択し、次の 4 項目を入力します。Entra を手動で設定する場合もこの項目を選びます。
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i1/O1CN01WTYbbC6ja4B2Zs1Y_!!6000000003683-2-tps-1270-554.png" alt="OIDCプロトコル認証と4つの必須項目" />
+</Frame>
+
+| 管理画面の項目 | IdP から取得する値 | Entra シングルテナントの例 |
+| --- | --- | --- |
+| **発行者** | ディスカバリードキュメントの `issuer`。トークンの `iss` と完全に一致する値。 | `https://login.microsoftonline.com/{TENANT_ID}/v2.0` |
+| **クライアントID** | アプリのクライアント ID。トークンの `aud` に対応します。 | `{CLIENT_ID}`（アプリケーション ID） |
+| **Authorization URL** | `authorization_endpoint` にクライアント ID、応答タイプ、スコープ、URL エンコード済みのリダイレクト URI を加えた認可リクエストの URL。 | 下記の 1 行をコピーし、テナント ID とクライアント ID を置き換えます。 |
+| **OpenID Config URL** | IdP が公開する OIDC ディスカバリードキュメントの URL。 | `https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration?appid={CLIENT_ID}` |
+
+自社で IdP を構築する場合、登録時に発行者とクライアント ID に小文字の識別子を選べます。既存アプリでは、IdP が発行した値の大文字・小文字を保持してください。
+
+**Entra の Authorization URL**（リダイレクト URI はエンコード済み）
+
+```text
+https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?client_id={CLIENT_ID}&response_type=id_token&response_mode=form_post&scope=openid%20profile%20email&redirect_uri=https%3A%2F%2Flogin.dingtalk.io%2Foauth2%2FoidcCallBack.htm
+```
+
+DingTalk はログインのたびに `state` と `nonce` を付加します。IdP は `state` をそのまま返し、そのリクエストの `nonce` を ID トークンに含めます。<a href="https://learn.microsoft.com/ja-jp/entra/identity-platform/v2-protocols-oidc" target="_blank" rel="noopener noreferrer">Microsoft の OIDC ログインパラメーター</a>
+
+**保存前の確認**　インターネット経由で OpenID Config URL を開き、JSON 内の `jwks_uri` を確認します。その URI を開き、`keys` に署名検証用の公開鍵が含まれることを確認します。両方の HTTPS エンドポイントが TLS 1.2 に対応し、DingTalk サーバーからアクセスできる必要があります。
+
+## 3. 設定を保存し、切り替えるタイミングを選ぶ
+
+企業アカウントでのログインが有効な場合、ページ下部の **保存** をクリックすると、設定の保存後に組織のログイン方法を切り替えるか確認されます。
+
+| 目的 | 確認画面での操作 | 結果の確認 |
+| --- | --- | --- |
+| 設定だけ保存し、後で切り替える | 切り替えをキャンセルします。 | 再読み込み後も企業アカウントでのログインが有効です。OIDC の設定欄を開き直し、保存した値を確認します。 |
+| 今すぐ SSO を有効にする | 管理者セッションを開いたまま切り替えを確定します。 | 「現在有効なログイン方法」が SSO になったら、手順 4 に進みます。 |
+
+## 4. テストアカウントでログインを確認する
+
+1. **ブラウザー**　プライベートウィンドウで DingTalk ドキュメントを開き、企業アカウントでのログインを選びます。手順 2 の組織コードを入力し、自社 IdP のログイン画面に移動することを確認します。<a href="https://docs.dingtalk.io/i/desktop" target="_blank" rel="noopener noreferrer">DingTalk ドキュメントにログイン</a>
+2. **ユーザーの確認**　テストアカウントで認証し、DingTalk に戻ったら、組織名とメンバーの両方が正しいことを確認します。
+3. **クライアント**　DingTalk クライアントでも同じ組織コードとアカウントでログインし、同じ組織に入れることを確認します。
+
+元に戻すには、開いておいた管理者セッションで **「DingTalk企業アカウントでログインする」** を選び、**保存** をクリックして切り替えを確定します。
+
+### ログインできないとき
+
+| 症状 | 最初に確認すること |
+| --- | --- |
+| SSO のメニューが見つからない | 対象組織、契約プラン、ログイン方法を管理する権限を確認します。 |
+| 組織コードを入力しても自社のログイン画面に移動しない | 組織コードと現在有効なログイン方法を確認します。設定だけ保存した場合は従来の方法が有効です。 |
+| リダイレクト URI の不一致、または `id_token` 非対応のエラー | `redirect_uri` を 1 回デコードし、手順 1 の Web URI と完全に一致するか確認します。Entra では「認証」の **ID トークン** も確認します。 |
+| 認証後に署名またはトークンのエラー | `alg=RS256`、トークンヘッダーの `kid` に対応する公開鍵、`iss`、`aud`、今回の `nonce`、有効期限 `exp` を確認します。 |
+| 自社での認証に成功してもメンバーが見つからない | 手順 1 に戻り、このアプリが受け取った `sub` または `customSub` と、対象組織のメンバー情報を照合します。 |
+
+**ログインの流れ**（Entra のフォーム POST によるコールバックの例）
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i1/O1CN01vB8uQZOkYlJ37rM5_!!6000000005904-2-tps-1540-865.png" alt="ユーザーのブラウザー、DingTalk、IdP 間の OIDC ログイン" />
 </Frame>
