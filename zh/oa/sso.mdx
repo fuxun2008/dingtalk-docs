@@ -1,20 +1,102 @@
 ---
-title: "SSO单点登录设置"
-description: "基于企业自有身份体系创建并管理账号，通过 OIDC 等协议对接单点登录，支持九州云腾、竹云等主流 IDaaS 预置配置。"
+title: "配置 DingTalk 单点登录（SSO）：OIDC 接入指南"
+description: "配置完成后，用户输入组织代码，即可使用企业账号登录 DingTalk。"
 ---
 
-账号在企业自有的身份体系中创建并进行管理，通过身份认证协议（如OIDC）调用接口创建的账号。目前已支持九州云腾IDaaS、竹云IDaaS、GTS ECUS、数犀云身份连接器的预置配置。
+<div id="sso" />
 
----
+适用于 **DingTalk Standard（含试用）及以上套餐**。开始前，请准备一个能管理目标组织登录方式的管理员账号、一个能配置企业身份提供方（IdP）的账号，以及一名已加入该组织的测试用户。
 
-## 二、操作流程
+## 1. 在身份提供方登记 DingTalk 应用
 
-| 产品界面 | 操作路径/功能说明 |
+如果使用 **Microsoft Entra ID**，打开「Entra ID → 应用注册 → 新注册」，选择「仅此组织目录中的帐户」。已有专用于该 DingTalk 组织的应用可直接打开。<a href="https://entra.microsoft.com/" target="_blank" rel="noopener noreferrer">Microsoft Entra 管理中心</a>
+
+| 设置 | Microsoft Entra ID | 其他 OIDC 身份提供方 |
+| --- | --- | --- |
+| Web 回调地址 | 在「身份验证」中添加 **Web** 平台，登记下方地址 | 在应用的重定向 URI 列表登记同一地址 |
+| 登录响应 | 在「隐式授权和混合流」下勾选 **ID 令牌**，保存 | 允许请求 `response_type=id_token` 和 `scope=openid`，使用 RS256 签发 ID Token |
+| 应用信息 | 从「概述」复制 **目录（租户）ID** 和 **应用程序（客户端）ID**，分别替换下文的 `{TENANT_ID}` 和 `{CLIENT_ID}` | 取得应用的 Client ID 和 OIDC 发现文档地址。发现文档提供签发方标识和授权端点 |
+| 测试用户 | 如果应用要求用户分配，在「企业应用 → 用户和组」分配测试用户 | 授予测试用户访问该应用的权限 |
+
+**正式环境 Web 回调地址**（原样登记，保留大小写）
+
+```text
+https://login.dingtalk.io/oauth2/oidcCallBack.htm
+```
+
+### 确认测试用户能匹配到哪个 DingTalk 账号
+
+| 组织的匹配方式 | 该检查哪个值 |
 | --- | --- |
-| 查询用户详情接口：<br />[https://open.dingtalk.com/document/orgapp/query-user-details](https://open.dingtalk.com/document/orgapp/query-user-details)<br />创建SSO账号接口：<br />[https://open.dingtalk.com/document/orgapp/create-an-sso-account](https://open.dingtalk.com/document/orgapp/create-an-sso-account) | 账号同步集成：<br />1.  通过**查询用户详情接口**，获取组织内员工的userid<br />    <br />2.  在自有账密系统中，完成自有账号与钉钉账号的映射关系，**唯一匹配值：userid**<br />    <br />3.  通过**创建SSO账号接口**，将自有账号同步到钉钉 |
+| **默认使用 `sub`** | `sub` 是身份提供方在 ID Token 中签发的用户标识，其值应等于该用户在当前 DingTalk 组织中的 `userId`。Entra 的 `sub` 与应用有关，请用这次接入的应用核对。 |
+| **已启用 `customSub`** | `customSub` 是企业约定的自定义字段。令牌须包含这个区分大小写的字段，其值须匹配组织约定的 `userId` 或企业账号登录名 `loginId`。采用此方式前，请向负责账号同步的管理员确认组织已启用相应映射。 |
 
-在管理后台：企业设置-SSO单点登录，设置登录方式
+例如，采用 Entra 用户对象 ID 的组织，可在「企业应用 → 单一登录 → 属性和声明」添加 `customSub`，来源选用户属性 `user.objectid`。这样，同一用户的 `customSub` 与租户内用户对象 ID（`oid`）相同。请用该值核对已同步的 DingTalk 成员记录。<a href="https://learn.microsoft.com/zh-cn/entra/identity-platform/jwt-claims-customization" target="_blank" rel="noopener noreferrer">微软声明配置说明</a>
+
+测试用户还没有 DingTalk 企业账号时，先核对组织成员的 `userId`，完成关联并创建 SSO 账号，再测试登录。[查询用户详情](/zh/open/development/query-user-details) · [创建 SSO 企业账号](/zh/open/development/create-an-sso-account) · [查询企业账号用户详情](/zh/open/development/queries-the-details-of-a-dedicated-account)
+
+## 2. 在 DingTalk 后台填写 OIDC 参数
+
+打开管理后台，核对目标组织，进入 **安全 → SSO单点登录**。记下本页的 **组织代码**，点选 **SSO登录**，下方会展开「配置」。<a href="https://oa.dingtalk.io/oa_admin_exclusive.htm#/ssoConfig" target="_blank" rel="noopener noreferrer">打开 DingTalk 管理后台</a>
 
 <Frame>
-  <img src="https://img.alicdn.com/imgextra/i1/O1CN01tu97kWzC7gF1DP8x_!!6000000006123-2-tps-599-656.png" alt="管理后台 SSO 单点登录设置界面" />
+  <img src="https://gw.alicdn.com/imgextra/i3/O1CN01a4xp1OzrJ8D2TZlA_!!6000000005426-2-tps-1220-428.png" alt="中文后台已选中 SSO登录，下方展开配置" />
+</Frame>
+
+在「选择配置方式」中点选 **OIDC协议认证**，填写四项参数。使用 Entra 手动接入时也选这一项。
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i4/O1CN01zjfTR7vSEBF2OI0z_!!6000000002514-2-tps-1178-619.png" alt="左侧选中 OIDC协议认证，右侧列出四项必填参数" />
+</Frame>
+
+| 后台字段 | 从身份提供方取什么值 | Entra 单租户示例 |
+| --- | --- | --- |
+| **Issuer** | 发现文档中的 `issuer`，须与令牌的 `iss` 完全一致 | `https://login.microsoftonline.com/{TENANT_ID}/v2.0` |
+| **Client ID** | 本应用的客户端 ID，对应令牌的 `aud` | `{CLIENT_ID}`，即「应用程序（客户端）ID」 |
+| **Authorization URL** | 从发现文档取 `authorization_endpoint`，加上应用 ID、响应类型、scope 和已编码的回调地址，组成完整登录请求 | 复制下方整行，替换租户 ID 和客户端 ID |
+| **OpenID Config URL** | 身份提供方发布的 **OIDC 发现文档** 地址 | `https://login.microsoftonline.com/{TENANT_ID}/v2.0/.well-known/openid-configuration?appid={CLIENT_ID}` |
+
+如使用自建 IdP，可在注册时为 Issuer 和 Client ID 选用小写标识。已有应用请复制 IdP 实际签发的值，保留原大小写。
+
+**Entra 的 Authorization URL**（回调地址已编码）
+
+```text
+https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize?client_id={CLIENT_ID}&response_type=id_token&response_mode=form_post&scope=openid%20profile%20email&redirect_uri=https%3A%2F%2Flogin.dingtalk.io%2Foauth2%2FoidcCallBack.htm
+```
+
+DingTalk 每次登录会追加 `state` 和 `nonce`。由 IdP 原样返回 `state`，并将同一次请求的 `nonce` 放入 ID Token。<a href="https://learn.microsoft.com/zh-cn/entra/identity-platform/v2-protocols-oidc" target="_blank" rel="noopener noreferrer">微软 OIDC 登录参数</a>
+
+**保存前自检**：从公网打开 OpenID Config URL，应看到 JSON 和其中的 `jwks_uri`。再打开 `jwks_uri`，应看到包含 `keys` 的签名公钥列表。两个 HTTPS 地址均须支持 TLS 1.2，并允许 DingTalk 服务端访问。
+
+## 3. 保存配置，选择何时启用
+
+如果当前生效的是企业账号登录，填完参数后点击页面底部的 **保存**。配置保存成功后，系统会询问是否切换组织的登录方式。
+
+| 目的 | 在切换确认框中怎么选 | 如何确认结果 |
+| --- | --- | --- |
+| 先配好，稍后启用 | 点 **取消** | 刷新后，顶部仍显示企业账号登录；再次展开 OIDC 配置，可看到已保存的参数。 |
+| 现在启用 SSO | 保留管理员会话，点 **确认** | 顶部「当前生效的登录方式」显示 SSO，随后按第 4 步验证。 |
+
+## 4. 用一个测试账号验收
+
+1. **浏览器**：另开无痕窗口，打开 DingTalk 文档，选择企业账号登录，输入第 2 步记下的组织代码。应跳转到本企业身份提供方的登录页。<a href="https://docs.dingtalk.io/i/desktop" target="_blank" rel="noopener noreferrer">DingTalk 文档登录入口</a>
+2. **核对身份**：使用测试账号完成企业认证。返回 DingTalk 后，核对组织名称和成员身份，两项都应与测试账号一致。
+3. **客户端**：在 DingTalk 客户端使用同一个组织代码和测试账号再登录一次，确认进入同一组织。
+
+需要恢复时，在保留的管理员会话中选回 **「钉钉企业账号登录」**（中文界面名称），点击 **保存** 并确认切换。
+
+### 登录失败时查哪里？
+
+| 卡在哪一步 | 先检查 |
+| --- | --- |
+| 找不到「SSO单点登录」 | 确认登录的是目标组织、套餐符合要求，当前管理员有权管理登录方式。 |
+| 输入组织代码后未跳到企业登录页 | 对照后台的组织代码和「当前生效的登录方式」。只保存配置时，原登录方式仍生效。 |
+| IdP 提示回调不匹配或不支持 `id_token` | 将授权地址中的 `redirect_uri` 解码一次，与第 1 步登记的 Web 地址逐字比对。Entra 用户再检查「身份验证」中的 **ID 令牌** 是否已勾选。 |
+| 返回后提示签名或令牌无效 | 先核对 `alg=RS256`，再用令牌头的 `kid` 查找公钥列表中的同名值。核对 `iss`、`aud`、本次 `nonce` 和令牌过期时间 `exp`。 |
+| 企业认证成功，找不到成员 | 回到第 1 步，用该应用实际签发的 `sub` 或 `customSub` 核对目标组织内的成员记录。 |
+
+**登录时序**（以本文 Entra 表单回调为例）
+
+<Frame>
+  <img src="https://gw.alicdn.com/imgextra/i2/O1CN01xfeHkylYwAL35LEy_!!6000000000275-2-tps-1520-780.png" alt="用户浏览器、DingTalk 登录服务与企业身份提供方之间的 OIDC 登录时序" />
 </Frame>
